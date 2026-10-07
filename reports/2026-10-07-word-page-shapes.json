@@ -1,0 +1,5003 @@
+{
+  "release": "it-0c432803",
+  "commit": "f1bd1833d7ad6a6886df39bae03a9f69ee4a693a",
+  "headwords": {
+    "searched": 541433,
+    "byRuling": {
+      "rules disagree": {
+        "shapes": 8,
+        "pages": 59
+      },
+      "no rule": {
+        "shapes": 66,
+        "pages": 2393
+      },
+      "page breaks the rule": {
+        "shapes": 8,
+        "pages": 50
+      },
+      "ruled": {
+        "shapes": 177,
+        "pages": 538931
+      }
+    },
+    "otherPartsOfSpeech": {
+      "Nome proprio": 5636,
+      "Locuzione nominale": 3502,
+      "Avverbio": 3158,
+      "Locuzione verbale": 948,
+      "Acronimo / Abbreviazione": 708,
+      "Locuzione avverbiale": 352,
+      "Espressione": 257,
+      "Prefisso": 226,
+      "Locuzione aggettivale": 194,
+      "Suffisso": 134,
+      "Interiezione": 123,
+      "Preposizione": 116,
+      "Congiunzione": 109,
+      "Pronome": 102,
+      "Codice / Simbolo": 58,
+      "Locuzione prepositiva": 58,
+      "Abbreviazione in uso nelle chat": 48,
+      "Lettera": 39,
+      "Locuzione congiuntiva": 30,
+      "Prefissoide": 24,
+      "Articolo": 20,
+      "Locuzione nominale, forma flessa": 19,
+      "Pronome possessivo": 12,
+      "Cifra": 10,
+      "Locuzione interiettiva": 10,
+      "Pronome, forma flessa": 8,
+      "Confisso": 7,
+      "Pronome dimostrativo": 4,
+      "Pronome interrogativo": 2,
+      "Nome proprio, forma flessa": 1,
+      "Particella": 1,
+      "Pronome indefinito": 1
+    },
+    "shapes": [
+      {
+        "shape": "verb-form · 1 reading · no links",
+        "pages": 222280,
+        "examples": [
+          "abalienai",
+          "incameravi",
+          "è"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A verb form block.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of verb · 1 reading · no links",
+        "pages": 221739,
+        "examples": [
+          "abaliena",
+          "raggrumoli",
+          "zurlò"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 One block per base word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "own noun · 1 reading · no links",
+        "pages": 27628,
+        "examples": [
+          "abaca",
+          "ischemia",
+          "équipe"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "own other · 1 reading · no links",
+        "pages": 12900,
+        "examples": [
+          "abbagliatamente",
+          "incredibilmente",
+          "zzz"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of noun · 1 reading · no links",
+        "pages": 11755,
+        "examples": [
+          "abaceti",
+          "internamenti",
+          "zuzzurulloni"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of adjective · 1 reading · no links",
+        "pages": 11301,
+        "examples": [
+          "abapicali",
+          "inosservabili",
+          "zuppi"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "own adjective · 1 reading · no links",
+        "pages": 7714,
+        "examples": [
+          "abarbicato",
+          "intenzionato",
+          "zurighese"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "own verb · 1 reading · no links",
+        "pages": 5968,
+        "examples": [
+          "abalienare",
+          "impiastrare",
+          "zufolare"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "own adjective · own noun · 2 readings, 1 word · no links",
+        "pages": 2631,
+        "examples": [
+          "abbacinatore",
+          "latino",
+          "zwinglista"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of adjective · verb-form · 2 readings, 2+ words · links",
+        "pages": 2396,
+        "examples": [
+          "abbacchiata",
+          "indirizzati",
+          "zigrinati"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 4 A verb form block.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "own adjective · verb-form · 2 readings, 2+ words · links",
+        "pages": 2035,
+        "examples": [
+          "abalienato",
+          "innescante",
+          "zuccherato"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 4 A verb form block.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "own noun · verb-form · 2 readings, 2+ words · links",
+        "pages": 1884,
+        "examples": [
+          "abandono",
+          "massacro",
+          "zufolo"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 4 A verb form block.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "lone-bare · 1 reading · no links",
+        "pages": 1087,
+        "examples": [
+          "abbottonarsi",
+          "minimalistico",
+          "zonzo"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 1 A page where every reading is empty (P2) keeps the part of speech under the word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of noun · verb-form · 2 readings, 2+ words · links",
+        "pages": 961,
+        "examples": [
+          "abbacchi",
+          "indovina",
+          "zufoli"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 4 A verb form block.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "own adjective · own noun · verb-form · 3+ readings · links",
+        "pages": 717,
+        "examples": [
+          "abbagliante",
+          "infestante",
+          "zuccherino"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 4 A verb form block.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of adjective · own noun · 2 readings, 2+ words · links",
+        "pages": 678,
+        "examples": [
+          "abbattuta",
+          "lodigiana",
+          "zeppa"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "verb-form · 2 readings, 2+ words · links",
+        "pages": 657,
+        "examples": [
+          "abballino",
+          "complimentai",
+          "venerò"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A verb form block.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "a spelling variant's record · own noun · own other · 2 readings, 2+ words · links",
+        "pages": 618,
+        "examples": [
+          "abaco",
+          "giada",
+          "zip"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "a spelling variant's record · own noun · 2 readings, 2+ words · links",
+        "pages": 564,
+        "examples": [
+          "acacia",
+          "lattuga",
+          "zinnia"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "own verb · 2 readings, 1 word · no links",
+        "pages": 469,
+        "examples": [
+          "abbacchiare",
+          "inchiedere",
+          "zittire"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of verb · own adjective · 2 readings, 2+ words · links",
+        "pages": 276,
+        "examples": [
+          "agiato",
+          "putrefatto",
+          "vigente"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of adjective · form-of verb · 2 readings, 2+ words · links",
+        "pages": 218,
+        "examples": [
+          "abalienate",
+          "riarsi",
+          "vellutati"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of verb · own noun · 2 readings, 2+ words · links",
+        "pages": 213,
+        "examples": [
+          "abbuffata",
+          "quietanza",
+          "zampa"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of adjective · form-of noun · 2 readings, 2+ words · links",
+        "pages": 200,
+        "examples": [
+          "abbaglianti",
+          "liriche",
+          "zuppe"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "own adjective · own noun · 3+ readings · links",
+        "pages": 193,
+        "examples": [
+          "abruzzese",
+          "logudorese",
+          "zapoteco"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of verb · own adjective · verb-form · 3+ readings · links",
+        "pages": 186,
+        "examples": [
+          "abbrustolito",
+          "imbarbarito",
+          "travolto"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 4 A verb form block.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of adjective · own noun · verb-form · 3+ readings · links",
+        "pages": 182,
+        "examples": [
+          "abbassata",
+          "muta",
+          "volta"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 4 A verb form block.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of verb · verb-form · 2 readings, 2+ words · links",
+        "pages": 171,
+        "examples": [
+          "aggrappato",
+          "ridono",
+          "vezzeggiato"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 One block per base word.",
+            "§ 4 A verb form block.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "a spelling variant's record · own adjective · own noun · own other · 3+ readings · links",
+        "pages": 156,
+        "examples": [
+          "albo",
+          "limone",
+          "x"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "own noun form record · 1 reading · no links",
+        "pages": 152,
+        "examples": [
+          "acarofobie",
+          "gommiste",
+          "zecche"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "own adjective · verb-form · 3+ readings · links",
+        "pages": 136,
+        "examples": [
+          "abbarbicato",
+          "invaghito",
+          "venduto"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 4 A verb form block.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of noun · own noun · 2 readings, 2+ words · links",
+        "pages": 134,
+        "examples": [
+          "acrobate",
+          "ghiande",
+          "zappatrice"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "own adjective form record · 1 reading · no links",
+        "pages": 132,
+        "examples": [
+          "adiposi",
+          "irrisoria",
+          "vuote"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "a spelling variant's record · own adjective · own other · 2 readings, 2+ words · links",
+        "pages": 106,
+        "examples": [
+          "acre",
+          "generoso",
+          "vitale"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "own other · verb-form · 2 readings, 2+ words · links",
+        "pages": 97,
+        "examples": [
+          "addosso",
+          "contro",
+          "sia"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 4 A verb form block.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "own other · 2 readings, 1 word · no links",
+        "pages": 91,
+        "examples": [
+          "accanto",
+          "gli",
+          "vi"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of adjective · form-of noun · verb-form · 3+ readings · links",
+        "pages": 87,
+        "examples": [
+          "abbassate",
+          "ottimi",
+          "volute"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 4 A verb form block.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "a spelling variant's record · own other · verb-form · 2 readings, 2+ words · links",
+        "pages": 80,
+        "examples": [
+          "accorso",
+          "gloriano",
+          "volga"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "own noun · 2 readings, 1 word · no links",
+        "pages": 79,
+        "examples": [
+          "aere",
+          "micio",
+          "viaggiatore"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of noun · form-of verb · 2 readings, 2+ words · links",
+        "pages": 77,
+        "examples": [
+          "assegni",
+          "poeti",
+          "zimbelli"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "a spelling variant's record · own noun · own other · verb-form · 3+ readings · links",
+        "pages": 74,
+        "examples": [
+          "ala",
+          "firma",
+          "violo"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "own noun · own other · 2 readings, 1 word · no links",
+        "pages": 74,
+        "examples": [
+          "accidenti",
+          "merda",
+          "vaffanculo"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of adjective · own other · 2 readings, 2+ words · links",
+        "pages": 72,
+        "examples": [
+          "alcuni",
+          "pure",
+          "salve"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "own verb form record · verb-form · 2 readings, 2+ words · links",
+        "pages": 68,
+        "examples": [
+          "abbaiato",
+          "pungi",
+          "volesse"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words.",
+            "§ 4 A verb form block."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "a spelling variant's record · own adjective · own noun · 3+ readings · links",
+        "pages": 67,
+        "examples": [
+          "amaranto",
+          "novarese",
+          "walser"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "a spelling variant's record · own noun · own other · 3+ readings · links",
+        "pages": 62,
+        "examples": [
+          "a",
+          "io",
+          "veronica"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "form-of verb · own adjective · own noun · 3+ readings · links",
+        "pages": 61,
+        "examples": [
+          "acido",
+          "passito",
+          "zelante"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "own noun · verb-form · 3+ readings · links",
+        "pages": 61,
+        "examples": [
+          "abbaglio",
+          "invaso",
+          "volgo"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 4 A verb form block.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "a spelling variant's record · own other · 2 readings, 2+ words · links",
+        "pages": 60,
+        "examples": [
+          "ac",
+          "mb",
+          "wh"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "a spelling variant's record · form-of adjective · own other · 2 readings, 2+ words · links",
+        "pages": 58,
+        "examples": [
+          "aborigeni",
+          "glauca",
+          "venusta"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "a spelling variant's record · own adjective · own noun · own other · verb-form · 3+ readings · links",
+        "pages": 55,
+        "examples": [
+          "alano",
+          "eliso",
+          "vivo"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "a spelling variant's record · own adjective · own other · verb-form · 3+ readings · links",
+        "pages": 54,
+        "examples": [
+          "addolorato",
+          "illuminata",
+          "venerando"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "own adjective · own noun · own other · 3+ readings · links",
+        "pages": 50,
+        "examples": [
+          "allora",
+          "niente",
+          "zitto"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of adjective · verb-form · 3+ readings · links",
+        "pages": 47,
+        "examples": [
+          "abbandonati",
+          "lessi",
+          "volti"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 4 A verb form block.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "own adjective · own other · 2 readings, 1 word · no links",
+        "pages": 47,
+        "examples": [
+          "abbastanza",
+          "nostro",
+          "vostro"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of adjective · own verb form record · 2 readings, 2+ words · links",
+        "pages": 46,
+        "examples": [
+          "abbandonata",
+          "finiti",
+          "usciti"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "a verb block and a noun or adjective block about one word · form-of adjective · verb-form · 2 readings, 1 word · no links",
+        "pages": 45,
+        "examples": [
+          "accentuata",
+          "presiedute",
+          "vibranti"
+        ],
+        "ruling": {
+          "kind": "rules disagree",
+          "rows": [
+            "§ 4 A verb form block.",
+            "§ 4 A noun or adjective form block."
+          ],
+          "parts": [
+            "a verb block and a noun or adjective block about one word"
+          ]
+        }
+      },
+      {
+        "shape": "own adjective form record · verb-form · 2 readings, 2+ words · links",
+        "pages": 45,
+        "examples": [
+          "accavallato",
+          "gratificanti",
+          "vissuta"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words.",
+            "§ 4 A verb form block."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of verb · own other · 2 readings, 2+ words · links",
+        "pages": 42,
+        "examples": [
+          "Aurino",
+          "Mema",
+          "ci sono"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "a spelling variant's record · form-of noun · own noun · 2 readings, 2+ words · links",
+        "pages": 41,
+        "examples": [
+          "afidi",
+          "giudici",
+          "tirannidi"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "a spelling variant's record · form-of verb · own other · 2 readings, 2+ words · links",
+        "pages": 41,
+        "examples": [
+          "aurino",
+          "letizio",
+          "zilla"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "own adjective · own verb · 2 readings, 1 word · no links",
+        "pages": 41,
+        "examples": [
+          "articolare",
+          "popolare",
+          "volare"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "own adjective · own verb form record · verb-form · 3+ readings · links",
+        "pages": 37,
+        "examples": [
+          "abbaiante",
+          "infetto",
+          "vieto"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words.",
+            "§ 4 A verb form block."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "a spelling variant's record · own adjective · own noun · 2 readings, 2+ words · links",
+        "pages": 36,
+        "examples": [
+          "acheuleano",
+          "olduvaiano",
+          "trecento"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "grid-form · 1 reading · no links",
+        "pages": 35,
+        "examples": [
+          "accentratrici",
+          "iridea",
+          "vettovagliamenti"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A form no record describes (P3).",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "own noun · own verb form record · verb-form · 3+ readings · links",
+        "pages": 35,
+        "examples": [
+          "argomento",
+          "intervista",
+          "usura"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words.",
+            "§ 4 A verb form block."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "own verb form record · 1 reading · no links",
+        "pages": 35,
+        "examples": [
+          "abbattette",
+          "preannunciato",
+          "ò"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of adjective · form-of noun · two blocks about one word · 2 readings, 1 word · no links",
+        "pages": 33,
+        "examples": [
+          "abatemarchesi",
+          "calabra",
+          "pezzolani"
+        ],
+        "ruling": {
+          "kind": "page breaks the rule",
+          "rows": [
+            "§ 4 One block per base word."
+          ],
+          "parts": [
+            "two blocks about one word"
+          ]
+        }
+      },
+      {
+        "shape": "a spelling variant's record · form-of adjective · own noun · own other · 3+ readings · links",
+        "pages": 32,
+        "examples": [
+          "barbara",
+          "prima",
+          "vera"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "form-of noun · verb-form · 3+ readings · links",
+        "pages": 31,
+        "examples": [
+          "apostrofi",
+          "posti",
+          "tratti"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 4 A verb form block.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "own noun · own verb · 2 readings, 1 word · no links",
+        "pages": 31,
+        "examples": [
+          "alveare",
+          "nettare",
+          "vomere"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of noun · own other · 2 readings, 2+ words · links",
+        "pages": 30,
+        "examples": [
+          "agli",
+          "fica",
+          "vie"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "a spelling variant's record · form-of adjective · own noun · 2 readings, 2+ words · links",
+        "pages": 27,
+        "examples": [
+          "aculeati",
+          "egizi",
+          "vertebrati"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "a spelling variant's record · own noun · verb-form · 3+ readings · links",
+        "pages": 25,
+        "examples": [
+          "balena",
+          "duce",
+          "trema"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "own noun · own other · verb-form · 3+ readings · links",
+        "pages": 23,
+        "examples": [
+          "abbasso",
+          "cazzo",
+          "vale"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 4 A verb form block.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "a spelling variant's record · form-of adjective · own other · verb-form · 3+ readings · links",
+        "pages": 22,
+        "examples": [
+          "adorna",
+          "fida",
+          "viva"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "own adjective · own noun · own verb · 3+ readings · links",
+        "pages": 22,
+        "examples": [
+          "alare",
+          "militare",
+          "volgare"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of adjective · own noun form record · 2 readings, 2+ words · links",
+        "pages": 21,
+        "examples": [
+          "anniversari",
+          "femorali",
+          "tracotanti"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of adjective · own other · verb-form · 3+ readings · links",
+        "pages": 21,
+        "examples": [
+          "Adorna",
+          "Fida",
+          "tardi"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 4 A verb form block.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of other · 1 reading · no links",
+        "pages": 21,
+        "examples": [
+          "Russie",
+          "non metalli",
+          "voci verbali"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 One block per base word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "own adjective · 2 readings, 1 word · no links",
+        "pages": 21,
+        "examples": [
+          "ampezzano",
+          "intemperante",
+          "ventenne"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "own adjective form record · own noun · 2 readings, 1 word · no links",
+        "pages": 19,
+        "examples": [
+          "agostiniane",
+          "insiemistica",
+          "ventilatore"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "a spelling variant's record · form-of adjective · own noun · 3+ readings · links",
+        "pages": 18,
+        "examples": [
+          "agostiniani",
+          "roditori",
+          "violacee"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "form-of noun · 2 readings, 2+ words · links",
+        "pages": 16,
+        "examples": [
+          "arti",
+          "mammiferi",
+          "vinattiere"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of verb · 2 readings, 2+ words · links",
+        "pages": 16,
+        "examples": [
+          "rinsavire",
+          "sfrangereste",
+          "sfrangiate"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 One block per base word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of adjective · form-of verb · own noun · 3+ readings · links",
+        "pages": 15,
+        "examples": [
+          "assise",
+          "pettegola",
+          "vellutata"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "own noun · own other · 3+ readings · links",
+        "pages": 15,
+        "examples": [
+          "alla",
+          "insieme",
+          "via"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "own noun · own verb · 3+ readings · links",
+        "pages": 15,
+        "examples": [
+          "abitare",
+          "essere",
+          "volere"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "a spelling variant's record · form-of adjective · own noun · own other · verb-form · 3+ readings · links",
+        "pages": 14,
+        "examples": [
+          "bassa",
+          "china",
+          "tesi"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "a spelling variant's record · form-of noun · own other · 2 readings, 2+ words · links",
+        "pages": 13,
+        "examples": [
+          "addii",
+          "conifere",
+          "terni"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "a spelling variant's record · own noun · 3+ readings · links",
+        "pages": 13,
+        "examples": [
+          "ape",
+          "centauro",
+          "togo"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "own adjective · own noun · own verb form record · verb-form · 3+ readings · links",
+        "pages": 13,
+        "examples": [
+          "bagnato",
+          "ibrido",
+          "specifico"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words.",
+            "§ 4 A verb form block."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "a spelling variant's record · own adjective · own noun · verb-form · 3+ readings · links",
+        "pages": 12,
+        "examples": [
+          "ascendente",
+          "eccelso",
+          "paro"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "a spelling variant's record · own other · 3+ readings · links",
+        "pages": 12,
+        "examples": [
+          "ci",
+          "e",
+          "su"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "bare · 2 readings, 1 word · no links",
+        "pages": 12,
+        "examples": [
+          "innanzi",
+          "spensare",
+          "urgere"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 1 A page where every reading is empty (P2) keeps the part of speech under the word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of 2+ base words · form-of noun · 1 reading · no links",
+        "pages": 12,
+        "examples": [
+          "auspici",
+          "geni",
+          "tempi"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of noun · own noun · verb-form · 3+ readings · links",
+        "pages": 11,
+        "examples": [
+          "agganci",
+          "messe",
+          "tamburello"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 4 A verb form block.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "own adjective · own noun · own other · verb-form · 3+ readings · links",
+        "pages": 10,
+        "examples": [
+          "accosto",
+          "presto",
+          "verso"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 4 A verb form block.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "own adjective · own verb · verb-form · 3+ readings · links",
+        "pages": 10,
+        "examples": [
+          "congegnato",
+          "programmato",
+          "socchiuso"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 4 A verb form block.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "own adjective form record · own noun form record · 2 readings, 1 word · no links",
+        "pages": 10,
+        "examples": [
+          "alpina",
+          "rapaci",
+          "tangheri"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "own noun · own noun form record · 2 readings, 1 word · no links",
+        "pages": 10,
+        "examples": [
+          "bracconiere",
+          "impostore",
+          "strillone"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "own noun · own verb form record · 2 readings, 1 word · no links",
+        "pages": 10,
+        "examples": [
+          "fuoriuscito",
+          "scantinato",
+          "trivella"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "own verb · verb-form · 2 readings, 2+ words · links",
+        "pages": 10,
+        "examples": [
+          "dovremmo",
+          "porsi",
+          "valse"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 4 A verb form block.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "a spelling variant's record · own noun · 1 reading · no links",
+        "pages": 9,
+        "examples": [
+          "Aglio",
+          "Gennaro",
+          "filippini"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "form-of noun · own adjective · verb-form · 3+ readings · links",
+        "pages": 9,
+        "examples": [
+          "armate",
+          "portate",
+          "versi"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 4 A verb form block.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "own noun · own verb · verb-form · 3+ readings · links",
+        "pages": 9,
+        "examples": [
+          "cadenza",
+          "gronda",
+          "scheda"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 4 A verb form block.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "a spelling variant's record · form-of noun · own noun · 3+ readings · links",
+        "pages": 8,
+        "examples": [
+          "carenati",
+          "signore",
+          "vite"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "a spelling variant's record · own other · 1 reading · no links",
+        "pages": 8,
+        "examples": [
+          "brunetta",
+          "chiaretto",
+          "pia"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "another word's record · grid-form · own adjective form record · 2 readings, 2+ words · links",
+        "pages": 8,
+        "examples": [
+          "acustici",
+          "fiochi",
+          "smaniose"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 1 A page where every reading is empty (P2) keeps the part of speech under the word.",
+            "§ 4 A form no record describes (P3).",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of noun · own adjective · 2 readings, 2+ words · links",
+        "pages": 8,
+        "examples": [
+          "ammonitore",
+          "nanoelettronica",
+          "venti"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of noun · own verb form record · verb-form · 3+ readings · links",
+        "pages": 8,
+        "examples": [
+          "alimenti",
+          "frammenti",
+          "sanzioni"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words.",
+            "§ 4 A verb form block."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "own adjective · own other · verb-form · 3+ readings · links",
+        "pages": 8,
+        "examples": [
+          "addentro",
+          "discosto",
+          "tosto"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 4 A verb form block.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "own noun form record · verb-form · 2 readings, 2+ words · links",
+        "pages": 8,
+        "examples": [
+          "arrapante",
+          "messaggi",
+          "slittino"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words.",
+            "§ 4 A verb form block."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "a spelling variant's record · form-of noun · own noun · own other · 3+ readings · links",
+        "pages": 7,
+        "examples": [
+          "pesci",
+          "primina",
+          "terzina"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "a spelling variant's record · own adjective · own noun · 2 readings, 1 word · no links",
+        "pages": 7,
+        "examples": [
+          "Asfodelo",
+          "Quarantotto",
+          "UNICO"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "form-of 2+ base words · form-of noun · verb-form · 2 readings, 2+ words · links",
+        "pages": 7,
+        "examples": [
+          "auguri",
+          "menti",
+          "vaccini"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 4 A verb form block.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of adjective · own noun form record · verb-form · 3+ readings · links",
+        "pages": 7,
+        "examples": [
+          "aerei",
+          "maledetta",
+          "sbandata"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words.",
+            "§ 4 A verb form block."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of adjective · own verb form record · verb-form · 3+ readings · links",
+        "pages": 7,
+        "examples": [
+          "abbottonate",
+          "logora",
+          "serve"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words.",
+            "§ 4 A verb form block."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of noun · own noun · 2 readings, 1 word · no links",
+        "pages": 7,
+        "examples": [
+          "allorista",
+          "pretore",
+          "salumiere"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "no page (not-found)",
+        "pages": 7,
+        "examples": [
+          "skirmishes",
+          "testvérek",
+          "zapateros"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 1 Only records about the searched word."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "a spelling variant's record · own adjective form record · own other · 2 readings, 2+ words · links",
+        "pages": 6,
+        "examples": [
+          "alessandrina",
+          "carina",
+          "marziana"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "another word's record · own other · 1 reading · no links",
+        "pages": 6,
+        "examples": [
+          "Daria",
+          "Maura",
+          "pella"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 1 A page where every reading is empty (P2) keeps the part of speech under the word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of 2+ base words · form-of verb · 1 reading · no links",
+        "pages": 6,
+        "examples": [
+          "andarsene",
+          "indetta",
+          "riempiendo"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of adjective · form-of noun · two blocks about one word · verb-form · 3+ readings · links",
+        "pages": 6,
+        "examples": [
+          "assediata",
+          "obbligate",
+          "squilibrate"
+        ],
+        "ruling": {
+          "kind": "page breaks the rule",
+          "rows": [
+            "§ 4 One block per base word."
+          ],
+          "parts": [
+            "two blocks about one word"
+          ]
+        }
+      },
+      {
+        "shape": "own adjective · own other · 3+ readings · links",
+        "pages": 6,
+        "examples": [
+          "alquanto",
+          "fino",
+          "tanto"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "own other · 3+ readings · links",
+        "pages": 6,
+        "examples": [
+          "anzi",
+          "fuori",
+          "o"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "a spelling variant's record · form-of adjective · form-of noun · own other · 3+ readings · links",
+        "pages": 5,
+        "examples": [
+          "acri",
+          "chiara",
+          "ortolana"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "a spelling variant's record · own adjective · 1 reading · no links",
+        "pages": 5,
+        "examples": [
+          "Augusteo",
+          "Italo",
+          "Stagirita"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "a spelling variant's record · own noun · verb-form · 2 readings, 2+ words · links",
+        "pages": 5,
+        "examples": [
+          "impenni",
+          "tifa",
+          "vinca"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "a spelling variant's record · own other · verb-form · 3+ readings · links",
+        "pages": 5,
+        "examples": [
+          "IVA",
+          "Meno",
+          "sta"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "form-of adjective · form-of noun · own noun · 3+ readings · links",
+        "pages": 5,
+        "examples": [
+          "basilica",
+          "conservatori",
+          "peste"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of adjective · form-of other · two blocks about one word · 2 readings, 1 word · no links",
+        "pages": 5,
+        "examples": [
+          "altri",
+          "tali",
+          "tante"
+        ],
+        "ruling": {
+          "kind": "page breaks the rule",
+          "rows": [
+            "§ 4 One block per base word."
+          ],
+          "parts": [
+            "two blocks about one word"
+          ]
+        }
+      },
+      {
+        "shape": "form-of adjective · own noun · own verb form record · 3+ readings · links",
+        "pages": 5,
+        "examples": [
+          "chiamata",
+          "ridotta",
+          "tradotta"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of verb · own adjective · own noun · verb-form · 3+ readings · links",
+        "pages": 5,
+        "examples": [
+          "corrotto",
+          "inquirente",
+          "rimbambito"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 4 A verb form block.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "own adjective · own noun · own verb form record · 3+ readings · links",
+        "pages": 5,
+        "examples": [
+          "bruciata",
+          "portata",
+          "stampante"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "own noun · 3+ readings · links",
+        "pages": 5,
+        "examples": [
+          "classe",
+          "ippocampo",
+          "poma"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "a spelling variant's record · form-of noun · own other · verb-form · 3+ readings · links",
+        "pages": 4,
+        "examples": [
+          "bari",
+          "temi",
+          "trapani"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "a spelling variant's record · form-of verb · own noun · 3+ readings · links",
+        "pages": 4,
+        "examples": [
+          "Sdentati",
+          "sdentati",
+          "siringa"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "a spelling variant's record · form-of verb · own noun · own other · 3+ readings · links",
+        "pages": 4,
+        "examples": [
+          "Gemma",
+          "gemma",
+          "rubino"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "a spelling variant's record · own adjective · 2 readings, 2+ words · links",
+        "pages": 4,
+        "examples": [
+          "Immaginifico",
+          "immaginifico",
+          "neodevoniano"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "a spelling variant's record · own adjective · own noun · own other · own verb · verb-form · 3+ readings · links",
+        "pages": 4,
+        "examples": [
+          "Ardito",
+          "ardito",
+          "argentino"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "a verb block and a noun or adjective block about one word · form-of adjective · verb-form · 3+ readings · links",
+        "pages": 4,
+        "examples": [
+          "accentuate",
+          "laureati",
+          "prorogate"
+        ],
+        "ruling": {
+          "kind": "rules disagree",
+          "rows": [
+            "§ 4 A verb form block.",
+            "§ 4 A noun or adjective form block."
+          ],
+          "parts": [
+            "a verb block and a noun or adjective block about one word"
+          ]
+        }
+      },
+      {
+        "shape": "form-of adjective · own verb · 2 readings, 2+ words · links",
+        "pages": 4,
+        "examples": [
+          "amare",
+          "intermedi",
+          "leggere"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of noun · own adjective · own noun · 3+ readings · links",
+        "pages": 4,
+        "examples": [
+          "casertano",
+          "messinese",
+          "sette"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of noun · own other · verb-form · 3+ readings · links",
+        "pages": 4,
+        "examples": [
+          "Bari",
+          "Temi",
+          "Trapani"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 4 A verb form block.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of verb · own adjective form record · 2 readings, 2+ words · links",
+        "pages": 4,
+        "examples": [
+          "inframmettente",
+          "plissettato",
+          "sconcia"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "own adjective · own verb form record · 2 readings, 1 word · no links",
+        "pages": 4,
+        "examples": [
+          "meccanizzati",
+          "sbarazzino",
+          "sfatto"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "own adjective form record · own noun · verb-form · 3+ readings · links",
+        "pages": 4,
+        "examples": [
+          "attenti",
+          "pensionata",
+          "profana"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words.",
+            "§ 4 A verb form block."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "own adjective form record · own noun form record · verb-form · 3+ readings · links",
+        "pages": 4,
+        "examples": [
+          "regnanti",
+          "vigili",
+          "visti"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words.",
+            "§ 4 A verb form block."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "own other · verb-form · 3+ readings · links",
+        "pages": 4,
+        "examples": [
+          "attraverso",
+          "dai",
+          "presso"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 4 A verb form block.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "a spelling variant's record · form-of noun · own other · 3+ readings · links",
+        "pages": 3,
+        "examples": [
+          "PA",
+          "pA",
+          "pa"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "form-of adjective · form-of noun · 3+ readings · links",
+        "pages": 3,
+        "examples": [
+          "fiumane",
+          "fiumani",
+          "greca"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of adjective · form-of noun · form-of verb · 3+ readings · links",
+        "pages": 3,
+        "examples": [
+          "fisse",
+          "scapigliate",
+          "vellutate"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of adjective · form-of noun · own other · 3+ readings · links",
+        "pages": 3,
+        "examples": [
+          "Bionda",
+          "Chiara",
+          "Ortolana"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of adjective · form-of verb · verb-form · 3+ readings · links",
+        "pages": 3,
+        "examples": [
+          "involta",
+          "involti",
+          "ristretta"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 4 A verb form block.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of adjective · own adjective · own noun · 3+ readings · links",
+        "pages": 3,
+        "examples": [
+          "imbroglione",
+          "maggiore",
+          "sornione"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of noun · own adjective form record · 2 readings, 2+ words · links",
+        "pages": 3,
+        "examples": [
+          "orbi",
+          "schiava",
+          "selvatici"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of noun · own verb · 2 readings, 2+ words · links",
+        "pages": 3,
+        "examples": [
+          "cazzare",
+          "ire",
+          "massare"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of verb · own noun · verb-form · 3+ readings · links",
+        "pages": 3,
+        "examples": [
+          "riscosso",
+          "slancio",
+          "stringa"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 4 A verb form block.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "own verb · 3+ readings · links",
+        "pages": 3,
+        "examples": [
+          "asciugare",
+          "assommare",
+          "effondere"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "verb-form · 3+ readings · links",
+        "pages": 3,
+        "examples": [
+          "acclimata",
+          "compì",
+          "ridesti"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A verb form block.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "a spelling variant's record · a verb block and a noun or adjective block about one word · form-of adjective · form-of verb · own other · 3+ readings · links",
+        "pages": 2,
+        "examples": [
+          "Giusta",
+          "giusta"
+        ],
+        "ruling": {
+          "kind": "rules disagree",
+          "rows": [
+            "§ 4 A verb form block.",
+            "§ 4 A noun or adjective form block."
+          ],
+          "parts": [
+            "a verb block and a noun or adjective block about one word"
+          ]
+        }
+      },
+      {
+        "shape": "a spelling variant's record · bare · 2 readings, 2+ words · links",
+        "pages": 2,
+        "examples": [
+          "SLA",
+          "Sla"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "a spelling variant's record · form-of adjective · form-of verb · own noun · own other · 3+ readings · links",
+        "pages": 2,
+        "examples": [
+          "Pellegrina",
+          "pellegrina"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "a spelling variant's record · form-of adjective · form-of verb · own other · 3+ readings · links",
+        "pages": 2,
+        "examples": [
+          "lisa",
+          "sincera"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "a spelling variant's record · form-of adjective · own adjective · own noun · own other · verb-form · 3+ readings · links",
+        "pages": 2,
+        "examples": [
+          "Rosa",
+          "rosa"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "a spelling variant's record · form-of adjective · own noun · own other · own verb form record · verb-form · 3+ readings · links",
+        "pages": 2,
+        "examples": [
+          "Ferma",
+          "ferma"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "a spelling variant's record · form-of adjective · own noun · verb-form · 3+ readings · links",
+        "pages": 2,
+        "examples": [
+          "azzurri",
+          "umiliati"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "a spelling variant's record · form-of noun · own adjective form record · own other · 3+ readings · links",
+        "pages": 2,
+        "examples": [
+          "Slava",
+          "slava"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "a spelling variant's record · form-of noun · own noun · own other · verb-form · 3+ readings · links",
+        "pages": 2,
+        "examples": [
+          "Uccelli",
+          "uccelli"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "a spelling variant's record · form-of verb · own adjective · own other · 3+ readings · links",
+        "pages": 2,
+        "examples": [
+          "Sincero",
+          "sincero"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "a spelling variant's record · form-of verb · own adjective · own other · verb-form · 3+ readings · links",
+        "pages": 2,
+        "examples": [
+          "Incoronato",
+          "incoronato"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "a spelling variant's record · form-of verb · own noun · 2 readings, 2+ words · links",
+        "pages": 2,
+        "examples": [
+          "pasqua",
+          "vulgata"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "a spelling variant's record · own adjective · own noun · own other · own verb form record · verb-form · 3+ readings · links",
+        "pages": 2,
+        "examples": [
+          "Beato",
+          "beato"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "a spelling variant's record · own adjective · own noun · own verb form record · 3+ readings · links",
+        "pages": 2,
+        "examples": [
+          "Sorbo",
+          "sorbo"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "a spelling variant's record · own adjective · own other · 3+ readings · links",
+        "pages": 2,
+        "examples": [
+          "Loro",
+          "loro"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "a spelling variant's record · own adjective · own other · own verb form record · verb-form · 3+ readings · links",
+        "pages": 2,
+        "examples": [
+          "Divino",
+          "divino"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "a spelling variant's record · own adjective form record · own noun · own other · 3+ readings · links",
+        "pages": 2,
+        "examples": [
+          "Nana",
+          "nana"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "a spelling variant's record · own adjective form record · own other · verb-form · 3+ readings · links",
+        "pages": 2,
+        "examples": [
+          "Roso",
+          "roso"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "a spelling variant's record · own noun · own other · own verb · verb-form · 3+ readings · links",
+        "pages": 2,
+        "examples": [
+          "Grazia",
+          "grazia"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "a spelling variant's record · own noun · own other · own verb form record · verb-form · 3+ readings · links",
+        "pages": 2,
+        "examples": [
+          "Corona",
+          "corona"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "a spelling variant's record · own noun form record · own other · verb-form · 3+ readings · links",
+        "pages": 2,
+        "examples": [
+          "Incoronata",
+          "incoronata"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "a verb block and a noun or adjective block about one word · form-of adjective · form-of verb · 2 readings, 1 word · no links",
+        "pages": 2,
+        "examples": [
+          "agghiaccianti",
+          "spiombate"
+        ],
+        "ruling": {
+          "kind": "rules disagree",
+          "rows": [
+            "§ 4 A verb form block.",
+            "§ 4 A noun or adjective form block."
+          ],
+          "parts": [
+            "a verb block and a noun or adjective block about one word"
+          ]
+        }
+      },
+      {
+        "shape": "a verb block and a noun or adjective block about one word · form-of adjective · own noun · verb-form · 3+ readings · links",
+        "pages": 2,
+        "examples": [
+          "mandata",
+          "scalata"
+        ],
+        "ruling": {
+          "kind": "rules disagree",
+          "rows": [
+            "§ 4 A verb form block.",
+            "§ 4 A noun or adjective form block."
+          ],
+          "parts": [
+            "a verb block and a noun or adjective block about one word"
+          ]
+        }
+      },
+      {
+        "shape": "a verb block and a noun or adjective block about one word · form-of noun · verb-form · 2 readings, 1 word · no links",
+        "pages": 2,
+        "examples": [
+          "badanti",
+          "giunte"
+        ],
+        "ruling": {
+          "kind": "rules disagree",
+          "rows": [
+            "§ 4 A verb form block.",
+            "§ 4 A noun or adjective form block."
+          ],
+          "parts": [
+            "a verb block and a noun or adjective block about one word"
+          ]
+        }
+      },
+      {
+        "shape": "another word's record · grid-form · own adjective form record · 3+ readings · links",
+        "pages": 2,
+        "examples": [
+          "acustiche",
+          "ermeneutici"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 1 A page where every reading is empty (P2) keeps the part of speech under the word.",
+            "§ 4 A form no record describes (P3).",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "another word's record · own noun form record · 1 reading · no links",
+        "pages": 2,
+        "examples": [
+          "punkettoni",
+          "secchiona"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 1 A page where every reading is empty (P2) keeps the part of speech under the word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of 2+ base words · form-of adjective · form-of noun · form-of verb · 3+ readings · links",
+        "pages": 2,
+        "examples": [
+          "scosse",
+          "sommosse"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of 2+ base words · form-of adjective · form-of verb · 2 readings, 2+ words · links",
+        "pages": 2,
+        "examples": [
+          "fissi",
+          "rimossa"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of 2+ base words · form-of adjective · form-of verb · own noun · 3+ readings · links",
+        "pages": 2,
+        "examples": [
+          "imposta",
+          "mossa"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of 2+ base words · form-of adjective · verb-form · 2 readings, 2+ words · links",
+        "pages": 2,
+        "examples": [
+          "rimpatriate",
+          "scoperte"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 4 A verb form block.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of 2+ base words · form-of noun · form-of verb · 2 readings, 2+ words · links",
+        "pages": 2,
+        "examples": [
+          "lamenti",
+          "porti"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of 2+ base words · form-of noun · verb-form · 3+ readings · links",
+        "pages": 2,
+        "examples": [
+          "marchi",
+          "picchi"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 4 A verb form block.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of 2+ base words · form-of verb · own adjective · 2 readings, 2+ words · links",
+        "pages": 2,
+        "examples": [
+          "promosso",
+          "smosso"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of adjective · form-of noun · own noun · two blocks about one word · 3+ readings · links",
+        "pages": 2,
+        "examples": [
+          "numismatica",
+          "spazzatrice"
+        ],
+        "ruling": {
+          "kind": "page breaks the rule",
+          "rows": [
+            "§ 4 One block per base word."
+          ],
+          "parts": [
+            "two blocks about one word"
+          ]
+        }
+      },
+      {
+        "shape": "form-of adjective · form-of verb · 3+ readings · links",
+        "pages": 2,
+        "examples": [
+          "rinvolta",
+          "rinvolti"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of adjective · form-of verb · own other · 3+ readings · links",
+        "pages": 2,
+        "examples": [
+          "Lisa",
+          "Sincera"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of adjective · own noun · 3+ readings · links",
+        "pages": 2,
+        "examples": [
+          "chiarificatori",
+          "propri"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of adjective · own noun · own verb · 3+ readings · links",
+        "pages": 2,
+        "examples": [
+          "sbieca",
+          "smentita"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of noun · own noun · 3+ readings · links",
+        "pages": 2,
+        "examples": [
+          "ballerina",
+          "mire"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of noun · own other · 3+ readings · links",
+        "pages": 2,
+        "examples": [
+          "grazie",
+          "onde"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of noun · own verb · verb-form · 3+ readings · links",
+        "pages": 2,
+        "examples": [
+          "domicili",
+          "scambi"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 4 A verb form block.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of noun · own verb form record · 2 readings, 2+ words · links",
+        "pages": 2,
+        "examples": [
+          "condannata",
+          "vestiti"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of verb · own adjective form record · verb-form · 3+ readings · links",
+        "pages": 2,
+        "examples": [
+          "sintonizzato",
+          "stagnato"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words.",
+            "§ 4 A verb form block."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "own adjective · own noun · own verb · verb-form · 3+ readings · links",
+        "pages": 2,
+        "examples": [
+          "diserbante",
+          "sepolto"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 4 A verb form block.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "own adjective form record · verb-form · 3+ readings · links",
+        "pages": 2,
+        "examples": [
+          "disadorna",
+          "sporcati"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words.",
+            "§ 4 A verb form block."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "a spelling variant's record · a verb block and a noun or adjective block about one word · form-of adjective · own other · verb-form · 3+ readings · links",
+        "pages": 1,
+        "examples": [
+          "addolorata"
+        ],
+        "ruling": {
+          "kind": "rules disagree",
+          "rows": [
+            "§ 4 A verb form block.",
+            "§ 4 A noun or adjective form block."
+          ],
+          "parts": [
+            "a verb block and a noun or adjective block about one word"
+          ]
+        }
+      },
+      {
+        "shape": "a spelling variant's record · form-of adjective · own other · 3+ readings · links",
+        "pages": 1,
+        "examples": [
+          "gaia"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "a spelling variant's record · form-of noun · own noun · verb-form · 3+ readings · links",
+        "pages": 1,
+        "examples": [
+          "numeri"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "a spelling variant's record · form-of verb · own adjective · 2 readings, 2+ words · links",
+        "pages": 1,
+        "examples": [
+          "vulgato"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "a spelling variant's record · form-of verb · own other · 3+ readings · links",
+        "pages": 1,
+        "examples": [
+          "vania"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "a spelling variant's record · own noun · own other · 2 readings, 1 word · no links",
+        "pages": 1,
+        "examples": [
+          "V"
+        ],
+        "ruling": {
+          "kind": "no rule",
+          "rows": [
+            "§ 1 Only records about the searched word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": [
+            "a spelling variant's record"
+          ]
+        }
+      },
+      {
+        "shape": "a verb block and a noun or adjective block about one word · form-of adjective · own other · verb-form · 3+ readings · links",
+        "pages": 1,
+        "examples": [
+          "Addolorata"
+        ],
+        "ruling": {
+          "kind": "rules disagree",
+          "rows": [
+            "§ 4 A verb form block.",
+            "§ 4 A noun or adjective form block."
+          ],
+          "parts": [
+            "a verb block and a noun or adjective block about one word"
+          ]
+        }
+      },
+      {
+        "shape": "another word's record · grid-form · own adjective form record · own noun form record · 3+ readings · links",
+        "pages": 1,
+        "examples": [
+          "straniera"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 1 A page where every reading is empty (P2) keeps the part of speech under the word.",
+            "§ 4 A form no record describes (P3).",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "another word's record · grid-form · own noun form record · 2 readings, 2+ words · links",
+        "pages": 1,
+        "examples": [
+          "controllori"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 1 A page where every reading is empty (P2) keeps the part of speech under the word.",
+            "§ 4 A form no record describes (P3).",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "another word's record · grid-form · own noun form record · 3+ readings · links",
+        "pages": 1,
+        "examples": [
+          "cineoperatori"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 1 A page where every reading is empty (P2) keeps the part of speech under the word.",
+            "§ 4 A form no record describes (P3).",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of 2+ base words · form-of adjective · 1 reading · no links",
+        "pages": 1,
+        "examples": [
+          "esteri"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of 2+ base words · form-of adjective · form-of noun · 2 readings, 2+ words · links",
+        "pages": 1,
+        "examples": [
+          "predatori"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of 2+ base words · form-of noun · own noun · 2 readings, 2+ words · links",
+        "pages": 1,
+        "examples": [
+          "pali"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of 2+ base words · form-of verb · own noun · 2 readings, 2+ words · links",
+        "pages": 1,
+        "examples": [
+          "esercito"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of adjective · 2 readings, 2+ words · links",
+        "pages": 1,
+        "examples": [
+          "operatori"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of adjective · form-of noun · own adjective · 3+ readings · links",
+        "pages": 1,
+        "examples": [
+          "estense"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of adjective · form-of noun · own adjective · own noun · two blocks about one word · 3+ readings · links",
+        "pages": 1,
+        "examples": [
+          "poltrone"
+        ],
+        "ruling": {
+          "kind": "page breaks the rule",
+          "rows": [
+            "§ 4 One block per base word."
+          ],
+          "parts": [
+            "two blocks about one word"
+          ]
+        }
+      },
+      {
+        "shape": "form-of adjective · form-of noun · own verb · two blocks about one word · 3+ readings · links",
+        "pages": 1,
+        "examples": [
+          "sumere"
+        ],
+        "ruling": {
+          "kind": "page breaks the rule",
+          "rows": [
+            "§ 4 One block per base word."
+          ],
+          "parts": [
+            "two blocks about one word"
+          ]
+        }
+      },
+      {
+        "shape": "form-of adjective · form-of noun · own verb form record · 3+ readings · links",
+        "pages": 1,
+        "examples": [
+          "morti"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of adjective · form-of other · 2 readings, 2+ words · links",
+        "pages": 1,
+        "examples": [
+          "parecchie"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of adjective · form-of other · own verb form record · two blocks about one word · verb-form · 3+ readings · links",
+        "pages": 1,
+        "examples": [
+          "diversi"
+        ],
+        "ruling": {
+          "kind": "page breaks the rule",
+          "rows": [
+            "§ 4 One block per base word."
+          ],
+          "parts": [
+            "two blocks about one word"
+          ]
+        }
+      },
+      {
+        "shape": "form-of adjective · own adjective · 2 readings, 1 word · no links",
+        "pages": 1,
+        "examples": [
+          "imbelle"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of adjective · own noun · 2 readings, 1 word · no links",
+        "pages": 1,
+        "examples": [
+          "protettrici"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of adjective · own noun · own noun form record · 3+ readings · links",
+        "pages": 1,
+        "examples": [
+          "carbonara"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of adjective · own noun · own verb form record · verb-form · 3+ readings · links",
+        "pages": 1,
+        "examples": [
+          "calma"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words.",
+            "§ 4 A verb form block."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of adjective · own other · 3+ readings · links",
+        "pages": 1,
+        "examples": [
+          "Gaia"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of adjective · own verb · verb-form · 3+ readings · links",
+        "pages": 1,
+        "examples": [
+          "guasti"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 4 A verb form block.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of adjective · two blocks about one word · 2 readings, 1 word · no links",
+        "pages": 1,
+        "examples": [
+          "blasfeme"
+        ],
+        "ruling": {
+          "kind": "page breaks the rule",
+          "rows": [
+            "§ 4 One block per base word."
+          ],
+          "parts": [
+            "two blocks about one word"
+          ]
+        }
+      },
+      {
+        "shape": "form-of noun · form-of verb · own noun · 3+ readings · links",
+        "pages": 1,
+        "examples": [
+          "scapigliata"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of noun · own adjective · own adjective form record · own noun · 3+ readings · links",
+        "pages": 1,
+        "examples": [
+          "burlone"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of noun · own adjective · own verb · 3+ readings · links",
+        "pages": 1,
+        "examples": [
+          "scolare"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of noun · own noun · own other · 3+ readings · links",
+        "pages": 1,
+        "examples": [
+          "colle"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of noun · own noun · own verb form record · 3+ readings · links",
+        "pages": 1,
+        "examples": [
+          "sparata"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of noun · own verb · 3+ readings · links",
+        "pages": 1,
+        "examples": [
+          "tessere"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of verb · own adjective · 3+ readings · links",
+        "pages": 1,
+        "examples": [
+          "rinvolto"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of verb · own adjective · own noun · own other · 3+ readings · links",
+        "pages": 1,
+        "examples": [
+          "sommesso"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of verb · own adjective · own noun · own other · verb-form · 3+ readings · links",
+        "pages": 1,
+        "examples": [
+          "manifesto"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 4 A verb form block.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of verb · own adjective form record · own noun form record · 3+ readings · links",
+        "pages": 1,
+        "examples": [
+          "spiccioli"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of verb · own other · 3+ readings · links",
+        "pages": 1,
+        "examples": [
+          "Vania"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 One block per base word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "grid-form · 2 readings, 2+ words · links",
+        "pages": 1,
+        "examples": [
+          "lussuriosi"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A form no record describes (P3).",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "grid-form · 3+ readings · links",
+        "pages": 1,
+        "examples": [
+          "soverchie"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A form no record describes (P3).",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "own adjective · own noun form record · verb-form · 3+ readings · links",
+        "pages": 1,
+        "examples": [
+          "scarti"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words.",
+            "§ 4 A verb form block."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "own adjective · own verb · 3+ readings · links",
+        "pages": 1,
+        "examples": [
+          "giubilare"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "own adjective · verb-form · 2 readings, 1 word · no links",
+        "pages": 1,
+        "examples": [
+          "sfocato"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 4 A verb form block.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "own adjective form record · own noun · 3+ readings · links",
+        "pages": 1,
+        "examples": [
+          "tanghera"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "own adjective form record · own noun · own verb form record · 3+ readings · links",
+        "pages": 1,
+        "examples": [
+          "buttata"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "own adjective form record · own verb form record · 2 readings, 1 word · no links",
+        "pages": 1,
+        "examples": [
+          "producenti"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "own adjective form record · own verb form record · verb-form · 3+ readings · links",
+        "pages": 1,
+        "examples": [
+          "logorate"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words.",
+            "§ 4 A verb form block."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "own noun · own noun form record · 3+ readings · links",
+        "pages": 1,
+        "examples": [
+          "pome"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "own noun · own noun form record · verb-form · 3+ readings · links",
+        "pages": 1,
+        "examples": [
+          "cestino"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words.",
+            "§ 4 A verb form block."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "own noun · own other · own verb · 3+ readings · links",
+        "pages": 1,
+        "examples": [
+          "dovere"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "own noun form record · verb-form · 3+ readings · links",
+        "pages": 1,
+        "examples": [
+          "assistiti"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words.",
+            "§ 4 A verb form block."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "own other · own verb form record · 2 readings, 1 word · no links",
+        "pages": 1,
+        "examples": [
+          "to"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      }
+    ]
+  },
+  "expressionSearches": {
+    "searched": 7590,
+    "byRuling": {
+      "rules disagree": {
+        "shapes": 2,
+        "pages": 14
+      },
+      "no rule": {
+        "shapes": 0,
+        "pages": 0
+      },
+      "page breaks the rule": {
+        "shapes": 0,
+        "pages": 0
+      },
+      "ruled": {
+        "shapes": 16,
+        "pages": 7576
+      }
+    },
+    "otherPartsOfSpeech": {
+      "Locuzione nominale": 47,
+      "Locuzione nominale, forma flessa": 6,
+      "Espressione": 1,
+      "Locuzione verbale": 1
+    },
+    "shapes": [
+      {
+        "shape": "expression page · expression form · expression page, 1 reading · no links",
+        "pages": 6664,
+        "examples": [
+          "6 a conoscenza",
+          "filosofia della biologie",
+          "zuppe inglese"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 6 A searched expression gets a short page."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "expression page · expression form · expression page, 2 readings · no links",
+        "pages": 776,
+        "examples": [
+          "Asia orientali",
+          "grigi kaki",
+          "zuppa inglesi"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 6 A searched expression gets a short page."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of noun · 1 reading · no links",
+        "pages": 55,
+        "examples": [
+          "alberi di Natale",
+          "macchine di sicurezza",
+          "zone di conforto"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "another word's record · own other · 1 reading · no links",
+        "pages": 33,
+        "examples": [
+          "acetati di piombo",
+          "espressioni di genere",
+          "uscite di sicurezza"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 1 A page where every reading is empty (P2) keeps the part of speech under the word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "own other · 1 reading · no links",
+        "pages": 12,
+        "examples": [
+          "analisi logica",
+          "logica formale",
+          "valvole di ritegno"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "expression page · expression form · expression page, 3+ readings · no links",
+        "pages": 11,
+        "examples": [
+          "Agenzia nazionali Stampa Associata",
+          "istituto nazionali della previdenza sociale",
+          "servizio sanitario nazionali"
+        ],
+        "ruling": {
+          "kind": "rules disagree",
+          "rows": [
+            "§ 2 Jump links for three or more readings, or for two readings about two different words.",
+            "§ 6 A searched expression gets a short page."
+          ],
+          "parts": [
+            "expression page, 3+ readings"
+          ]
+        }
+      },
+      {
+        "shape": "grid-form · 1 reading · no links",
+        "pages": 11,
+        "examples": [
+          "animali da compagnia",
+          "navigatori web",
+          "tubi portavoce"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A form no record describes (P3).",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "expression page · expression form · expression own · expression page, 2 readings · no links",
+        "pages": 8,
+        "examples": [
+          "Torre fari",
+          "lata b",
+          "torre fari"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 6 A searched expression gets a short page."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of other · 1 reading · no links",
+        "pages": 6,
+        "examples": [
+          "Giovedì santi",
+          "facce di bronzo",
+          "pesci d'aprile"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 One block per base word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "expression page · expression form · expression own · expression page, 3+ readings · no links",
+        "pages": 3,
+        "examples": [
+          "Venerdì santi",
+          "torri fari",
+          "venerdì santi"
+        ],
+        "ruling": {
+          "kind": "rules disagree",
+          "rows": [
+            "§ 2 Jump links for three or more readings, or for two readings about two different words.",
+            "§ 6 A searched expression gets a short page."
+          ],
+          "parts": [
+            "expression page, 3+ readings"
+          ]
+        }
+      },
+      {
+        "shape": "no page (not-found)",
+        "pages": 3,
+        "examples": [
+          "Stati eccitato",
+          "abbi torto",
+          "avere torta"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 1 Only records about the searched word."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "another word's record · own adjective · 1 reading · no links",
+        "pages": 2,
+        "examples": [
+          "quasi anteriori",
+          "quasi posteriori"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 1 A page where every reading is empty (P2) keeps the part of speech under the word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "another word's record · own noun · 1 reading · no links",
+        "pages": 1,
+        "examples": [
+          "perossidi di idrogeno"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 1 A page where every reading is empty (P2) keeps the part of speech under the word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "another word's record · own other · 3+ readings · links",
+        "pages": 1,
+        "examples": [
+          "alberi a camme"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 1 A page where every reading is empty (P2) keeps the part of speech under the word.",
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "form-of adjective · 1 reading · no links",
+        "pages": 1,
+        "examples": [
+          "politicamente scorretta"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 4 A noun or adjective form block.",
+            "§ 4 One block per base word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "lone-bare · 1 reading · no links",
+        "pages": 1,
+        "examples": [
+          "fare notizie"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 1 A page where every reading is empty (P2) keeps the part of speech under the word.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "own adjective form record · 1 reading · no links",
+        "pages": 1,
+        "examples": [
+          "priva di vita"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      },
+      {
+        "shape": "own noun · 1 reading · no links",
+        "pages": 1,
+        "examples": [
+          "gallinelle del Signore"
+        ],
+        "ruling": {
+          "kind": "ruled",
+          "rows": [
+            "§ 3 A heading, then Definitions, then Forms.",
+            "§ 2 Jump links for three or more readings, or for two readings about two different words."
+          ],
+          "parts": []
+        }
+      }
+    ]
+  }
+}
