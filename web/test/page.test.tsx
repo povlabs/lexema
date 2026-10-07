@@ -58,9 +58,11 @@ import { NotFound } from "@/components/dictionary/NotFound";
 import { PhraseView } from "@/components/dictionary/Phrase";
 import { phrasePage } from "@/lib/dictionary/phrasePage.ts";
 import {
+  baseWordOf,
   EXPRESSION_FILTER_ABOVE,
   matchesExpression,
   shownRecords,
+  showsJumpLinks,
   SURFACE_ROUTE,
   wordPage,
   type FormOfPart,
@@ -431,11 +433,45 @@ test("jump links appear from three readings up, one per reading, and never below
       ["1Aggettivo", "2Sostantivo", "3Sostantivo"],
     );
     for (const [, id] of jumps) assert.match(bello, new RegExp(`<article [^>]*id="reading-${id}"`));
-    assert.doesNotMatch(await render(db, "andare"), /aria-label="Readings"/);
-    // Two readings, one of them a verb form block, are still too few (#654).
+  });
+});
+
+test("two readings about two different words show jump links; two readings of one word show none (#708, #714)", async () => {
+  await withDevSeed(async ({ db }) => {
+    // studente: its noun and a form of studiare are about two words, so the
+    // page lists both under the headword (Huey's ruling of 2026-10-07 on #708).
     const studente = await render(db, "studente");
     assert.deepEqual(headingsOf(studente), ["1·Sostantivo·maschile, singolare", "2·Voce verbale·studiare"]);
-    assert.doesNotMatch(studente, /aria-label="Readings"/);
+    const jumps = [...studente.matchAll(new RegExp(`<a class="${esc(JUMP_LINK)}" href="#([^"]+)">(.*?)</a>`, "g"))];
+    assert.deepEqual(jumps.map((match) => textOf(match[2])), ["1Sostantivo", "2Voce verbale · studiare"]);
+    const anchors = [...studente.matchAll(/<article [^>]*id="([^"]+)"/g)].map((match) => match[1]);
+    assert.deepEqual(jumps.map(([, id]) => id), anchors);
+    const answer = await attempt(db, "studente");
+    assert.ok(answer.outcome === "found" && answer.route.kind !== "phrase");
+    const page = wordPage("studente", answer.readings, answer.lemmas, SURFACE_ROUTE);
+    assert.deepEqual(page.readings.map(baseWordOf), ["studente", "studiare"]);
+    assert.ok(showsJumpLinks(page));
+
+    // andare: its noun and its verb are two readings of one word, so no list.
+    const andare = await render(db, "andare");
+    assert.deepEqual(headingsOf(andare), ["1·Sostantivo·maschile", "2·Verbo"]);
+    assert.doesNotMatch(andare, /aria-label="Readings"/);
+    const andareAnswer = await attempt(db, "andare");
+    assert.ok(andareAnswer.outcome === "found" && andareAnswer.route.kind !== "phrase");
+    const andarePage = wordPage("andare", andareAnswer.readings, andareAnswer.lemmas, SURFACE_ROUTE);
+    assert.deepEqual(andarePage.readings.map(baseWordOf), ["andare", "andare"]);
+    assert.ok(!showsJumpLinks(andarePage));
+  });
+  const salivateLines = (await readFile(join(REPO, "fixtures/salivate.jsonl"), "utf8")).trimEnd().split("\n");
+  await withLines([...(await devSeedLines()), ...salivateLines], async ({ db }) => {
+    // salivare: the adjective and the verb are one word's; no list.
+    const salivare = await render(db, "salivare");
+    assert.deepEqual(headingsOf(salivare), ["1·Aggettivo·maschile e femminile, singolare", "2·Verbo"]);
+    assert.doesNotMatch(salivare, /aria-label="Readings"/);
+    // salivate: a form of salire and of salivare keeps its list (#654).
+    const salivate = await render(db, "salivate");
+    const jumps = [...salivate.matchAll(new RegExp(`<a class="${esc(JUMP_LINK)}" href="#([^"]+)">(.*?)</a>`, "g"))];
+    assert.deepEqual(jumps.map((match) => textOf(match[2])), ["1Voce verbale · salire", "2Voce verbale · salivare"]);
   });
 });
 
@@ -3041,10 +3077,13 @@ test("a reading with nothing to show is left out and the rest number with no gap
     );
     assert.deepEqual(formLines(nth(litigante, 2)), ["participio presente singolare di litigare"]);
     assert.doesNotMatch(litigante, />Sostantivo</);
-    // Two readings: no jump links, as for any page with two (JUMP_LINKS_FROM).
-    assert.doesNotMatch(litigante, new RegExp(`class="${esc(JUMP_LINK)}"`));
+    // Its two readings are about two words, litigante and litigare, so the
+    // list counts and names only the two it shows (#708, #714).
+    const jumps = [...litigante.matchAll(new RegExp(`<a class="${esc(JUMP_LINK)}" href="#[^"]+">(.*?)</a>`, "g"))];
+    assert.deepEqual(jumps.map((match) => textOf(match[1])), ["1Aggettivo", "2Voce verbale"]);
     // The report dialog names the same two readings, with the same numbers.
     const page = wordPage("litigante", await readingsFor(db, "litigante"), [], SURFACE_ROUTE);
+    assert.deepEqual(page.readings.map(baseWordOf), ["litigante", "litigare"]);
     assert.deepEqual(page.readings.map((entry: ShownEntry) => entry.kind), ["source", "source"]);
     assert.deepEqual(reportReadings(shownRecords(page.readings)).map(readingChoiceLabel), ["1 · Aggettivo", "2 · Voce verbale"]);
 

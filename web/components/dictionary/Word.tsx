@@ -1,7 +1,7 @@
 // One word's page: the headword with its pronunciation, jump links when there
-// are three readings or more or the word is a form of two verbs (a verb form
-// block, `1 Voce verbale · salire`, counts as one reading), the readings in
-// source order, then the facts
+// are three readings or more, or two readings about two different words
+// (design-system-manifest.md § 2; a verb form block, `1 Voce verbale · salire`,
+// counts as one reading), the readings in source order, then the facts
 // about the word once, its expressions last among them, then *Source* (design-system-manifest.md § "The result").
 //
 // Which records are readings and which lemma tables they carry is
