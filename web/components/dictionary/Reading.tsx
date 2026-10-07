@@ -23,6 +23,7 @@ import {
   readingHeadingId,
   searchedIn,
   type BareReading,
+  type LoneBareReading,
   type ConjugationTable,
   type FormLine,
   type FormOfPart,
@@ -525,12 +526,13 @@ function ReadingPartView({ reading, part }: { reading: Reading; part: LemmaPart 
  * heading, never as numbered *Definitions*, with or without its lemma's table
  * (#690), and has no *Forms* of its own (#694); any other reading lists its
  * own numbered. A bare reading, only on a page where no reading has anything
- * to show, is its heading alone.
+ * to show, is its heading alone, and a lone one is its part of speech with no
+ * number (#696).
  */
-export function ReadingView({ entry }: { entry: PageReading | BareReading }) {
-  const { reading, number } = entry;
+export function ReadingView({ entry }: { entry: PageReading | BareReading | LoneBareReading }) {
+  const { reading } = entry;
   const grammar = headingGrammar(reading);
-  const parts: readonly (LemmaPart | FormOfPart)[] = entry.kind === "bare" ? [] : entry.parts;
+  const parts: readonly (LemmaPart | FormOfPart)[] = entry.kind === "source" ? entry.parts : [];
   return (
     <article
       className={READING}
@@ -540,10 +542,14 @@ export function ReadingView({ entry }: { entry: PageReading | BareReading }) {
       data-line={reading.ref.lineNo}
     >
       <h2 className={READING_HEADING} id={`reading-heading-${entryKey(reading)}`}>
-        <span className={READING_NUMBER}>{number}</span>
-        <span className={READING_DOT} aria-hidden="true">
-          ·
-        </span>
+        {entry.kind !== "lone-bare" && (
+          <>
+            <span className={READING_NUMBER}>{entry.number}</span>
+            <span className={READING_DOT} aria-hidden="true">
+              ·
+            </span>
+          </>
+        )}
         <span lang="it">{reading.posTitle}</span>
         {grammar !== undefined && (
           // The dot travels with the grammar, so a wrapped heading never ends on it.

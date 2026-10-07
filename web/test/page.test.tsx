@@ -69,6 +69,7 @@ import {
   type VerbFormBlock,
 } from "@/lib/dictionary/wordPage.ts";
 import { VerbFormBlockView } from "@/components/dictionary/Reading";
+import { WordView } from "@/components/dictionary/Word";
 import { firstQuery, pageTitle } from "@/lib/dictionary/params";
 import { NOT_FOUND_SMOKE_WORDS, readingProblem, SMOKE_WORDS, wordPageProblems } from "@/builds/previewSmokeCommand.ts";
 // The class strings the components carry, imported rather than copied, so a
@@ -110,6 +111,7 @@ import {
   NOT_FOUND_LINK,
   PERSON_SEARCHED,
   READING,
+  READING_NUMBER,
   SEARCH_FIELD,
   SHELL_CENTRED,
   SHELL_TOP,
@@ -3024,7 +3026,7 @@ test("Wikizionario's missing-field placeholders are not data: no Etymology block
   });
 });
 
-test("a reading with nothing to show is left out and the rest number with no gap; one with anything keeps its number (#694, revising #687)", async () => {
+test("a reading with nothing to show is left out and the rest number with no gap; one with anything keeps its number; a page's lone bare reading has none (#694, revising #687; #696)", async () => {
   const lines = (await readFile(join(REPO, "fixtures/no-definition.jsonl"), "utf8")).trim().split("\n");
   await withLines(lines, async ({ db }) => {
     // litigante: the noun between the adjective and the verb form has no
@@ -3048,16 +3050,36 @@ test("a reading with nothing to show is left out and the rest number with no gap
 
     // fare l'abitudine: its one sense is `no-gloss`, and its synonym is the
     // word's, shown after the readings. No reading on the page has anything to
-    // show, so it keeps its heading as before: `1 · Locuzione verbale`, with
-    // no Definitions or Examples block, and the synonym still shows.
+    // show, and it is the only one, so its heading is the part of speech
+    // alone: `Locuzione verbale`, no number and no leading dot (Huey,
+    // 2026-10-06, #696). It has no Definitions or Examples block, and the
+    // synonym still shows after it. The report dialog names it the same way.
     const fare = await render(db, "fare l'abitudine");
-    assert.deepEqual(headingsOf(fare), ["1·Locuzione verbale"]);
+    assert.deepEqual(headingsOf(fare), ["Locuzione verbale"]);
+    assert.doesNotMatch(nth(fare, 1), new RegExp(`class="${esc(READING_NUMBER)}"`));
     assert.doesNotMatch(nth(fare, 1), /id="(?:definitions|examples)-/);
     assert.match(textOf(afterReadings(fare)), /Synonymsabituarsi/);
+    const farePage = wordPage("fare l'abitudine", await readingsFor(db, "fare l'abitudine"), [], SURFACE_ROUTE);
+    assert.deepEqual(farePage.readings.map((entry: ShownEntry) => entry.kind), ["lone-bare"]);
+    assert.ok(!("number" in farePage.readings[0]), "a lone bare reading carries no number");
+    assert.deepEqual(reportReadings(shownRecords(farePage.readings)).map(readingChoiceLabel), ["Locuzione verbale"]);
+
+    // Two bare readings keep their numbers: the ruling drops the number only
+    // "when it is the only reading" (#696). A second empty record of the word
+    // stands in for a page with two.
+    const [only] = await readingsFor(db, "fare l'abitudine");
+    const twin = { ...only, recordId: (only.recordId ?? 0) + 100_000, ref: { ...only.ref, lineNo: only.ref.lineNo + 100_000 } };
+    const twoPage = wordPage("fare l'abitudine", [only, twin], [], SURFACE_ROUTE);
     assert.deepEqual(
-      wordPage("fare l'abitudine", await readingsFor(db, "fare l'abitudine"), [], SURFACE_ROUTE).readings.map((entry: ShownEntry) => entry.kind),
-      ["bare"],
+      twoPage.readings.map((entry: ShownEntry) => [entry.kind, "number" in entry ? entry.number : undefined]),
+      [
+        ["bare", 1],
+        ["bare", 2],
+      ],
     );
+    assert.deepEqual(reportReadings(shownRecords(twoPage.readings)).map(readingChoiceLabel), ["1 · Locuzione verbale", "2 · Locuzione verbale"]);
+    const two = renderToStaticMarkup(<WordView page={twoPage} />);
+    assert.deepEqual(headingsOf(two), ["1·Locuzione verbale", "2·Locuzione verbale"]);
 
     for (const html of [fare, litigante]) {
       assert.doesNotMatch(textOf(html), /no definition|definizione|mancante|not given|missing|hidden|omitted/i, "no note about a missing or hidden reading");
