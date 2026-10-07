@@ -71,7 +71,17 @@ export const POS_TITLE_BY_TEMPLATE: Readonly<Record<string, PosTitle>> = {
   "verb form": "Voce verbale", "nome form": "Nome proprio, forma flessa",
   "pronome form": "Pronome, forma flessa",
   "loc nom form": "Locuzione nominale, forma flessa",
-  "card form": "Aggettivo numerale, forma flessa", "agg num": "Aggettivo numerale",
+  "card form": "Aggettivo numerale, forma flessa",
+};
+
+/**
+ * The recovered layer's own titles: the shared table, and `{{-agg num-|it}}`,
+ * which the extraction titles *Aggettivo numerale* (`centouno`). Only the
+ * recovered layer reads it (ADR 0029), so `section-language/v1` (ADR 0023) and
+ * the page-entry rules (ADR 0028) read the shared table as before.
+ */
+const RECOVERED_POS_TITLE_BY_TEMPLATE: Readonly<Record<string, PosTitle>> = {
+  ...POS_TITLE_BY_TEMPLATE, "agg num": "Aggettivo numerale",
 };
 
 // --- Inline markup ----------------------------------------------------------
@@ -694,7 +704,8 @@ export function readItalianSections(page: RawPage): PageSection[] {
     const pos = POS_HEADING.exec(line.trim());
     if (pos !== null) {
       // A heading stacked directly on another (`{{-agg num-|it}}`, then
-      // `{{-card-|it}}`) opens no section of its own: the two title one.
+      // `{{-card-|it}}`) opens no section of its own: the lower heading titles
+      // the one section the two head.
       if (current?.bare === true) sections.pop();
       current = { posTemplate: pos[1], list: [], unlisted: [], headed: false, bare: true };
       sections.push(current);
@@ -732,7 +743,7 @@ export function readItalianSections(page: RawPage): PageSection[] {
     const statesAMeaning = senseLines.some((senseLine) => senseLine.kind === "sense");
     return {
       posTemplate,
-      posTitle: POS_TITLE_BY_TEMPLATE[posTemplate],
+      posTitle: RECOVERED_POS_TITLE_BY_TEMPLATE[posTemplate],
       senseLines,
       unlisted: statesAMeaning
         ? []

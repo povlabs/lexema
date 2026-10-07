@@ -10,7 +10,8 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import test from "node:test";
 import { recordText, recoverDefinitions, type RecordRecovery } from "../src/italian/recovery.js";
-import { readItalianSections } from "../src/italian/wikitext.js";
+import { LanguageHeadings, readItalianPosBlocks } from "../src/italian/sectionLanguage.js";
+import { POS_TITLE_BY_TEMPLATE, readItalianSections, readStatedSections } from "../src/italian/wikitext.js";
 import { RAW_PAGE_WIKI, readSavedPage, type RawPage } from "../src/source/rawPage.js";
 
 const DIR = resolve("fixtures/unlisted-definitions");
@@ -115,6 +116,23 @@ test("a part-of-speech heading stacked directly on another titles one section: `
     // The comma between its two labels stays, as on a `#` line the renderer prints.
     ["bullet-line", 7, ", numero che viene dopo il cinquantuno e prima del cinquantatré; è tredici volte il quadrato di due"],
   ]);
+});
+
+test("the `agg num` title reaches only the recovered layer: `section-language/v1` and the page-entry rules read the shared table as before", () => {
+  // `{{-agg num-|it}}` titles the recovered layer's section (`centouno`)…
+  assert.deepEqual(readItalianSections(page("centouno")).map((section) => section.posTitle), ["Aggettivo numerale"]);
+  // …and is in neither table ADR 0023's and ADR 0028's rules read, so
+  // `readItalianPosBlocks` opens no block for it, alone or stacked on `card`.
+  assert.equal(Object.hasOwn(POS_TITLE_BY_TEMPLATE, "agg num"), false);
+  const languages = LanguageHeadings.fromList(["it"]);
+  assert.deepEqual(readItalianPosBlocks(page("centouno"), languages), []);
+  assert.deepEqual(readItalianPosBlocks(page("cinquantadue"), languages).map((block) => block.posTemplate), ["card"]);
+  // A page section it opens stays an unknown template, so ADR 0028 admits nothing new.
+  const opened = readStatedSections({
+    wiki: RAW_PAGE_WIKI, title: "x", revisionId: 1, timestamp: "2026-07-01T00:00:00Z",
+    wikitext: "== {{-it-}} ==\n{{-agg num-|it}}\n# [[numero]] che viene dopo il [[cento]]",
+  });
+  assert.deepEqual(opened.sections.map((section) => [section.signal, section.posTitle]), [["unknown-template", null]]);
 });
 
 test("the rules read no other layout: a `:` line, `#*` alone, the grammar stamp, a `;` line, the headword line and an empty page give nothing", () => {
