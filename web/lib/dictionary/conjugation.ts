@@ -21,6 +21,7 @@ import { groupByAuxiliary } from "@lexema/italian/compoundAuxiliary.ts";
 import { essereAgreement, type AgreeingSpelling } from "@lexema/italian/essereAgreement.ts";
 import { sourcePointerOf, sourceTagsOf, type DeclaredForm, type DeclaredVerbForm, type SearchedSpellings, type SourceForm } from "@lexema/lookup/types.ts";
 import {
+  NON_FINITE_NAMES,
   personOfItalianVerbForm,
   placeItalianVerbForm,
   TENSE_BOXES,
@@ -49,7 +50,7 @@ const MOOD_TAB: Record<FiniteMood, Mood> = {
 /**
  * Where a tense box of `it-moods/v1` sits on the page: its tab, and the
  * Italian name `TENSE_NAMES` gives it, the one a searched form's line writes
- * (`it-verb-form-line/v1`, #627).
+ * (`it-verb-form-line/v2`, #627).
  */
 const tensePlace = (box: TenseBox): { mood: Mood; tense: string } => ({
   mood: MOOD_TAB[TENSE_NAMES[box].mood],
@@ -191,7 +192,7 @@ function placeOf(form: SourceForm): Place | undefined {
   const slot = slotOf(form);
   if (slot.kind === "auxiliary") return { kind: "non-finite", label: "ausiliare" };
   if (slot.kind === "non-finite") {
-    return { kind: "non-finite", label: slot.role === "participio passato" ? "participio" : slot.role };
+    return { kind: "non-finite", label: NON_FINITE_NAMES[slot.role] };
   }
   if (slot.kind !== "imperative" && slot.kind !== "tense") return undefined;
   const person = personOf(form);

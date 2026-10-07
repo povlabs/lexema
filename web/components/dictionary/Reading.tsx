@@ -10,7 +10,7 @@
 // recovered from the raw page reads like any other, and so does a mood or an
 // article worked out by rule. Every Italian string carries `lang="it"`.
 
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 import { entryKey, factRefKey } from "@lexema/lookup/types.ts";
 import type { RecoveredDefinition, Reading } from "@lexema/lookup/types.ts";
 import { conjugationOf } from "@/lib/dictionary/conjugation.ts";
@@ -32,6 +32,7 @@ import {
   type OwnForms,
   type OwnText,
   type PageReading,
+  type RecordLines,
   type VerbFormBlock,
   type VerbFormLine,
 } from "@/lib/dictionary/wordPage.ts";
@@ -435,15 +436,23 @@ export function VerbFormBlockView({ block }: { block: VerbFormBlock }) {
   );
 }
 
-/** A form-of reading's own definitions as its form lines (`femminile singolare di bello`), with any examples its senses hold. */
-function ReadingFormLines({ reading, text }: { reading: Reading; text: OwnText }) {
+/**
+ * A form block's records' own definitions as its form lines (`femminile
+ * singolare di bello`, then `femminile di bello`), each record's in turn with
+ * any examples its senses hold, each line linking as its own record does.
+ */
+function ReadingFormLines({ records }: { records: readonly RecordLines[] }) {
   return (
     <FormLines>
-      {(text.kind === "definitions" ? text.items : []).map((item) => (
-        <SourceFormLineText key={definitionKey(item)} item={item} reading={reading} />
-      ))}
-      {text.looseExamples.map((example, i) => (
-        <Example key={`loose-${i}`} text={example} />
+      {records.map(({ reading, text }) => (
+        <Fragment key={entryKey(reading)}>
+          {(text.kind === "definitions" ? text.items : []).map((item) => (
+            <SourceFormLineText key={definitionKey(item)} item={item} reading={reading} />
+          ))}
+          {text.looseExamples.map((example, i) => (
+            <Example key={`loose-${i}`} text={example} />
+          ))}
+        </Fragment>
       ))}
     </FormLines>
   );
@@ -456,7 +465,7 @@ function ReadingPartView({ reading, part }: { reading: Reading; part: LemmaPart 
     case "definitions":
       return <Definitions reading={reading} text={part.text} />;
     case "form-lines":
-      return <ReadingFormLines reading={reading} text={part.text} />;
+      return <ReadingFormLines records={part.records} />;
     case "lemma-lines":
       return <LemmaLineList words={part.words} />;
     case "own-forms":

@@ -57,7 +57,7 @@ export interface TenseName {
 /**
  * Each tense box's Italian names, the one owner of them (ADR 0015): the page's
  * table heads its columns with them (web/lib/dictionary/conjugation.ts), and
- * `it-verb-form-line/v1` writes them into a searched form's line
+ * `it-verb-form-line/v2` writes them into a searched form's line
  * (src/italian/verbFormLine.ts), so the two never name one cell differently.
  */
 export const TENSE_NAMES: Readonly<Record<TenseBox, TenseName>> = {
@@ -87,6 +87,21 @@ export const NON_FINITE_ROLES = [
 ] as const;
 
 export type NonFiniteRole = (typeof NON_FINITE_ROLES)[number];
+
+/**
+ * The name the table's non-finite line gives each role, the one owner of it
+ * (ADR 0015): the page's table labels its cells with it
+ * (web/lib/dictionary/conjugation.ts), and `it-verb-form-line/v2` writes it
+ * into a searched form's line, so the two never name one cell differently. The
+ * past participle is the table's `participio`.
+ */
+export const NON_FINITE_NAMES: Readonly<Record<NonFiniteRole, "infinito" | "gerundio" | "participio presente" | "participio">> = {
+  infinito: "infinito",
+  gerundio: "gerundio",
+  "participio presente": "participio presente",
+  "participio passato": "participio",
+  participio: "participio",
+};
 
 /** Where one form goes. `unplaced` is a real answer, not a failure. */
 export type VerbSlot =

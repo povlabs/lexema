@@ -29,19 +29,19 @@ exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
 <nav aria-label="Readings">
 <ul class="m-0 mt-2.5 flex list-none flex-wrap gap-x-3.5 gap-y-1 p-0 sm:mt-[1.375rem] sm:gap-x-[1.125rem]">
 <li>
-<a class="font-sans text-[0.78125rem] text-text no-underline sm:text-[0.8125rem] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="#reading-65">
+<a class="font-sans text-[0.78125rem] text-text no-underline sm:text-[0.8125rem] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="#reading-70">
 <span class="mr-1.5 text-accent tabular-nums">1</span>
 <span lang="it">Aggettivo</span>
 </a>
 </li>
 <li>
-<a class="font-sans text-[0.78125rem] text-text no-underline sm:text-[0.8125rem] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="#reading-66">
+<a class="font-sans text-[0.78125rem] text-text no-underline sm:text-[0.8125rem] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="#reading-71">
 <span class="mr-1.5 text-accent tabular-nums">2</span>
 <span lang="it">Sostantivo</span>
 </a>
 </li>
 <li>
-<a class="font-sans text-[0.78125rem] text-text no-underline sm:text-[0.8125rem] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="#reading-67">
+<a class="font-sans text-[0.78125rem] text-text no-underline sm:text-[0.8125rem] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="#reading-72">
 <span class="mr-1.5 text-accent tabular-nums">3</span>
 <span lang="it">Sostantivo</span>
 </a>
@@ -49,8 +49,8 @@ exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
 </ul>
 </nav>
 <div class="mt-[2.3125rem] [p+&amp;]:mt-6 [nav+&amp;]:mt-5 sm:mt-[3.5625rem] sm:[p+&amp;]:mt-[2.4375rem] sm:[nav+&amp;]:mt-8">
-<article class="scroll-mt-6 mt-[1.6875rem] border-t border-border pt-6.5 first:mt-0 first:border-t-0 first:pt-0 sm:mt-[2.4375rem] sm:pt-[2.4375rem]" id="reading-65" aria-labelledby="reading-heading-65" data-record="65" data-line="65">
-<h2 class="m-0 flex flex-wrap items-baseline gap-x-2.5 gap-y-1 font-sans text-[0.875rem] font-semibold text-text-strong sm:text-[0.95rem]" id="reading-heading-65">
+<article class="scroll-mt-6 mt-[1.6875rem] border-t border-border pt-6.5 first:mt-0 first:border-t-0 first:pt-0 sm:mt-[2.4375rem] sm:pt-[2.4375rem]" id="reading-70" aria-labelledby="reading-heading-70" data-record="70" data-line="70">
+<h2 class="m-0 flex flex-wrap items-baseline gap-x-2.5 gap-y-1 font-sans text-[0.875rem] font-semibold text-text-strong sm:text-[0.95rem]" id="reading-heading-70">
 <span class="font-normal text-accent tabular-nums">1</span>
 <span class="font-normal text-text-muted" aria-hidden="true">·</span>
 <span lang="it">Aggettivo</span>
@@ -59,10 +59,10 @@ exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
 <span class="font-normal text-text-muted" lang="it">maschile, singolare</span>
 </span>
 </h2>
-<section class="mt-[1.125rem] sm:mt-[1.375rem]" aria-labelledby="definitions-65">
-<h3 class="m-0 mb-[0.3125rem] font-sans text-[0.75rem] font-normal text-text-muted sm:mb-1.5 sm:text-[0.8rem]" id="definitions-65">Definitions</h3>
+<section class="mt-[1.125rem] sm:mt-[1.375rem]" aria-labelledby="definitions-70">
+<h3 class="m-0 mb-[0.3125rem] font-sans text-[0.75rem] font-normal text-text-muted sm:mb-1.5 sm:text-[0.8rem]" id="definitions-70">Definitions</h3>
 <div data-closed="" class="group/definitions">
-<ol class="m-0 flex list-none flex-col gap-4 p-0" id="definition-list-65">
+<ol class="m-0 flex list-none flex-col gap-4 p-0" id="definition-list-70">
 <li class="flex gap-[0.4375rem] sm:gap-3" data-definition="1">
 <span class="w-5 shrink-0 pt-1 font-mono text-[0.85rem] text-text-muted sm:pt-0 sm:leading-[1.125rem]" aria-hidden="true">1.</span>
 <div class="min-w-0 flex-1">
@@ -116,15 +116,15 @@ exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
 </li>
 </ol>
 <div class="mt-[0.4375rem] block leading-4 sm:mt-[0.3125rem] sm:leading-[1.375rem]">
-<button type="button" tabindex="0" aria-disabled="false" aria-controls="definition-list-65" aria-expanded="false" class="group inline cursor-pointer font-sans text-[0.8rem] text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+<button type="button" tabindex="0" aria-disabled="false" aria-controls="definition-list-70" aria-expanded="false" class="group inline cursor-pointer font-sans text-[0.8rem] text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
 <span class="group-data-panel-open:hidden">+ more</span>
 <span class="hidden group-data-panel-open:inline">less</span>
 </button>
 </div>
 </div>
 </section>
-<section class="mt-[1.125rem] sm:mt-[1.375rem]" aria-labelledby="forms-65">
-<h3 class="m-0 mb-[0.3125rem] font-sans text-[0.75rem] font-normal text-text-muted sm:mb-1.5 sm:text-[0.8rem]" id="forms-65">Forms</h3>
+<section class="mt-[1.125rem] sm:mt-[1.375rem]" aria-labelledby="forms-70">
+<h3 class="m-0 mb-[0.3125rem] font-sans text-[0.75rem] font-normal text-text-muted sm:mb-1.5 sm:text-[0.8rem]" id="forms-70">Forms</h3>
 <div class="grid grid-cols-2 sm:gap-x-6 sm:grid-cols-[5.375rem_14.75rem_14.75rem]" role="table" aria-label="Forms of bello" data-grid="">
 <div role="row" class="contents">
 <span class="max-sm:hidden" role="columnheader">
@@ -205,8 +205,8 @@ exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
 </div>
 </section>
 </article>
-<article class="scroll-mt-6 mt-[1.6875rem] border-t border-border pt-6.5 first:mt-0 first:border-t-0 first:pt-0 sm:mt-[2.4375rem] sm:pt-[2.4375rem]" id="reading-66" aria-labelledby="reading-heading-66" data-record="66" data-line="66">
-<h2 class="m-0 flex flex-wrap items-baseline gap-x-2.5 gap-y-1 font-sans text-[0.875rem] font-semibold text-text-strong sm:text-[0.95rem]" id="reading-heading-66">
+<article class="scroll-mt-6 mt-[1.6875rem] border-t border-border pt-6.5 first:mt-0 first:border-t-0 first:pt-0 sm:mt-[2.4375rem] sm:pt-[2.4375rem]" id="reading-71" aria-labelledby="reading-heading-71" data-record="71" data-line="71">
+<h2 class="m-0 flex flex-wrap items-baseline gap-x-2.5 gap-y-1 font-sans text-[0.875rem] font-semibold text-text-strong sm:text-[0.95rem]" id="reading-heading-71">
 <span class="font-normal text-accent tabular-nums">2</span>
 <span class="font-normal text-text-muted" aria-hidden="true">·</span>
 <span lang="it">Sostantivo</span>
@@ -215,10 +215,10 @@ exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
 <span class="font-normal text-text-muted" lang="it">maschile, invariabile</span>
 </span>
 </h2>
-<section class="mt-[1.125rem] sm:mt-[1.375rem]" aria-labelledby="definitions-66">
-<h3 class="m-0 mb-[0.3125rem] font-sans text-[0.75rem] font-normal text-text-muted sm:mb-1.5 sm:text-[0.8rem]" id="definitions-66">Definitions</h3>
+<section class="mt-[1.125rem] sm:mt-[1.375rem]" aria-labelledby="definitions-71">
+<h3 class="m-0 mb-[0.3125rem] font-sans text-[0.75rem] font-normal text-text-muted sm:mb-1.5 sm:text-[0.8rem]" id="definitions-71">Definitions</h3>
 <div data-closed="" class="group/definitions">
-<ol class="m-0 flex list-none flex-col gap-4 p-0" id="definition-list-66">
+<ol class="m-0 flex list-none flex-col gap-4 p-0" id="definition-list-71">
 <li class="flex gap-[0.4375rem] sm:gap-3" data-definition="1">
 <span class="w-5 shrink-0 pt-1 font-mono text-[0.85rem] text-text-muted sm:pt-0 sm:leading-[1.125rem]" aria-hidden="true">1.</span>
 <div class="min-w-0 flex-1">
@@ -236,15 +236,15 @@ exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
 </li>
 </ol>
 <div class="mt-[0.4375rem] block leading-4 sm:mt-[0.3125rem] sm:leading-[1.375rem]">
-<button type="button" tabindex="0" aria-disabled="false" aria-controls="definition-list-66" aria-expanded="false" class="group inline cursor-pointer font-sans text-[0.8rem] text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+<button type="button" tabindex="0" aria-disabled="false" aria-controls="definition-list-71" aria-expanded="false" class="group inline cursor-pointer font-sans text-[0.8rem] text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
 <span class="group-data-panel-open:hidden">+ more</span>
 <span class="hidden group-data-panel-open:inline">less</span>
 </button>
 </div>
 </div>
 </section>
-<section class="mt-[1.125rem] sm:mt-[1.375rem]" aria-labelledby="forms-66">
-<h3 class="m-0 mb-[0.3125rem] font-sans text-[0.75rem] font-normal text-text-muted sm:mb-1.5 sm:text-[0.8rem]" id="forms-66">Forms</h3>
+<section class="mt-[1.125rem] sm:mt-[1.375rem]" aria-labelledby="forms-71">
+<h3 class="m-0 mb-[0.3125rem] font-sans text-[0.75rem] font-normal text-text-muted sm:mb-1.5 sm:text-[0.8rem]" id="forms-71">Forms</h3>
 <div class="grid grid-cols-2 sm:gap-x-6 sm:grid-cols-[5.375rem_14.75rem_14.75rem]" role="table" aria-label="Forms of bello" data-grid="">
 <div role="row" class="contents">
 <span class="max-sm:hidden" role="columnheader">
@@ -277,8 +277,8 @@ exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
 </div>
 </section>
 </article>
-<article class="scroll-mt-6 mt-[1.6875rem] border-t border-border pt-6.5 first:mt-0 first:border-t-0 first:pt-0 sm:mt-[2.4375rem] sm:pt-[2.4375rem]" id="reading-67" aria-labelledby="reading-heading-67" data-record="67" data-line="67">
-<h2 class="m-0 flex flex-wrap items-baseline gap-x-2.5 gap-y-1 font-sans text-[0.875rem] font-semibold text-text-strong sm:text-[0.95rem]" id="reading-heading-67">
+<article class="scroll-mt-6 mt-[1.6875rem] border-t border-border pt-6.5 first:mt-0 first:border-t-0 first:pt-0 sm:mt-[2.4375rem] sm:pt-[2.4375rem]" id="reading-72" aria-labelledby="reading-heading-72" data-record="72" data-line="72">
+<h2 class="m-0 flex flex-wrap items-baseline gap-x-2.5 gap-y-1 font-sans text-[0.875rem] font-semibold text-text-strong sm:text-[0.95rem]" id="reading-heading-72">
 <span class="font-normal text-accent tabular-nums">3</span>
 <span class="font-normal text-text-muted" aria-hidden="true">·</span>
 <span lang="it">Sostantivo</span>
@@ -287,10 +287,10 @@ exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
 <span class="font-normal text-text-muted" lang="it">maschile, singolare</span>
 </span>
 </h2>
-<section class="mt-[1.125rem] sm:mt-[1.375rem]" aria-labelledby="definitions-67">
-<h3 class="m-0 mb-[0.3125rem] font-sans text-[0.75rem] font-normal text-text-muted sm:mb-1.5 sm:text-[0.8rem]" id="definitions-67">Definitions</h3>
+<section class="mt-[1.125rem] sm:mt-[1.375rem]" aria-labelledby="definitions-72">
+<h3 class="m-0 mb-[0.3125rem] font-sans text-[0.75rem] font-normal text-text-muted sm:mb-1.5 sm:text-[0.8rem]" id="definitions-72">Definitions</h3>
 <div data-closed="" class="group/definitions">
-<ol class="m-0 flex list-none flex-col gap-4 p-0" id="definition-list-67">
+<ol class="m-0 flex list-none flex-col gap-4 p-0" id="definition-list-72">
 <li class="flex gap-[0.4375rem] sm:gap-3" data-definition="1">
 <span class="w-5 shrink-0 pt-1 font-mono text-[0.85rem] text-text-muted sm:pt-0 sm:leading-[1.125rem]" aria-hidden="true">1.</span>
 <div class="min-w-0 flex-1">
@@ -300,8 +300,8 @@ exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
 </ol>
 </div>
 </section>
-<section class="mt-[1.125rem] sm:mt-[1.375rem]" aria-labelledby="forms-67">
-<h3 class="m-0 mb-[0.3125rem] font-sans text-[0.75rem] font-normal text-text-muted sm:mb-1.5 sm:text-[0.8rem]" id="forms-67">Forms</h3>
+<section class="mt-[1.125rem] sm:mt-[1.375rem]" aria-labelledby="forms-72">
+<h3 class="m-0 mb-[0.3125rem] font-sans text-[0.75rem] font-normal text-text-muted sm:mb-1.5 sm:text-[0.8rem]" id="forms-72">Forms</h3>
 <div class="grid grid-cols-2 sm:gap-x-6 sm:grid-cols-[5.375rem_14.75rem_14.75rem]" role="table" aria-label="Forms of bello" data-grid="">
 <div role="row" class="contents">
 <span class="max-sm:hidden" role="columnheader">

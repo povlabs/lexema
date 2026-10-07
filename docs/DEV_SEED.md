@@ -32,9 +32,14 @@ Huey's fifty required words, the words of the multi-word searches in
 `aerei a reazione`, the words that spell them, `vada` for `vada via` and
 `faccio` for `faccio l'amore`, `fare fuori` with `hanno` and `fatte` for
 `hanno fatte fuori`, and `fare l'abitudine`, a headword with no
-gloss), and their `form_of` closure: 130 source records
-across 81 words, including `andare` for
-`andavano`. A missing required word or fixture
+gloss), the words of the word-page rules of
+[#695](https://github.com/povlabs/lexema/issues/695) (`costruttrici`, `bellissima`,
+`lavoratrici`, `stato`, `parti`, `grandi`, with every record that lists one of
+them in its table: `stare` and `Stato` for `stato`, `parto` for `parti`,
+`grandissimo` and its siblings for `grande`), and their `form_of` closure: 176
+source records across 110 words, including `andare` for `andavano`. An edge's
+target counts by the key the release resolves it by, so `parti`'s edge to
+`Parti` is closed by `parti`. A missing required word or fixture
 target stops the run with that word's name.
 
 ## What is emitted
@@ -136,7 +141,7 @@ A part ends only between two statements; a statement is never split, and one
 larger than the ceiling stops the seed with its size. Starting a seed removes
 the parts an earlier seed left in `SEED_SQL`.
 
-The fifty-word fixture is 1.9 MB of SQL, so it is one part, byte for byte the
+The fifty-word fixture is 2.6 MB of SQL, so it is one part, byte for byte the
 single file the seeder wrote before parts existed.
 
 After the last part, the seeder reads back the dictionary's tables and stops

@@ -45,12 +45,19 @@ test("a tense that starts with a vowel takes dell': andavano", () => {
   );
 });
 
-test("an imperative, a non-finite form and an unplaced form give no line", () => {
+test("an imperative, the infinitive and an unplaced form give no line", () => {
   assert.equal(line(["imperative"], ["tu"]), undefined);
-  assert.equal(line(["past", "participle"], ["verbo di prima coniugazione (irregolare)"]), undefined);
-  assert.equal(line(["gerund"], []), undefined);
+  assert.equal(line(["infinitive"], []), undefined);
   assert.equal(line(["imperfect"], ["io"]), undefined);
   assert.equal(line(["auxiliary"], []), undefined);
+});
+
+test("a non-finite cell is named as the table names it, then the verb (v2, #695): stato is the participio of essere", () => {
+  assert.equal(line(["past", "participle"], ["verbo di prima coniugazione (irregolare)"]), "participio di andare");
+  assert.equal(line(["gerund"], []), "gerundio di andare");
+  assert.equal(line(["present", "participle"], []), "participio presente di andare");
+  // The non-finite line spells only the masculine, so a feminine finds none.
+  assert.equal(verbFormLine("andare", { tags: ["past", "participle"], rawTags: [] }, "feminine"), undefined);
 });
 
 test("a feminine compound form's line names the gender after the number; the masculine names none (#676)", () => {

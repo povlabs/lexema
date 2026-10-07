@@ -84,3 +84,16 @@ export function hasDefinitions(reading: Reading): boolean {
 export function senseLabels(labels: readonly string[]): string[] {
   return labels.filter((label) => label !== "form-of");
 }
+
+/**
+ * What a definition reads as, without its examples: equal for two records'
+ * definitions only when the page would draw the same text. `costruttrici`'s
+ * adjective and noun records both read "plurale di costruttrice". A definition
+ * with sub-items keys them with their refs, so it never equals another
+ * record's.
+ */
+export function definitionTextKey(item: DefinitionItem): string {
+  return item.from === "record"
+    ? JSON.stringify(["record", senseLabels(item.sense.labels.map((label) => label.label)), item.sense.glosses.map((gloss) => gloss.text), item.sense.recoveredItems])
+    : JSON.stringify(["page", item.definition.labels, item.definition.text, item.definition.items]);
+}
