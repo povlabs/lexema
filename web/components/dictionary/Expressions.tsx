@@ -1,8 +1,8 @@
 "use client";
 
-// One *Expressions* section (#213): the expressions the source lists for the
-// word, or, on a form's page, for a word it is a form of (*Expressions with*
-// its lemma; never a verb shown as a block, #668). No count on the label. Closed, the first row, then `+ more` when
+// The *Expressions* section (#213): the expressions the source lists for the
+// word itself, never its base word's (rule 3 of #695, built by #700). No count
+// on the label. Closed, the first row, then `+ more` when
 // there are others; open, every row, then `less` (More.tsx). A phrase that is
 // its own headword is bright and links to its entry; one that is not is dimmer
 // and plain. A list longer than thirty rows takes *Find an expression* once
@@ -57,17 +57,14 @@ function Row({ expression, className }: { expression: ExpressionRow; className: 
   );
 }
 
-/**
- * The section, labelled `label` (wordPage.ts, `expressionsLabel`), over its
- * rows (`expressionRows`): what it shows and nothing more.
- */
-export function Expressions({ id, label, expressions }: { id: string; label: string; expressions: readonly [ExpressionRow, ...ExpressionRow[]] }) {
+/** The section over its rows (wordPage.ts, `expressionRows`): what it shows and nothing more. */
+export function Expressions({ id, expressions }: { id: string; expressions: readonly [ExpressionRow, ...ExpressionRow[]] }) {
   const [typed, setTyped] = useState("");
   const list = `${id}-list`;
   return (
     <section className={WORD_BLOCK} aria-labelledby={id}>
       <h2 className={BLOCK_LABEL} id={id}>
-        {label}
+        Expressions
       </h2>
       <Collapsible.Root className={EXPRESSIONS} onOpenChange={(open) => open || setTyped("")}>
         {takesFilter(expressions) && (

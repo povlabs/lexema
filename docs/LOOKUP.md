@@ -119,10 +119,14 @@ not `fare`, so `hanno fatte fuori` gives `fatte`'s "participio passato plurale
 femminile di fatto" as "… di fare fuori". `fatte`'s adjective and noun records
 give none.
 
-Before its form lines, each record shows the meanings of the expression they
-name, the first time the page names it
+Each record's form lines sit right under its heading, unnumbered, as a word
+page's form lines do (Huey's rule 4 of 2026-10-06 on
+[#695](https://github.com/povlabs/lexema/issues/695#issuecomment-6024404411),
+built by [#700](https://github.com/povlabs/lexema/issues/700)). Under them,
+*Definitions* holds the meanings of the expressions they name, each the first
+time the page names it
 ([Huey's ruling](https://github.com/povlabs/lexema/issues/214#issuecomment-5909303467)).
-They are the found result's own readings, the headword's records, read by the
+The meanings are the found result's own readings, the headword's records, read by the
 same `definitionsOf` the headword's page uses, so nothing is read or stored
 twice (`phrasePage`,
 [`web/lib/dictionary/phrasePage.ts`](../web/lib/dictionary/phrasePage.ts)). A
@@ -132,7 +136,7 @@ headword no form line names still shows its meanings, each of its records a
 reading of its own after the searched words' records. Only a headword with
 neither shows as a bare link.
 
-Closed, a reading shows each expression's first meaning and every form line,
+Closed, a reading shows every form line and each expression's first meaning,
 then the `+ more` every reading has; the other meanings are folded under the
 first until it opens. The one *Source* links the page of the first headword shown, never the
 searched words': `vado via` links to *andare via*'s page
@@ -360,9 +364,10 @@ it on. Forms and senses are never corrected.
 `candidates[]` is never narrowed to one. More than one entry means the source
 did not choose. Each candidate is `recordId`, `word`, `pos`, a `ref` to its
 own `/word`, `listing`, and `expressions`: the lemma record's own
-[expressions](#expressions), so a form's page can show them as
-*Expressions with* its lemma. A verb the page shows as a verb form block
-brings none (#668).
+[expressions](#expressions). No word page shows them: a form's page shows
+none of its base word's expressions (Huey's rule 3 of 2026-10-06 on
+[#695](https://github.com/povlabs/lexema/issues/695#issuecomment-6024404411),
+built by [#700](https://github.com/povlabs/lexema/issues/700)).
 
 `listing` is where the candidate's own table spells the query: its whole
 `forms[]` and the `evidence[]` rows the key hit, never empty. It is `undefined`

@@ -10,15 +10,23 @@
 //
 // What each site must answer:
 // - the dictionary finds every word in `SMOKE_WORDS`: `/?q=<word>` is a 200
-//   whose page holds a reading: a source record's (`data-record`) or a verb
-//   form block's (`data-verb-form`, #636), both web/components/dictionary/Reading.tsx.
+//   whose page holds a reading: a source record's (`data-record`), a verb
+//   form block's (`data-verb-form`, #636) or a grid's form block's
+//   (`data-grid-form`, #700), all web/components/dictionary/Reading.tsx.
 //   A word it cannot find is a 200 too, with no reading, so the status alone
 //   says nothing. The reading must be visible as sent, since the smoke runs no
 //   script (#115): React streams a result that is not ready at the first flush
 //   as a hidden `<div hidden id="S:…">` after the page, for a script to swap in,
 //   so a reading only in such a segment is one a reader without JavaScript never sees.
 //   Its `<title>` and `og:title` must sit before `</head>`: a link previewer reads
-//   the raw head, and metadata streamed after the footer gives it no card (#337);
+//   the raw head, and metadata streamed after the footer gives it no card (#337).
+//   The page must keep the word-page law (#700, `wordPageProblems`): no empty
+//   reading, no Forms row of dashes only, no reading heading without its
+//   number, and no base word's table or block drawn twice. The Preview reads
+//   the shared production dictionary (ADR 0018), so this checks real data. A
+//   word in `NOT_FOUND_SMOKE_WORDS` must answer "No entry" instead, with no
+//   reading. The word requests are spaced to stay under the Preview's search
+//   limit (`SEARCHES_PER_MINUTE`), and a 429 is asked again;
 // - the developer site answers its landing page, `/`, with a 200;
 // - the API answers `GET /v1/lookup?q=andare` sent with a key that does not
 //   exist with its own 401 `invalid_key`. Refusing that key takes a read of the
@@ -33,8 +41,39 @@
 
 import { type GitHub, hasNoindex, isHead, PreviewAnnouncement, type PreviewSite, restCall, restGitHub, SHA } from "./previewMarkerCommand.ts";
 
-/** The words the dictionary must find on every Preview (#246). */
-export const SMOKE_WORDS = ["sale", "andare", "andavano", "casa", "bello", "studente"] as const;
+/**
+ * The words the dictionary is asked on every Preview (#246): the 59 words of
+ * the word-page audit on #695, in its order, less the five whose every reading
+ * is empty, which #696 owns (#700). Each covers a case a ruling settles.
+ */
+export const SMOKE_WORDS = [
+  "bello", "sale", "andare", "casa", "grande", "essere", "bella", "belli", "belle", "case", "studenti", "grandi",
+  "bellissima", "vira", "andavano", "andassi", "vada", "parti", "sono andato", "sono andata", "siamo andate",
+  "siamo andati", "ho mangiato", "sarei andato", "mi sono accorto", "mi sono accorta", "mi sono arresa",
+  "ci siamo accorte", "accorgersi", "arrendersi", "correre", "assorbire", "vivere", "sono corso", "salivate", "andati",
+  "andata", "andate", "andato", "stato", "salivare", "litigante", "gravida", "presina", "sditalinare", "costruttrici",
+  "attrici", "lavoratrici", "citta", "mangare", "xqzzy", "anima gemella", "vado via", "Roma",
+] as const;
+
+/** One of the smoke's words. */
+export type SmokeWord = (typeof SMOKE_WORDS)[number];
+
+/**
+ * The smoke words a working Lexema has no entry for: a spelling one edit from
+ * a word (`mangare`, which offers `mangiare`) and a spelling close to none.
+ * Their page must say so, and show no reading.
+ */
+export const NOT_FOUND_SMOKE_WORDS: readonly SmokeWord[] = ["mangare", "xqzzy"];
+
+/**
+ * How many searches a minute one visitor may send a Preview: its
+ * `SEARCH_LIMIT` in web/wrangler.jsonc. The smoke spaces its word requests to
+ * stay under it, since a Preview counts them like any visitor's.
+ */
+export const SEARCHES_PER_MINUTE = 15;
+
+/** The wait between two word requests: one fewer a minute than the limit, as the limit counts per location and not exactly. */
+export const SEARCH_SPACING_MS = Math.ceil(60_000 / (SEARCHES_PER_MINUTE - 1));
 
 /** The check run the smoke reports as, on the pull request's head. */
 export const SMOKE_CHECK = "preview smoke";
@@ -61,8 +100,8 @@ export const SMOKE_ICONS = [
   { path: "/apple-touch-icon.png", contentTypes: ["image/png"] },
 ] as const;
 
-/** A reading on the dictionary's page, a record's or a verb form block's (#636): only a found word renders one. */
-const READING = /<article\b[^>]*\bdata-(?:record|verb-form)="/;
+/** A reading on the dictionary's page, a record's, a verb form block's (#636) or a grid's form block (#700): only a found word renders one. */
+const READING = /<article\b[^>]*\bdata-(?:record|verb-form|grid-form)="/;
 /** Where React's streamed, hidden segments begin: after everything the first flush showed. */
 const HIDDEN_SEGMENT = /<div hidden id="S:/;
 
@@ -73,6 +112,56 @@ export function readingProblem(body: string, word: string): string | undefined {
   const hidden = HIDDEN_SEGMENT.exec(body);
   if (hidden !== null && hidden.index < reading.index) return `the reading for "${word}" is sent hidden, for a script to show`;
   return undefined;
+}
+
+// What a found word's page must never draw, by the word-page law
+// (design-system-manifest.md § "How a word page renders"; #700). Each is read
+// off the markup web/components/dictionary/Reading.tsx and Forms.tsx write, as
+// sent; the page's script payload writes its markup another way, so it never
+// counts twice.
+
+/** A reading's or block's heading that ends its article: the reading shows nothing (#694). */
+const EMPTY_READING = /<h2\b[^>]*\bid="reading-heading-([^"]+)"[^>]*>[\s\S]*?<\/h2>(?:\s|<!--[^>]*-->)*<\/article>/g;
+/** A reading's or block's heading, and what it starts with. */
+const READING_HEADING = /<h2\b[^>]*\bid="reading-heading-([^"]+)"[^>]*>(?:\s|<!--[^>]*-->)*(<span\b[^>]*>[^<]*<\/span>)?/g;
+/** The number a heading must start with (#687). */
+const HEADING_NUMBER = /^<span\b[^>]*>\d+<\/span>$/;
+/** The dash an empty slot of a table shows (Forms.tsx, `Dash`). */
+const DASH = /^(?:\s|<!--[^>]*-->)*<span\b[^>]*aria-hidden="true"[^>]*>—<\/span>(?:\s|<!--[^>]*-->)*$/;
+/** A conjugation's line of non-finite forms (gerundio, participio, ausiliare): its slots. */
+const NON_FINITE = /<dl\b[^>]*>([\s\S]*?)<\/dl>/g;
+const SLOT = /<dd\b[^>]*>([\s\S]*?)<\/dd>/g;
+/** A grid's cell; a row's cells follow its `role="row"` up to the next row. */
+const GRID_CELL = /<div\b[^>]*\brole="cell"[^>]*>([\s\S]*?)<\/div>(?=<div\b[^>]*\brole="cell"|<\/div>)/g;
+/** The tables and blocks one base word may draw only once (rule 1 of #695): a lemma's *Forms of*, a conjugation, a block. */
+const ONCE_PER_WORD: readonly { what: string; pattern: RegExp }[] = [
+  { what: "Forms of", pattern: /\bid="lemma-forms-[^"]*"[^>]*>Forms of<span\b[^>]*>([^<]+)<\/span>/g },
+  { what: "conjugation", pattern: /\baria-label="Moods of ([^"]+)"/g },
+  { what: "Voce verbale block", pattern: /<article\b[^>]*\bdata-verb-form="([^"]+)"/g },
+  { what: "form block", pattern: /<article\b[^>]*\bdata-grid-form="([^"]+)"/g },
+];
+
+/** Each way a found word's page breaks the word-page law, naming the word; none when it keeps it. */
+export function wordPageProblems(page: string, word: string): string[] {
+  const problems: string[] = [];
+  for (const match of page.matchAll(EMPTY_READING)) problems.push(`"${word}" draws an empty reading (${match[1]})`);
+  for (const match of page.matchAll(READING_HEADING)) {
+    if (match[2] === undefined || !HEADING_NUMBER.test(match[2])) problems.push(`"${word}" draws a reading heading with no number (${match[1]})`);
+  }
+  for (const [, line = ""] of page.matchAll(NON_FINITE)) {
+    const slots = [...line.matchAll(SLOT)].map((slot) => slot[1] ?? "");
+    if (slots.length > 0 && slots.every((slot) => DASH.test(slot))) problems.push(`"${word}" draws a Forms row of dashes only`);
+  }
+  for (const row of page.split(/<div\b[^>]*\brole="row"/).slice(1)) {
+    const cells = [...row.matchAll(GRID_CELL)].map((cell) => cell[1] ?? "");
+    if (cells.length > 0 && cells.every((cell) => DASH.test(cell))) problems.push(`"${word}" draws a Forms row of dashes only`);
+  }
+  for (const { what, pattern } of ONCE_PER_WORD) {
+    const counts = new Map<string, number>();
+    for (const match of page.matchAll(pattern)) counts.set(match[1] ?? "", (counts.get(match[1] ?? "") ?? 0) + 1);
+    for (const [base, count] of counts) if (count > 1) problems.push(`"${word}" draws ${base}'s ${what} ${count} times`);
+  }
+  return problems;
 }
 
 /** The tags a link previewer needs in the raw `<head>` (#337, #304). */
@@ -89,11 +178,16 @@ function headProblems(body: string, word: string): readonly string[] {
   return HEAD_TAGS.filter(({ pattern }) => !pattern.test(head)).map(({ name }) => `the page for "${word}" has no ${name} before </head>`);
 }
 
+/** A page that says the dictionary has no entry for what was searched (NotFound.tsx). */
+const NO_ENTRY = /No entry for “<span lang="it">/;
+
 /** One request the smoke makes, and what its answer must be. */
 export class SmokeProbe {
   readonly app: PreviewSite["app"];
   readonly url: string;
   readonly headers: Readonly<Record<string, string>>;
+  /** Whether the Preview counts the request as a search, against its `SEARCH_LIMIT`. */
+  readonly search: boolean;
   private readonly status: number;
   /** What the answer must carry beyond its status and noindex, as the problems when it does not. */
   private readonly answerProblems: (page: Page) => readonly string[];
@@ -105,22 +199,52 @@ export class SmokeProbe {
     headers: Readonly<Record<string, string>>,
     status: number,
     answerProblems: (page: Page) => readonly string[],
+    search = false,
   ) {
     this.app = app;
     this.url = url;
     this.headers = headers;
     this.status = status;
     this.answerProblems = answerProblems;
+    this.search = search;
   }
 
-  /** The dictionary's page for `word`: a reading shown without JavaScript, and its link-preview tags in `<head>`. */
+  /**
+   * The dictionary's page for `word`: a reading shown without JavaScript, the
+   * word-page law kept (`wordPageProblems`), and its link-preview tags in
+   * `<head>`.
+   */
   static word(siteUrl: string, word: string): SmokeProbe {
     const url = new URL(siteUrl);
     url.searchParams.set("q", word);
-    return new SmokeProbe("web", url.href, {}, 200, ({ body }) => {
-      const reading = readingProblem(body, word);
-      return [...(reading === undefined ? [] : [reading]), ...headProblems(body, word)];
-    });
+    return new SmokeProbe(
+      "web",
+      url.href,
+      {},
+      200,
+      ({ body }) => {
+        const reading = readingProblem(body, word);
+        return [...(reading === undefined ? [] : [reading]), ...wordPageProblems(body, word), ...headProblems(body, word)];
+      },
+      true,
+    );
+  }
+
+  /** The dictionary's page for a word it has no entry for: it says so, and shows no reading. */
+  static missing(siteUrl: string, word: string): SmokeProbe {
+    const url = new URL(siteUrl);
+    url.searchParams.set("q", word);
+    return new SmokeProbe(
+      "web",
+      url.href,
+      {},
+      200,
+      ({ body }) => [
+        ...(NO_ENTRY.test(body) ? [] : [`the page for "${word}" does not say there is no entry`]),
+        ...(READING.test(body) ? [`the page for "${word}" shows a reading`] : []),
+      ],
+      true,
+    );
   }
 
   /** The developer site's landing page. */
@@ -172,7 +296,7 @@ export function probesOf(announcement: PreviewAnnouncement): readonly SmokeProbe
   };
   const apps = ["web", "developers", "api"] as const;
   return [
-    ...SMOKE_WORDS.map((word) => SmokeProbe.word(url("web"), word)),
+    ...SMOKE_WORDS.map((word) => (NOT_FOUND_SMOKE_WORDS.includes(word) ? SmokeProbe.missing(url("web"), word) : SmokeProbe.word(url("web"), word))),
     SmokeProbe.landing(url("developers")),
     SmokeProbe.api(url("api")),
     ...apps.flatMap((app) => SMOKE_ICONS.map((icon) => SmokeProbe.icon(app, url(app), icon))),
@@ -253,9 +377,11 @@ export interface SmokeSteps {
   readonly github: SmokeGitHub;
   /** One request, or a throw when nothing answered. */
   fetchPage(url: string, headers: Readonly<Record<string, string>>): Promise<Page>;
-  /** How often to send a request that got no answer, or a 5xx, before counting it failed. */
+  /** How often to send a request that got no answer, a 5xx, or a 429, before counting it failed. */
   readonly attempts: number;
   wait(): Promise<void>;
+  /** The wait between two searches, so the smoke stays under the Preview's search limit (`SEARCH_SPACING_MS`). */
+  spaceSearches(): Promise<void>;
   readonly detailsUrl: string | undefined;
   log(line: string): void;
 }
@@ -276,7 +402,8 @@ async function ask(probe: SmokeProbe, steps: SmokeSteps): Promise<ProbeResult> {
     try {
       const page = await steps.fetchPage(probe.url, probe.headers);
       result = { probe, answer: `${page.status}, X-Robots-Tag ${page.robotsTag ?? "none"}`, problems: probe.problems(page) };
-      retry = page.status >= 500;
+      // A 429 is the search limit: the next window answers.
+      retry = page.status >= 500 || page.status === 429;
     } catch (error) {
       const said = error instanceof Error ? error.message : String(error);
       result = { probe, answer: said, problems: [`no answer: ${said}`] };
@@ -306,7 +433,12 @@ export async function smokePreview(steps: SmokeSteps): Promise<SmokeOutcome> {
     }
     const announcement = PreviewAnnouncement.of(pull.headRef, sha);
     const results: ProbeResult[] = [];
-    for (const probe of probesOf(announcement)) results.push(await ask(probe, steps));
+    let searched = false;
+    for (const probe of probesOf(announcement)) {
+      if (probe.search && searched) await steps.spaceSearches();
+      searched ||= probe.search;
+      results.push(await ask(probe, steps));
+    }
     const report = new SmokeReport(announcement, results);
     if (!isHead(await github.pullRequest(number), sha, github.repository)) {
       log(`PR #${number}: its head moved past ${sha} during the smoke; no check reported`);

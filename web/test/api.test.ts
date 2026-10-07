@@ -622,7 +622,7 @@ test("every result carries its record's expressions as the page lists them, and 
   const page = wordPage("fare", found.readings, [], SURFACE_ROUTE);
   assert.deepEqual(
     noun.expressions.map((row) => row.phrase),
-    page.expressionSections[0]?.expressions.map((row) => row.phrase),
+    page.expressions?.expressions.map((row) => row.phrase),
   );
 
   const [only] = (await lookupBody("q=fare&fields=expressions")).results;

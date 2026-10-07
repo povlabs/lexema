@@ -36,8 +36,14 @@ gloss), the words of the word-page rules of
 [#695](https://github.com/povlabs/lexema/issues/695) (`costruttrici`, `bellissima`,
 `lavoratrici`, `stato`, `parti`, `grandi`, with every record that lists one of
 them in its table: `stare` and `Stato` for `stato`, `parto` for `parti`,
-`grandissimo` and its siblings for `grande`), and their `form_of` closure: 176
-source records across 110 words, including `andare` for `andavano`. An edge's
+`grandissimo` and its siblings for `grande`), the words of rules 3 and 4 of
+[#700](https://github.com/povlabs/lexema/issues/700) (`belli`, `belle`, `attrici`,
+`andassi`, `andata`, `gravida`, with every record that lists one of them in
+its table: `attore`, `attori`, `attrice`, `andate` and `gravido` among them),
+and their `form_of` closure: 191 source records across 121 words, including
+`andare` for `andavano`. `citta`'s one such record, `citto`, stays out, in
+`fixtures/citto.jsonl`: with it, the fixture would have no word left whose
+search finds nothing but an accent offer, which the not-found tests read. An edge's
 target counts by the key the release resolves it by, so `parti`'s edge to
 `Parti` is closed by `parti`. A missing required word or fixture
 target stops the run with that word's name.

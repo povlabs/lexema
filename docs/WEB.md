@@ -337,8 +337,20 @@ whose only tie is its gloss (Huey's rule 2 of 2026-10-06,
 lookup and the API still return them.
 
 A page none of whose records about the query has anything to show (`gravida`,
-`citta`) keeps the records that list the query as readings until #696 and #700
-rule on it, as every page did before #695, less two kinds of form. A record
+`citta`) draws the records that list the query instead. A noun or adjective
+record, not itself a form, whose plain grid spells the query in a cell is a
+grid's form block, as a form record's block reads (Huey's rule 4 of
+2026-10-06, built by [#700](https://github.com/povlabs/lexema/issues/700)):
+`gravida` shows `1 · Aggettivo, forma flessa · femminile, singolare`, the base
+record's part of speech with `forma flessa` and the cells' gender and number,
+then one line per cell built by rule `it-grid-form-line/v1`
+([`gridFormLine.ts`](../web/lib/dictionary/gridFormLine.ts)), "femminile
+singolare di gravido", in the names the grid heads its rows and columns with,
+then gravido's *Definitions* and *Forms of gravido* (`GridFormBlock`). Like a
+verb form line, the line is Lexema's text, built when the page is built, never
+stored, and unmarked on the page (ADR 0008, 0012, 0016). The other records
+keep their readings until #696 rules on the page, as every page did before
+#695, less two kinds of form. A record
 that lists the query and declares itself a form of a reading about the query
 has no reading of its own, and nor has a record that declares itself a form of
 one of those:
@@ -478,7 +490,16 @@ none. Definitions show the first definition and its own first example, then
 
 **Once per word.** Pronunciation, etymologies, synonyms, antonyms and derived
 words are read from `source_record_json` and render once: the IPA under the
-headword, and the facts after the last reading. Syllable breaks are not shown. The source usually
+headword, and the facts after the last reading. Syllable breaks are not shown.
+The etymologies and word lists are those of the records about the query that
+are not forms: what a form record says of its word (`vedi bello` on `bella`,
+`da andare` on `vada`, `si · muova` as vada's synonyms) is its base word's,
+and no page shows it, and no page shows a base word's *Expressions* (Huey's
+rule 3 of 2026-10-06 on
+[#695](https://github.com/povlabs/lexema/issues/695#issuecomment-6024404411),
+built by [#700](https://github.com/povlabs/lexema/issues/700)). A form
+record's own expressions, its pronunciation and its hyphenation are the
+searched word's, and stay (`andate`'s Expressions). The source usually
 repeats them on every record of a headword, but not always. In release
 `it-0c432803`, 16,659 of the 16,792 headwords with more than one record carry
 the six fields identically on each; 133 do not. So the page shows the union of
@@ -493,8 +514,12 @@ etymologies, each text opens with a bracket label, mostly a part of speech:
 `sale` has `(sostantivo singolare)` and `(sostantivo plurale)`.
 
 On a word with two readings or more, an etymology whose label names exactly
-one reading moves into it, without the label, even when it is the word's only
-one (`strutto`: `(voce verbale) vedi struggere`). A label names a reading whose
+one reading moves into it, without the label (`sale`'s `(sostantivo
+singolare)`). One whose label names only form-of readings, one or more, shows
+nowhere: it is the base word's (rule 3, #700), as `sale`'s `(sostantivo
+plurale) vedi sala` and `strutto`'s only one, `(voce verbale) vedi struggere`,
+are. So no form's reading or block has an Etymology or Synonyms of its own
+(P14). A label names a reading whose
 `pos_title` is its part of speech or begins with it: `(aggettivo)` names
 `sette`'s *Aggettivo numerale*. Words after the part of speech do not stop it
 (`dai`'s `(voce verbale di dare)`), and `singolare`/`plurale` or
@@ -506,15 +531,16 @@ A label that names more than one reading does not move, because moving it would
 copy one text into two places, and identical things show once. That covers a
 compound label naming two readings (`medico`'s `(aggettivo e sostantivo)`) and
 a label that fits two readings of the same kind: a bare `(sostantivo)` beside
-*Sostantivo* and *Sostantivo, forma flessa* (`sette`), or `(voce verbale)` on
-`svolta`, which has two *Voce verbale* readings. An etymology that is only a
+*Sostantivo* and *Sostantivo, forma flessa* (`sette`), or `(sostantivo)` on
+`stato`, which has two *Sostantivo* readings, `stato` and `Stato`. An etymology that is only a
 label (`cazzi`'s `(voce verbale)`) moves and leaves nothing to show, so its
 reading gets no Etymology block.
 
 Synonyms follow the same rule where the source groups them: in 207 headwords a
 part-of-speech `raw_tags` on one synonym opens a group that runs to the next
 label. `vivere`'s `sostantivo` group moves to its noun reading; its `verbo`
-group fits two *Verbo* readings and stays after the readings. Topic labels
+group fits two *Verbo* readings and stays after the readings. A group whose
+label names only form-of readings shows nowhere, as such an etymology does. Topic labels
 (`calcio`'s `(sport)`), unlabelled texts and ungrouped lists stay there too, and
 the page says nothing about what it did not match.
 

@@ -1,9 +1,11 @@
 // The short page a searched expression opens (#214, Huey's page-shape rulings
 // of 2026-09-30): `vado via` is titled as typed, and each record of `vado` is a
-// reading whose definitions are *andare via*'s own meanings, as imported, then
-// `vado`'s form entries with the lemma replaced by *andare via*, a link to that
-// entry. Only each expression's first meaning shows until `+ more` opens the
-// rest. No forms and no pronunciation. What the form lines say is the
+// reading. Right under its heading are `vado`'s form entries with the lemma
+// replaced by *andare via*, a link to that entry, unnumbered, as a word page's
+// form lines read (Huey's rule 4 of 2026-10-06 on #695, "Same layout
+// everywhere"; P11, built by #700). Then *Definitions*: the expression's own
+// meanings, as imported, only each expression's first until `+ more` opens
+// the rest. No forms and no pronunciation. What the form lines say is the
 // lookup's (`phraseForms`, src/lookup/phrase.ts); the meanings are the
 // headword's senses, read as its own page reads them (definitions.ts). This
 // file only orders and numbers them for the page.
@@ -11,18 +13,31 @@
 import type { EntryIdentity, FoundRoute, PhraseDefinition, PhraseForm, Reading } from "@lexema/lookup/types.ts";
 import { definitionsOf, type DefinitionItem } from "./definitions.ts";
 
+type NonEmpty<T> = [T, ...T[]];
+
 /**
- * One numbered definition of a reading: a meaning of the expression's headword,
- * copied from the record that holds it, or a form line naming the expression.
- * Every meaning but an expression's first is `folded`: it waits for `+ more`
- * (Huey's hand check of 2026-09-30, 11:19Z on #214). A form line always shows.
+ * One meaning of an expression, copied from the record that holds it. Every
+ * meaning but an expression's first is `folded`: it waits for `+ more` (Huey's
+ * hand check of 2026-09-30, 11:19Z on #214).
  */
-export type PhraseLine =
-  | { kind: "meaning"; reading: Reading; item: DefinitionItem; folded: boolean }
-  | { kind: "form"; definition: PhraseDefinition };
+export interface PhraseMeaning {
+  reading: Reading;
+  item: DefinitionItem;
+  folded: boolean;
+}
 
 /** The record a numbered reading of the page shows: its heading, and where the source writes it. */
 export type PhraseRecord = EntryIdentity & { word: string; posTitle: string };
+
+/**
+ * What a reading shows. A searched word's record: its form lines naming an
+ * expression, then the meanings of each expression they name, the first time
+ * the page names it; an expression with no gloss has none. The expression's
+ * own record: its meanings alone. Never neither.
+ */
+export type PhraseReadingText =
+  | { kind: "form"; forms: NonEmpty<PhraseDefinition>; meanings: PhraseMeaning[] }
+  | { kind: "own"; meanings: NonEmpty<PhraseMeaning> };
 
 /**
  * One numbered reading of the page, as a word page numbers its readings: a
@@ -35,13 +50,7 @@ export interface PhraseEntry {
   number: number;
   /** The record, as the footer's report names it. */
   reading: PhraseRecord;
-  /**
-   * A searched word's record: for each expression its form entries name, in
-   * their order, the expression's meanings, the first time the page names
-   * it, then those form entries. The expression's own record: its meanings.
-   * Never empty.
-   */
-  lines: [PhraseLine, ...PhraseLine[]];
+  text: PhraseReadingText;
 }
 
 export interface PhrasePage {
@@ -63,8 +72,8 @@ export interface PhrasePage {
   sourceWord: string;
 }
 
-/** The expression a line is about: the headword a meaning is copied from, or the one a form line names. */
-const phraseOf = (line: PhraseLine): string => (line.kind === "meaning" ? line.reading.word : line.definition.phrase);
+/** The expression a reading shows first: its first form line's, else the headword its first meaning is copied from. */
+const firstPhraseOf = (text: PhraseReadingText): string => (text.kind === "form" ? text.forms[0].phrase : text.meanings[0].reading.word);
 
 /**
  * `headwords` are the found result's readings: the records of the expressions
@@ -80,46 +89,42 @@ export function phrasePage(
   headwords: readonly Reading[],
 ): PhrasePage {
   // An expression's meanings, from each of its records: the first shows, the rest fold.
-  const meaningsFrom = (readings: readonly Reading[]): PhraseLine[] =>
+  const meaningsFrom = (readings: readonly Reading[]): PhraseMeaning[] =>
     readings
       .flatMap((reading) => definitionsOf(reading).items.map((item) => ({ reading, item })))
-      .map(({ reading, item }, i): PhraseLine => ({ kind: "meaning", reading, item, folded: i > 0 }));
-  const meaningsOf = (phrase: string): PhraseLine[] => meaningsFrom(headwords.filter((reading) => reading.word === phrase));
+      .map(({ reading, item }, i): PhraseMeaning => ({ reading, item, folded: i > 0 }));
+  const meaningsOf = (phrase: string): PhraseMeaning[] => meaningsFrom(headwords.filter((reading) => reading.word === phrase));
   const defined = new Set<string>();
-  const linesOf = (form: PhraseForm): [PhraseLine, ...PhraseLine[]] => {
-    const lines: PhraseLine[] = [];
+  const textOf = (form: PhraseForm): PhraseReadingText => {
+    const [first, ...rest] = form.definitions;
+    // `form.definitions` is never empty: a record is a phrase form through its definitions.
+    if (first === undefined) throw new Error(`no line for record ${form.recordId}`);
+    const meanings: PhraseMeaning[] = [];
     for (const phrase of new Set(form.definitions.map((definition) => definition.phrase))) {
-      if (!defined.has(phrase)) {
-        defined.add(phrase);
-        lines.push(...meaningsOf(phrase));
-      }
-      for (const definition of form.definitions) {
-        if (definition.phrase === phrase) lines.push({ kind: "form", definition });
-      }
+      if (defined.has(phrase)) continue;
+      defined.add(phrase);
+      meanings.push(...meaningsOf(phrase));
     }
-    const [head, ...tail] = lines;
-    // `form.definitions` is never empty, and each one is pushed as a form line.
-    if (head === undefined) throw new Error(`no line for record ${form.recordId}`);
-    return [head, ...tail];
+    return { kind: "form", forms: [first, ...rest], meanings };
   };
-  const formed = route.forms.map((reading) => ({ reading, lines: linesOf(reading) }));
+  const formed = route.forms.map((reading) => ({ reading, text: textOf(reading) }));
   const named = new Set(route.forms.flatMap((form) => form.definitions.map((definition) => definition.phrase)));
   // Each headword no form line names, as its own reading of its meanings.
   const own = headwords.flatMap((reading): Omit<PhraseEntry, "number">[] => {
     if (named.has(reading.word)) return [];
     const [head, ...tail] = meaningsFrom([reading]);
-    return head === undefined ? [] : [{ reading, lines: [head, ...tail] }];
+    return head === undefined ? [] : [{ reading, text: { kind: "own", meanings: [head, ...tail] } }];
   });
   const readings = [...formed, ...own].map((entry, i) => ({ number: i + 1, ...entry }));
   const shown = new Set([...named, ...own.map(({ reading }) => reading.word)]);
   const unnamed = route.phrases.map((phrase) => phrase.word).filter((word) => !shown.has(word));
   // Readings show before the unnamed headwords, so the first expression shown
-  // is the first reading's first line, else the first unnamed headword.
+  // is the first reading's, else the first unnamed headword.
   const [first] = readings;
   return {
     headword: query,
     readings,
     unnamed,
-    sourceWord: first === undefined ? route.phrases[0].word : phraseOf(first.lines[0]),
+    sourceWord: first === undefined ? route.phrases[0].word : firstPhraseOf(first.text),
   };
 }
