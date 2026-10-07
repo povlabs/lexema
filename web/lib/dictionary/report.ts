@@ -82,8 +82,8 @@ export type ReportTarget =
  */
 export interface ReportReading {
   recordId: number;
-  /** The reading's number on the page. */
-  number: PageReading["number"];
+  /** The reading's number on the page; none for a page's lone bare reading, which shows none (#696). */
+  number: PageReading["number"] | undefined;
   posTitle: string;
 }
 

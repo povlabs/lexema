@@ -20,6 +20,7 @@ import { WordList } from "./WordList";
 import {
   entryTitle,
   expressionRows,
+  numberedEntries,
   readingAnchor,
   showsJumpLinks,
   shownRecords,
@@ -67,11 +68,12 @@ function Pronunciation({ facts }: { facts: WordFacts }) {
 }
 
 function JumpLinks({ page }: { page: WordPage }) {
-  if (!showsJumpLinks(page)) return null;
+  const entries = numberedEntries(page.readings);
+  if (entries === undefined || !showsJumpLinks(page)) return null;
   return (
     <nav aria-label="Readings">
       <ul className={JUMP_LINKS}>
-        {page.readings.map((entry) => (
+        {entries.map((entry) => (
           <li key={readingAnchor(entry)}>
             <a className={JUMP_LINK} href={`#${readingAnchor(entry)}`}>
               <span className={JUMP_NUMBER}>{entry.number}</span>

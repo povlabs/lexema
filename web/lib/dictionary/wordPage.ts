@@ -13,8 +13,8 @@
 // spells the word is a grid's form block, as a form record's block reads: a
 // line built by rule from each cell, `it-grid-form-line/v1`, then that word's
 // *Definitions* and grid (rule 4 of Huey's ruling of 2026-10-06 on #695, P3;
-// #700). Any other such record is a reading, as every page did before #695,
-// until #696 rules on that case. There, two kinds of form still never show,
+// #700). Any other such record is a reading, as every page did before #695
+// (#696 ruled only how such headings are numbered). There, two kinds of form still never show,
 // each found only through declared `form_of` edges and matched by identity:
 //
 // - A form of the query's own readings: a record that only lists the query and
@@ -324,14 +324,23 @@ export interface FormOfReading extends ShownReading<"form-of", FormOfPart> {
 }
 
 /**
- * A reading with nothing to show, on a page where no reading has anything to
- * show: its heading alone, as every reading drew before #694. Such a page keeps
- * today's rendering until it is ruled on; a page with any reading that shows
- * something has none of these.
+ * A reading with nothing to show, one of two or more on a page where no
+ * reading has anything to show: its numbered heading alone. A page with any
+ * reading that shows something has none of these (#694).
  */
 export interface BareReading {
   kind: "bare";
   number: number;
+  reading: Reading;
+}
+
+/**
+ * The only reading of a page, when it has nothing to show: its part of speech
+ * alone under the word, with no number, since there is nothing to count
+ * (Huey's ruling of 2026-10-06 on #696).
+ */
+export interface LoneBareReading {
+  kind: "lone-bare";
   reading: Reading;
 }
 
@@ -456,15 +465,26 @@ export interface GridFormBlock {
 /** One reading on a word's page: a source record's, or a verb's or a grid's form block. */
 export type PageEntry = PageReading | VerbFormBlock | GridFormBlock;
 
+/** A page entry that carries a number: every one but a lone bare reading. */
+export type NumberedEntry = PageEntry | BareReading;
+
 /** One reading a word's page lists: an entry, or, on a page where no reading has anything to show, a bare reading. */
-export type ShownEntry = PageEntry | BareReading;
+export type ShownEntry = NumberedEntry | LoneBareReading;
 
 /**
  * A word's readings: the entries that have something to show, or, when none
- * has, the bare readings. A page never mixes the two, so an empty reading
- * never sits beside one that shows something (#694).
+ * has, the bare readings: one alone, unnumbered, or two or more, numbered. A
+ * page never mixes shown and bare readings, so an empty reading never sits
+ * beside one that shows something (#694), and a lone bare reading never
+ * carries a number (#696).
  */
-export type WordReadings = NonEmpty<PageEntry> | NonEmpty<BareReading>;
+export type WordReadings = NonEmpty<PageEntry> | [LoneBareReading] | [BareReading, BareReading, ...BareReading[]];
+
+/** The page's readings with their numbers, or none on a page whose one reading is a lone bare reading. */
+export const numberedEntries = (readings: WordReadings): NonEmpty<NumberedEntry> | undefined =>
+  isLoneBare(readings) ? undefined : readings;
+
+const isLoneBare = (readings: WordReadings): readings is [LoneBareReading] => readings[0].kind === "lone-bare";
 
 /** What follows a block's number in its heading and its jump link: `Voce verbale · salire`. */
 export const blockTitle = (block: VerbFormBlock): string => `${block.posTitle} · ${block.verb}`;
@@ -503,7 +523,8 @@ export const readingHeadingId = (entry: ShownEntry): string => `reading-heading-
 
 /** A source record a page shows, under the number of the entry that shows it. */
 export interface ShownRecord {
-  number: number;
+  /** The entry's number; none for a lone bare reading, which the page shows unnumbered (#696). */
+  number: number | undefined;
   /** The record, named as its entry is headed: its part of speech, or the block's title. */
   reading: EntryIdentity & { posTitle: string };
 }
@@ -519,12 +540,16 @@ export interface ShownRecord {
 export function shownRecords(entries: readonly ShownEntry[]): ShownRecord[] {
   const seen = new Set<string>();
   const shown: ShownRecord[] = [];
-  const add = (number: number, reading: Reading, posTitle: string) => {
+  const add = (number: number | undefined, reading: Reading, posTitle: string) => {
     if (seen.has(entryKey(reading))) return;
     seen.add(entryKey(reading));
     shown.push({ number, reading: { ...reading, posTitle } });
   };
   for (const entry of entries) {
+    if (entry.kind === "lone-bare") {
+      add(undefined, entry.reading, entry.reading.posTitle);
+      continue;
+    }
     if (entry.kind === "verb-form") {
       for (const reading of [...entry.sources.map((source) => source.reading), ...entry.verbs]) add(entry.number, reading, blockTitle(entry));
       continue;
@@ -884,7 +909,7 @@ export function wordPage(query: string, readings: readonly [Reading, ...Reading[
   // whose records about the word has anything to show draws the records that
   // list it: as a grid's form block where a noun's or adjective's grid spells
   // the query (rule 4, `gravida`, `citta`; #700), and otherwise as readings,
-  // as before, until #696 rules on it.
+  // as before #695.
   const aboutOnly = pageDrafts(page, "about");
   const drafts = aboutOnly.some((draft) => draft.kind !== "bare") ? aboutOnly : pageDrafts(page, "every");
   // A form page shows no `vedi <verb>` for a verb it shows as a block (#668).
@@ -896,10 +921,11 @@ export function wordPage(query: string, readings: readonly [Reading, ...Reading[
   // A reading with nothing to show is left out, and the rest number 1, 2, 3 in
   // page order, so the numbers never skip (Huey, 2026-10-06, #694, keeping
   // #687's numbering for every reading that shows something). A page where no
-  // reading shows anything keeps them all as bare headings, as before.
+  // reading shows anything keeps them all as bare headings: one alone with no
+  // number, two or more numbered (Huey, 2026-10-06, #696).
   const entries = drafts.flatMap((draft): Unnumbered<PageEntry>[] => (draft.kind === "bare" ? [] : [draft]));
   const bare = drafts.flatMap((draft) => (draft.kind === "bare" ? [draft] : []));
-  const shown = numbered(entries) ?? numbered(bare);
+  const shown = numbered(entries) ?? bareReadings(bare);
   if (shown === undefined) throw new Error("a found result renders at least one reading");
 
   const headword = about[0]?.word ?? query;
@@ -1154,6 +1180,18 @@ type Unnumbered<T> = T extends unknown ? Omit<T, "number"> : never;
 /** The entries numbered 1, 2, 3 in the order given; none when there are none. */
 const numbered = <T>(drafts: readonly T[]): NonEmpty<T & { number: number }> | undefined =>
   nonEmpty(drafts.map((draft, i) => ({ ...draft, number: i + 1 })));
+
+/**
+ * A page's bare readings: the only one is its part of speech alone, with no
+ * number; two or more number 1, 2, 3 in page order ("without the 1 · when it
+ * is the only reading", Huey, 2026-10-06, #696). None when there are none.
+ */
+function bareReadings(drafts: readonly Unnumbered<BareReading>[]): [LoneBareReading] | [BareReading, BareReading, ...BareReading[]] | undefined {
+  const [first, second, ...rest] = drafts;
+  if (first === undefined) return undefined;
+  if (second === undefined) return [{ kind: "lone-bare", reading: first.reading }];
+  return [{ ...first, number: 1 }, { ...second, number: 2 }, ...rest.map((draft, i) => ({ ...draft, number: i + 3 }))];
+}
 
 /** The etymologies and synonym groups `placeWordFacts` moved into readings. */
 type PlacedFacts = Pick<ReturnType<typeof placeWordFacts>, "etymologies" | "synonyms">;

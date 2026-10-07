@@ -243,7 +243,10 @@ it, as no definition too (#395); one that only contains the headword (`sci`'s
 reads `1 · Aggettivo` then `2 · Verbo` (#687, reversing #250). A reading with
 nothing to show at all, `litigante`'s noun, is left out before numbering, so
 `litigante` reads `1 · Aggettivo` then `2 · Voce verbale`; a page where no
-reading has anything to show keeps their headings (#694).
+reading has anything to show keeps their headings (#694). When it has only one,
+that heading is the part of speech alone, with no number (`LoneBareReading`):
+`fare l'abitudine` reads `Locuzione verbale`, and the report dialog names it
+the same way (#696).
 
 **Definitions the extraction dropped or misfiled.** Where the raw Wiktionary page states a
 definition the record does not carry as a definition (#28) — absent, or filed
@@ -349,8 +352,8 @@ singolare di gravido", in the names the grid heads its rows and columns with,
 then gravido's *Definitions* and *Forms of gravido* (`GridFormBlock`). Like a
 verb form line, the line is Lexema's text, built when the page is built, never
 stored, and unmarked on the page (ADR 0008, 0012, 0016). The other records
-keep their readings until #696 rules on the page, as every page did before
-#695, less two kinds of form. A record
+keep their readings, as every page did before #695, less two kinds of form;
+#696 ruled only that a lone one carries no number. A record
 that lists the query and declares itself a form of a reading about the query
 has no reading of its own, and nor has a record that declares itself a form of
 one of those:
