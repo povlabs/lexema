@@ -8,11 +8,15 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { type PullRequest, PreviewAnnouncement } from "@/builds/previewMarkerCommand.ts";
+import { readFile } from "node:fs/promises";
 import {
   type CheckRun,
+  NOT_FOUND_SMOKE_WORDS,
   type Page,
   probesOf,
   restSmokeGitHub,
+  SEARCH_SPACING_MS,
+  SEARCHES_PER_MINUTE,
   SMOKE_CHECK,
   SMOKE_ICONS,
   SMOKE_WORDS,
@@ -78,12 +82,19 @@ const ICON_URLS = Object.entries(SITES).flatMap(([app, site]) => [
 /** How many requests the smoke makes: each word, the landing page, the API, and two icons on each site. */
 const REQUESTS = SMOKE_WORDS.length + 2 + ICON_URLS.length;
 
-const wordUrl = (word: string) => `${WEB}?q=${word}`;
+const wordUrl = (word: string) => {
+  const url = new URL(WEB);
+  url.searchParams.set("q", word);
+  return url.href;
+};
 const LOOKUP = `${API}v1/lookup?q=andare`;
+
+/** The smoke words a working Lexema finds. */
+const FOUND_WORDS = SMOKE_WORDS.filter((word) => !NOT_FOUND_SMOKE_WORDS.includes(word));
 
 /** What every site answers on a working Preview. */
 const UP: Record<string, Page> = {
-  ...Object.fromEntries(SMOKE_WORDS.map((word) => [wordUrl(word), found(word)])),
+  ...Object.fromEntries(SMOKE_WORDS.map((word) => [wordUrl(word), NOT_FOUND_SMOKE_WORDS.includes(word) ? notFound(word) : found(word)])),
   [DEVELOPERS]: LANDING,
   [LOOKUP]: REFUSED,
   ...Object.fromEntries(
@@ -120,9 +131,14 @@ const pr269 = (extra: Partial<PullRequest> = {}): PullRequest => ({
   ...extra,
 });
 
-/** Run the smoke over `pages`; a URL missing from them gets no answer. */
+/**
+ * Run the smoke over `pages`; a URL missing from them gets no answer. `asked`
+ * holds each request, and `spaced` how many had been sent at each wait between
+ * two searches.
+ */
 async function smoke(github: FakeGitHub, pages: Record<string, Page | Error> = UP, attempts = 1) {
   const asked: { url: string; headers: Readonly<Record<string, string>> }[] = [];
+  const spaced: number[] = [];
   const outcome = await smokePreview({
     sha: SHA,
     pullRequests: [269],
@@ -136,15 +152,18 @@ async function smoke(github: FakeGitHub, pages: Record<string, Page | Error> = U
     },
     attempts,
     wait: async () => {},
+    spaceSearches: async () => {
+      spaced.push(asked.length);
+    },
     detailsUrl: "https://github.com/povlabs/lexema/actions/runs/1",
     log: () => {},
   });
-  return { outcome, asked };
+  return { outcome, asked, spaced };
 }
 
 // --- What it asks -----------------------------------------------------------------
 
-test("it asks the announced sites: the six words on the dictionary, the developer landing page, the API, and each site's icons", () => {
+test("it asks the announced sites: the smoke words on the dictionary, the developer landing page, the API, and each site's icons", () => {
   const probes = probesOf(PreviewAnnouncement.of(BRANCH, SHA));
   assert.deepEqual(
     probes.map(({ app, url }) => [app, url]),
@@ -154,7 +173,21 @@ test("it asks the announced sites: the six words on the dictionary, the develope
     SMOKE_ICONS.map(({ path }) => path),
     ["/favicon.ico", "/apple-touch-icon.png"],
   );
-  assert.deepEqual(SMOKE_WORDS, ["sale", "andare", "andavano", "casa", "bello", "studente"]);
+  // The 59 words of the word-page audit on #695, in its order, less the five
+  // P2 words #696 owns (#700).
+  assert.deepEqual(SMOKE_WORDS, [
+    "bello", "sale", "andare", "casa", "grande", "essere", "bella", "belli", "belle", "case", "studenti", "grandi",
+    "bellissima", "vira", "andavano", "andassi", "vada", "parti", "sono andato", "sono andata", "siamo andate",
+    "siamo andati", "ho mangiato", "sarei andato", "mi sono accorto", "mi sono accorta", "mi sono arresa",
+    "ci siamo accorte", "accorgersi", "arrendersi", "correre", "assorbire", "vivere", "sono corso", "salivate", "andati",
+    "andata", "andate", "andato", "stato", "salivare", "litigante", "gravida", "presina", "sditalinare", "costruttrici",
+    "attrici", "lavoratrici", "citta", "mangare", "xqzzy", "anima gemella", "vado via", "Roma",
+  ]);
+  assert.equal(SMOKE_WORDS.length, 54);
+  for (const word of ["sbucciapatate", "ottemperanza", "decrepito", "buio pesto", "fare l'abitudine"]) {
+    assert.ok(!(SMOKE_WORDS as readonly string[]).includes(word), `${word} is #696's`);
+  }
+  assert.deepEqual(NOT_FOUND_SMOKE_WORDS, ["mangare", "xqzzy"]);
   // The API is sent a key no Preview holds: never a real one.
   const api = probes.find(({ url }) => url === LOOKUP);
   assert.deepEqual(api?.headers, { "x-api-key": UNKNOWN_KEY });
@@ -179,8 +212,8 @@ test("a working Preview reports one successful check at the head, with a row per
   assert.equal(check.detailsUrl, "https://github.com/povlabs/lexema/actions/runs/1");
 });
 
-test("any of the six words that does not resolve fails the check, naming the word", async () => {
-  for (const word of SMOKE_WORDS) {
+test("any found smoke word that does not resolve fails the check, naming the word", async () => {
+  for (const word of FOUND_WORDS) {
     const github = new FakeGitHub(pr269());
     await smoke(github, { ...UP, [wordUrl(word)]: notFound(word) });
     const [check] = github.checks;
@@ -199,10 +232,18 @@ test("a verb form block is a reading: a page of one block and no record's readin
   };
   await smoke(github, { ...UP, [wordUrl("andavano")]: block });
   assert.equal(github.checks[0].conclusion, "success");
+  // A form only its base word's grid spells is a reading too (#700): `gravida`.
+  const grid = new FakeGitHub(pr269());
+  const gravida: Page = {
+    ...found("gravida"),
+    body: `${head("gravida")}<body><article class="scroll-mt-6 mt-7" id="reading-forma-flessa-449472" aria-labelledby="reading-heading-forma-flessa-449472" data-grid-form="gravido">`,
+  };
+  await smoke(grid, { ...UP, [wordUrl("gravida")]: gravida });
+  assert.equal(grid.checks[0].conclusion, "success");
 });
 
 test("a reading sent hidden for a script to show fails the check, naming the word (#115)", async () => {
-  for (const word of SMOKE_WORDS) {
+  for (const word of FOUND_WORDS) {
     const github = new FakeGitHub(pr269());
     await smoke(github, { ...UP, [wordUrl(word)]: hiddenFound(word) });
     const [check] = github.checks;
@@ -315,6 +356,124 @@ test("a request with no answer, or a 5xx, is asked again; a wrong answer is not"
   const again = await smoke(wrongWord, { ...UP, [wordUrl("casa")]: notFound("casa") }, 3);
   assert.equal(again.asked.filter((request) => request.url === wordUrl("casa")).length, 1);
   assert.equal(wrongWord.checks[0].conclusion, "failure");
+});
+
+// --- The word-page law on real data (#700) ---------------------------------------------
+//
+// The markup is cut from what https://lexema.fyi sent on 2026-10-07 for
+// `andavano` (a block, its non-finite line) and `presina` (a grid row with a
+// dash), shortened to the attributes the checks read.
+
+const HEADING = (id: string, number: string) =>
+  `<h2 class="m-0 flex font-sans" id="reading-heading-${id}">${number}<span class="font-normal text-text-muted" aria-hidden="true">·</span><span lang="it">Voce verbale</span></h2>`;
+const NUMBER = (n: number) => `<span class="font-normal text-accent tabular-nums">${n}</span>`;
+const DASH = `<span class="font-mono text-text-muted" aria-hidden="true">—</span>`;
+const FORM = `<span><a class="cursor-pointer font-mono" href="/?q=andando" lang="it" data-form="1">andando</a></span>`;
+const NON_FINITE = (slots: readonly string[]) =>
+  `<dl class="m-0 flex">${slots.map((slot, i) => `<div class="flex"><dt class="m-0" lang="it">${["gerundio", "participio", "ausiliare"][i]}</dt><dd class="m-0 font-mono">${slot}</dd></div>`).join("")}</dl>`;
+const GRID_ROW = (cells: readonly string[]) =>
+  `<div role="row" class="contents"><span class="pt-1" role="rowheader" lang="it">femminile</span>${cells.map((cell) => `<div class="min-w-0" role="cell">${cell}</div>`).join("")}</div>`;
+const GRID = (rows: readonly string[]) =>
+  `<div class="grid" role="table" aria-label="Forms of presina" data-grid=""><div role="row" class="contents"><span role="columnheader"></span><span role="columnheader" lang="it">singolare</span><span role="columnheader" lang="it">plurale</span></div>${rows.join("")}</div>`;
+const SPELLING = `<div class="[&amp;+&amp;]:mt-2"><p class="m-0 font-mono" lang="it"><span data-headword="">presina</span></p></div>`;
+const LEMMA_FORMS = (word: string) =>
+  `<section class="mt-[1.125rem]" aria-labelledby="lemma-forms-x-${word}"><h3 class="m-0" id="lemma-forms-x-${word}">Forms of<span class="ml-1" lang="it">${word}</span></h3></section>`;
+const BLOCK = (verb: string, n: number, inside: string) =>
+  `<article class="scroll-mt-6" id="reading-voce-verbale-${verb}" aria-labelledby="reading-heading-voce-verbale-${verb}" data-verb-form="${verb}">${HEADING(`voce-verbale-${verb}`, NUMBER(n))}${inside}</article>`;
+
+/** `andavano`'s page with `readings` in place of its own. */
+const andavanoWith = (readings: string): Page => ({ ...found("andavano"), body: `${head("andavano")}<body>${readings}</body>` });
+
+/** The one problem the smoke reports for `andavano`'s page drawn as `page`. */
+async function andavanoProblem(page: Page): Promise<string> {
+  const github = new FakeGitHub(pr269());
+  await smoke(github, { ...UP, [wordUrl("andavano")]: page });
+  const [check] = github.checks;
+  assert.equal(check.conclusion, "failure");
+  assert.equal(check.title, `1 of ${REQUESTS} preview requests failed`);
+  const row = check.summary.split("\n").find((line) => line.includes("**fail**"));
+  return row?.slice(row.indexOf("**fail**: ") + "**fail**: ".length, row.lastIndexOf(" |")) ?? "";
+}
+
+test("a page that keeps the word-page law passes: a numbered block, a non-finite line and a grid row with a form", async () => {
+  const github = new FakeGitHub(pr269());
+  const page = andavanoWith(BLOCK("andare", 1, `${LEMMA_FORMS("andare")}${NON_FINITE([FORM, DASH, DASH])}<div aria-label="Moods of andare"></div>${GRID([GRID_ROW([SPELLING, DASH])])}`));
+  await smoke(github, { ...UP, [wordUrl("andavano")]: page });
+  assert.equal(github.checks[0].conclusion, "success", github.checks[0].summary);
+});
+
+test("an empty reading fails the check, naming the word (#700)", async () => {
+  const empty = andavanoWith(
+    `<article class="scroll-mt-6" id="reading-1011" aria-labelledby="reading-heading-1011" data-record="1011" data-line="2344">${HEADING("1011", NUMBER(1))}</article>`,
+  );
+  assert.equal(await andavanoProblem(empty), '"andavano" draws an empty reading (1011)');
+});
+
+test("a Forms row of dashes only fails the check, naming the word: a non-finite line or a grid row (#700)", async () => {
+  assert.equal(await andavanoProblem(andavanoWith(BLOCK("andare", 1, NON_FINITE([DASH, DASH, DASH])))), '"andavano" draws a Forms row of dashes only');
+  assert.equal(
+    await andavanoProblem(andavanoWith(BLOCK("andare", 1, GRID([GRID_ROW([SPELLING, DASH]), GRID_ROW([DASH, DASH])])))),
+    '"andavano" draws a Forms row of dashes only',
+  );
+});
+
+test("a reading or block heading with no number fails the check, naming the word (#700)", async () => {
+  const unnumbered = andavanoWith(
+    `<article class="scroll-mt-6" id="reading-voce-verbale-andare" aria-labelledby="reading-heading-voce-verbale-andare" data-verb-form="andare">${HEADING("voce-verbale-andare", "")}${LEMMA_FORMS("andare")}</article>`,
+  );
+  assert.equal(await andavanoProblem(unnumbered), '"andavano" draws a reading heading with no number (voce-verbale-andare)');
+});
+
+test("the same base word's table or block drawn twice fails the check, naming the word and the base word (#700)", async () => {
+  assert.equal(
+    await andavanoProblem(andavanoWith(`${BLOCK("andare", 1, LEMMA_FORMS("andare"))}${BLOCK("salire", 2, LEMMA_FORMS("andare"))}`)),
+    `"andavano" draws andare's Forms of 2 times`,
+  );
+  assert.equal(
+    await andavanoProblem(andavanoWith(BLOCK("andare", 1, '<div aria-label="Moods of andare"></div><div aria-label="Moods of andare"></div>'))),
+    `"andavano" draws andare's conjugation 2 times`,
+  );
+  assert.equal(
+    await andavanoProblem(andavanoWith(`${BLOCK("andare", 1, "<p>x</p>")}${BLOCK("andare", 2, "<p>y</p>")}`)),
+    `"andavano" draws andare's Voce verbale block 2 times`,
+  );
+  // Two base words, each drawn once, pass.
+  const github = new FakeGitHub(pr269());
+  await smoke(github, { ...UP, [wordUrl("andavano")]: andavanoWith(`${BLOCK("salire", 1, LEMMA_FORMS("salire"))}${BLOCK("salivare", 2, LEMMA_FORMS("salivare"))}`) });
+  assert.equal(github.checks[0].conclusion, "success");
+});
+
+test("a word the dictionary has no entry for must say so and show no reading (#700)", async () => {
+  for (const word of NOT_FOUND_SMOKE_WORDS) {
+    for (const [page, problem] of [
+      [found(word), `the page for "${word}" does not say there is no entry; the page for "${word}" shows a reading`],
+      [{ ...notFound(word), body: `${notFound(word).body}<article class="x" id="reading-1" data-record="1">` }, `the page for "${word}" shows a reading`],
+    ] as const) {
+      const github = new FakeGitHub(pr269());
+      await smoke(github, { ...UP, [wordUrl(word)]: page });
+      const [check] = github.checks;
+      assert.equal(check.conclusion, "failure", word);
+      assert.ok(check.summary.includes(`**fail**: ${problem} |`), check.summary);
+    }
+  }
+});
+
+test("the word requests are spaced to stay under the Preview's search limit, and a 429 is asked again (#700)", async () => {
+  const { asked, spaced } = await smoke(new FakeGitHub(pr269()));
+  // One wait before every word but the first; none before the other requests.
+  assert.deepEqual(spaced, SMOKE_WORDS.slice(1).map((_, i) => i + 1));
+  assert.equal(asked.length, REQUESTS);
+  // The spacing keeps under the limit wrangler.jsonc gives a Preview.
+  const wrangler = await readFile(new URL("../wrangler.jsonc", import.meta.url), "utf8");
+  const previews = wrangler.slice(wrangler.indexOf('"previews"'));
+  const limit = /"SEARCH_LIMIT"[^}]*"limit": (\d+)/.exec(previews)?.[1];
+  assert.equal(Number(limit), SEARCHES_PER_MINUTE);
+  assert.ok(SEARCH_SPACING_MS * SEARCHES_PER_MINUTE > 60_000);
+
+  const limited = new FakeGitHub(pr269());
+  const tooMany = await smoke(limited, { ...UP, [wordUrl("sale")]: { ...found("sale"), status: 429 } }, 3);
+  assert.equal(tooMany.asked.filter((request) => request.url === wordUrl("sale")).length, 3);
+  assert.match(limited.checks[0].summary, /answered 429, not 200/);
 });
 
 // --- Which head it reports on --------------------------------------------------------

@@ -253,8 +253,8 @@ test("the fifty-word dev seed is one part with the same rows", async () => {
     const report = await devSeed(join(dir, "sql"));
     assert.deepEqual(report.parts, [join(dir, "sql", "part-001.sql")]);
     assert.deepEqual(report.rows, {
-      source_record: 176, source_record_json: 176, lookup_form: 2933, accent_fold: 113, typo_key: 738, form_of_edge: 74,
-      sense: 444, sense_gloss: 443, sense_label: 202, grammar_claim: 11905,
+      source_record: 191, source_record_json: 191, lookup_form: 2976, accent_fold: 113, typo_key: 767, form_of_edge: 88,
+      sense: 468, sense_gloss: 466, sense_label: 223, grammar_claim: 12002,
       raw_page: 18, recovered_definition: 7, recovered_label: 6, recovered_example: 7, hidden_record: 0,
       // The curated corrections are keyed to it-0c432803's lines, not the fixture's.
       corrected_claim: 0,

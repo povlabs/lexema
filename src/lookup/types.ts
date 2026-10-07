@@ -464,8 +464,8 @@ export type LemmaDefinitions = Pick<ReadingFacts, "senses" | "recovered">;
  */
 export type LemmaTarget = LemmaCandidate & {
   /**
-   * The lemma record's own expressions, so a form's page can show them under
-   * *Expressions with* the lemma without the lemma being a reading (#213).
+   * The lemma record's own expressions (#213). No word page shows them since
+   * #700: a form's page shows none of its base word's (rule 3 of #695).
    */
   expressions: Expression[];
   /**

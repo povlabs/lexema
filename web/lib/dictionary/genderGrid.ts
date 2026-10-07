@@ -47,7 +47,7 @@
 // `l'hotel`); a form's spelling does not, since the IPA is the headword's. Where the rule refuses (a phrase, a spelling it does not handle) the
 // cell has no article line.
 
-import { asserts, isAdjectiveReading, isNounReading, namesOneRecordOf } from "@lexema/lookup/types.ts";
+import { asserts, isAdjectiveReading, isNounReading, namesOneRecordOf, sourcePointerOf } from "@lexema/lookup/types.ts";
 import type {
   DeclaredPluralForm,
   InflectionOf,
@@ -330,3 +330,37 @@ export function headingGender(reading: Reading): string | undefined {
   const genders = gendersOf(reading.grammar.record).map((gender) => GENDER_LABEL[gender]);
   return genders.length === 0 ? undefined : both(genders);
 }
+
+/** One cell of the plain grid: a gender's row and a number's column. */
+export interface GridPlace {
+  gender: Gender;
+  number: GrammaticalNumber;
+}
+
+/**
+ * The cells of `grid` that spell one of `pointers`, the `forms[]` entries a
+ * search hit, in row then column order. Only the plain grid: a superlative is
+ * a comparison, not an agreement cell.
+ */
+export function placesOf(grid: Grid | undefined, pointers: ReadonlySet<string>): GridPlace[] {
+  return (grid?.rows ?? []).flatMap((row) =>
+    row.cells.flatMap((cell, i): GridPlace[] =>
+      cell.spellings.some((spelling) => spelling.forms.some((form) => pointers.has(sourcePointerOf(form.ref) ?? "")))
+        ? [{ gender: row.gender, number: NUMBERS[i] }]
+        : [],
+    ),
+  );
+}
+
+/** The genders of some cells, in Italian and in grid order: `femminile`, `maschile e femminile`. */
+export const placesGender = (places: readonly GridPlace[]): string =>
+  both(GENDERS.filter((gender) => places.some((place) => place.gender === gender)).map((gender) => GENDER_LABEL[gender]));
+
+/** The gender and number of some cells, as a reading's heading writes its record's: `femminile, singolare`. */
+export const placesGrammar = (places: readonly GridPlace[]): string =>
+  [
+    placesGender(places),
+    both(NUMBERS.filter((number) => places.some((place) => place.number === number)).map((number) => NUMBER_LABEL[number])),
+  ]
+    .filter((part) => part !== "")
+    .join(", ");

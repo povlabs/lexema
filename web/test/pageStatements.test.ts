@@ -153,13 +153,19 @@ for (const [word, ceiling] of Object.entries(BEFORE)) {
  * bellissimo records the release has: they list bella and bello, so the
  * lookups of both read their rows and resolve their links (41 statements in 6
  * calls before; the old search sends the same 52 in 8 over the new fixture).
+ * #700's fixture adds the records of belli, belle, andata and andate, which
+ * list bella or andati in their tables. `bella` reads two more rows (54) in
+ * the same 8 calls. `andati` sends 61 in 8 calls, not 50 in 6: the lookup
+ * also finds andata's and andate's adjective records, which list andati, and
+ * reads theirs. #700 changes no read: over this fixture less andata's and
+ * andate's lines, the same search sends 50 in 6 (measured on #700).
  */
 const VERB_FORMS_BEFORE: Record<string, { statements: number; calls: number }> = {
   andavano: { statements: 19, calls: 5 },
   "sono andato": { statements: 20, calls: 5 },
-  andati: { statements: 43, calls: 6 },
+  andati: { statements: 54, calls: 8 },
   vira: { statements: 18, calls: 4 },
-  bella: { statements: 52, calls: 8 },
+  bella: { statements: 54, calls: 8 },
   salivate: { statements: 25, calls: 6 },
 };
 

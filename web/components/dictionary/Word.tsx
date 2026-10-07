@@ -12,15 +12,14 @@ import { ExternalIcon } from "@/components/shared/icons";
 import { Expressions } from "./Expressions";
 import { NEW_TAB } from "@/components/shared/ExternalLink";
 import { OneLine } from "./OneLine";
-import { ReadingView, VerbFormBlockView } from "./Reading";
+import { GridFormBlockView, ReadingView, VerbFormBlockView } from "./Reading";
 import { ReportDialog } from "./ReportDialog";
 import { reportReadings, type ReportReading } from "@/lib/dictionary/report.ts";
 import { sourcePageUrl } from "@/lib/dictionary/sourcePage.ts";
 import { WordList } from "./WordList";
 import {
-  blockTitle,
+  entryTitle,
   expressionRows,
-  expressionsLabel,
   readingAnchor,
   showsJumpLinks,
   shownRecords,
@@ -76,7 +75,7 @@ function JumpLinks({ page }: { page: WordPage }) {
           <li key={readingAnchor(entry)}>
             <a className={JUMP_LINK} href={`#${readingAnchor(entry)}`}>
               <span className={JUMP_NUMBER}>{entry.number}</span>
-              <span lang="it">{entry.kind === "verb-form" ? blockTitle(entry) : entry.reading.posTitle}</span>
+              <span lang="it">{entryTitle(entry)}</span>
             </a>
           </li>
         ))}
@@ -93,10 +92,10 @@ function WordFactsView({
 }: {
   facts: WordFacts;
   lists: WordLists;
-  expressions: readonly ExpressionSection[];
+  expressions: ExpressionSection | undefined;
 }) {
   const any =
-    facts.etymologies.length + lists.synonyms.length + lists.antonyms.length + lists.derived.length + expressions.length > 0;
+    facts.etymologies.length + lists.synonyms.length + lists.antonyms.length + lists.derived.length > 0 || expressions !== undefined;
   if (!any) return null;
   return (
     <div className={WORD_FACTS}>
@@ -113,14 +112,7 @@ function WordFactsView({
       <WordList id="synonyms" label="Synonyms" items={lists.synonyms} />
       <WordList id="antonyms" label="Antonyms" items={lists.antonyms} />
       <WordList id="derived" label="Derived words" items={lists.derived} />
-      {expressions.map((section, i) => (
-        <Expressions
-          key={section.kind === "own" ? "own" : `lemma:${section.lemma}`}
-          id={`expressions-${i}`}
-          label={expressionsLabel(section)}
-          expressions={expressionRows(section)}
-        />
-      ))}
+      {expressions !== undefined && <Expressions id="expressions-0" expressions={expressionRows(expressions)} />}
     </div>
   );
 }
@@ -170,12 +162,14 @@ export function WordView({ page, siteKey }: { page: WordPage; siteKey?: string }
         {page.readings.map((entry) =>
           entry.kind === "verb-form" ? (
             <VerbFormBlockView key={readingAnchor(entry)} block={entry} />
+          ) : entry.kind === "grid-form" ? (
+            <GridFormBlockView key={readingAnchor(entry)} block={entry} />
           ) : (
             <ReadingView key={readingAnchor(entry)} entry={entry} />
           ),
         )}
       </div>
-      <WordFactsView facts={page.wordFacts} lists={page.wordLists} expressions={page.expressionSections} />
+      <WordFactsView facts={page.wordFacts} lists={page.wordLists} expressions={page.expressions} />
       <SourceLine page={{ ...page, readings: shownRecords(page.readings) }} siteKey={siteKey} />
     </>
   );

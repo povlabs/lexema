@@ -4,7 +4,7 @@
 
 import { setTimeout as sleep } from "node:timers/promises";
 import { readAnnouncedOutput } from "./previewMarkerCommand.ts";
-import { restSmokeGitHub, smokePreview } from "./previewSmokeCommand.ts";
+import { restSmokeGitHub, SEARCH_SPACING_MS, smokePreview } from "./previewSmokeCommand.ts";
 
 const log = (line: string) => process.stderr.write(`${line}\n`);
 
@@ -33,6 +33,7 @@ try {
     },
     attempts: ATTEMPTS,
     wait: () => sleep(WAIT_MS),
+    spaceSearches: () => sleep(SEARCH_SPACING_MS),
     detailsUrl: runId === undefined ? undefined : `${process.env.GITHUB_SERVER_URL ?? "https://github.com"}/${repository}/actions/runs/${runId}`,
     log,
   });

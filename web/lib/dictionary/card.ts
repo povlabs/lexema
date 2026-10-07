@@ -16,9 +16,9 @@
 
 import type { Attempt } from "./attempt.ts";
 import { definitionsOf, hasDefinitions, type DefinitionItem } from "./definitions.ts";
-import { headingGender } from "./genderGrid.ts";
+import { headingGender, placesGender } from "./genderGrid.ts";
 import { SITE_NAME, SITE_TAGLINE } from "./params.ts";
-import { phrasePage, type PhraseLine } from "./phrasePage.ts";
+import { phrasePage, type PhraseReadingText } from "./phrasePage.ts";
 import { wordPage } from "./wordPage.ts";
 
 /** A word card's parts. Every part but the headword is absent when the page has none. */
@@ -44,9 +44,12 @@ function definitionText(item: DefinitionItem): string {
   return item.from === "page" ? item.definition.text : item.sense.glosses.map((gloss) => gloss.text).join(" ");
 }
 
-function phraseLineText(line: PhraseLine): string {
-  if (line.kind === "meaning") return definitionText(line.item);
-  const { before, phrase, after } = line.definition;
+/** A phrase reading's first meaning, else its first form line, as the page writes them. */
+function phraseText(text: PhraseReadingText): string {
+  if (text.kind === "own") return definitionText(text.meanings[0].item);
+  const [meaning] = text.meanings;
+  if (meaning !== undefined) return definitionText(meaning.item);
+  const { before, phrase, after } = text.forms[0];
   return `${before}${phrase}${after}`;
 }
 
@@ -78,14 +81,25 @@ export function cardOf(attempt: Attempt): Card {
       pronunciation: undefined,
       gender: undefined,
       partOfSpeech: first?.reading.posTitle,
-      meaning: first === undefined ? undefined : phraseLineText(first.lines[0]),
+      meaning: first === undefined ? undefined : phraseText(first.text),
     };
   }
   const page = wordPage(searched, attempt.readings, attempt.lemmas, attempt.route);
   // The reading the page's first meaning sits under: the first block, or the
   // first reading that has a definition. A page with neither falls back to its
   // first reading.
-  const entry = page.readings.find((one) => one.kind === "verb-form" || hasDefinitions(one.reading)) ?? page.readings[0];
+  const entry = page.readings.find((one) => one.kind === "verb-form" || one.kind === "grid-form" || hasDefinitions(one.reading)) ?? page.readings[0];
+  if (entry.kind === "grid-form") {
+    // A form only its base word's grid spells (#700): its first line, built by rule.
+    return {
+      kind: "word",
+      headword: page.headword,
+      pronunciation: page.wordFacts.pronunciations[0]?.ipa,
+      gender: placesGender(entry.places),
+      partOfSpeech: entry.posTitle,
+      meaning: entry.lines[0].text,
+    };
+  }
   if (entry.kind === "verb-form") {
     // A verb form block (#636): its first line, the source's or built by rule (#627).
     const [line] = entry.lines;

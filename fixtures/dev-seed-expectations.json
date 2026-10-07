@@ -1,6 +1,6 @@
 {
   "source": "it-extract.jsonl.gz",
-  "selection": "Huey's fifty required words, the multi-word search words of #214 (andare via, tirare fuori, volgere and voltare le spalle, fare l'amore, fare l'abitudine, fare fuori, aereo and aerei a reazione, and the words that spell them), the word-page words of #695 (costruttrici, bellissima, lavoratrici, stato, parti, grandi, and every record that lists one of them or grande in its table), plus the archive's form_of closure",
+  "selection": "Huey's fifty required words, the multi-word search words of #214 (andare via, tirare fuori, volgere and voltare le spalle, fare l'amore, fare l'abitudine, fare fuori, aereo and aerei a reazione, and the words that spell them), the word-page words of #695 (costruttrici, bellissima, lavoratrici, stato, parti, grandi, and every record that lists one of them or grande in its table), the word-page words of #700 (belli, belle, attrici, andassi, andata, gravida, and every record that lists one of them in its table), plus the archive's form_of closure",
   "recordsByWord": {
     "acqua": {
       "recordCount": 1,
@@ -1429,6 +1429,136 @@
           "pos": "adj",
           "keyCount": 11,
           "forms": 9
+        }
+      ]
+    },
+    "attrice": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 15,
+          "forms": 3
+        }
+      ]
+    },
+    "attore": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 17,
+          "forms": 3
+        }
+      ]
+    },
+    "gravida": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 8,
+          "forms": 0
+        }
+      ]
+    },
+    "andata": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 16,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 16,
+          "forms": 1
+        },
+        {
+          "pos": "verb",
+          "keyCount": 14,
+          "forms": 0
+        }
+      ]
+    },
+    "attori": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 14,
+          "forms": 3
+        }
+      ]
+    },
+    "belli": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 14,
+          "forms": 3
+        }
+      ]
+    },
+    "attrici": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 11,
+          "forms": 3
+        }
+      ]
+    },
+    "andate": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 13,
+          "forms": 0
+        },
+        {
+          "pos": "adj",
+          "keyCount": 14,
+          "forms": 3
+        },
+        {
+          "pos": "verb",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "belle": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 15,
+          "forms": 3
+        }
+      ]
+    },
+    "gravido": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 16,
+          "forms": 3
+        }
+      ]
+    },
+    "andassi": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 11,
+          "forms": 0
         }
       ]
     }

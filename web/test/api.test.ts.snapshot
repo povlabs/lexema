@@ -4,7 +4,7 @@ exports[`bello's whole /lookup answer is the one the snapshot holds (#385) 1`] =
   "release_id": "it-api-test",
   "results": [
     {
-      "id": "it-api-test:70",
+      "id": "it-api-test:76",
       "word": "bello",
       "pos": "adj",
       "pos_title": "Aggettivo",
@@ -270,7 +270,7 @@ exports[`bello's whole /lookup answer is the one the snapshot holds (#385) 1`] =
       }
     },
     {
-      "id": "it-api-test:71",
+      "id": "it-api-test:77",
       "word": "bello",
       "pos": "noun",
       "pos_title": "Sostantivo",
@@ -490,7 +490,7 @@ exports[`bello's whole /lookup answer is the one the snapshot holds (#385) 1`] =
       }
     },
     {
-      "id": "it-api-test:72",
+      "id": "it-api-test:78",
       "word": "bello",
       "pos": "noun",
       "pos_title": "Sostantivo",
@@ -704,7 +704,7 @@ exports[`bello's whole /lookup answer is the one the snapshot holds (#385) 1`] =
       }
     },
     {
-      "id": "it-api-test:92",
+      "id": "it-api-test:99",
       "word": "bellissimo",
       "pos": "adj",
       "pos_title": "Aggettivo, forma flessa",
@@ -788,7 +788,7 @@ exports[`bello's whole /lookup answer is the one the snapshot holds (#385) 1`] =
       }
     },
     {
-      "id": "it-api-test:113",
+      "id": "it-api-test:120",
       "word": "bella",
       "pos": "adj",
       "pos_title": "Aggettivo, forma flessa",
@@ -993,7 +993,150 @@ exports[`bello's whole /lookup answer is the one the snapshot holds (#385) 1`] =
       }
     },
     {
-      "id": "it-api-test:115",
+      "id": "it-api-test:122",
+      "word": "belli",
+      "pos": "adj",
+      "pos_title": "Aggettivo, forma flessa",
+      "match": {
+        "surface": "bello",
+        "via": "form",
+        "grammar": [
+          {
+            "gender": "maschile",
+            "number": "singolare"
+          }
+        ]
+      },
+      "pronunciations": [
+        {
+          "ipa": "/ˈbɛlli/",
+          "note": null
+        }
+      ],
+      "definitions": [
+        {
+          "definition": "plurale di bello",
+          "labels": [],
+          "examples": [],
+          "items": []
+        }
+      ],
+      "examples": [],
+      "forms": {
+        "type": "gender_number",
+        "grid": {
+          "maschile": {
+            "singolare": [
+              "bello"
+            ],
+            "plurale": [
+              "belli"
+            ]
+          },
+          "femminile": {
+            "singolare": [
+              "bella"
+            ],
+            "plurale": [
+              "belle"
+            ]
+          }
+        },
+        "superlativo": null
+      },
+      "etymology": "vedi bello",
+      "synonyms": [
+        "stupendi",
+        "splendidi",
+        "magnifici",
+        "incantevoli",
+        "avvenenti",
+        "affascinanti",
+        "attraenti",
+        "seducenti",
+        "appariscenti",
+        "notevoli",
+        "vistosi",
+        "piacenti",
+        "aggraziati",
+        "graziosi",
+        "carini",
+        "piacevoli",
+        "gradevoli",
+        "deliziosi",
+        "ameni",
+        "leggiadri",
+        "eleganti",
+        "armoniosi",
+        "equilibrati",
+        "ben fatti",
+        "ben proporzionati",
+        "armonici",
+        "scultorei",
+        "buoni",
+        "generosi",
+        "nobili",
+        "dignitosi",
+        "illustri",
+        "gloriosi",
+        "luminosi",
+        "soleggiati",
+        "limpidi",
+        "chiari",
+        "sereni",
+        "miti",
+        "temperati",
+        "grandiosi",
+        "grandi",
+        "ingenti",
+        "abbondanti",
+        "imponenti",
+        "sontuosi",
+        "pregevoli",
+        "mirabili",
+        "cospicui",
+        "fusti",
+        "adoni",
+        "apolli",
+        "amati",
+        "amici",
+        "innamorati",
+        "amanti",
+        "ragazzi",
+        "fidanzati"
+      ],
+      "antonyms": [
+        "brutti",
+        "sgradevoli",
+        "orrendi",
+        "orridi",
+        "orribili",
+        "mostruosi",
+        "cattivi",
+        "meschini",
+        "miseri",
+        "tristi",
+        "vili",
+        "ignobili",
+        "abietti",
+        "squallidi",
+        "piccoli",
+        "scarsi",
+        "lievi",
+        "modesti",
+        "mostri"
+      ],
+      "derived": [],
+      "expressions": [],
+      "attribution": {
+        "licence": "CC BY-SA 4.0",
+        "licence_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+        "source": "Wikizionario",
+        "source_url": "https://it.wiktionary.org/wiki/belli"
+      }
+    },
+    {
+      "id": "it-api-test:123",
       "word": "bellissime",
       "pos": "adj",
       "pos_title": "Aggettivo, forma flessa",
@@ -1073,7 +1216,7 @@ exports[`bello's whole /lookup answer is the one the snapshot holds (#385) 1`] =
       }
     },
     {
-      "id": "it-api-test:116",
+      "id": "it-api-test:124",
       "word": "bellissimi",
       "pos": "adj",
       "pos_title": "Aggettivo, forma flessa",
@@ -1153,7 +1296,7 @@ exports[`bello's whole /lookup answer is the one the snapshot holds (#385) 1`] =
       }
     },
     {
-      "id": "it-api-test:145",
+      "id": "it-api-test:153",
       "word": "bellissima",
       "pos": "adj",
       "pos_title": "Aggettivo, forma flessa",
@@ -1230,6 +1373,153 @@ exports[`bello's whole /lookup answer is the one the snapshot holds (#385) 1`] =
         "licence_url": "https://creativecommons.org/licenses/by-sa/4.0/",
         "source": "Wikizionario",
         "source_url": "https://it.wiktionary.org/wiki/bellissima"
+      }
+    },
+    {
+      "id": "it-api-test:161",
+      "word": "belle",
+      "pos": "adj",
+      "pos_title": "Aggettivo, forma flessa",
+      "match": {
+        "surface": "bello",
+        "via": "form",
+        "grammar": [
+          {
+            "gender": "maschile",
+            "number": "singolare"
+          }
+        ]
+      },
+      "pronunciations": [
+        {
+          "ipa": "/ˈbɛlle/",
+          "note": null
+        }
+      ],
+      "definitions": [
+        {
+          "definition": "femminile plurale di bello",
+          "labels": [],
+          "examples": [],
+          "items": []
+        }
+      ],
+      "examples": [],
+      "forms": {
+        "type": "gender_number",
+        "grid": {
+          "maschile": {
+            "singolare": [
+              "bello"
+            ],
+            "plurale": [
+              "belli"
+            ]
+          },
+          "femminile": {
+            "singolare": [
+              "bella"
+            ],
+            "plurale": [
+              "belle"
+            ]
+          }
+        },
+        "superlativo": null
+      },
+      "etymology": "vedi bello",
+      "synonyms": [
+        "stupende",
+        "splendide",
+        "magnifiche",
+        "incantevoli",
+        "avvenenti",
+        "affascinanti",
+        "attraenti",
+        "seducenti",
+        "appariscenti",
+        "notevoli",
+        "vistose",
+        "piacenti",
+        "aggraziate",
+        "graziose",
+        "carine",
+        "piacevoli",
+        "gradevoli",
+        "deliziose",
+        "amene",
+        "leggiadre",
+        "eleganti",
+        "armoniosie",
+        "equilibrate",
+        "ben fatte",
+        "ben proporzionate",
+        "armoniche",
+        "scultoree",
+        "buone",
+        "generose",
+        "nobili",
+        "dignitose",
+        "illustri",
+        "gloriose",
+        "luminose",
+        "soleggiate",
+        "limpide",
+        "chiare",
+        "serene",
+        "miti",
+        "temperate",
+        "grandiose",
+        "grandi",
+        "ingenti",
+        "abbondanti",
+        "imponenti",
+        "sontuose",
+        "pregevoli",
+        "mirabili",
+        "cospicue",
+        "fuste",
+        "amate",
+        "amiche",
+        "innamorate",
+        "amanti",
+        "ragazze",
+        "fidanzate"
+      ],
+      "antonyms": [
+        "brutte",
+        "sgradevoli",
+        "orrende",
+        "orride",
+        "orribili",
+        "mostruose",
+        "cattive",
+        "meschine",
+        "misere",
+        "tristi",
+        "vili",
+        "ignobili",
+        "abiette",
+        "squallide",
+        "piccole",
+        "scarse",
+        "lievi",
+        "modeste",
+        "mostre"
+      ],
+      "derived": [],
+      "expressions": [
+        {
+          "phrase": "combinarne delle belle",
+          "meaning": "fare grandi danni",
+          "has_entry": false
+        }
+      ],
+      "attribution": {
+        "licence": "CC BY-SA 4.0",
+        "licence_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+        "source": "Wikizionario",
+        "source_url": "https://it.wiktionary.org/wiki/belle"
       }
     }
   ]

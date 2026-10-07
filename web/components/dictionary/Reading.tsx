@@ -15,7 +15,7 @@ import { entryKey, factRefKey } from "@lexema/lookup/types.ts";
 import type { RecoveredDefinition, Reading } from "@lexema/lookup/types.ts";
 import { conjugationOf } from "@/lib/dictionary/conjugation.ts";
 import { definitionsOf, senseLabels, type DefinitionItem } from "@/lib/dictionary/definitions.ts";
-import { headingGrammar } from "@/lib/dictionary/genderGrid.ts";
+import { headingGrammar, placesGrammar } from "@/lib/dictionary/genderGrid.ts";
 import { lemmaMatches, lemmaWordsOf, unlinkedLemmas, type LinksOf } from "@/lib/dictionary/lemmaLines.ts";
 import { ConjugationView, GridView, SuperlativeGrid, searchHref } from "./Forms";
 import {
@@ -26,6 +26,8 @@ import {
   type ConjugationTable,
   type FormLine,
   type FormOfPart,
+  type GridFormBlock,
+  type GridFormLine,
   type LemmaDefinitionList,
   type LemmaPart,
   type LemmaTable,
@@ -267,7 +269,7 @@ function LemmaDefinitions({ owner, list }: { owner: string; list: LemmaDefinitio
  * 37): unnumbered and always shown, each ending with its lemma linked. A form
  * record's examples, rare, show with its lines.
  */
-function FormLines({ children }: { children: ReactNode }) {
+export function FormLines({ children }: { children: ReactNode }) {
   return <div className={FORM_LINES}>{children}</div>;
 }
 
@@ -363,8 +365,8 @@ function LemmaForms({ owner, tables }: { owner: string; tables: readonly LemmaTa
   );
 }
 
-/** A rule-built line, its verb linked as a source gloss links its lemma. */
-function VerbFormLineText({ line }: { line: VerbFormLine }) {
+/** A rule-built line, the word it names linked as a source gloss links its lemma. */
+function RuleFormLineText({ line }: { line: VerbFormLine | GridFormLine }) {
   return (
     <p className={FORM_LINE} lang="it">
       {line.text.slice(0, line.text.length - line.lemma.length)}
@@ -410,7 +412,7 @@ export function VerbFormBlockView({ block }: { block: VerbFormBlock }) {
       <FormLines>
         {block.lines.map((line) =>
           line.kind === "rule" ? (
-            <VerbFormLineText key={formLineKey(line)} line={line} />
+            <RuleFormLineText key={formLineKey(line)} line={line} />
           ) : (
             <SourceFormLineText key={formLineKey(line)} item={line.item} reading={line.reading} />
           ),
@@ -424,14 +426,44 @@ export function VerbFormBlockView({ block }: { block: VerbFormBlock }) {
       ))}
       <LemmaDefinitions owner={anchor} list={block.definitions} />
       <LemmaForms owner={anchor} tables={block.tables} />
-      {block.etymologies.length > 0 && (
-        <Block id={`etymology-${anchor}`} label="Etymology">
-          {block.etymologies.map((etymology) => (
-            <OneLine key={factRefKey(etymology.ref)} text={etymology.text} lang="it" />
-          ))}
-        </Block>
-      )}
-      <WordList id={`synonyms-${anchor}`} label="Synonyms" items={block.synonyms} level="h3" />
+    </article>
+  );
+}
+
+/**
+ * A noun or adjective form no record of its own describes (#700, rule 4 of
+ * #695): read as a form record's block, `1 · Aggettivo, forma flessa ·
+ * femminile, singolare`, its lines built by rule from the cells of its base
+ * word's grid, then the base word's *Definitions* and *Forms of gravido*.
+ * Nothing marks a line as Lexema's (ADR 0016).
+ */
+export function GridFormBlockView({ block }: { block: GridFormBlock }) {
+  const anchor = readingAnchor(block);
+  return (
+    <article className={READING} id={anchor} aria-labelledby={readingHeadingId(block)} data-grid-form={block.records[0].word}>
+      <h2 className={READING_HEADING} id={readingHeadingId(block)}>
+        <span className={READING_NUMBER}>{block.number}</span>
+        <span className={READING_DOT} aria-hidden="true">
+          ·
+        </span>
+        <span lang="it">{block.posTitle}</span>
+        {/* The dot travels with the grammar, so a wrapped heading never ends on it. */}
+        <span className={READING_GRAMMAR_GROUP}>
+          <span className={READING_DOT} aria-hidden="true">
+            ·
+          </span>
+          <span className={READING_GRAMMAR} lang="it">
+            {placesGrammar(block.places)}
+          </span>
+        </span>
+      </h2>
+      <FormLines>
+        {block.lines.map((line) => (
+          <RuleFormLineText key={line.text} line={line} />
+        ))}
+      </FormLines>
+      <LemmaDefinitions owner={anchor} list={block.definitions} />
+      <LemmaForms owner={anchor} tables={block.tables} />
     </article>
   );
 }
