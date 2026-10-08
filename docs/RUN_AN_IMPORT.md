@@ -290,8 +290,12 @@ gets an edge to `aereo`, and `parti`'s two lines about `parto` name it in
 place of `neonato` and `Parti`. Each cites two it.wiktionary pages, at the
 revisions in the dump the archive was extracted from: the record's own, whose
 gloss names the word after "di", and that word's, whose forms table lists the
-record's word. Rule `it-form-of-gloss-edge/v1` makes most of them
-([report](../reports/2026-10-08-form-of-gloss-edges.md)). The seed writes each
+record's word. Rule `it-form-of-gloss-edge/v2` makes most of them: it adds
+the missing edges v1 added
+([report](../reports/2026-10-08-form-of-gloss-edges.md)), and replaces each
+edge that names another word, `porta`'s `presente` with `portare`
+([#733](https://github.com/povlabs/lexema/issues/733),
+[report](../reports/2026-10-09-form-of-gloss-edges-v2.md)). The seed writes each
 as a `corrected_edge` row with both links, and a lookup reads it in place of
 the sense's own edges. A hidden record gets none. A database seeded
 before an entry gets it by a one-off update, with no reseed and no archive:

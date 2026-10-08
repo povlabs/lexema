@@ -1,7 +1,11 @@
-// A sense's `form_of` edge, set right beside the record (ADR 0030, #722): rule
-// `it-form-of-gloss-edge/v1`, the hand entries for `parti`, what the seed and
-// `correct:records` write, and what a lookup then reads. Every record is a
-// verbatim line of it-0c432803, from fixtures/dev-seed.jsonl.
+// A sense's `form_of` edge, set right beside the record (ADR 0030, #722, #733):
+// rule `it-form-of-gloss-edge`, v1 and v2, the hand entries for `parti`, what
+// the seed and `correct:records` write, and what a lookup then reads. Every
+// record is a verbatim line of it-0c432803, from fixtures/dev-seed.jsonl, or
+// for the edges v2 replaces from fixtures/form-of-edge-replaced.jsonl: archive
+// lines 543 `greco`, 1495 to 1497 `presente`, 8447 `melo`, 8449 `mela`, 33271
+// `portare`, 34206 `svestito`, 38968 `Grecia`, 41348 `porta`, 42264 `mele`,
+// 81297 `greci` and 460506 `svestire`.
 
 import assert from "node:assert/strict";
 import test from "node:test";
@@ -12,11 +16,16 @@ import { DatabaseSync } from "node:sqlite";
 import { gzipSync } from "node:zlib";
 import { CURATED_CORRECTIONS, correctionId, edgeCorrections, evidenceUrl, HAND_CORRECTIONS, type EdgeCorrection } from "../src/italian/curatedCorrections.js";
 import {
+  edgeChange,
   FORM_OF_GLOSS_EDGE_RULE,
+  FORM_OF_GLOSS_EDGE_RULES,
+  type FormOfGlossEdgeRule,
   formOfGlossEdgeCorrections,
   glossBase,
   judgeSense,
   type PageRevisions,
+  reflexiveOf,
+  type RuleMadeEdgeCorrection,
   type ScannedLemma,
   type ScannedSense,
 } from "../src/italian/formOfGlossEdge.js";
@@ -45,11 +54,16 @@ const all = (db: DatabaseSync, sql: string): unknown[] => db.prepare(sql).all().
 /** A permanent link to an it.wiktionary page's revision. */
 const page = (title: string, revisionId: number): string => `https://it.wiktionary.org/w/index.php?title=${title}&oldid=${revisionId}`;
 
-async function seeded(corrections: readonly EdgeCorrection[]): Promise<DatabaseSync> {
+/** The lines of fixtures/form-of-edge-replaced.jsonl, byte for byte. */
+async function replacedLines(): Promise<string[]> {
+  return (await readFile(new URL("../fixtures/form-of-edge-replaced.jsonl", import.meta.url), "utf8")).trimEnd().split("\n");
+}
+
+async function seeded(corrections: readonly EdgeCorrection[], lines?: readonly string[]): Promise<DatabaseSync> {
   const dir = await mkdtemp(join(tmpdir(), "lexema-edges-"));
   try {
     const archive = join(dir, "fixture.jsonl.gz");
-    await writeFile(archive, gzipSync(Buffer.from(`${(await fixtureLines()).join("\n")}\n`, "utf8")));
+    await writeFile(archive, gzipSync(Buffer.from(`${(lines ?? (await fixtureLines())).join("\n")}\n`, "utf8")));
     const { parts } = await seedSql({
       input: archive,
       outputDir: join(dir, "sql"),
@@ -150,7 +164,9 @@ test("every other sense the rule reads stays as the source states it, with its r
   assert.equal(reason(sense("plurale di aerei"), [lemma("aerei", ["aerei"])]), "names-itself");
   assert.equal(reason(sense("plurale di aereo", [], "aerei", "scn"), listing), "not-italian");
   assert.equal(reason(sense("plurale di aereo"), listing, new Set(["10:0"])), "hand-entry");
-  assert.equal(reason(sense("plurale di aereo", ["aria"]), listing), "edge-names-another-word");
+  // v1 leaves an edge that names another word to a ruling; v2 replaces it (below).
+  const v1 = judgeSense(sense("plurale di aereo", ["aria"]), "it-x", listing, new Set(), PAGES, "it-form-of-gloss-edge/v1");
+  assert.equal(v1?.kind === "left-alone" ? v1.reason : v1?.kind, "edge-names-another-word");
   // With no page to cite, either the word's or the base's, there is no correction.
   assert.equal(reason(sense("plurale di aereo"), listing, new Set(), new Map([["aerei", 4016979]])), "page-not-in-dump");
   assert.equal(reason(sense("plurale di aereo"), listing, new Set(), new Map([["aereo", 3963800]])), "page-not-in-dump");
@@ -159,6 +175,109 @@ test("every other sense the rule reads stays as the source states it, with its r
   assert.equal(judgeSense(sense("veicolo a motore"), "it-x", listing, new Set(), PAGES), undefined);
   // A gloss that is no form's, whose base word's table does not list the word, is not read either.
   assert.equal(judgeSense(sense("studioso di chimica"), "it-x", [lemma("chimica", [])], new Set(), PAGES), undefined);
+});
+
+// v2: an edge that names another word, replaced (#733) ------------------------------
+
+/** A sense of `svestito` or `porta`, as the archive states it, and the record of its base word that lists it. */
+const SVESTITO = { ...sense("participio passato di svestire, svestirsi", ["svestirsi"], "svestito"), pos: "verb", lineNo: 34206 };
+const PORTA = { ...sense("terza persona singolare di portare dell'indicativo presente di portare", ["presente"], "porta"), pos: "verb", lineNo: 41348, senseIndex: 1 };
+const V2_PAGES: PageRevisions = new Map([
+  ["svestito", 3661196],
+  ["svestire", 3888372],
+  ["porta", 4056732],
+  ["portare", 4044036],
+]);
+const judgeV2 = (scanned: ScannedSense, lemmas: readonly ScannedLemma[], hand = new Set<string>(), pages = V2_PAGES, rule: FormOfGlossEdgeRule = "it-form-of-gloss-edge/v2") =>
+  judgeSense(scanned, "it-x", lemmas, hand, pages, rule);
+const leftReason = (verdict: ReturnType<typeof judgeSense>) => (verdict?.kind === "left-alone" ? verdict.reason : verdict?.kind);
+
+test("v2 replaces an edge to the reflexive form of the gloss's verb, keeping the source's edge verbatim", () => {
+  const verdict = judgeV2(SVESTITO, [lemma("svestire", ["svestii", "svestito"], 460506)]);
+  assert.equal(verdict?.kind, "edge");
+  if (verdict?.kind !== "edge") return;
+  assert.deepEqual(verdict.correction, {
+    record: { releaseId: "it-x", lineNo: 34206, lineSha256: "a".repeat(64), word: "svestito", pos: "verb" },
+    edge: {
+      sense: 0,
+      gloss: { pointer: "/senses/0/glosses/0", text: "participio passato di svestire, svestirsi" },
+      replaces: { pointer: "/senses/0/form_of/0/word", text: "svestirsi" },
+      target: "svestire",
+    },
+    evidence: {
+      form: { wiki: "it.wiktionary.org", title: "svestito", revisionId: 3661196, shows: "participio passato di svestire, svestirsi" },
+      base: { wiki: "it.wiktionary.org", title: "svestire", revisionId: 3888372, shows: "svestito" },
+    },
+    rule: "it-form-of-gloss-edge/v2",
+  });
+  assert.equal(edgeChange(verdict.correction.edge), "replaced-reflexive");
+});
+
+test("v2 replaces an edge to another word, keeping the source's edge verbatim", () => {
+  const verdict = judgeV2(PORTA, [lemma("portare", ["porto", "porta"], 33271)]);
+  assert.equal(verdict?.kind, "edge");
+  if (verdict?.kind !== "edge") return;
+  assert.deepEqual(verdict.correction.edge, {
+    sense: 1,
+    gloss: { pointer: "/senses/1/glosses/0", text: PORTA.gloss },
+    replaces: { pointer: "/senses/1/form_of/0/word", text: "presente" },
+    target: "portare",
+  });
+  assert.deepEqual([verdict.correction.evidence.form.title, verdict.correction.evidence.base.title], ["porta", "portare"]);
+  assert.equal(edgeChange(verdict.correction.edge), "replaced-other-word");
+});
+
+test("v2 leaves an edge that names another word as the source states it when any condition fails", () => {
+  const listing = [lemma("portare", ["porta"], 33271)];
+  // The gloss names X after "di", but its opening says no form: not read at all, as in v1.
+  assert.equal(judgeV2({ ...PORTA, gloss: "atto di portare" }, listing), undefined);
+  // No Italian record of X lists the word: not read either.
+  assert.equal(judgeV2(PORTA, [lemma("portare", ["porto"], 33271)]), undefined);
+  assert.equal(judgeV2(PORTA, [lemma("portare", ["porta"], 33271, "fr")]), undefined);
+  // The record is another language's.
+  assert.equal(leftReason(judgeV2({ ...PORTA, langCode: "scn" }, listing)), "not-italian");
+  // The gloss names the record's own word.
+  assert.equal(leftReason(judgeV2({ ...PORTA, gloss: "plurale di porta" }, [lemma("porta", ["porta"])])), "names-itself");
+  // Either page has no revision in the dump.
+  assert.equal(leftReason(judgeV2(PORTA, listing, new Set(), new Map([["porta", 4056732]]))), "page-not-in-dump");
+  assert.equal(leftReason(judgeV2(PORTA, listing, new Set(), new Map([["portare", 4044036]]))), "page-not-in-dump");
+  // A hand entry sets the sense.
+  assert.equal(leftReason(judgeV2(PORTA, listing, new Set(["41348:1"]))), "hand-entry");
+  // Several edges, none to X: no one edge is the one replaced.
+  assert.equal(leftReason(judgeV2({ ...PORTA, formOf: ["presente", "indicativo"] }, listing)), "several-edges");
+  // An edge that already names X is right, and not the rule's.
+  assert.equal(judgeV2({ ...PORTA, formOf: ["portare"] }, listing), undefined);
+  // v1 left every such sense alone.
+  assert.equal(leftReason(judgeV2(PORTA, listing, new Set(), V2_PAGES, "it-form-of-gloss-edge/v1")), "edge-names-another-word");
+});
+
+test("a reflexive infinitive is the verb's own, with -si for its final -e", () => {
+  assert.deepEqual(["svestire", "lamentare", "porre", "tradurre", "rendere", "mela"].map(reflexiveOf), ["svestirsi", "lamentarsi", "porsi", "tradursi", "rendersi", undefined]);
+});
+
+/** A rule-made correction with its rule left out: what the seed stores of it. */
+const withoutRule = ({ rule: _rule, ...correction }: RuleMadeEdgeCorrection) => correction;
+
+test("v2 makes every correction v1 makes on the pinned scan, identically, and replaces 743 edges besides: 665 reflexive, 78 to another word", () => {
+  assert.deepEqual(FORM_OF_GLOSS_EDGE_RULES, ["it-form-of-gloss-edge/v1", "it-form-of-gloss-edge/v2"]);
+  assert.equal(FORM_OF_GLOSS_EDGE_RULE, "it-form-of-gloss-edge/v2");
+  const hand = edgeCorrections(HAND_CORRECTIONS);
+  const v1 = formOfGlossEdgeCorrections(FORM_OF_GLOSS_EDGE_EVIDENCE, hand, "it-form-of-gloss-edge/v1");
+  const v2 = formOfGlossEdgeCorrections(FORM_OF_GLOSS_EDGE_EVIDENCE, hand, "it-form-of-gloss-edge/v2");
+  const byId = new Map(v2.map((correction) => [correctionId(correction), correction]));
+  for (const before of v1) {
+    const after = byId.get(correctionId(before));
+    assert.ok(after !== undefined, correctionId(before));
+    assert.equal(before.rule, "it-form-of-gloss-edge/v1");
+    assert.equal(after.rule, "it-form-of-gloss-edge/v2");
+    assert.deepEqual(withoutRule(after), withoutRule(before), correctionId(before));
+  }
+  const changes = (corrections: readonly RuleMadeEdgeCorrection[]) =>
+    Object.fromEntries(["added", "replaced-reflexive", "replaced-other-word"].map((change) => [change, corrections.filter((correction) => edgeChange(correction.edge) === change).length]));
+  assert.deepEqual(changes(v1), { added: 1939, "replaced-reflexive": 0, "replaced-other-word": 0 });
+  assert.deepEqual(changes(v2), { added: 1939, "replaced-reflexive": 665, "replaced-other-word": 78 });
+  // The committed list is made with v2.
+  assert.deepEqual(edgeCorrections(CURATED_CORRECTIONS).filter((correction) => "rule" in correction), v2);
 });
 
 // The committed list ---------------------------------------------------------------
@@ -170,6 +289,11 @@ test("the committed edges: aerei's and costruttori's from the rule, parti's two 
   assert.deepEqual(at(69147), ["0 - -> aereo (aerei@4016979 aereo@3963800)"]);
   assert.deepEqual(at(449508), ["0 - -> costruttore (costruttori@3635849 costruttore@3782550)"]);
   assert.deepEqual(at(77162), ["1 neonato -> parto (parti@3948893 parto@3892725)", "2 Parti -> parto (parti@3948893 parto@3892725)"]);
+  // v2 (#733): an edge to the reflexive form of the gloss's verb, and edges to another word.
+  assert.deepEqual(at(34206), ["0 svestirsi -> svestire (svestito@3661196 svestire@3888372)"]);
+  assert.deepEqual(at(41348), ["1 presente -> portare (porta@4056732 portare@4044036)", "2 presente -> portare (porta@4056732 portare@4044036)"]);
+  assert.deepEqual(at(42264), ["0 melo -> mela (mele@3869166 mela@4023986)"]);
+  assert.deepEqual(at(81297), ["0 Grecia -> greco (greci@3967967 greco@3958426)"]);
   assert.deepEqual(edgeCorrections(HAND_CORRECTIONS).map(correctionId), ["it-0c432803:77162/senses/1", "it-0c432803:77162/senses/2"]);
 
   const made = formOfGlossEdgeCorrections(FORM_OF_GLOSS_EDGE_EVIDENCE, edgeCorrections(HAND_CORRECTIONS));
@@ -242,6 +366,52 @@ test("a lookup reads a corrected edge in place of the sense's own: aerei and cos
     assert.deepEqual(await inflections(plain, "parto"), []);
     assert.deepEqual(await inflections(corrected, "parto"), ["parti noun /senses/1/glosses/0 /senses/2/glosses/0"]);
     assert.ok((await inflections(corrected, "aereo")).includes("aerei noun /senses/0/glosses/0"));
+  } finally {
+    plain.close();
+    corrected.close();
+  }
+});
+
+test("a lookup reads a replaced edge in place of the source's: porta under portare, svestito under svestire, mele under mela, greci under greco (#733)", async () => {
+  const lines = await replacedLines();
+  const corrections = edgeCorrectionsAt(lines, RELEASE);
+  assert.deepEqual(corrections.map((correction) => `${correction.record.word} ${correction.edge.sense} ${correction.edge.replaces?.text} -> ${correction.edge.target}`), [
+    "svestito 0 svestirsi -> svestire",
+    "porta 1 presente -> portare",
+    "porta 2 presente -> portare",
+    "mele 0 melo -> mela",
+    "greci 0 Grecia -> greco",
+  ]);
+  const [plain, corrected] = [await seeded([], lines), await seeded(corrections, lines)];
+  /** Each link of `word`'s `pos` reading: the word it names and where it was read. */
+  const links = async (db: DatabaseSync, word: string, pos: string): Promise<string[]> =>
+    (await readingsOf(db, word)).filter((reading) => reading.pos === pos).flatMap((reading) => reading.lemmaLinks.map((link) => `${link.targetWord} ${"jsonPointer" in link.ref ? link.ref.jsonPointer : ""}`));
+  /** The forms `word`'s readings list as declaring themselves its forms. */
+  const inflections = async (db: DatabaseSync, word: string): Promise<string[]> =>
+    (await readingsOf(db, word)).flatMap((reading) => reading.inflections.map((one) => `${one.word} ${one.pos} ${one.refs.map((ref) => ("jsonPointer" in ref ? ref.jsonPointer : "")).join(" ")}`));
+  try {
+    for (const table of ["source_record", "source_record_json", "form_of_edge", "sense", "sense_gloss", "grammar_claim", "lookup_form"]) {
+      assert.deepEqual(all(corrected, `SELECT * FROM ${table} ORDER BY 1, 2`), all(plain, `SELECT * FROM ${table} ORDER BY 1, 2`), table);
+    }
+    // Sense 0, a form of `porgere`, keeps its own edge.
+    assert.deepEqual(await links(plain, "porta", "verb"), ["porgere /senses/0/form_of/0/word", "presente /senses/1/form_of/0/word", "presente /senses/2/form_of/0/word"]);
+    assert.deepEqual(await links(corrected, "porta", "verb"), ["porgere /senses/0/form_of/0/word", "portare /senses/1/glosses/0", "portare /senses/2/glosses/0"]);
+    assert.deepEqual(await links(plain, "svestito", "verb"), ["svestirsi /senses/0/form_of/0/word"]);
+    assert.deepEqual(await links(corrected, "svestito", "verb"), ["svestire /senses/0/glosses/0"]);
+    // Senses 1 to 3 gloss no form ("guance, soprattutto nei bambini:"), so their edges stay as the source states them.
+    const sourceRest = ["bambini /senses/1/form_of/0/word", "tondeggianti /senses/2/form_of/0/word", "percosse /senses/3/form_of/0/word"];
+    assert.deepEqual(await links(plain, "mele", "noun"), ["melo /senses/0/form_of/0/word", ...sourceRest]);
+    assert.deepEqual(await links(corrected, "mele", "noun"), ["mela /senses/0/glosses/0", ...sourceRest]);
+    assert.deepEqual(await links(plain, "greci", "noun"), ["Grecia /senses/0/form_of/0/word"]);
+    assert.deepEqual(await links(corrected, "greci", "noun"), ["greco /senses/0/glosses/0"]);
+    // The base word lists the form, and the word the source named no longer does.
+    assert.ok((await inflections(corrected, "portare")).includes("porta verb /senses/1/glosses/0 /senses/2/glosses/0"));
+    assert.ok(!(await inflections(corrected, "presente")).some((one) => one.startsWith("porta ")));
+    assert.ok((await inflections(plain, "presente")).some((one) => one.startsWith("porta ")));
+    assert.ok((await inflections(corrected, "svestire")).includes("svestito verb /senses/0/glosses/0"));
+    assert.ok((await inflections(corrected, "mela")).includes("mele noun /senses/0/glosses/0"));
+    assert.ok(!(await inflections(corrected, "melo")).some((one) => one.startsWith("mele ")));
+    assert.ok((await inflections(corrected, "greco")).includes("greci noun /senses/0/glosses/0"));
   } finally {
     plain.close();
     corrected.close();

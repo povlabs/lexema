@@ -209,6 +209,11 @@ test("every declaration already in dictionary-changes parses as before, with no 
       );
       continue;
     }
+    // The form_of edges rule v2 replaces (#733) name a reflexive edge's word and other words'.
+    if (name === "2026-10-09-correct-form-of-edges-v2.json") {
+      assert.deepEqual(parseDraft(path, text).lookups?.map((item) => item.word), ["svestito", "porta", "greci", "mele"]);
+      continue;
+    }
     // The upgrade that keys corrected cells (#743) names the spellings a search now finds, and the source's it still finds.
     if (name === "2026-10-08-update-upgrade-corrected-form-key.json") {
       assert.deepEqual(

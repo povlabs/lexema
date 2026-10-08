@@ -1,0 +1,15 @@
+{
+  "command": "correct:records",
+  "inputs": {},
+  "lookups": [
+    { "word": "svestito", "gloss": "participio passato di svestire" },
+    { "word": "porta", "gloss": "di portare" },
+    { "word": "greci", "gloss": "plurale di greco" },
+    { "word": "mele", "gloss": "plurale di mela" }
+  ],
+  "expected": {
+    "records": { "added": 0, "changed": 681, "removed": 0 },
+    "written": { "corrected_edge": 743, "correction_version": 1 },
+    "deleted": {}
+  }
+}

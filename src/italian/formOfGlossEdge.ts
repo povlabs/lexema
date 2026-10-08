@@ -1,7 +1,10 @@
 // Form records whose sense says what it is a form of in its gloss, but declares
-// no `form_of` edge (#715, #722). `aerei`'s noun record glosses itself
-// "plurale di aereo" and `costruttori`'s "plurale di costruttore", and neither
-// sense carries an edge, so each page read the record as a word of its own.
+// no `form_of` edge (#715, #722), or one that names another word (#733).
+// `aerei`'s noun record glosses itself "plurale di aereo" and `costruttori`'s
+// "plurale di costruttore", and neither sense carries an edge, so each page
+// read the record as a word of its own. `porta`'s verb senses gloss "... di
+// portare" and their edges name `presente`, so the page read the form under
+// that word.
 //
 // Huey ruled on 2026-10-07 (#708, questions 7 and 8,
 // https://github.com/povlabs/lexema/issues/708#issuecomment-6047197445) that a
@@ -24,27 +27,37 @@
 //   after "di" for another reason ("studioso di chimica", "diritto di
 //   appoggiare il proprio edificio") is not a form's gloss, so ADR 0030's "form
 //   record" does not reach it, even where X's table lists the word.
-// - **It declares no edge.** A sense whose edge names another word is not this
-//   rule's: only a hand entry fixes a wrong edge (question 9), and this rule
-//   lists each such sense in its report.
+// - **It declares no edge.** A sense whose edge names another word is not v1's:
+//   only a ruling fixes a wrong edge (question 9), and v1 lists each such sense
+//   in its report. v2 lifts this condition, below.
 // - **X's own forms table lists the word.** Some Italian record whose `word`
 //   is X lists the record's word, exactly, in its `forms`.
 // - **Both pages are in the dump.** The record's page and X's page each have a
 //   revision in the dump the release was extracted from; those two revisions
 //   are the evidence the correction cites.
 //
+// `it-form-of-gloss-edge/v2` (#733) makes every correction v1 makes,
+// identically, and also replaces the edge of a sense whose one edge names
+// another word, under the same conditions, the reflexive form of the gloss's
+// verb included (`svestito`, "participio passato di svestire, svestirsi",
+// names `svestirsi`). Huey ruled on 2026-10-08 to correct all of them
+// (https://github.com/povlabs/lexema/issues/733#issuecomment-6066281058; ADR
+// 0030's amendment of that day). Such a correction keeps the edge it replaces,
+// verbatim (`CorrectedEdge.replaces`). A sense that declares several edges,
+// none of them X, has no one edge to name, and v2 leaves it alone.
+//
 // Everything else stays as the source states it, and the report gives the
 // reason (`LeftAlone`).
 
-import type { CorrectedRecord, EdgeCorrection, EdgeEvidence } from "./curatedCorrections.js";
+import type { CorrectedEdge, CorrectedRecord, EdgeCorrection, EdgeEvidence } from "./curatedCorrections.js";
 
 /** Every version of the rule, oldest first. A change to what it confirms is a new version and a new ruling. */
-export const FORM_OF_GLOSS_EDGE_RULES = ["it-form-of-gloss-edge/v1"] as const;
+export const FORM_OF_GLOSS_EDGE_RULES = ["it-form-of-gloss-edge/v1", "it-form-of-gloss-edge/v2"] as const;
 
 export type FormOfGlossEdgeRule = (typeof FORM_OF_GLOSS_EDGE_RULES)[number];
 
 /** The version the curated list is made with. */
-export const FORM_OF_GLOSS_EDGE_RULE = "it-form-of-gloss-edge/v1" satisfies FormOfGlossEdgeRule;
+export const FORM_OF_GLOSS_EDGE_RULE = "it-form-of-gloss-edge/v2" satisfies FormOfGlossEdgeRule;
 
 /**
  * The words a form's gloss opens with, lower case: which person, number,
@@ -151,8 +164,10 @@ export type LeftAlone =
   | "no-record-of-base"
   /** A form's gloss, and no Italian record of X lists the word. */
   | "base-table-does-not-list"
-  /** The sense declares an edge to another word, which X's table lists: only a ruling fixes it (question 9). */
+  /** v1: the sense declares an edge to another word, which X's table lists: only a ruling fixes it (question 9). */
   | "edge-names-another-word"
+  /** v2: the sense declares several edges, none to X, so no one edge is the one a correction replaces. */
+  | "several-edges"
   /** The record's page or X's has no revision in the release's dump, so there is no page to cite. */
   | "page-not-in-dump";
 
@@ -196,6 +211,7 @@ export function judgeSense(
   lemmas: readonly ScannedLemma[],
   handSenses: ReadonlySet<string>,
   pages: PageRevisions,
+  rule: FormOfGlossEdgeRule = FORM_OF_GLOSS_EDGE_RULE,
 ): SenseVerdict | undefined {
   const named = glossBase(sense.gloss);
   if (named === undefined) return undefined;
@@ -206,17 +222,24 @@ export function judgeSense(
   // A sense whose edge already names X is right, and not the rule's to read.
   if (sense.formOf.length > 0 && (sense.formOf.includes(base) || found === undefined || !formOpening)) return undefined;
   if (handSenses.has(`${sense.lineNo}:${sense.senseIndex}`)) return leftAlone("hand-entry");
-  if (sense.formOf.length > 0) return leftAlone("edge-names-another-word");
+  if (sense.formOf.length > 0 && rule === "it-form-of-gloss-edge/v1") return leftAlone("edge-names-another-word");
   if (sense.langCode !== "it") return leftAlone("not-italian");
   if (base === sense.word) return leftAlone("names-itself");
   if (!formOpening) return leftAlone("not-a-form-gloss");
   if (found === undefined) {
     return leftAlone(lemmas.some((lemma) => lemma.word === base && lemma.langCode === "it") ? "base-table-does-not-list" : "no-record-of-base");
   }
+  if (sense.formOf.length > 1) return leftAlone("several-edges");
   const formRevision = pages.get(sense.word);
   const baseRevision = pages.get(base);
   if (formRevision === undefined || baseRevision === undefined) return leftAlone("page-not-in-dump");
   const record: CorrectedRecord = { releaseId, lineNo: sense.lineNo, lineSha256: sense.lineSha256, word: sense.word, pos: sense.pos };
+  const gloss = { pointer: `/senses/${sense.senseIndex}/glosses/0`, text: sense.gloss };
+  const [replaced] = sense.formOf;
+  const edge: CorrectedEdge =
+    replaced === undefined
+      ? { sense: sense.senseIndex, gloss, target: base }
+      : { sense: sense.senseIndex, gloss, replaces: { pointer: `/senses/${sense.senseIndex}/form_of/0/word`, text: replaced }, target: base };
   const evidence: EdgeEvidence = {
     form: { wiki: "it.wiktionary.org", title: sense.word, revisionId: formRevision, shows: sense.gloss },
     base: { wiki: "it.wiktionary.org", title: base, revisionId: baseRevision, shows: sense.word },
@@ -227,9 +250,9 @@ export function judgeSense(
     lemma: found,
     correction: {
       record,
-      edge: { sense: sense.senseIndex, gloss: { pointer: `/senses/${sense.senseIndex}/glosses/0`, text: sense.gloss }, target: base },
+      edge,
       evidence,
-      rule: FORM_OF_GLOSS_EDGE_RULE,
+      rule,
     },
   };
 }
@@ -256,7 +279,11 @@ export interface FormOfGlossEdgeEvidence {
  * so an entry the rule would no longer confirm makes none. A sense a hand
  * entry sets is never also set by the rule.
  */
-export function formOfGlossEdgeCorrections(evidence: FormOfGlossEdgeEvidence, hand: readonly EdgeCorrection[]): RuleMadeEdgeCorrection[] {
+export function formOfGlossEdgeCorrections(
+  evidence: FormOfGlossEdgeEvidence,
+  hand: readonly EdgeCorrection[],
+  rule: FormOfGlossEdgeRule = FORM_OF_GLOSS_EDGE_RULE,
+): RuleMadeEdgeCorrection[] {
   const handSenses = new Set(
     hand.filter((correction) => correction.record.releaseId === evidence.releaseId).map((correction) => `${correction.record.lineNo}:${correction.edge.sense}`),
   );
@@ -270,7 +297,26 @@ export function formOfGlossEdgeCorrections(evidence: FormOfGlossEdgeEvidence, ha
         [sense.word, revisions.form],
         [lemma.word, revisions.base],
       ]);
-      const verdict = judgeSense(sense, evidence.releaseId, [{ ...scanned, forms }], handSenses, pages);
+      const verdict = judgeSense(sense, evidence.releaseId, [{ ...scanned, forms }], handSenses, pages, rule);
       return verdict?.kind === "edge" ? [verdict.correction] : [];
     });
+}
+
+/** What a correction does to the sense's own edge (#733): adds one where it has none, or replaces one naming the reflexive form of the gloss's verb, or another word. */
+export type EdgeChange = "added" | "replaced-reflexive" | "replaced-other-word";
+
+/**
+ * The reflexive infinitive of `verb`, if it is an infinitive: `svestire` gives
+ * `svestirsi`, `porre` gives `porsi`, `tradurre` `tradursi`.
+ */
+export function reflexiveOf(verb: string): string | undefined {
+  if (verb.endsWith("rre")) return `${verb.slice(0, -2)}si`;
+  if (/(?:are|ere|ire)$/u.test(verb)) return `${verb.slice(0, -1)}si`;
+  return undefined;
+}
+
+/** What `edge` does to the edge its sense states. */
+export function edgeChange(edge: CorrectedEdge): EdgeChange {
+  if (edge.replaces === undefined) return "added";
+  return edge.replaces.text === reflexiveOf(edge.target) ? "replaced-reflexive" : "replaced-other-word";
 }
