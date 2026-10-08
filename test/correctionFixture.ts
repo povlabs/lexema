@@ -25,7 +25,7 @@
 
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
-import { CURATED_CORRECTIONS, recordCorrections, type RecordCorrection } from "../src/italian/curatedCorrections.js";
+import { CURATED_CORRECTIONS, edgeCorrections, recordCorrections, type EdgeCorrection, type RecordCorrection } from "../src/italian/curatedCorrections.js";
 
 export const CORRECTION_FIXTURE = new URL("../fixtures/curated-corrections.jsonl", import.meta.url);
 
@@ -59,11 +59,25 @@ export function fixtureCorrections(): RecordCorrection[] {
  * each names. Throws on an entry no line carries, so a fixture that drifts
  * from the list fails by name.
  */
-export function atFixtureLines(lines: readonly string[], releaseId: string, corrections: readonly RecordCorrection[] = fixtureCorrections()): RecordCorrection[] {
+export function atFixtureLines<Correction extends RecordCorrection | EdgeCorrection = RecordCorrection>(
+  lines: readonly string[],
+  releaseId: string,
+  corrections: readonly Correction[] = fixtureCorrections() as Correction[],
+): Correction[] {
   const lineOf = new Map(lines.map((line, i) => [sha256(line), i + 1]));
   return corrections.map((correction) => {
     const lineNo = lineOf.get(correction.record.lineSha256);
     if (lineNo === undefined) throw new Error(`no fixture line is ${correction.record.word} at archive line ${correction.record.lineNo}`);
     return { ...correction, record: { ...correction.record, releaseId, lineNo } };
   });
+}
+
+/**
+ * The committed list's edge corrections (#722) of the records `lines` holds,
+ * keyed to `releaseId` at their fixture lines: every edge the list sets on a
+ * line the fixture carries byte for byte, and no other.
+ */
+export function edgeCorrectionsAt(lines: readonly string[], releaseId: string): EdgeCorrection[] {
+  const digests = new Set(lines.map(sha256));
+  return atFixtureLines(lines, releaseId, edgeCorrections(CURATED_CORRECTIONS).filter((correction) => digests.has(correction.record.lineSha256)));
 }

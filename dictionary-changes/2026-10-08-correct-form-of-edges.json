@@ -1,0 +1,9 @@
+{
+  "command": "correct:records",
+  "inputs": {},
+  "lookups": [
+    { "word": "aerei", "gloss": "plurale di aereo" },
+    { "word": "costruttori", "gloss": "plurale di costruttore" },
+    { "word": "parti", "gloss": "plurale di parto" }
+  ]
+}

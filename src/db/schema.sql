@@ -716,6 +716,41 @@ CREATE TABLE corrected_claim (
     REFERENCES source_record(record_id, release_id) ON DELETE CASCADE
 ) STRICT;
 
+-- A sense's `form_of` edge, set right beside the record (ADR 0030, #722):
+-- added where the sense declares none (`aerei`'s noun says "plurale di aereo"
+-- and names nothing), or in place of the edges it declares when they name the
+-- wrong word (`parti`'s senses about `parto` name `neonato` and `Parti`). The
+-- committed list names each by release, archive line, line digest and sense.
+-- Its evidence is two lines of the same archive: the record's own, whose gloss
+-- names the target after "di" (`json_pointer`), and the target's record whose
+-- forms table lists the word (`lemma_*`). form_of_edge and source_record_json
+-- stay as imported; a lookup reads this row in place of the sense's own edges.
+-- A hidden record gets none (ADR 0023), and a record a later release replaced
+-- loses it with its form_of_edge rows: the update reports it.
+CREATE TABLE corrected_edge (
+  record_id         INTEGER NOT NULL REFERENCES source_record(record_id) ON DELETE CASCADE,
+  release_id        TEXT    NOT NULL,
+  sense_index       INTEGER NOT NULL CHECK (sense_index >= 0),
+  -- The sense's gloss that names the target: '/senses/0/glosses/0'. The source
+  -- states no edge to point at, so the edge points at what it was read from.
+  json_pointer      TEXT    NOT NULL,
+  target_word       TEXT    NOT NULL, -- verbatim, as the gloss writes it
+  target_word_key   TEXT    NOT NULL, -- release's normalizer applied to target_word
+  -- The list entry it was written from: release, archive line and sense, `it-0c432803:77162/senses/1`.
+  correction_id     TEXT    NOT NULL,
+  -- The line of the record's release that lists the word, its digest, and the cell: '/forms/0/form'.
+  lemma_line_no     INTEGER NOT NULL CHECK (lemma_line_no > 0),
+  lemma_line_sha256 TEXT    NOT NULL,
+  lemma_pointer     TEXT    NOT NULL,
+  PRIMARY KEY (record_id, sense_index),
+  FOREIGN KEY (record_id, release_id)
+    REFERENCES source_record(record_id, release_id) ON DELETE CASCADE
+) STRICT;
+
+-- "What corrected edge points at this word?", as form_of_edge_by_target.
+CREATE INDEX corrected_edge_by_target
+  ON corrected_edge (release_id, target_word_key);
+
 -- Live-correction cache revision, like hide_version: a nonempty
 -- `correct:records` transaction increments it, so card and suggestion
 -- addresses move with the corrected facts. Older masters acquire this table

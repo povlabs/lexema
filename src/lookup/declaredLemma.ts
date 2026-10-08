@@ -19,6 +19,7 @@ import { POS_TITLE_BY_TEMPLATE } from "../italian/wikitext.js";
 import { readPluralGloss } from "../italian/pluralGloss.js";
 import { readVerbFormGloss } from "../italian/verbFormGloss.js";
 import { correctionOf, correctionsByRecord, type CorrectionRow } from "./correctedClaim.js";
+import { sourceEdgeServed } from "./correctedEdge.js";
 import type { DictionaryRead, LookupDatabase } from "./database.js";
 import { dictionaryTables, servedBy } from "./served.js";
 import { pluralDeclaration } from "./types.js";
@@ -75,6 +76,55 @@ export const DECLARED_LEMMA_CORRECTION_SQL: DictionaryRead = `SELECT DISTINCT k.
       WHERE e.release_id IN (${servedBy("?1")}) AND e.target_word_key = ?2
       ORDER BY k.record_id, k.dimension`;
 
+/** The edges a declared-lemma read takes on a master with corrected edges (src/lookup/correctedEdge.ts). */
+type CorrectedArm = "served form_of_edge" | "corrected_edge";
+
+/** The joins of each read above after the edge and its record: the first gloss of the edge's sense, the stated claims, the corrections. */
+const DECLARED_GLOSS_JOINS = `
+       LEFT JOIN sense s ON s.record_id = e.record_id AND s.sense_index = e.sense_index
+       LEFT JOIN sense_gloss g ON g.sense_id = s.sense_id AND g.gloss_index = 0`;
+const DECLARED_GRAMMAR_JOINS = `
+       JOIN grammar_claim c
+         ON c.record_id = e.record_id AND c.scope = 'record' AND c.status = 'stated' AND c.dimension IN ('gender', 'number')`;
+const DECLARED_CORRECTION_JOINS = `
+       JOIN corrected_claim k ON k.record_id = e.record_id`;
+
+/** `FROM` and `WHERE` of one arm: the edges of `arm` naming the key at `?2`, with the declaring record `d`. */
+const edgesNaming = (arm: CorrectedArm, joins: string): string => `FROM ${arm === "corrected_edge" ? "corrected_edge" : "form_of_edge"} e
+       JOIN source_record d ON d.record_id = e.record_id${joins}
+      WHERE e.release_id IN (${servedBy("?1")}) AND e.target_word_key = ?2${arm === "served form_of_edge" ? ` AND ${sourceEdgeServed("e")}` : ""}`;
+
+/**
+ * `DECLARED_LEMMA_SQL` on a master with corrected edges: a sense's corrected
+ * edge names a word in place of its own. Exported so a test can hold the plan.
+ */
+export const CORRECTED_DECLARED_LEMMA_SQL: DictionaryRead = `SELECT d.record_id, d.release_id, d.line_no AS line_no, d.line_sha256, d.word, d.pos,
+            e.target_word, g.text AS gloss, g.json_pointer AS gloss_pointer, e.json_pointer AS edge_pointer
+       ${edgesNaming("served form_of_edge", DECLARED_GLOSS_JOINS)}
+     UNION ALL
+     SELECT d.record_id, d.release_id, d.line_no, d.line_sha256, d.word, d.pos,
+            e.target_word, g.text AS gloss, g.json_pointer AS gloss_pointer, e.json_pointer AS edge_pointer
+       ${edgesNaming("corrected_edge", DECLARED_GLOSS_JOINS)}
+      ORDER BY line_no, edge_pointer`;
+
+/** `DECLARED_LEMMA_GENDER_SQL` off `CORRECTED_DECLARED_LEMMA_SQL`'s edges; `UNION` keeps each row once. */
+export const CORRECTED_DECLARED_LEMMA_GENDER_SQL: DictionaryRead = `SELECT c.record_id AS record_id, c.dimension, c.value, c.source_text, c.json_pointer AS json_pointer,
+            d.release_id, d.line_no, d.line_sha256
+       ${edgesNaming("served form_of_edge", DECLARED_GRAMMAR_JOINS)}
+     UNION
+     SELECT c.record_id, c.dimension, c.value, c.source_text, c.json_pointer,
+            d.release_id, d.line_no, d.line_sha256
+       ${edgesNaming("corrected_edge", DECLARED_GRAMMAR_JOINS)}
+      ORDER BY record_id, json_pointer`;
+
+/** `DECLARED_LEMMA_CORRECTION_SQL` off `CORRECTED_DECLARED_LEMMA_SQL`'s edges; `UNION` keeps each row once. */
+export const CORRECTED_DECLARED_LEMMA_CORRECTION_SQL: DictionaryRead = `SELECT k.record_id AS record_id, k.dimension AS dimension, k.value, k.correction_id, k.evidence_url
+       ${edgesNaming("served form_of_edge", DECLARED_CORRECTION_JOINS)}
+     UNION
+     SELECT k.record_id, k.dimension, k.value, k.correction_id, k.evidence_url
+       ${edgesNaming("corrected_edge", DECLARED_CORRECTION_JOINS)}
+      ORDER BY record_id, dimension`;
+
 /** The declaring records' parts of speech a declared lemma reads, to their section template. */
 const TEMPLATE = { verb: "verb", noun: "sost", adj: "adj" } as const;
 type DeclaredPos = keyof typeof TEMPLATE;
@@ -125,12 +175,12 @@ export async function declaredLemma(
   notFound: NotFoundResult,
 ): Promise<DeclaredLemmaResult | undefined> {
   const { key } = notFound.query;
+  // Which reads to send depends on the tables, so they wait on that one statement.
+  const { corrections: corrected, edgeCorrections } = await dictionaryTables(db);
   const [edges, grammarRows, correctionRows] = await Promise.all([
-    db.all<EdgeRow>(DECLARED_LEMMA_SQL, [releaseId, key]),
-    db.all<GrammarRow>(DECLARED_LEMMA_GENDER_SQL, [releaseId, key]),
-    dictionaryTables(db).then(({ corrections }) =>
-      corrections ? db.all<CorrectionRow>(DECLARED_LEMMA_CORRECTION_SQL, [releaseId, key]) : [],
-    ),
+    db.all<EdgeRow>(edgeCorrections ? CORRECTED_DECLARED_LEMMA_SQL : DECLARED_LEMMA_SQL, [releaseId, key]),
+    db.all<GrammarRow>(edgeCorrections ? CORRECTED_DECLARED_LEMMA_GENDER_SQL : DECLARED_LEMMA_GENDER_SQL, [releaseId, key]),
+    corrected ? db.all<CorrectionRow>(edgeCorrections ? CORRECTED_DECLARED_LEMMA_CORRECTION_SQL : DECLARED_LEMMA_CORRECTION_SQL, [releaseId, key]) : [],
   ]);
 
   const stated = new Map<number, StatedClaim[]>();

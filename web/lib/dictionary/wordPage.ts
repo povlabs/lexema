@@ -383,6 +383,13 @@ export interface FormOfReading extends ShownReading<"form-of", FormOfPart> {
    * for `litigante`'s verb form).
    */
   baseWord: string;
+  /**
+   * Set when the block shows only the lines of its record that go to this base
+   * word, its record's other lines being another block's (`formPartsOf`,
+   * #722): `parti`'s parte and parto blocks. It names the block apart from the
+   * record's other blocks.
+   */
+  part: string | undefined;
 }
 
 /**
@@ -596,13 +603,15 @@ export function showsJumpLinks(page: WordPage): boolean {
   return new Set(page.readings.map((entry) => foldItalianApostrophes(baseWordOf(entry)))).size >= 2;
 }
 
-/** What names an entry in its ids: its record, or a block's verb. */
-const entryName = (entry: ShownEntry): string =>
+/** What names an entry in its ids: its record, a block's verb, or the record and base word of a block that holds part of its record. */
+export const entryName = (entry: ShownEntry): string =>
   entry.kind === "verb-form"
     ? `voce-verbale-${entry.verb.replace(/\s+/g, "_")}`
     : entry.kind === "grid-form"
       ? `forma-flessa-${entryKey(entry.records[0])}`
-      : entryKey(entry.reading);
+      : entry.kind === "source" && entry.role === "form-of" && entry.part !== undefined
+        ? `${entryKey(entry.reading)}-${entry.part.replace(/\s+/g, "_")}`
+        : entryKey(entry.reading);
 
 /** The anchor of a page entry, which the jump links point to: one per entry, a block's named by its verb. */
 export const readingAnchor = (entry: ShownEntry): string => `reading-${entryName(entry)}`;
@@ -910,9 +919,11 @@ function baseRecordOf(pos: string, links: readonly LemmaLink[], lemmas: readonly
  * (`casa` takes `case`, #145), both matched by pointer and record. When none
  * does, it shows its first base word's anyway, with nothing marked
  * (`lavoratrici`: lavoratore's noun table lists only `lavoratori`), as a verb
- * form shows its verb's (#666). So `parti`, whose record names `parte` and, on
- * a line about `parto`, `neonato`, shows parte's, which lists it, and not
- * neonato's, which does not.
+ * form shows its verb's (#666). So `parti`, whose record names `parte` and, as
+ * the source states it, `neonato` on a line about `parto`, shows parte's, which
+ * lists it, and not neonato's, which does not. Once a correction points that
+ * line at `parto` (ADR 0030, #722), both list it, and each is a block of its
+ * own (`formPartsOf`).
  */
 function formBasesOf(reading: Reading, lemmas: readonly Reading[], own: ReadonlySet<string>): Reading[] {
   if (!takesLemmaGrid(reading)) return [];
@@ -929,6 +940,42 @@ function formBasesOf(reading: Reading, lemmas: readonly Reading[], own: Readonly
   const shown = listing.length > 0 ? listing : bases.slice(0, 1);
   const byKey = new Map(shown.map(({ base }) => [entryKey(base), base]));
   return [...byKey.values()];
+}
+
+/**
+ * A noun or adjective form record as the blocks it shows in: itself, or, when
+ * its lines name several base words whose tables list it, one part per base
+ * word (Q9 of Huey's ruling of 2026-10-07 on #708; #722). `parti`'s noun
+ * record says "plurale di parte" and, twice, "plurale di parto, …": a parte
+ * block shows the first line and a parto block the other two, each with its
+ * base word's *Definitions* and table. A part is the record with only the
+ * senses, and the edges on them, that go to its base word: a line goes to the
+ * first base word an edge on it leads to, and a line whose edges lead to none
+ * of them, with the record's examples and recovered definitions, to the first.
+ */
+function formPartsOf(reading: Reading, lemmas: readonly Reading[], own: ReadonlySet<string>): Reading[] {
+  const bases = formBasesOf(reading, lemmas, own);
+  const [first, second] = bases;
+  if (first === undefined || second === undefined) return [reading];
+  const baseOf = (link: LemmaLink): Reading | undefined => {
+    const base = namesAnother(link, own) ? baseRecordOf(reading.pos, [link], lemmas, own) : undefined;
+    return base === undefined ? undefined : bases.find((one) => entryKey(one) === entryKey(base));
+  };
+  const senseBase = new Map(
+    reading.senses.map((sense) => [
+      sense.index,
+      reading.lemmaLinks.filter((link) => readAt(link.ref, { sense: sense.index })).flatMap((link) => baseOf(link) ?? [])[0] ?? first,
+    ]),
+  );
+  return bases.flatMap((base, i) => {
+    const senses = reading.senses.filter((sense) => senseBase.get(sense.index) === base);
+    if (i > 0 && senses.length === 0) return [];
+    const lemmaLinks = reading.lemmaLinks.filter((link) => {
+      const sense = reading.senses.find((one) => readAt(link.ref, { sense: one.index }));
+      return sense === undefined ? i === 0 : senseBase.get(sense.index) === base;
+    });
+    return [{ ...reading, senses, lemmaLinks, recovered: i === 0 ? reading.recovered : [] }];
+  });
 }
 
 /** A base record's grid, as its own reading draws it, or none when it has no form to place. */
@@ -1105,16 +1152,19 @@ function pageDrafts({ ordered, about, own, lemmas, placed, gender }: PageParts, 
     }
     const verbs = formOfVerbs(reading);
     if (verbs === undefined) {
-      const [base] = formBasesOf(reading, lemmas, own);
-      const word = formBlockWord(reading, base);
-      const block = word === undefined ? undefined : formBlocks.get(word);
-      if (block !== undefined) {
-        block.readings.push(reading);
-        continue;
+      const parts = formPartsOf(reading, lemmas, own);
+      for (const part of parts) {
+        const [base] = formBasesOf(part, lemmas, own);
+        const word = formBlockWord(part, base);
+        const block = word === undefined ? undefined : formBlocks.get(word);
+        if (block !== undefined) {
+          block.readings.push(part);
+          continue;
+        }
+        const slot: ReadingSlot = { kind: "reading", readings: [part], base, joined: [], joinedTables: [], part: parts.length > 1 ? word : undefined };
+        if (word !== undefined) formBlocks.set(word, slot);
+        slots.push(slot);
       }
-      const slot: ReadingSlot = { kind: "reading", readings: [reading], base, joined: [], joinedTables: [] };
-      if (word !== undefined) formBlocks.set(word, slot);
-      slots.push(slot);
       continue;
     }
     const blockVerbs = new Set(verbs.map((one) => one.verb));
@@ -1173,9 +1223,13 @@ function joinBlocksOfOneBaseWord(slots: readonly Slot[]): Slot[] {
     out.splice(last, 1);
   };
   for (const slot of slots) {
-    if (slot.kind !== "reading" || slot.base === undefined) continue;
-    const word = slot.base.word;
-    if (isVerbReading(slot.base)) {
+    if (slot.kind !== "reading") continue;
+    // A form block about a word the page read no base record of joins that
+    // word's verb block, when there is one: `smentita`'s adjective, "femminile
+    // di smentito", where smentito's one record is a verb form's.
+    const word = slot.base?.word ?? formBlockWord(slot.readings[0], undefined);
+    if (word === undefined) continue;
+    if (slot.base === undefined || isVerbReading(slot.base)) {
       const verb = out.find((other): other is BlockSlot => other.kind === "block" && other.block.verb === word);
       if (verb === undefined) continue;
       for (const reading of slot.readings) addFormRecord(verb.block, reading);
@@ -1385,7 +1439,7 @@ type PlacedFacts = Pick<ReturnType<typeof placeWordFacts>, "etymologies" | "syno
  * lines that joined the block (`joined`, Q5 of #708) follow the records'.
  */
 function shownReading(
-  { readings: records, joined, joinedTables }: ReadingSlot,
+  { readings: records, joined, joinedTables, part }: ReadingSlot,
   lemmas: readonly Reading[],
   own: ReadonlySet<string>,
   placed: PlacedFacts,
@@ -1443,7 +1497,7 @@ function shownReading(
   const shown = nonEmpty(parts);
   const baseWord = lead?.word ?? reading.lemmaLinks[0]?.targetWord ?? reading.word;
   const heading = blockHeadingOf(speech, reading.posTitle);
-  return shown === undefined ? undefined : { kind: "source", role: "form-of", reading, also, heading, baseWord, parts: shown };
+  return shown === undefined ? undefined : { kind: "source", role: "form-of", reading, also, heading, baseWord, part, parts: shown };
 }
 
 /** One part of speech of a form's block: as its heading names it, and the base word's records of it, whose meanings show under it. */
@@ -1597,6 +1651,8 @@ interface ReadingSlot {
   joined: JoinedLines[];
   /** The conjugations of the verb blocks those lines came from, so no table is left out. */
   joinedTables: ConjugationTable[];
+  /** The base word of a block that holds one part of its form record's lines (`formPartsOf`); none for a block of whole records. */
+  part: string | undefined;
 }
 
 /** A verb form record's lines in a noun or adjective form's block: those that were its verb block's, with that block's place in the record. */

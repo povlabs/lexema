@@ -13,7 +13,7 @@ import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
 import { gzipSync } from "node:zlib";
 import { seedSql } from "../../src/import/seedSql.js";
-import { BATCH_LEMMA_LINK_SQL, BATCH_SEARCH_SQL, lookupBatch, type BatchAnswer } from "../../src/lookup/batch.js";
+import { BATCH_LEMMA_LINK_SQL, BATCH_SEARCH_SQL, CORRECTED_BATCH_LEMMA_LINK_SQL, lookupBatch, type BatchAnswer } from "../../src/lookup/batch.js";
 import { fromNodeSqlite, type DictionaryRead, type LookupDatabase } from "../../src/lookup/database.js";
 import { lookup } from "../../src/lookup/lookup.js";
 import { OPTIONAL_TABLES_SQL } from "../../src/lookup/served.js";
@@ -144,7 +144,8 @@ test("a batch reads the release once and runs the same few statements for one wo
   for (const { asked } of [one, many]) {
     assert.equal(releaseReads(asked), 1, asked.join("\n---\n"));
     assert.equal(asked.filter((sql) => sql === BATCH_SEARCH_SQL).length, 1, asked.join("\n---\n"));
-    assert.equal(asked.filter((sql) => sql === BATCH_LEMMA_LINK_SQL).length, 1, asked.join("\n---\n"));
+    // A schema.sql seed has `corrected_edge`, so the links read the corrected edges beside the source's (#722).
+    assert.equal(asked.filter((sql) => sql === CORRECTED_BATCH_LEMMA_LINK_SQL).length, 1, asked.join("\n---\n"));
     assert.equal(asked.filter((sql) => sql === OPTIONAL_TABLES_SQL).length, 1, asked.join("\n---\n"));
     // The release and the optional tables (one D1 call), the search and the
     // lemma links: a single word nothing spells is never read word by word.
@@ -164,6 +165,13 @@ test("the batch's search and lemma-link reads stay on indexes rather than scanni
   const links = plan(BATCH_LEMMA_LINK_SQL, JSON.stringify([1, 2]));
   assert.ok(!links.some((step) => /MATERIALIZE|SCAN lookup_form|SCAN form_of_edge/.test(step)), links.join("\n"));
   assert.ok(links.some((step) => step.includes("form_of_edge_by_record")), links.join("\n"));
+
+  // With corrected edges (#722): each arm on its own index, a source edge's sense probed by the correction's key.
+  const corrected = plan(CORRECTED_BATCH_LEMMA_LINK_SQL, JSON.stringify([1, 2]));
+  assert.ok(!corrected.some((step) => /MATERIALIZE|SCAN (lookup_form|form_of_edge|corrected_edge|e|ce)\b/.test(step)), corrected.join("\n"));
+  assert.ok(corrected.some((step) => /^SEARCH e USING INDEX \S*form_of_edge\S* \(record_id=\?/.test(step)), corrected.join("\n"));
+  assert.ok(corrected.some((step) => /^SEARCH e USING INDEX sqlite_autoindex_corrected_edge_1 \(record_id=\?\)/.test(step)), corrected.join("\n"));
+  assert.ok(corrected.some((step) => /^SEARCH ce USING COVERING INDEX sqlite_autoindex_corrected_edge_1 \(record_id=\? AND sense_index=\?\)/.test(step)), corrected.join("\n"));
 });
 
 test("a word's page-only entries come in entry_id order, as the single lookup reads them, heading the query or through a form", async () => {

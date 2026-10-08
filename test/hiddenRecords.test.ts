@@ -268,6 +268,25 @@ test("the update finds what the seed hides", async () => {
   assert.deepEqual(found.map(({ rule, word, lineNo }) => [rule, word, lineNo]), EXPECTED_HIDDEN().map((row) => [row.rule, row.word, row.line_no]));
 });
 
+test("a hide takes a hidden record's corrected edge with its source edges, so no lookup lists it as a form (ADR 0023, #722)", async () => {
+  const { db } = await seed("edges", false);
+  try {
+    const found = await foundInArchive();
+    const id = recordIdAt(db, found[0].lineNo);
+    // A synthetic row on a record the rules hide, to test the mechanism; the seed itself never writes one there.
+    db.exec(`INSERT INTO corrected_edge (record_id, release_id, sense_index, json_pointer, target_word, target_word_key, correction_id, lemma_line_no, lemma_line_sha256, lemma_pointer)
+             VALUES (${id}, '${RELEASE}', 0, '/senses/0/glosses/0', 'x', 'x', 'synthetic', 1, '${"0".repeat(64)}', '/forms/0/form')`);
+    const plan = planHide(readerOf(db), found);
+    assert.equal(plan.counts.deleted.corrected_edge, 1);
+    db.exec("BEGIN");
+    db.exec(plan.sql);
+    db.exec("COMMIT");
+    assert.deepEqual(db.prepare("SELECT record_id FROM corrected_edge").all(), []);
+  } finally {
+    db.close();
+  }
+});
+
 test("the one-off update brings a dictionary seeded before both rules to what a seed now writes, and a second run plans nothing", async () => {
   const { db: before } = await seed("before", false, archiveBefore389);
   try {

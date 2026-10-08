@@ -181,9 +181,9 @@ The apply is one SQL file, run once
 - **The change.** `applied_change` records each change under its id, with the
   record it wrote and, for a changed record, the record it replaced.
 - **The retired record.** The record a changed record replaces loses its
-  `lookup_form` and `form_of_edge` rows, so no search reaches it. Everything
-  else of it stays: its line, its senses, its claims, and the rows written by
-  hand beside it.
+  `lookup_form` and `form_of_edge` rows, so no search reaches it, and any
+  `corrected_edge` row with them (below). Everything else of it stays: its
+  line, its senses, its claims, and the other rows written by hand beside it.
 - **The nearby indexes.** `accent_fold` and `typo_key` are recomputed with the
   seed's own rules for every key the written and retired records spell. A row
   that changes is replaced, and the new one is written under the later release.
@@ -227,6 +227,9 @@ stays on the retired record, a lookup of the replacing record reads that
 record's own claims, and the apply names each such correction in its output,
 beside the change and the replacing record, for a person to check
 ([Write the curated corrections](RUN_AN_IMPORT.md#write-the-curated-corrections-into-a-seeded-database)).
+A corrected edge (`corrected_edge`, [#722](https://github.com/povlabs/lexema/issues/722))
+is named the same way, but goes with the retired record's `form_of_edge` rows,
+so no lookup lists the retired record as a form of the word it names.
 
 ## Serving a master of several releases
 

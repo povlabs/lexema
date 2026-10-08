@@ -274,7 +274,17 @@ checked by hand against a cited Wiktionary revision
 [`src/italian/curatedCorrections.ts`](../src/italian/curatedCorrections.ts):
 each entry names its record by release, archive line and line digest, the
 source text it overrides, and its evidence. The seed writes each entry keyed to
-its release as `corrected_claim` rows beside the record. A database seeded
+its release as `corrected_claim` rows beside the record. The list also sets a
+sense's `form_of` edge where the source states none or names the wrong word
+([ADR 0030](../.decisions/0030-corrections-may-fix-edges-and-cells.md),
+[#722](https://github.com/povlabs/lexema/issues/722)): `aerei`'s noun sense
+gets an edge to `aereo`, and `parti`'s two lines about `parto` name it in
+place of `neonato` and `Parti`. Each cites two archive lines, the record's own
+gloss naming the word after "di" and that word's forms table listing the
+record's word; rule `it-form-of-gloss-edge/v1` makes most of them
+([report](../reports/2026-10-08-form-of-gloss-edges.md)). The seed writes each
+as a `corrected_edge` row, and a lookup reads it in place of the sense's own
+edges. A hidden record gets none. A database seeded
 before an entry gets it by a one-off update, with no reseed and no archive:
 
 ```sh
@@ -286,8 +296,8 @@ It picks its database the way the seed does: the local D1 under `SEED_STATE`
 one SQL file under `.data/updates/` and runs it as one transaction: it writes
 each entry's rows, and increments the correction revision, so card and
 suggestion addresses move ([cache identity](DEPLOY.md#card-and-suggestion-cache-identity)).
-`source_record_json` and `grammar_claim` are not touched. The file holds no
-DDL: on a master without `corrected_claim`, `correction_version` or
+`source_record_json`, `grammar_claim` and `form_of_edge` are not touched. The file holds no
+DDL: on a master without `corrected_claim`, `corrected_edge`, `correction_version` or
 `corrected_definition` the command refuses to write and names
 `pnpm run update:upgrade`, which creates them. It then reads the rows
 back and fails if one differs. It prints one line per entry: written, already

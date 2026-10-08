@@ -14,6 +14,10 @@ import {
   INFLECTION_GRAMMAR_SQL,
   INFLECTION_SQL,
   LEMMA_LINK_SQL,
+  CORRECTED_INFLECTION_CORRECTION_SQL,
+  CORRECTED_INFLECTION_GRAMMAR_SQL,
+  CORRECTED_INFLECTION_SQL,
+  CORRECTED_LEMMA_LINK_SQL,
   MAX_QUERY_LENGTH,
   SEARCH_SQL,
   lookup,
@@ -927,6 +931,29 @@ test("resolving lemma links never materialises the candidate view", async () => 
       plan.some((step) => step.includes("form_of_edge_by_record")),
       `lemma-link query stopped using form_of_edge_by_record:\n${plan.join("\n")}`,
     );
+  });
+});
+
+test("with corrected edges, each read of edges stays on its arms' indexes and probes the correction by its key (#722)", async () => {
+  await withFixture(async (db) => {
+    const planOf = (sql: string) => (db.prepare(`EXPLAIN QUERY PLAN ${sql}`).all(1) as { detail: string }[]).map((row) => row.detail);
+    const links = planOf(CORRECTED_LEMMA_LINK_SQL);
+    assert.ok(!links.some((step) => /MATERIALIZE|SCAN (lookup_form|form_of_edge|corrected_edge|e|ce)\b/.test(step)), links.join("\n"));
+    // Either index that leads with the record serves; the unique one also gives the arm its sense order.
+    assert.ok(links.some((step) => /^SEARCH e USING INDEX (form_of_edge_by_record|sqlite_autoindex_form_of_edge_1) \(record_id=\?\)/.test(step)), links.join("\n"));
+    assert.ok(links.some((step) => /^SEARCH e USING INDEX sqlite_autoindex_corrected_edge_1 \(record_id=\?\)/.test(step)), links.join("\n"));
+    assert.ok(links.some((step) => /^SEARCH ce USING COVERING INDEX sqlite_autoindex_corrected_edge_1 \(record_id=\? AND sense_index=\?\)/.test(step)), links.join("\n"));
+    for (const [name, sql] of [
+      ["inflection", CORRECTED_INFLECTION_SQL],
+      ["inflection grammar", CORRECTED_INFLECTION_GRAMMAR_SQL],
+      ["inflection correction", CORRECTED_INFLECTION_CORRECTION_SQL],
+    ] as const) {
+      const plan = planOf(sql);
+      assert.ok(!plan.some((step) => /MATERIALIZE|SCAN (lookup_form|form_of_edge|corrected_edge|e|ce|lf)\b/.test(step)), `${name}:\n${plan.join("\n")}`);
+      // Both arms start from this record's own row (#381), and the corrected one reads its edges by the word they name.
+      assert.equal(plan.filter((step) => /USING INDEX lookup_form_by_record \(record_id=\?\)$/.test(step)).length, 2, `${name}:\n${plan.join("\n")}`);
+      assert.ok(plan.some((step) => /^SEARCH e USING INDEX corrected_edge_by_target \(release_id=\? AND target_word_key=\?\)/.test(step)), `${name}:\n${plan.join("\n")}`);
+    }
   });
 });
 

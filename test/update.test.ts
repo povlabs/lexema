@@ -531,7 +531,7 @@ test("the upgrade brings a master seeded before #18 up to the schema and is safe
   for (const view of [...SERVING_VIEWS].reverse()) old.exec(`DROP VIEW ${view}`);
   for (const table of [...UPDATE_TABLES, ...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_FACT_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES, ...CORRECTION_TABLES, ...HIDE_TABLES].reverse()) old.exec(`DROP TABLE ${table}`);
   assert.deepEqual(missingUpgrade(readerOf(old)), [...UPGRADE_NAMES]);
-  assert.deepEqual(UPGRADE_NAMES.filter((name) => [...CORRECTION_TABLES, ...HIDE_TABLES].includes(name as never)), ["correction_version", "corrected_claim", "hide_version", "hidden_record"]);
+  assert.deepEqual(UPGRADE_NAMES.filter((name) => [...CORRECTION_TABLES, ...HIDE_TABLES].includes(name as never)), ["correction_version", "corrected_claim", "corrected_edge", "hide_version", "hidden_record"]);
   const upgrade = masterUpgradeSql(await readFile(SCHEMA, "utf8"));
   const asFresh = (db: DatabaseSync) => schemaOf(db).replaceAll("CREATE TABLE IF NOT EXISTS", "CREATE TABLE").replaceAll("CREATE INDEX IF NOT EXISTS", "CREATE INDEX");
   old.exec(upgrade);
@@ -963,5 +963,29 @@ test("a curated correction stays on the record a change retires, and the apply r
     const again = planCorrections(readerOf(db), [casa]);
     assert.equal(again.sql, "");
     assert.deepEqual(again.entries.map((entry) => entry.state), ["retired"]);
+  });
+});
+
+test("a corrected edge goes with the source edges of the record a change retires, and the apply reports it (#722)", async () => {
+  await withDesk(async ({ db, later }) => {
+    const [{ record_id: casaId }] = db.prepare(`SELECT record_id FROM source_record WHERE release_id = '${MASTER}' AND line_no = 1`).all() as { record_id: number }[];
+    // A synthetic entry on the master's `casa`, to test the mechanism; no ruling says casa is a form.
+    const casa: CuratedCorrection = {
+      record: { releaseId: MASTER, lineNo: 1, lineSha256: createHash("sha256").update(CASA_JULY, "utf8").digest("hex"), word: "casa", pos: "noun" },
+      edge: { sense: 0, gloss: { pointer: "/senses/0/glosses/0", text: "synthetic" }, target: "casale" },
+      evidence: { releaseId: MASTER, lineNo: 1, lineSha256: "0".repeat(64), word: "casale", pos: "noun", pointer: "/forms/0/form", shows: "casa" },
+    };
+    execute(db, planCorrections(readerOf(db), [casa]).sql);
+    assert.deepEqual(db.prepare("SELECT record_id FROM corrected_edge").all().map((row) => ({ ...row })), [{ record_id: casaId }]);
+
+    const plan = await applied(db, later, [["changed", "casa"]]);
+    const [change] = plan.changes;
+    assert.deepEqual(plan.retiredCorrections, [{ correctionId: `${MASTER}:1/senses/0`, recordId: casaId, replacedBy: change.recordId, changeId: change.change.id }]);
+    assert.equal(plan.counts.deleted.corrected_edge, 1);
+    // No lookup lists the retired record as a form any more, and a later run reports the entry instead of writing it.
+    assert.deepEqual(db.prepare("SELECT record_id FROM corrected_edge").all(), []);
+    const again = planCorrections(readerOf(db), [casa]);
+    assert.equal(again.sql, "");
+    assert.deepEqual(again.edges.map((entry) => entry.state), ["retired"]);
   });
 });

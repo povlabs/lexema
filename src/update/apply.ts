@@ -10,8 +10,9 @@
 //   path with its source text normalizations (ADR 0019), as a new record of
 //   the later release, its line stored byte for byte;
 // - retires the record a `changed` change replaces: its lookup_form and
-//   form_of_edge rows go, so no search reaches it, and nothing else of it is
-//   touched, the rows written by hand beside it least of all;
+//   form_of_edge rows go, so no search reaches it, and so do its corrected
+//   edges (#722), which the update reports with its other corrections; nothing
+//   else of it is touched, the rows written by hand beside it least of all;
 // - recomputes the `accent_fold` and `typo_key` rows of every key those
 //   records spell, with the seed's own rules, writing only rows that change;
 // - records the later release ('partial', with its checksum), the master it
@@ -339,6 +340,10 @@ export async function planApply(
   const [{ n: retiredEdges }] = retired.length === 0
     ? [{ n: 0 }]
     : select<{ n: number }>(reader, `SELECT count(*) AS n FROM form_of_edge WHERE record_id IN (SELECT value FROM json_each(${json(retired)}))`);
+  // A retired record's corrected edges go with its source edges, so no lookup lists it as a form; the correction is reported.
+  const [{ n: retiredCorrectedEdges }] = retired.length === 0 || !correctionTablesIn(reader).includes("corrected_edge")
+    ? [{ n: 0 }]
+    : select<{ n: number }>(reader, `SELECT count(*) AS n FROM corrected_edge WHERE record_id IN (SELECT value FROM json_each(${json(retired)}))`);
 
   const writtenAccent = nearby.accent.length;
   const writtenTypo = nearby.typo.length;
@@ -391,6 +396,7 @@ export async function planApply(
     sql.push(
       `DELETE FROM lookup_form WHERE record_id IN (${retired.join(",")});`,
       `DELETE FROM form_of_edge WHERE record_id IN (${retired.join(",")});`,
+      ...(retiredCorrectedEdges > 0 ? [`DELETE FROM corrected_edge WHERE record_id IN (${retired.join(",")});`] : []),
     );
   }
   for (const table of APPLIED_TABLES.slice(0, -2)) sql.push(...inserts.sql(table));
@@ -427,7 +433,7 @@ export async function planApply(
         applied_change: appliedTuples.length,
         release_table_rows: APPLIED_TABLES.length,
       },
-      { lookup_form: retiredKeys.length, form_of_edge: retiredEdges, ...nearby.replaced },
+      { lookup_form: retiredKeys.length, form_of_edge: retiredEdges, corrected_edge: retiredCorrectedEdges, ...nearby.replaced },
     ),
     sql: `${sql.join("\n")}\n`,
   };
@@ -444,18 +450,24 @@ export interface NearbyEdits {
 /** Nothing to recompute: no key moved. */
 export const NO_NEARBY_EDITS: NearbyEdits = { deletes: [], accent: [], typo: [], replaced: { accent_fold: 0, typo_key: 0 } };
 
+/** Which of the tables a record's curated corrections are written to the master has: `corrected_claim` (#420), `corrected_edge` (#722). */
+const correctionTablesIn = (reader: MasterReader): string[] =>
+  select<{ name: string }>(reader, "SELECT name FROM sqlite_schema WHERE type = 'table' AND name IN ('corrected_claim', 'corrected_edge') ORDER BY name").map((row) => row.name);
+
 /** The curated corrections on the records `planned` changes retire, read where the master holds them. */
 function correctionsOn(reader: MasterReader, planned: readonly PlannedChange[]): RetiredCorrection[] {
   const replacing = new Map(
     planned.flatMap(({ change, recordId }) => (change.kind === "changed" ? [[change.master.recordId, { recordId, changeId: change.id }] as const] : [])),
   );
   if (replacing.size === 0) return [];
-  // A master seeded before #420 holds none until `correct:records` writes some.
-  if (select<{ name: string }>(reader, "SELECT name FROM sqlite_schema WHERE type = 'table' AND name = 'corrected_claim'").length === 0) return [];
+  // A master seeded before #420, or before #722, holds none until `correct:records` writes some.
+  const tables = correctionTablesIn(reader);
+  if (tables.length === 0) return [];
   return select<{ record_id: number; correction_id: string }>(
     reader,
-    `SELECT DISTINCT record_id, correction_id FROM corrected_claim
-      WHERE record_id IN (SELECT value FROM json_each(${json([...replacing.keys()])})) ORDER BY record_id`,
+    `SELECT record_id, correction_id FROM (${tables
+      .map((table) => `SELECT record_id, correction_id FROM ${table} WHERE record_id IN (SELECT value FROM json_each(${json([...replacing.keys()])}))`)
+      .join(" UNION ")}) ORDER BY record_id, correction_id`,
   ).map((row) => {
     const by = replacing.get(row.record_id) as { recordId: number; changeId: ChangeId };
     return { correctionId: row.correction_id, recordId: row.record_id, replacedBy: by.recordId, changeId: by.changeId };

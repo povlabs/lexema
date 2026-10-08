@@ -48,8 +48,11 @@ export const PAGE_ENTRY_CORRECTION_TABLES = ["corrected_definition"] as const;
  */
 export const PAGE_ENTRY_FACT_TABLES = [PAGE_ENTRY_FACT_TABLE] as const;
 
-/** The tables `correct:records` writes a record's curated facts to (#420), after its cache revision. */
-export const CORRECTION_TABLES = ["correction_version", "corrected_claim"] as const;
+/** The tables `correct:records` writes a record's curated facts (#420) and edges (#722) to, after its cache revision. */
+export const CORRECTION_TABLES = ["correction_version", "corrected_claim", "corrected_edge"] as const;
+
+/** The index lookups read a corrected edge through by the word it names (#722). */
+export const CORRECTION_INDEXES = ["corrected_edge_by_target"] as const;
 
 /** The tables `hide:records` writes a hidden record to (#382), after its cache revision. */
 export const HIDE_TABLES = ["hide_version", "hidden_record"] as const;
@@ -67,7 +70,7 @@ export type ServingView = (typeof SERVING_VIEWS)[number];
 const UPGRADE_TABLES = [...UPDATE_TABLES, ...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_FACT_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES, ...CORRECTION_TABLES, ...HIDE_TABLES] as const;
 
 /** Every table, index and view the upgrade creates, by its sqlite_schema name. */
-export const UPGRADE_NAMES: readonly string[] = [...UPGRADE_TABLES, ...PAGE_ENTRY_INDEXES, ...SERVING_VIEWS];
+export const UPGRADE_NAMES: readonly string[] = [...UPGRADE_TABLES, ...PAGE_ENTRY_INDEXES, ...CORRECTION_INDEXES, ...SERVING_VIEWS];
 
 /** The recovered definitions (#28) with their labels and examples, which point at them, and their index. */
 export const RECOVERED_TABLES = ["recovered_definition", "recovered_label", "recovered_example"] as const;
@@ -265,7 +268,7 @@ export function masterUpgradeSql(schema: string): string {
   const tables = UPGRADE_TABLES.map((name) =>
     createStatement(schema, "TABLE", name).replace(/^CREATE TABLE /, "CREATE TABLE IF NOT EXISTS "),
   );
-  const indexes = PAGE_ENTRY_INDEXES.map((name) =>
+  const indexes = [...PAGE_ENTRY_INDEXES, ...CORRECTION_INDEXES].map((name) =>
     createStatement(schema, "INDEX", name).replace(/^CREATE INDEX /, "CREATE INDEX IF NOT EXISTS "),
   );
   const drops = [...SERVING_VIEWS].reverse().map((name) => `DROP VIEW IF EXISTS ${name};`);
