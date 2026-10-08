@@ -59,19 +59,6 @@
 // it: the seed and the run report it instead (ADR 0025).
 //
 // A third kind sets cells of a verb's conjugation table (ADR 0030, #723).
-// `assorbire`'s 21 plural essere cells read `siamo assorbito, assorti,
-// assorti`: a singular participle and a repeated word. The source took that
-// text from the it.wiktionary conjugation page, whose template renders it, so
-// no page shows the right cell. Huey ruled on 2026-10-08 that the fix uses the
-// regular essere spelling all the same, citing that page (ADR 0030's
-// 2026-10-08 amendment). Such a correction names its record like a gender or
-// number correction, and each cell by its place in `forms[]` and the text the
-// line holds there. The seed writes a `corrected_form` row per cell
-// (src/import/correctedLayer.ts), `pnpm run correct:records` writes them into
-// a master seeded before it, and a lookup reads each cell in place of the
-// source's spelling (`formsOf` in src/lookup/lookup.ts).
-//
-// A third kind sets cells of a verb's conjugation table (ADR 0030, #723).
 // `assorbire`'s plural essere cells read `siamo assorbito, assorti, assorti`:
 // a singular participle and a repeated word. The source has that text from
 // the it.wiktionary conjugation page, whose template renders it, so no page
