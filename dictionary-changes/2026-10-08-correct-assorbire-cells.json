@@ -1,0 +1,10 @@
+{
+  "command": "correct:records",
+  "inputs": {},
+  "lookups": [{ "word": "assorbire" }],
+  "expected": {
+    "records": { "added": 0, "changed": 1, "removed": 0 },
+    "written": { "corrected_form": 21, "correction_version": 1 },
+    "deleted": {}
+  }
+}

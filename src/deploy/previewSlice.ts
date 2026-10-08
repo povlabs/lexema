@@ -171,7 +171,7 @@ function rowsToCopy(reader: MasterReader, keys: readonly string[]): Map<string, 
   for (const table of ["source_release", "release_table_rows", "feed_release", "hide_version", "correction_version", "grammar_value"]) all(table);
 
   // A whole record's every row; a listed record's only the rows its listing reads.
-  for (const table of ["source_record_json", "lookup_form", "claim_review", "recovered_definition", "hidden_record"]) byRecord(table);
+  for (const table of ["source_record_json", "lookup_form", "corrected_form", "claim_review", "recovered_definition", "hidden_record"]) byRecord(table);
   for (const table of ["source_record", "form_of_edge", "corrected_claim", "corrected_edge"]) byRecord(table, "1 = 1");
   byRecord(
     "sense",

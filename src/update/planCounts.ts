@@ -31,6 +31,7 @@ export const COUNTED_TABLES = [
   "hidden_record",
   "hide_version",
   "corrected_claim",
+  "corrected_form",
   "corrected_edge",
   "corrected_definition",
   "correction_version",

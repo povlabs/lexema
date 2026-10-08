@@ -48,6 +48,7 @@ const TABLE_ORDER = [
   "recovered_example",
   "hidden_record",
   "corrected_claim",
+  "corrected_form",
   "corrected_edge",
   "recovered_entry",
   "entry_definition",
@@ -80,6 +81,7 @@ export const COLUMNS: Record<TableName, string> = {
   recovered_example: "recovered_id,example_index,page_line,wikitext,text",
   hidden_record: "record_id,release_id,page_id,rule,because,language,page_line,lemma_line",
   corrected_claim: "record_id,release_id,dimension,value,correction_id,evidence_url",
+  corrected_form: "record_id,release_id,form_index,surface,correction_id,evidence_url",
   corrected_edge: "record_id,release_id,sense_index,json_pointer,target_word,target_word_key,correction_id,evidence_url,base_evidence_url",
   recovered_entry: "entry_id,release_id,page_id,word,word_key,pos,pos_title,rule,page_line,wikitext",
   entry_definition: "entry_id,definition_index,route,term,page_line,wikitext,text,lead_in_index",
@@ -131,6 +133,7 @@ class SqlBatchWriter {
     recovered_example: 0,
     hidden_record: 0,
     corrected_claim: 0,
+    corrected_form: 0,
     corrected_edge: 0,
     recovered_entry: 0,
     entry_definition: 0,
@@ -463,7 +466,11 @@ export async function seedSql(options: SeedSqlOptions): Promise<SeedSqlReport> {
     ? { pages: options.rawPages, languages: options.languageHeadings }
     : undefined;
   const hidden = new HiddenLayer(judge, await readRulePass(options.input), pageRows, writer.statement("hidden_record"), writer.counts);
-  const corrected = new CorrectedLayer(options.corrections ?? CURATED_CORRECTIONS, writer.statement("corrected_claim"), writer.statement("corrected_edge"), writer.counts);
+  const corrected = new CorrectedLayer(
+    options.corrections ?? CURATED_CORRECTIONS,
+    { claim: writer.statement("corrected_claim"), form: writer.statement("corrected_form"), edge: writer.statement("corrected_edge") },
+    writer.counts,
+  );
   const correctedDefinitions = new CorrectedDefinitionLayer(options.corrections ?? CURATED_CORRECTIONS, writer.statement("corrected_definition"), writer.counts);
   const required = new Set(options.requiredWords ?? []);
   const seenWords = new Set<string>();

@@ -716,6 +716,33 @@ CREATE TABLE corrected_claim (
     REFERENCES source_record(record_id, release_id) ON DELETE CASCADE
 ) STRICT;
 
+-- One cell of a verb's conjugation table the source spells wrongly, set right
+-- by hand (ADR 0030, #723): `assorbire`'s plural essere cells read `siamo
+-- assorbito, assorti, assorti`. The committed list names the record as for
+-- corrected_claim, and each cell by its place in `forms[]` and the text the
+-- line holds there. A layer beside the record, never an edit of it:
+-- source_record_json and lookup_form stay as imported, and a lookup reads
+-- `surface` in place of the cell's own spelling. Like corrected_claim, a row
+-- stays on the record it was written for, and a record that replaced it does
+-- not inherit it. Absent on a master seeded before it until `update:upgrade`
+-- creates it; a lookup reads an absent one as empty.
+CREATE TABLE corrected_form (
+  record_id     INTEGER NOT NULL REFERENCES source_record(record_id) ON DELETE CASCADE,
+  release_id    TEXT    NOT NULL,
+  -- The cell's place in the record's `forms[]`: the cell at `/forms/<form_index>/form`.
+  form_index    INTEGER NOT NULL CHECK (form_index >= 0),
+  surface       TEXT    NOT NULL CHECK (surface <> ''),
+  -- The list entry it was written from: release id, archive line and `cells`, `it-0c432803:113784:cells`.
+  correction_id TEXT    NOT NULL,
+  -- The first revision the entry cites, as a permanent link. Split as
+  -- corrected_claim's is, for D1's 50-byte pattern limit (#489).
+  evidence_url  TEXT    NOT NULL CHECK (evidence_url GLOB 'https://*'
+                                        AND evidence_url GLOB '*.wiktionary.org/w/index.php?title=*&oldid=*'),
+  PRIMARY KEY (record_id, form_index),
+  FOREIGN KEY (record_id, release_id)
+    REFERENCES source_record(record_id, release_id) ON DELETE CASCADE
+) STRICT;
+
 -- A sense's `form_of` edge, set right beside the record (ADR 0030, #722):
 -- added where the sense declares none (`aerei`'s noun says "plurale di aereo"
 -- and names nothing), or in place of the edges it declares when they name the

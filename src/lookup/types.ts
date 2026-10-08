@@ -80,7 +80,8 @@ export interface CorrectionRef {
  * `fissazione` is tagged masculine and is feminine. It stands in for every
  * claim the record states in its dimension, which it keeps as `replaces`, so
  * the source's own words are never lost and never read as the fact. Only a
- * record's own gender or number is corrected, never a form's or a sense's.
+ * record's own gender or number is corrected this way, never a form's or a
+ * sense's; a table cell's spelling is corrected as a `CorrectedSurface`.
  */
 export interface CorrectedClaim {
   status: "corrected";
@@ -132,7 +133,20 @@ export interface Grammar {
 }
 
 /**
- * One `forms[]` entry of a record, as the source spells it.
+ * A table cell the source spells wrongly, set right by a curated correction
+ * (ADR 0030, #723): `assorbire`'s `siamo assorbito, assorti, assorti` reads
+ * `siamo assorbiti, assorti`. It keeps the source's spelling, so the source's
+ * words are never lost and never read as the cell.
+ */
+export interface CorrectedSurface {
+  /** The source's spelling of the cell, verbatim. */
+  replaces: string;
+  correction: CorrectionRef;
+}
+
+/**
+ * One `forms[]` entry of a record, as the source spells it, or as a curated
+ * correction sets it right.
  *
  * The entry is evidence of what the source listed, never a claim that this
  * record is the base word: `studentessa` lists `studenti`. What the source said
@@ -142,8 +156,10 @@ export interface Grammar {
 export interface SourceForm {
   /** Index into the record's `forms[]`, which is the index in the pointer. */
   index: number;
-  /** Verbatim source spelling, never cleaned. */
+  /** Verbatim source spelling, never cleaned; a correction's spelling where `corrected` says so. */
   surface: string;
+  /** The correction `surface` comes from, when one sets this cell right; absent for the source's own spelling. */
+  corrected?: CorrectedSurface;
   /** The entry this was read from: `/forms/3/form`, or the page line that writes it out (ADR 0026). */
   ref: FactRef;
   /** The conjugation table the source names for this entry, when it names one. */

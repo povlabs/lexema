@@ -25,7 +25,14 @@
 
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
-import { CURATED_CORRECTIONS, edgeCorrections, recordCorrections, type EdgeCorrection, type RecordCorrection } from "../src/italian/curatedCorrections.js";
+import {
+  CURATED_CORRECTIONS,
+  edgeCorrections,
+  recordCorrections,
+  type EdgeCorrection,
+  type LineCorrection,
+  type RecordCorrection,
+} from "../src/italian/curatedCorrections.js";
 
 export const CORRECTION_FIXTURE = new URL("../fixtures/curated-corrections.jsonl", import.meta.url);
 
@@ -59,7 +66,7 @@ export function fixtureCorrections(): RecordCorrection[] {
  * each names. Throws on an entry no line carries, so a fixture that drifts
  * from the list fails by name.
  */
-export function atFixtureLines<Correction extends RecordCorrection | EdgeCorrection = RecordCorrection>(
+export function atFixtureLines<Correction extends LineCorrection | EdgeCorrection = RecordCorrection>(
   lines: readonly string[],
   releaseId: string,
   corrections: readonly Correction[] = fixtureCorrections() as Correction[],

@@ -20,7 +20,7 @@
 //   feeds, and each change under its id.
 //
 // It never deletes a record, never touches a table written by hand beside the
-// records (raw_page, recovered_*, claim_review, corrected_claim, corrected_edge), and never applies a lost
+// records (raw_page, recovered_*, claim_review, corrected_claim, corrected_form, corrected_edge), and never applies a lost
 // word: removing a record is not ruled.
 //
 // The file holds no DDL and changes no schema (#509): it writes into the
@@ -446,9 +446,9 @@ export interface NearbyEdits {
 /** Nothing to recompute: no key moved. */
 export const NO_NEARBY_EDITS: NearbyEdits = { deletes: [], accent: [], typo: [], replaced: { accent_fold: 0, typo_key: 0 } };
 
-/** Which of the tables a record's curated corrections are written to the master has: `corrected_claim` (#420), `corrected_edge` (#722). */
+/** Which of the tables a record's curated corrections are written to the master has: `corrected_claim` (#420), `corrected_edge` (#722), `corrected_form` (#723). */
 const correctionTablesIn = (reader: MasterReader): string[] =>
-  select<{ name: string }>(reader, "SELECT name FROM sqlite_schema WHERE type = 'table' AND name IN ('corrected_claim', 'corrected_edge') ORDER BY name").map((row) => row.name);
+  select<{ name: string }>(reader, "SELECT name FROM sqlite_schema WHERE type = 'table' AND name IN ('corrected_claim', 'corrected_edge', 'corrected_form') ORDER BY name").map((row) => row.name);
 
 /** The curated corrections on the records `planned` changes retire, read where the master holds them. */
 function correctionsOn(reader: MasterReader, planned: readonly PlannedChange[]): RetiredCorrection[] {
@@ -456,7 +456,7 @@ function correctionsOn(reader: MasterReader, planned: readonly PlannedChange[]):
     planned.flatMap(({ change, recordId }) => (change.kind === "changed" ? [[change.master.recordId, { recordId, changeId: change.id }] as const] : [])),
   );
   if (replacing.size === 0) return [];
-  // A master seeded before #420, or before #722, holds none until `correct:records` writes some.
+  // A master seeded before #420, #722 or #723 holds none of that kind until `correct:records` writes some.
   const tables = correctionTablesIn(reader);
   if (tables.length === 0) return [];
   return select<{ record_id: number; correction_id: string }>(

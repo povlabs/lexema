@@ -35,13 +35,14 @@ import type { DatabaseSync } from "node:sqlite";
 import { gzipSync } from "node:zlib";
 import { renderToStaticMarkup } from "react-dom/server";
 import { seedSql } from "../../src/import/seedSql.js";
+import { CURATED_CORRECTIONS, cellCorrections } from "../../src/italian/curatedCorrections.js";
 import { loadFixturePages } from "../../src/source/rawPage.js";
 import { compoundAuxiliary } from "../../src/italian/compoundAuxiliary.js";
 import { essereAgreement } from "../../src/italian/essereAgreement.js";
 import { glossBase } from "../../src/italian/formOfGlossEdge.js";
 import { fromNodeSqlite } from "../../src/lookup/database.js";
 import { entryKey, isFormOfReading, isSourceRef, type LemmaLink, type Reading } from "../../src/lookup/types.js";
-import { edgeCorrectionsAt } from "../../test/correctionFixture.js";
+import { atFixtureLines, edgeCorrectionsAt } from "../../test/correctionFixture.js";
 import { seededDictionary } from "../../test/seededDictionary.js";
 import { phrasePageFacts, wordPageFacts } from "../../tools/wordPageShapes/facts.ts";
 import { shapeOf } from "../../tools/wordPageShapes/shape.ts";
@@ -73,10 +74,10 @@ const linesOf = async (file: string): Promise<string[]> => (await readFile(join(
 
 /**
  * The dev seed and the five companion fixtures, with the committed raw pages,
- * seeded once for this file: with the committed list's edges (ADR 0030, #722)
- * on these lines, as the seed of it-0c432803 writes them and the page serves
- * them, or, for the #707 census, as the source stated them when the census
- * read the release (`as-censused`).
+ * seeded once for this file: with the committed list's table cells (#723) and
+ * edges (ADR 0030, #722) on these lines, as the seed of it-0c432803 writes
+ * them and the page serves them, or, for the #707 census, with the edges as
+ * the source stated them when the census read the release (`as-censused`).
  */
 async function dictionary(edges: "corrected" | "as-censused" = "corrected"): Promise<DatabaseSync> {
   return seededDictionary(`word-page-rules-${edges}`, async (outputDir) => {
@@ -99,7 +100,11 @@ async function dictionary(edges: "corrected" | "as-censused" = "corrected"): Pro
       archiveR2Key: `releases/${RELEASE}.jsonl.gz`,
       license: "CC-BY-SA-4.0",
       rawPages: await loadFixturePages(join(REPO, "fixtures")),
-      corrections: edges === "corrected" ? edgeCorrectionsAt(lines, RELEASE) : [],
+      // The committed list's table cells (#723) keyed to the lines here, as a seed of the release writes them, and its edges unless as censused.
+      corrections: [
+        ...atFixtureLines(lines, RELEASE, cellCorrections(CURATED_CORRECTIONS)),
+        ...(edges === "corrected" ? edgeCorrectionsAt(lines, RELEASE) : []),
+      ],
       onRejection: (rejection) => {
         throw new Error(`fixture line rejected: ${JSON.stringify(rejection)}`);
       },
@@ -851,7 +856,6 @@ const ADR_0030_CELLS: Rule = {
   row: "ADR 0030: a conjugation cell set by hand (Q10); a plural essere cell agrees with its subject.",
   home: ".decisions/0030-corrections-may-fix-edges-and-cells.md",
   words: ["assorbire"],
-  todo: "#723",
   check(p) {
     if (p.kind !== "word") return [];
     const problems: Problems = [];
@@ -870,6 +874,33 @@ const ADR_0030_CELLS: Rule = {
       }
     }
     return problems;
+  },
+  named: {
+    // The 21 plural essere cells read as Huey ruled (#723): the plural participle, then `assorti` once.
+    // Every other cell keeps the source's participles: `sono assorbito, assorto`, `abbiamo assorbito, assorto`.
+    assorbire: (p) => {
+      if (p.kind !== "word") return ["assorbire opens no word page"];
+      const problems: Problems = [];
+      let corrected = 0;
+      for (const { conjugation } of conjugationsOf(p.page)) {
+        for (const mood of conjugation.moods) {
+          for (const tense of mood.compound) {
+            tense.cells.forEach((cell, row) => {
+              for (const { surface } of cell.forms) {
+                const spellings = surface.split(", ");
+                if (new Set(spellings).size !== spellings.length) problems.push(`${mood.mood} ${tense.name} ${mood.persons[row]} repeats a spelling: "${surface}"`);
+                const plural = compoundAuxiliary(surface) === "essere" && ["noi", "voi", "loro"].includes(mood.persons[row]);
+                if (plural) corrected += 1;
+                const participles = spellings.map((spelling) => spelling.split(" ").at(-1)).join(", ");
+                const expected = plural ? "assorbiti, assorti" : "assorbito, assorto";
+                if (participles !== expected) problems.push(`${mood.mood} ${tense.name} ${mood.persons[row]} reads "${surface}", not ${expected}`);
+              }
+            });
+          }
+        }
+      }
+      return [...problems, ...assertEqual([corrected], [21])];
+    },
   },
 };
 

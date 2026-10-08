@@ -196,6 +196,11 @@ test("every declaration already in dictionary-changes parses as before, with no 
       );
       continue;
     }
+    // assorbire's corrected table cells (#723) name the verb.
+    if (name === "2026-10-08-correct-assorbire-cells.json") {
+      assert.deepEqual(parseDeclaration(path, text).lookups?.map((item) => item.word), ["assorbire"]);
+      continue;
+    }
     // The form_of edge corrections (#722) name the words whose pages they change.
     if (name === "2026-10-08-correct-form-of-edges.json") {
       assert.deepEqual(

@@ -221,8 +221,8 @@ test("a hidden record gets no edge, and the seed reports it (ADR 0023)", () => {
   const [correction] = edgeCorrections(HAND_CORRECTIONS);
   const written: unknown[][] = [];
   const statement = { run: (...values: unknown[]) => written.push(values) } as unknown as ImportStatement;
-  const layer = new CorrectedLayer([correction], statement, statement, { corrected_claim: 0, corrected_edge: 0 });
-  layer.add({ releaseId: correction.record.releaseId, recordId: 1, lineNo: correction.record.lineNo, lineSha256: correction.record.lineSha256 }, true);
+  const layer = new CorrectedLayer([correction], { claim: statement, form: statement, edge: statement }, { corrected_claim: 0, corrected_form: 0, corrected_edge: 0 });
+  layer.add({ releaseId: correction.record.releaseId, recordId: 1, lineNo: correction.record.lineNo, line: "{}", lineSha256: correction.record.lineSha256 }, true);
   assert.deepEqual(written, []);
   assert.deepEqual(layer.summary, { keyed: 1, applied: 0, unapplied: [{ id: correctionId(correction), reason: "record-hidden" }] });
 });

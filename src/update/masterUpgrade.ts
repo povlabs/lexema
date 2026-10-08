@@ -48,8 +48,8 @@ export const PAGE_ENTRY_CORRECTION_TABLES = ["corrected_definition"] as const;
  */
 export const PAGE_ENTRY_FACT_TABLES = [PAGE_ENTRY_FACT_TABLE] as const;
 
-/** The tables `correct:records` writes a record's curated facts (#420) and edges (#722) to, after its cache revision. */
-export const CORRECTION_TABLES = ["correction_version", "corrected_claim", "corrected_edge"] as const;
+/** The tables `correct:records` writes a record's curated facts (#420), edges (#722) and table cells (#723) to, after its cache revision. */
+export const CORRECTION_TABLES = ["correction_version", "corrected_claim", "corrected_edge", "corrected_form"] as const;
 
 /** The index lookups read a corrected edge through by the word it names (#722). */
 export const CORRECTION_INDEXES = ["corrected_edge_by_target"] as const;
