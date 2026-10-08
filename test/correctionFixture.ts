@@ -1,8 +1,6 @@
 // The committed curated corrections of records (#420, #483), keyed to a
-// fixture instead of the release: a fixture holds an archive line at a line
-// number of its own, so each entry is moved to the fixture line whose digest is
-// the one it names. The digest is kept, so an entry reaches a fixture line only
-// when its bytes are the archive line's.
+// fixture instead of the release by `FixtureLines`
+// (src/italian/correctionsAtLines.ts), the keying the dev seed uses too.
 //
 // fixtures/curated-corrections.jsonl is 50 whole lines of it-0c432803, byte
 // for byte. Its first 42 are in archive order: 2029 `congiuntivo`, 17564
@@ -23,14 +21,13 @@
 // `guerrigliero`, 175500 `mimo`, 175503 `mima`, 447644 `agostiniano` and
 // 447650 `agostiniani` (noun).
 
-import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
+import { FixtureLines, type RecordKeyedCorrection } from "../src/italian/correctionsAtLines.js";
 import {
   CURATED_CORRECTIONS,
   edgeCorrections,
   recordCorrections,
   type EdgeCorrection,
-  type LineCorrection,
   type RecordCorrection,
 } from "../src/italian/curatedCorrections.js";
 
@@ -40,8 +37,6 @@ export const CORRECTION_FIXTURE = new URL("../fixtures/curated-corrections.jsonl
 export async function correctionFixtureLines(): Promise<string[]> {
   return (await readFile(CORRECTION_FIXTURE, "utf8")).trimEnd().split("\n");
 }
-
-const sha256 = (line: string): string => createHash("sha256").update(line, "utf8").digest("hex");
 
 /** The archive lines of the rule's corrections (#483) the fixture holds: `curve`, `competitive`, `guerriglieri`, `mima`, `agostiniani`. */
 export const FIXTURE_RULE_LINES: readonly number[] = [10075, 56896, 89313, 175503, 447650];
@@ -66,17 +61,15 @@ export function fixtureCorrections(): RecordCorrection[] {
  * each names. Throws on an entry no line carries, so a fixture that drifts
  * from the list fails by name.
  */
-export function atFixtureLines<Correction extends LineCorrection | EdgeCorrection = RecordCorrection>(
+export function atFixtureLines<Correction extends RecordKeyedCorrection = RecordCorrection>(
   lines: readonly string[],
   releaseId: string,
   corrections: readonly Correction[] = fixtureCorrections() as Correction[],
 ): Correction[] {
-  const lineOf = new Map(lines.map((line, i) => [sha256(line), i + 1]));
-  return corrections.map((correction) => {
-    const lineNo = lineOf.get(correction.record.lineSha256);
-    if (lineNo === undefined) throw new Error(`no fixture line is ${correction.record.word} at archive line ${correction.record.lineNo}`);
-    return { ...correction, record: { ...correction.record, releaseId, lineNo } };
-  });
+  const { held, leftOut } = FixtureLines.of(lines, releaseId).key(corrections);
+  const [missing] = leftOut;
+  if (missing !== undefined) throw new Error(`no fixture line is ${missing.record.word} at archive line ${missing.record.lineNo}`);
+  return held;
 }
 
 /**
@@ -85,6 +78,5 @@ export function atFixtureLines<Correction extends LineCorrection | EdgeCorrectio
  * line the fixture carries byte for byte, and no other.
  */
 export function edgeCorrectionsAt(lines: readonly string[], releaseId: string): EdgeCorrection[] {
-  const digests = new Set(lines.map(sha256));
-  return atFixtureLines(lines, releaseId, edgeCorrections(CURATED_CORRECTIONS).filter((correction) => digests.has(correction.record.lineSha256)));
+  return FixtureLines.of(lines, releaseId).key(edgeCorrections(CURATED_CORRECTIONS)).held;
 }

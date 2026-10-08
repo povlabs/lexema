@@ -8,6 +8,8 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { openRawPages } from "../source/wiktionaryDump.js";
+import { CURATED_CORRECTIONS } from "../italian/curatedCorrections.js";
+import { FixtureLines } from "../italian/correctionsAtLines.js";
 import { readLanguageHeadings } from "../italian/sectionLanguage.js";
 import { PageOnlyCandidates, UNRECORDED_PAGE_TITLES_FILE } from "./pageOnlyCandidates.js";
 import { type LoadedRows, loadSeed, SeedStopped } from "./seedLoad.js";
@@ -49,6 +51,18 @@ process.stderr.write(`raw pages: ${rawPages.pages.size} from ${rawPages.describe
 // word the release does have a record for is never a page-only entry here (#499).
 const pageOnly = await PageOnlyCandidates.forSeedInput(input, resolve(UNRECORDED_PAGE_TITLES_FILE));
 process.stderr.write(`page-only candidates: ${pageOnly.describe()}\n`);
+// The committed corrections name it-0c432803's archive lines; the fixture holds
+// some of those lines at numbers of its own, so each entry whose line it holds
+// byte for byte is keyed to the fixture there, and the rest are left out (#742).
+// An archive is a release, and is corrected by the list as committed.
+const fixtureCorrections = releaseId === undefined || isArchive
+  ? undefined
+  : (await FixtureLines.read(input, releaseId)).key(CURATED_CORRECTIONS);
+if (fixtureCorrections !== undefined) {
+  process.stderr.write(
+    `curated corrections left out: ${fixtureCorrections.leftOut.length}, whose archive lines are not in the fixture\n`,
+  );
+}
 const rejectionLines: string[] = [];
 const report = await seedSql({
   input,
@@ -56,6 +70,7 @@ const report = await seedSql({
   schema: resolve("src/db/schema.sql"),
   releaseId,
   license: "CC-BY-SA-4.0",
+  ...(fixtureCorrections === undefined ? {} : { corrections: fixtureCorrections.held }),
   requiredWords,
   validateFixtureClosure: !isArchive,
   // The dump the archive was built from when the source cache holds it
