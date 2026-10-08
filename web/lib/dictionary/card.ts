@@ -6,7 +6,9 @@
 //   and the first meaning. Each part of the meta line shows only when the page
 //   has it, and in the page's own words: the first pronunciation under the
 //   headword, the gender the first numbered reading's heading shows
-//   (genderGrid.ts), and that reading's part of speech.
+//   (genderGrid.ts), and that reading's part of speech. A form's block names
+//   it as its heading does, every part of speech of its records when they
+//   have several: `Aggettivo · Sostantivo` for bella (#727, #735).
 // - The home card, for everything else: the home page, a word Lexema does not
 //   have, a search over the visitor's limit, and a lookup that failed.
 //
@@ -19,7 +21,7 @@ import { definitionsOf, hasDefinitions, type DefinitionItem } from "./definition
 import { headingGender, placesGender } from "./genderGrid.ts";
 import { SITE_NAME, SITE_TAGLINE } from "./params.ts";
 import { phrasePage, type PhraseReadingText } from "./phrasePage.ts";
-import { wordPage } from "./wordPage.ts";
+import { headingTitle, wordPage } from "./wordPage.ts";
 
 /** A word card's parts. Every part but the headword is absent when the page has none. */
 export interface WordCard {
@@ -119,7 +121,7 @@ export function cardOf(attempt: Attempt): Card {
     headword: page.headword,
     pronunciation: page.wordFacts.pronunciations[0]?.ipa,
     gender: headingGender(reading),
-    partOfSpeech: reading.posTitle,
+    partOfSpeech: entry.kind === "source" && entry.role === "form-of" ? headingTitle(entry.heading) : reading.posTitle,
     meaning: meaning === undefined ? undefined : definitionText(meaning),
   };
 }
