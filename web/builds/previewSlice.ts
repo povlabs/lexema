@@ -15,9 +15,13 @@
 //    today's.
 // 2. A slice whose fingerprint (the declarations, schema.sql and the slice's
 //    format) matches what the build asks for is reused, and nothing is written.
-// 3. Otherwise the slice is built; over `SLICE_ROWS_WRITTEN_CAP` rows written,
-//    nothing is written and no slice is bound. Under it, the old slice is
-//    deleted, a new one created, and the SQL run on it.
+// 3. Otherwise the slice is built under `SLICE_ROWS_WRITTEN_CAP` rows written.
+//    When the slice of every touched word is over it, the planner builds a
+//    sample (#741): the words the declarations name in `lookups` first, then
+//    others, as many as fit, and the line names the touched words left out.
+//    When not even one word fits, or an answer is over the cap, nothing is
+//    written and no slice is bound. Otherwise the old slice is deleted, a new
+//    one created, and the SQL run on it.
 //
 // Each step logs a `dictionary slice:` line saying what it did and why. A
 // slice is housekeeping for review: whatever fails here, the Preview still
@@ -40,15 +44,27 @@ export type SliceDeclared =
   | { readonly state: "none"; readonly reason: string }
   | { readonly state: "declared"; readonly fingerprint: string; readonly files: readonly string[] };
 
-/** What `preview:slice build` answers: no slice and why, or the slice's SQL file and what it writes. */
+/**
+ * What `preview:slice build` answers: no slice and why, or the slice's SQL
+ * file and what it writes. A `sample` (#741) serves `words` of the touched
+ * words and names the ones it leaves out.
+ */
 export type SliceBuilt =
   | { readonly state: "none"; readonly reason: string }
-  | { readonly state: "built"; readonly fingerprint: string; readonly words: number; readonly rowsWritten: number; readonly sql: string };
+  | { readonly state: "built"; readonly fingerprint: string; readonly words: number; readonly rowsWritten: number; readonly sql: string }
+  | {
+      readonly state: "sample";
+      readonly fingerprint: string;
+      readonly words: number;
+      readonly rowsWritten: number;
+      readonly sql: string;
+      readonly leftOut: readonly [string, ...string[]];
+    };
 
-/** The root's `preview:slice`, which reads Git and the shared dictionary and writes no database. */
+/** The root's `preview:slice`, which reads Git and the shared dictionary and writes no database. `build` is asked for a slice under `cap` rows written. */
 export interface SlicePlanner {
   declared(): SliceDeclared;
-  build(): SliceBuilt;
+  build(cap: number): SliceBuilt;
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null && !Array.isArray(value);
@@ -71,6 +87,10 @@ export function readBuilt(text: string): SliceBuilt {
   if (isRecord(value) && value.state === "none" && isText(value.reason)) return { state: "none", reason: value.reason };
   if (isRecord(value) && value.state === "built" && isText(value.fingerprint) && isCount(value.words) && isCount(value.rowsWritten) && isText(value.sql)) {
     return { state: "built", fingerprint: value.fingerprint, words: value.words, rowsWritten: value.rowsWritten, sql: value.sql };
+  }
+  if (isRecord(value) && value.state === "sample" && isText(value.fingerprint) && isCount(value.words) && value.words > 0 && isCount(value.rowsWritten) && isText(value.sql) && Array.isArray(value.leftOut)) {
+    const [first, ...rest] = value.leftOut as unknown[];
+    if (isText(first) && rest.every(isText)) return { state: "sample", fingerprint: value.fingerprint, words: value.words, rowsWritten: value.rowsWritten, sql: value.sql, leftOut: [first, ...rest] };
   }
   throw new Error(`preview:slice build answered ${text.slice(0, 200)}`);
 }
@@ -123,7 +143,7 @@ function slice(wrangler: Wrangler, preview: PreviewName, planner: SlicePlanner, 
     log(`dictionary slice: reusing ${preview.sliceDatabase} (${existing.id}); ${declared.files.join(", ")} and schema.sql are unchanged, so nothing is written`);
     return existing;
   }
-  const built = planner.build();
+  const built = planner.build(SLICE_ROWS_WRITTEN_CAP);
   if (built.state === "none") {
     log(`dictionary slice: none, ${built.reason}`);
     return undefined;
@@ -136,7 +156,14 @@ function slice(wrangler: Wrangler, preview: PreviewName, planner: SlicePlanner, 
   if (existing !== undefined) deleteSlice(wrangler, existing);
   const written = writeSlice(wrangler, preview, built.sql);
   if (fingerprintOf(wrangler, written) !== built.fingerprint) throw new Error(`${preview.sliceDatabase} does not read back the fingerprint it was written with`);
-  log(`dictionary slice: wrote ${preview.sliceDatabase} (${written.id}): ${built.words} word(s), ${built.rowsWritten} rows written, under the cap of ${SLICE_ROWS_WRITTEN_CAP}`);
+  if (built.state === "built") {
+    log(`dictionary slice: wrote ${preview.sliceDatabase} (${written.id}): ${built.words} word(s), ${built.rowsWritten} rows written, under the cap of ${SLICE_ROWS_WRITTEN_CAP}`);
+  } else {
+    log(
+      `dictionary slice: wrote a sample, ${preview.sliceDatabase} (${written.id}): ${built.words} of ${built.words + built.leftOut.length} touched word(s), ${built.rowsWritten} rows written, under the cap of ${SLICE_ROWS_WRITTEN_CAP}; ` +
+        `the slice of every touched word is over the cap, so ${built.leftOut.length} word(s) read the shared dictionary: ${built.leftOut.join(", ")}`,
+    );
+  }
   return written;
 }
 

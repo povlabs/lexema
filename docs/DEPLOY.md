@@ -355,11 +355,22 @@ The prepare step builds it in this order, and logs a line starting
    each plan's SQL, with foreign keys on as on D1. A plan it cannot read, or
    SQL that does not run on the slice, gives no slice.
 4. It counts the rows writing the slice would write, each row once for its
-   table and once per index. Over `SLICE_ROWS_WRITTEN_CAP`, 250,000 rows, it
-   writes nothing and binds no slice, and the log line gives the count and the
-   cap. Otherwise it deletes the branch's old slice, creates a new one, runs the
-   slice's SQL on it with `wrangler d1 execute --remote --file`, and reads the
-   fingerprint back.
+   table and once per index, against `SLICE_ROWS_WRITTEN_CAP`, 250,000 rows,
+   which the prepare step passes as `--cap`. When the slice of every touched
+   word is over the cap, the slice is a sample
+   ([#741](https://github.com/povlabs/lexema/issues/741), ADR 0018). It takes
+   the words the declarations name in their `lookups` first, then the other
+   touched words in key order, as many as fit under the cap. Each candidate
+   is measured on the slice actually built, since two words can share rows.
+   The touched words it leaves out read the shared dictionary, and a change's
+   rows for them are dropped from the sample. The log line says the slice is
+   a sample, gives its word count, its rows written and the cap, and names
+   every touched word it left out. To show a word in a large change's
+   Preview, name it in the declaration's `lookups`.
+5. When not even one word fits under the cap, it writes nothing and binds no
+   slice, and the log line gives the count and the cap. Otherwise it deletes
+   the branch's old slice, creates a new one, runs the slice's SQL on it with
+   `wrangler d1 execute --remote --file`, and reads the fingerprint back.
 
 Whatever fails, the Preview still deploys on the shared dictionary. Every step
 refuses a D1 whose name or id is `lexema-dictionary`'s before it reads,

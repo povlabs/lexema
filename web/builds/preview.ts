@@ -27,7 +27,7 @@ function previewSlice(...args: string[]): string {
 
 const slices: SlicePlanner = {
   declared: () => readDeclared(previewSlice("declared")),
-  build: () => readBuilt(previewSlice("build", "--dictionary", DICTIONARY.name, "--sql", join(mkdtempSync(join(tmpdir(), "lexema-preview-slice-")), "slice.sql"))),
+  build: (cap) => readBuilt(previewSlice("build", "--dictionary", DICTIONARY.name, "--sql", join(mkdtempSync(join(tmpdir(), "lexema-preview-slice-")), "slice.sql"), "--cap", String(cap))),
 };
 
 try {
