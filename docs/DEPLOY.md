@@ -630,13 +630,18 @@ holds needs nothing. Otherwise it starts the `deploy` job, whose steps are
    [schema.sql](../src/db/schema.sql)'s, such as a `hidden_record` from
    before [#389](https://github.com/povlabs/lexema/issues/389), without
    `lemma_line`. Comments and spacing do not count.
-   The rebuilt tables come in three groups (`REBUILT_GROUPS`): the four
+   The rebuilt tables come in four groups (`REBUILT_GROUPS`): the four
    page-entry tables with `corrected_definition`; `recovered_definition` with
-   `recovered_label` and `recovered_example`; and `hidden_record`. For a
+   `recovered_label` and `recovered_example`; `hidden_record`; and
+   `corrected_form`. For a
    changed definition the upgrade rebuilds that table's group with its rows:
    it copies the rows aside, drops the group's tables, creates them and their
    indexes from schema.sql and copies the rows back by the columns both
-   definitions share. A row the new definition refuses stops the batch, and
+   definitions share. A `corrected_form` from before
+   [#743](https://github.com/povlabs/lexema/issues/743) has no `surface_key`,
+   which SQL cannot compute: the upgrade keys each distinct `surface` with the
+   release's normalizer when it plans, and the copy writes that key beside
+   each row. A row the new definition refuses stops the batch, and
    D1 rolls it back whole. After the batch the run checks that nothing is
    missing, nothing differs and every rebuilt table holds as many rows as
    before. The upgrade also compares each of the four serving views

@@ -14,13 +14,16 @@
 // schema.sql definition: when the one a dictionary stores differs, the upgrade
 // rebuilds that table's group with its rows (`rebuildSql`). That covers a
 // `hidden_record` written before `form-of-foreign-lemma/v1` (#389), which
-// lacks `lemma_line` and cannot hold that rule's rows.
+// lacks `lemma_line` and cannot hold that rule's rows. So is `corrected_form`
+// (#743): one from before `surface_key` is rebuilt with each row keyed by the
+// release's normalizer, which the plan applies, since SQL cannot.
 //
 // The serving views are held to their schema.sql definition too (#525): when
 // one a dictionary stores differs, the upgrade replaces the views
 // (`masterUpgradeSql`). A view holds no rows, so that rebuilds no table.
 
 import { DatabaseSync } from "node:sqlite";
+import { normalizeItalianExact } from "../italian/normalize.js";
 import { PAGE_ENTRY_FACT_TABLE, PAGE_ENTRY_TABLES } from "../lookup/served.js";
 
 /** The tables #18 added, in the order their foreign keys need. */
@@ -51,8 +54,8 @@ export const PAGE_ENTRY_FACT_TABLES = [PAGE_ENTRY_FACT_TABLE] as const;
 /** The tables `correct:records` writes a record's curated facts (#420), edges (#722) and table cells (#723) to, after its cache revision. */
 export const CORRECTION_TABLES = ["correction_version", "corrected_claim", "corrected_edge", "corrected_form"] as const;
 
-/** The index lookups read a corrected edge through by the word it names (#722). */
-export const CORRECTION_INDEXES = ["corrected_edge_by_target"] as const;
+/** The indexes lookups read a corrected edge through by the word it names (#722), and a corrected cell by its spelling (#743). */
+export const CORRECTION_INDEXES = ["corrected_edge_by_target", "corrected_form_by_key"] as const;
 
 /** The tables `hide:records` writes a hidden record to (#382), after its cache revision. */
 export const HIDE_TABLES = ["hide_version", "hidden_record"] as const;
@@ -89,6 +92,7 @@ export const REBUILT_GROUPS = [
   { tables: [...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_FACT_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES], indexes: PAGE_ENTRY_INDEXES },
   { tables: RECOVERED_TABLES, indexes: RECOVERED_INDEXES },
   { tables: ["hidden_record"], indexes: [] },
+  { tables: ["corrected_form"], indexes: ["corrected_form_by_key"] },
 ] as const satisfies readonly { tables: readonly string[]; indexes: readonly string[] }[];
 
 /** A table the upgrade may rebuild. */
@@ -97,7 +101,7 @@ export type RebuiltTable = (typeof REBUILT_GROUPS)[number]["tables"][number];
 /**
  * Every table the upgrade may rebuild: the page-entry tables,
  * `corrected_definition`, `recovered_definition`, `recovered_label`,
- * `recovered_example` and `hidden_record`.
+ * `recovered_example`, `hidden_record` and `corrected_form`.
  */
 export const REBUILT_TABLES: readonly RebuiltTable[] = REBUILT_GROUPS.flatMap((group) => group.tables);
 
@@ -105,6 +109,25 @@ const REBUILT_INDEXES: readonly string[] = REBUILT_GROUPS.flatMap((group) => gro
 
 /** Every name whose stored definition the upgrade compares with schema.sql's: those tables and their indexes. */
 export const REBUILT_NAMES: readonly string[] = [...REBUILT_TABLES, ...REBUILT_INDEXES];
+
+/** A column whose value is a key of another column of its row, which SQL cannot compute: the release's normalizer applied to it. */
+export interface KeyedColumn {
+  readonly column: string;
+  readonly from: string;
+  readonly key: (value: string) => string;
+}
+
+/**
+ * The keyed columns of the rebuilt tables. `corrected_form.surface_key`
+ * (#743) came after the table, so a rebuild of a `corrected_form` from before
+ * it writes each row's key from its `surface`, as the seed does (`KeptTable.keys`).
+ */
+const KEYED_COLUMNS: Partial<Record<RebuiltTable, KeyedColumn>> = {
+  corrected_form: { column: "surface_key", from: "surface", key: normalizeItalianExact },
+};
+
+/** The keyed column of `table`, or undefined when it has none. */
+export const keyedColumnOf = (table: string): KeyedColumn | undefined => KEYED_COLUMNS[table as RebuiltTable];
 
 /** The `CREATE` kind of a name in `REBUILT_NAMES`. */
 export const rebuiltKind = (name: string): "TABLE" | "INDEX" => (REBUILT_INDEXES.includes(name) ? "INDEX" : "TABLE");
@@ -200,10 +223,38 @@ export interface KeptTable {
   readonly name: RebuiltTable;
   readonly columns: readonly string[];
   readonly rows: number;
+  /**
+   * When the table lacks its keyed column (`keyedColumnOf`), the key of each
+   * distinct value of the column it is keyed from, which the rebuild writes
+   * beside the rows that hold it; absent otherwise.
+   */
+  readonly keys?: readonly (readonly [value: string, key: string])[];
 }
 
 /** Where a rebuilt table's rows wait while it is dropped and created again. */
 const keptName = (name: string): string => `upgrade_kept_${name}`;
+
+const sqlText = (value: string): string => `'${value.replaceAll("'", "''")}'`;
+
+/**
+ * The statement that copies a kept table's rows back by the columns both
+ * definitions share. When the new definition adds the table's keyed column,
+ * each row also gets the key `keys` gives for its value, joined in as a
+ * `VALUES` list: a row whose value `keys` lacks is not copied, and the
+ * upgrade's read-back names the rows it lost.
+ */
+function copyBack(schema: string, { name, columns, keys = [] }: Pick<KeptTable, "name" | "columns" | "keys">): string {
+  const target = new Set(columnsOf(createStatement(schema, "TABLE", name)));
+  const shared = columns.filter((column) => target.has(column));
+  const keyed = keyedColumnOf(name);
+  if (keyed === undefined || columns.includes(keyed.column) || !target.has(keyed.column) || keys.length === 0) {
+    return `INSERT INTO ${name} (${shared.join(", ")}) SELECT ${shared.join(", ")} FROM ${keptName(name)};`;
+  }
+  const values = keys.map(([value, key]) => `(${sqlText(value)}, ${sqlText(key)})`).join(", ");
+  const columnsOut = [...shared, keyed.column].join(", ");
+  const columnsIn = [...shared.map((column) => `k.${column}`), "d.column2"].join(", ");
+  return `INSERT INTO ${name} (${columnsOut}) SELECT ${columnsIn} FROM ${keptName(name)} k JOIN (VALUES ${values}) d ON d.column1 = k.${keyed.from};`;
+}
 
 /**
  * SQL that rebuilds the groups of `kept` to schema.sql's definitions with every
@@ -215,18 +266,14 @@ const keptName = (name: string): string => `upgrade_kept_${name}`;
  * foreign key holds at each statement. A row the new definition refuses, or a
  * new column with no default, stops the batch, and D1 rolls it back whole.
  */
-export function rebuildSql(schema: string, kept: readonly Pick<KeptTable, "name" | "columns">[]): string {
+export function rebuildSql(schema: string, kept: readonly Pick<KeptTable, "name" | "columns" | "keys">[]): string {
   const groups = groupsOf(kept.map(({ name }) => name));
   const ordered = groups.flatMap((group) => group.tables).flatMap((name) => kept.filter((table) => table.name === name));
   const creates = groups.flatMap((group) => [
     ...group.tables.map((name) => createStatement(schema, "TABLE", name)),
     ...group.indexes.map((name) => createStatement(schema, "INDEX", name)),
   ]);
-  const copies = ordered.map(({ name, columns }) => {
-    const target = new Set(columnsOf(createStatement(schema, "TABLE", name)));
-    const shared = columns.filter((column) => target.has(column)).join(", ");
-    return `INSERT INTO ${name} (${shared}) SELECT ${shared} FROM ${keptName(name)};`;
-  });
+  const copies = ordered.map((table) => copyBack(schema, table));
   return [
     `-- Rebuild ${ordered.map(({ name }) => name).join(", ")} to schema.sql's definitions, keeping their rows (src/update/masterUpgrade.ts).`,
     ...ordered.map(({ name }) => `CREATE TABLE ${keptName(name)} AS SELECT * FROM ${name};`),

@@ -31,9 +31,9 @@ export function correctedClaimValues(correction: RecordCorrection): [dimension: 
   return correctedFacts(correction).map((fact) => [fact.dimension, fact.value, correctionId(correction), evidenceUrl(correction.evidence[0])]);
 }
 
-/** One `corrected_form` row's values after its record id and release, in `COLUMNS` order, one per cell. */
-export function correctedFormValues(correction: CellCorrection): [formIndex: number, surface: string, correctionId: string, evidenceUrl: string][] {
-  return correction.cells.map((cell) => [cell.index, cell.surface, correctionId(correction), evidenceUrl(correction.evidence[0])]);
+/** One `corrected_form` row's values after its record id and release, in `COLUMNS` order, one per cell: each keyed as `lookup_form` keys a spelling, so a search finds it (#743). */
+export function correctedFormValues(correction: CellCorrection): [formIndex: number, surface: string, surfaceKey: string, correctionId: string, evidenceUrl: string][] {
+  return correction.cells.map((cell) => [cell.index, cell.surface, normalizeItalianExact(cell.surface), correctionId(correction), evidenceUrl(correction.evidence[0])]);
 }
 
 /**

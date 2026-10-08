@@ -1,0 +1,14 @@
+{
+  "command": "update:upgrade",
+  "lookups": [
+    { "word": "siamo assorbiti" },
+    { "word": "siamo assorbite" },
+    { "word": "siamo assorbiti, assorti" },
+    { "word": "siamo assorbito, assorti, assorti" }
+  ],
+  "expected": {
+    "records": { "added": 0, "changed": 0, "removed": 0 },
+    "written": {},
+    "deleted": {}
+  }
+}

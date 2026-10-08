@@ -9,6 +9,7 @@ import {
   definitionOf,
   HIDDEN_RECORD_SINCE_389,
   type KeptTable,
+  keyedColumnOf,
   masterUpgradeSql,
   REBUILT_NAMES,
   rebuildSql,
@@ -83,6 +84,19 @@ export function hiddenRecordBefore389(reader: MasterReader): boolean {
   return columns.length > 0 && !columns.includes(HIDDEN_RECORD_SINCE_389);
 }
 
+/**
+ * Whether the master has `table` without its keyed column (`keyedColumnOf`):
+ * a `corrected_form` from before #743, with no `surface_key`. Its stored
+ * definition then differs from schema.sql's, so the upgrade rebuilds it, keying
+ * each row; a master without the table has nothing to rebuild.
+ */
+export function lacksKeyedColumn(reader: MasterReader, table: string): boolean {
+  const keyed = keyedColumnOf(table);
+  if (keyed === undefined) return false;
+  const columns = select<{ name: string }>(reader, `SELECT name FROM pragma_table_info('${table}')`).map((row) => row.name);
+  return columns.length > 0 && !columns.includes(keyed.column);
+}
+
 /** The stored `sql` of each of `names` the master has, by name. */
 function storedSql(reader: MasterReader, names: readonly string[]): Map<string, string> {
   const listed = names.map((name) => `'${name}'`).join(", ");
@@ -127,6 +141,7 @@ export function changedViews(reader: MasterReader, schema: string): ServingView[
 export function upgradeNeededFor(reader: MasterReader, names: readonly string[]): string[] {
   const needed = new Set(missingUpgrade(reader));
   if (names.includes("hidden_record") && hiddenRecordBefore389(reader)) needed.add("hidden_record");
+  for (const name of names) if (lacksKeyedColumn(reader, name)) needed.add(name);
   return names.filter((name) => needed.has(name));
 }
 
@@ -134,18 +149,24 @@ export function upgradeNeededFor(reader: MasterReader, names: readonly string[])
 export const upgradeFirst = (dictionary: string, needed: readonly string[]): string =>
   `${dictionary} needs pnpm run update:upgrade first, for ${needed.join(", ")}. Nothing was written.`;
 
-/** Those of `tables` the master has, with their columns and row counts. */
+/**
+ * Those of `tables` the master has, with their columns and row counts, and,
+ * for a table without its keyed column, the key of each value it is keyed from.
+ */
 function keptTables(reader: MasterReader, tables: readonly RebuiltTable[]): KeptTable[] {
   const present = new Set(
     select<{ name: string }>(reader, `SELECT name FROM sqlite_schema WHERE type = 'table' AND name IN (${tables.map((name) => `'${name}'`).join(", ")})`).map(
       (row) => row.name,
     ),
   );
-  return tables.filter((name) => present.has(name)).map((name) => ({
-    name,
-    columns: select<{ name: string }>(reader, `SELECT name FROM pragma_table_info('${name}')`).map((row) => row.name),
-    rows: select<{ n: number }>(reader, `SELECT count(*) AS n FROM ${name}`)[0].n,
-  }));
+  return tables.filter((name) => present.has(name)).map((name) => {
+    const columns = select<{ name: string }>(reader, `SELECT name FROM pragma_table_info('${name}')`).map((row) => row.name);
+    const rows = select<{ n: number }>(reader, `SELECT count(*) AS n FROM ${name}`)[0].n;
+    const keyed = keyedColumnOf(name);
+    if (keyed === undefined || columns.includes(keyed.column)) return { name, columns, rows };
+    const values = select<{ value: string }>(reader, `SELECT DISTINCT ${keyed.from} AS value FROM ${name} ORDER BY 1`).map((row) => row.value);
+    return { name, columns, rows, keys: values.map((value) => [value, keyed.key(value)] as const) };
+  });
 }
 
 /**

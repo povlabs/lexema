@@ -39,8 +39,8 @@ import {
 } from "../italian/curatedCorrections.js";
 import { boundedInserts } from "../update/apply.js";
 import { PAGE_ENTRY_TABLES } from "../lookup/served.js";
-import { CORRECTION_TABLES, PAGE_ENTRY_CORRECTION_TABLES } from "../update/masterUpgrade.js";
-import { readMasterRelease, select, upgradeNeededFor, type MasterReader } from "../update/master.js";
+import { CORRECTION_TABLES, keyedColumnOf, PAGE_ENTRY_CORRECTION_TABLES } from "../update/masterUpgrade.js";
+import { lacksKeyedColumn, readMasterRelease, select, upgradeNeededFor, type MasterReader } from "../update/master.js";
 import { PlanCounts } from "../update/planCounts.js";
 import { correctedDefinitionValues } from "./correctedDefinitions.js";
 import { correctedClaimValues, correctedEdgeValues, correctedFormValues } from "./correctedLayer.js";
@@ -285,20 +285,27 @@ function planRecords(
 /** The columns of each record-keyed correction table after its record id and release, in `COLUMNS` order. */
 const HELD_COLUMNS = {
   corrected_claim: ["dimension", "value", "correction_id", "evidence_url"],
-  corrected_form: ["form_index", "surface", "correction_id", "evidence_url"],
+  corrected_form: ["form_index", "surface", "surface_key", "correction_id", "evidence_url"],
 } as const;
 
-/** The rows `ids` hold in each record-keyed correction table the master has; a table it lacks holds none. */
+/**
+ * The rows `ids` hold in each record-keyed correction table the master has; a
+ * table it lacks holds none. A `corrected_form` from before #743 has no
+ * `surface_key`, and its rows are read keyed as the upgrade that rebuilds it
+ * keys them (`keyedColumnOf`), so the plan is the same before the upgrade as after.
+ */
 function heldRows(reader: MasterReader, tables: ReadonlySet<string>, ids: readonly number[]): HeldRows {
   const read = (table: keyof HeldRows): Map<number, unknown[][]> => {
     const held = new Map<number, unknown[][]>();
     if (!tables.has(table) || ids.length === 0) return held;
     const columns = HELD_COLUMNS[table];
+    const derived = lacksKeyedColumn(reader, table) ? keyedColumnOf(table) : undefined;
     for (const row of select<Record<string, unknown> & { record_id: number }>(
       reader,
-      `SELECT record_id, ${columns.join(", ")} FROM ${table} WHERE record_id IN (SELECT value FROM json_each(${json(ids)}))`,
+      `SELECT record_id, ${columns.filter((column) => column !== derived?.column).join(", ")} FROM ${table} WHERE record_id IN (SELECT value FROM json_each(${json(ids)}))`,
     )) {
-      held.set(row.record_id, [...(held.get(row.record_id) ?? []), columns.map((column) => row[column])]);
+      const values = derived === undefined ? row : { ...row, [derived.column]: derived.key(String(row[derived.from])) };
+      held.set(row.record_id, [...(held.get(row.record_id) ?? []), columns.map((column) => values[column])]);
     }
     return held;
   };

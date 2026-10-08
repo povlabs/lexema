@@ -209,6 +209,14 @@ test("every declaration already in dictionary-changes parses as before, with no 
       );
       continue;
     }
+    // The upgrade that keys corrected cells (#743) names the spellings a search now finds, and the source's it still finds.
+    if (name === "2026-10-08-update-upgrade-corrected-form-key.json") {
+      assert.deepEqual(
+        parseDeclaration(path, text).lookups?.map((item) => item.word),
+        ["siamo assorbiti", "siamo assorbite", "siamo assorbiti, assorti", "siamo assorbito, assorti, assorti"],
+      );
+      continue;
+    }
     for (const parsed of [parseDeclaration(path, text), parseDraft(path, text)]) {
       assert.deepEqual(Object.keys(parsed).sort(), ["command", "expected", "file", "inputs"], path);
     }
