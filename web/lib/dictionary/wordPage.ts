@@ -91,7 +91,7 @@
 // form page"; P5, P6, P14; #700). So a form's reading or block has no
 // Etymology or Synonyms of its own.
 
-import { normalizeItalianExact } from "@lexema/italian/normalize.ts";
+import { foldItalianApostrophes, normalizeItalianExact } from "@lexema/italian/normalize.ts";
 import { VERB_FORM_LINE_RULE, verbFormLine, type SpelledGender } from "@lexema/italian/verbFormLine.ts";
 import { mergeExpressions } from "@lexema/lookup/expressions.ts";
 import {
@@ -529,10 +529,13 @@ export function baseWordOf(entry: ShownEntry): string {
  * `studente`, the noun and a form of studiare, has the list (Huey's ruling of
  * 2026-10-07 on #708), as `salivate`, a form of salire and of salivare, has
  * (frame 37, Huey's ruling of 2026-10-06, #654). Two readings of one word,
- * `salivare`'s adjective and verb, have none.
+ * `salivare`'s adjective and verb, have none. Base words that differ only in
+ * their apostrophe are one word, `all'improvviso` and `all’improvviso` (Q4 of
+ * #708); base words that differ in capitals are two, `abaco` and `Abaco` (Q3).
  */
 export function showsJumpLinks(page: WordPage): boolean {
-  return page.readings.length >= JUMP_LINKS_FROM || new Set(page.readings.map(baseWordOf)).size >= 2;
+  if (page.readings.length >= JUMP_LINKS_FROM) return true;
+  return new Set(page.readings.map((entry) => foldItalianApostrophes(baseWordOf(entry)))).size >= 2;
 }
 
 /** What names an entry in its ids: its record, or a block's verb. */
