@@ -1,7 +1,9 @@
-// `pnpm run plan`: set and end an account's Enterprise plan in the local app database (#260).
+// `pnpm run plan`: set and end an account's Enterprise plan in the local app database (#260),
+// or in production's with `--remote` first (#737, src/db/productionD1.ts).
 //
 //   pnpm run plan enterprise 3 --calls 20000000 --per-minute 1000 --from 2026-10-01 --until 2026-11-01
 //   pnpm run plan end 3
+//   pnpm run plan --remote end 3
 //
 // Enterprise is agreed per account, so Huey sets its calls, its rate and each
 // period by hand; nothing renews it. The period runs from the start of `--from`
@@ -14,6 +16,7 @@
 import { finish, flags, isMain, positive, usageError, type CommandResult } from "../commandLine.js";
 import type { AppTables } from "../db/app/database.js";
 import { seededAppDatabase } from "../db/localD1.js";
+import { runHandCommand } from "../db/productionD1.js";
 import { endEnterprise, setEnterprise } from "./accountPlan.js";
 import { PLAN_TERMS, type PlanState } from "./plans.js";
 
@@ -78,4 +81,6 @@ export async function runPlanCommand(args: readonly string[], db: AppTables, now
   return usage(command === undefined ? "no command" : `unknown command ${command}`);
 }
 
-if (isMain(import.meta.url)) finish(await runPlanCommand(process.argv.slice(2), seededAppDatabase(), Date.now()));
+if (isMain(import.meta.url)) {
+  finish(await runHandCommand("plan", process.argv.slice(2), (args, db) => runPlanCommand(args, db, Date.now()), seededAppDatabase));
+}

@@ -137,6 +137,29 @@ takes the id. Both write to the `APP_DB` in `SEED_STATE` (default
 `.data/seed-state`), the app database `pnpm run seed:dev` migrates, and
 re-seeding drops every key with it.
 
+#### On production
+
+`--remote`, as the first argument, sends the same command to production's app
+database, `lexema-app`, by its real id
+([#737](https://github.com/povlabs/lexema/issues/737);
+[src/db/productionD1.ts](./src/db/productionD1.ts)). `pnpm run plan` takes it
+the same way ([set an Enterprise plan](#set-an-enterprise-plan)).
+
+```sh
+pnpm run api-key --remote create --label "Lisvo" --per-minute 60
+pnpm run api-key --remote revoke 3
+```
+
+Only Huey runs it, with his own Wrangler login (`pnpm --dir web exec wrangler
+login`); no agent and no CI job does. Before anything is sent, it checks that
+the account holds `lexema-app` under the id in
+[web/builds/productionAppDatabase.ts](./web/builds/productionAppDatabase.ts), and
+refuses a missing database, another id, or the shared dictionary. Before the
+first write it names the database and the command, and writes only once you
+type `lexema-app`; any other answer writes nothing and exits 1. A new key is
+printed once, as locally. Wrangler's answers are never printed, and a failure
+quotes Wrangler with any key hash cut out.
+
 A local database seeded before
 [#167](https://github.com/povlabs/lexema/issues/167) has no `owner_account_id`,
 `display_prefix` or `last_used_at` on `api_key`, and no `deleted_at` on
@@ -266,6 +289,15 @@ The number is the developer account's id. The period runs from the start of
 An account that still holds a Starter or Pro plan, serving or past due, is
 refused until that plan is cancelled in Stripe. Bad flags print the usage line and exit 1. Both commands
 write to the `APP_DB` in `SEED_STATE`, as `pnpm run api-key` does.
+
+On production, `--remote` comes first, with the same checks, typed
+confirmation and Wrangler login as [`pnpm run api-key --remote`](#on-production),
+and only Huey runs it:
+
+```sh
+pnpm run plan --remote enterprise 3 --calls 20000000 --per-minute 1000 --from 2026-10-01 --until 2026-11-01
+pnpm run plan --remote end 3
+```
 
 ### Suspend a developer account
 
