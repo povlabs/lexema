@@ -327,8 +327,10 @@ export type PageReading = ShownReading<"lemma", LemmaPart> | FormOfReading;
  * "femminile di bello", in the block its adjective record heads). A verb form
  * record whose lines lead to the same base word, when that word is not a verb,
  * is in `also` too, with only those lines shown here (`laureati`'s "plurale di
- * laureato"; Q5 of #708). Any other form of a verb, or a form with no base word
- * read, is a block of its own, with no `also`.
+ * laureato"; Q5 of #708). The page need not read a record of the base word:
+ * `calabra`'s adjective and noun records, both forms of calabro, which has no
+ * record, are one block (#717). Any other form of a verb is a block of its own,
+ * with no `also`.
  */
 export interface FormOfReading extends ShownReading<"form-of", FormOfPart> {
   also: Reading[];
@@ -1034,10 +1036,12 @@ function pageDrafts({ ordered, about, own, lemmas, placed, gender }: PageParts, 
     if (table !== undefined) addTables(block, [table]);
   }
   const inBlocks = new Set([...blocks.values()].flatMap((block) => block.verbs));
-  // A noun or adjective form joins the block of its first base word, in the
-  // place of the first form of that word (rule 1, #695): `bella`'s noun record
-  // joins its adjective record's block for bello, and `costruttrici`'s noun
-  // record its adjective record's block for costruttore.
+  // A form that is no verb's joins the block of its base word, in the place of
+  // the first form of that word (rule 1, #695): `bella`'s noun record joins its
+  // adjective record's block for bello, and `costruttrici`'s noun record its
+  // adjective record's block for costruttore. The page need not read a record
+  // of that word (#717): `calabra`'s adjective and noun records are one block
+  // for calabro, and `altri`'s adjective and pronoun records one for altro.
   const formBlocks = new Map<string, ReadingSlot>();
   for (const reading of ordered) {
     if (inBlocks.has(reading) || (which === "about" && !reading.isAboutQuery)) continue;
@@ -1057,13 +1061,14 @@ function pageDrafts({ ordered, about, own, lemmas, placed, gender }: PageParts, 
     const verbs = formOfVerbs(reading);
     if (verbs === undefined) {
       const [base] = formBasesOf(reading, lemmas, own);
-      const block = base === undefined ? undefined : formBlocks.get(base.word);
+      const word = formBlockWord(reading, base);
+      const block = word === undefined ? undefined : formBlocks.get(word);
       if (block !== undefined) {
         block.readings.push(reading);
         continue;
       }
       const slot: ReadingSlot = { kind: "reading", readings: [reading], base, joined: [], joinedTables: [] };
-      if (base !== undefined) formBlocks.set(base.word, slot);
+      if (word !== undefined) formBlocks.set(word, slot);
       slots.push(slot);
       continue;
     }
@@ -1148,6 +1153,16 @@ function joinBlocksOfOneBaseWord(slots: readonly Slot[]): Slot[] {
   }
   return out;
 }
+
+/**
+ * The word a form record's block is about, which one block per page shows
+ * (rule 1, #695): its first base record's word, or, when the page read none,
+ * the word its first `form_of` edge names (`calabro` for `calabra`, #717), as
+ * `FormOfReading.baseWord` reads it. None for a record that is not a form, and
+ * for a verb's form, whose block is its verb's or a reading of its own.
+ */
+const formBlockWord = (reading: Reading, base: Reading | undefined): string | undefined =>
+  base?.word ?? (isFormOfReading(reading) && !isVerbReading(reading) ? reading.lemmaLinks[0]?.targetWord : undefined);
 
 /** Whether a slot is a verb form record's own reading whose first edge names `word`. */
 const isVerbFormOf = (slot: ReadingSlot, word: string): boolean =>

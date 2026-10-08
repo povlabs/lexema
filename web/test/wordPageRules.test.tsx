@@ -413,6 +413,34 @@ const S4_ONE_BLOCK: Rule = {
   },
 };
 
+/** The page is one form block about `base`, heading both of its records, which draws `line` once. */
+const oneFormBlock = (base: string, line: string) => (p: SearchedPage): Problems => {
+  if (p.kind !== "word") return ["no word page"];
+  const [only] = p.page.readings;
+  if (p.page.readings.length !== 1 || only.kind !== "source" || only.role !== "form-of") return [`${JSON.stringify(headingsOf(p.html))}, expected one form block`];
+  const lines = textOf(articleOf(p.html, only)).split(line).length - 1;
+  return [
+    ...assertEqual([baseWordOf(only)], [base]),
+    ...(headingsOf(p.html).length === 1 ? [] : [`${headingsOf(p.html).length} headings`]),
+    ...(only.also.length === 1 ? [] : [`the block heads ${1 + only.also.length} records, expected 2`]),
+    ...(lines === 1 ? [] : [`"${line}" shows ${lines} times`]),
+  ];
+};
+
+const S4_NO_BASE_RECORD: Rule = {
+  row: "§ 4 One block per base word: a form's adjective, noun or pronoun records of one base word are one block.",
+  home: `${MANIFEST} (§ 4)`,
+  words: ["calabra", "altri", "blasfeme"],
+  check: oneBlockProblems,
+  // Each word's two records are one block under one heading, whether or not the
+  // page reads a record of their base word, their one identical line shown once (#717).
+  named: {
+    calabra: (p) => [...oneFormBlock("calabro", "femminile di calabro")(p), ...links(false)(p)],
+    altri: oneFormBlock("altro", "plurale di altro"),
+    blasfeme: oneFormBlock("blasfema", "plurale di blasfema"),
+  },
+};
+
 const S4_NO_OWN_FORMS: Rule = {
   row: "§ 4 One block per base word: a form-of reading never shows a Forms table of its own.",
   home: `${MANIFEST} (§ 4)`,
@@ -593,14 +621,6 @@ const S6_EXPRESSION_LINES: Rule = {
 
 // Rules not built yet ------------------------------------------------------------
 
-const S4_NO_BASE_RECORD: Rule = {
-  row: "§ 4 One block per base word: a form's adjective, noun or pronoun records of one base word are one block.",
-  home: `${MANIFEST} (§ 4)`,
-  words: ["calabra", "altri", "blasfeme"],
-  todo: "#717",
-  check: oneBlockProblems,
-};
-
 const S2_APOSTROPHES: Rule = {
   row: "§ 2 Headwords that differ only in their apostrophe are one word (Q4).",
   home: `${MANIFEST} (§ 2)`,
@@ -680,13 +700,13 @@ const RULES: readonly Rule[] = [
   S6_NO_JUMP_LINKS,
   S3_TABLE_ONCE,
   S4_ONE_BLOCK,
+  S4_NO_BASE_RECORD,
   S4_NO_OWN_FORMS,
   S4_NO_ETYMOLOGY,
   S4_NO_RECORD,
   S4_ADJECTIVE_AND_VERB,
   S5_WORD_FACTS,
   S6_EXPRESSION_LINES,
-  S4_NO_BASE_RECORD,
   S2_APOSTROPHES,
   ADR_0030_EDGES,
   ADR_0030_CELLS,
