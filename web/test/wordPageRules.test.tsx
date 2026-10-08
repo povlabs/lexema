@@ -479,6 +479,48 @@ const S4_NO_RECORD: Rule = {
   },
 };
 
+const S4_ADJECTIVE_AND_VERB: Rule = {
+  row: "§ 4 A form that is both an adjective's and a verb's, of one base word, is one block (Q5).",
+  home: `${MANIFEST} (§ 4)`,
+  words: ["presiedute", "laureati"],
+  // A noun or adjective form block beside a verb block about the same base
+  // word is a second block about it.
+  check(p) {
+    if (p.kind !== "word") return [];
+    const verbs = p.page.readings.flatMap((entry) => (entry.kind === "verb-form" ? [entry] : []));
+    return p.page.readings.flatMap((entry) => {
+      if (entry.kind !== "source" || entry.role !== "form-of") return [];
+      const verb = verbs.find((block) => block.verb === entry.baseWord);
+      return verb === undefined ? [] : [`${entry.reading.posTitle} of ${entry.baseWord} is a block beside Voce verbale · ${verb.verb}`];
+    });
+  },
+  named: {
+    // presiedere is a verb: one verb block, the verb's line, the adjective's under it, then presiedere's conjugation.
+    presiedute: (p) => {
+      if (p.kind !== "word") return ["no word page"];
+      const [only] = p.page.readings;
+      if (p.page.readings.length !== 1 || only.kind !== "verb-form") return [`${JSON.stringify(headingsOf(p.html))}, expected one Voce verbale block`];
+      const text = textOf(articleOf(p.html, only));
+      const at = ["participio passato plurale femminile di presiedere", "femminile plurale di presiedere", "Forms of"].map((part) => text.indexOf(part));
+      return [
+        ...assertEqual(headingsOf(p.html), ["1·Voce verbale·presiedere"]),
+        ...assertEqual(only.lines.map((line) => (line.kind === "source" ? line.reading.posTitle : line.kind)), ["Voce verbale", "Aggettivo, forma flessa"]),
+        ...assertEqual(tablesOf(p.page), ["conjugation presiedere"]),
+        ...(at.every((place, i) => place !== -1 && (i === 0 || place > at[i - 1])) ? [] : [`the block reads ${text.slice(0, 160)}`]),
+      ];
+    },
+    // laureato is no verb: its adjective block, with laureato's grid; laurearsi keeps its own block.
+    laureati: (p) =>
+      p.kind === "word"
+        ? [
+            ...assertEqual(p.page.readings.map((entry) => `${entry.kind} ${baseWordOf(entry)}`), ["source laureato", "verb-form laurearsi"]),
+            ...assertEqual(headingsOf(p.html), ["1·Aggettivo, forma flessa·maschile, plurale", "2·Voce verbale·laurearsi"]),
+            ...assertEqual(tablesOf(p.page).map((name) => name.split(" {")[0]), ["grid laureato"]),
+          ]
+        : ["no word page"],
+  },
+};
+
 const S5_WORD_FACTS: Rule = {
   row: "§ 5 No base-word extras on any page (P5, P6); a word's own facts stay.",
   home: `${MANIFEST} (§ 5)`,
@@ -566,24 +608,6 @@ const S2_APOSTROPHES: Rule = {
   check: jumpLinkProblems,
 };
 
-const S4_ADJECTIVE_AND_VERB: Rule = {
-  row: "§ 4 A form that is both an adjective's and a verb's, of one base word, is one block (Q5).",
-  home: `${MANIFEST} (§ 4)`,
-  words: ["presiedute", "laureati"],
-  todo: "#721",
-  // A noun or adjective form block beside a verb block about the same base
-  // word is a second block about it.
-  check(p) {
-    if (p.kind !== "word") return [];
-    const verbs = p.page.readings.flatMap((entry) => (entry.kind === "verb-form" ? [entry] : []));
-    return p.page.readings.flatMap((entry) => {
-      if (entry.kind !== "source" || entry.role !== "form-of") return [];
-      const verb = verbs.find((block) => block.verb === entry.baseWord);
-      return verb === undefined ? [] : [`${entry.reading.posTitle} of ${entry.baseWord} is a block beside Voce verbale · ${verb.verb}`];
-    });
-  },
-};
-
 /** The word a gloss names after its first "di": `plurale di aereo`, `plurale di parto, nell'accezione di …`. */
 const glossBase = (gloss: string): string | undefined => /(?:^|\s)di\s+([\p{L}'’]+)/u.exec(gloss)?.[1];
 
@@ -659,11 +683,11 @@ const RULES: readonly Rule[] = [
   S4_NO_OWN_FORMS,
   S4_NO_ETYMOLOGY,
   S4_NO_RECORD,
+  S4_ADJECTIVE_AND_VERB,
   S5_WORD_FACTS,
   S6_EXPRESSION_LINES,
   S4_NO_BASE_RECORD,
   S2_APOSTROPHES,
-  S4_ADJECTIVE_AND_VERB,
   ADR_0030_EDGES,
   ADR_0030_CELLS,
 ];
