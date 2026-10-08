@@ -5,7 +5,9 @@ reads [AGENTS.md](./AGENTS.md). It holds only the law Huey has ruled, transcribe
 an agent; an agent records a ruling here and never invents one. Where the law is
 silent, ask Huey before painting; the gap is not filled here.
 
-The drawings are in [`lexema-design.pen`](./lexema-design.pen). Boards 08 to 22 are
+The drawings are in `lexema-design.pen`, Huey's local design file; it is not in the
+repository. Without it, read the screenshots of its frames in
+[design/frames/](design/frames/README.md). Boards 08 to 22 are
 the current design; frames 00 to 07 and their notes are the earlier design, kept for
 history. Where a board and this file disagree, this file wins and the board is fixed.
 

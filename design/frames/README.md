@@ -1,7 +1,7 @@
 # Design frames
 
-Screenshots of the frames in [`lexema-design.pen`](../../lexema-design.pen), Huey's
-design for the word page, taken 2026-09-23. They are the picture form of the
+Screenshots of the frames in `lexema-design.pen`, Huey's design for the word page,
+taken 2026-09-23. The `.pen` file is local to Huey and is not in the repository. They are the picture form of the
 design: the `.pen` file is JSON and cannot be read as an image. Reviewers of
 visual work compare a rendered page against these.
 
