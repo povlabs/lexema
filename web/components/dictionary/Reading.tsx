@@ -23,6 +23,8 @@ import {
   readingHeadingId,
   searchedIn,
   type BareReading,
+  type BlockDefinitions,
+  type BlockHeading,
   type LoneBareReading,
   type ConjugationTable,
   type FormLine,
@@ -49,6 +51,8 @@ import {
   DEFINITION,
   DEFINITION_BODY,
   DEFINITION_EXTRA,
+  DEFINITION_GROUP_LABEL,
+  DEFINITION_GROUP_LABEL_EXTRA,
   DEFINITION_NUMBER,
   DEFINITIONS,
   EXAMPLE,
@@ -191,48 +195,71 @@ export function DefinitionContent({ item, reading, lead }: { item: DefinitionIte
 export const leadHoldsMore = (item: DefinitionItem): boolean =>
   item.examples.length > 1 || nestedExamples(nestedItemsOf(item));
 
+/** One definition in a list, with the links of the record it is from and a key unique in its block. */
+interface ListedDefinition {
+  key: string;
+  item: DefinitionItem;
+  links: LinksOf;
+}
+
+/**
+ * One numbered run of a *Definitions* block: a record's definitions, or a
+ * part of speech's in a form's block, under a small label naming it (#727).
+ */
+interface DefinitionRun {
+  label: string | undefined;
+  definitions: readonly [ListedDefinition, ...ListedDefinition[]];
+  looseExamples: readonly string[];
+}
+
 /**
  * A *Definitions* block. Closed, the first definition and its own first
  * example, or none: an example stays under its own definition. Then `+ more`,
  * when anything else is there. Open, every definition with every example in
  * order, then those of senses not shown as definitions, then `less`
  * (design-system-manifest.md § "Layout", one expand control). Everything is in
- * the document whether it is open or not. `owner` names the ids; `links` are
- * the record's own, which its glosses link where they write the word.
+ * the document whether it is open or not. A form's block whose records have
+ * several parts of speech gives one run per part of speech, each numbered from
+ * 1 under its label; the first label shows closed, the others with their runs,
+ * and the runs share the one `+ more` (Huey's ruling of 2026-10-07 on #727).
+ * `owner` names the ids.
  */
-function DefinitionList({
-  owner,
-  items,
-  looseExamples,
-  links,
-}: {
-  owner: string;
-  items: readonly [DefinitionItem, ...DefinitionItem[]];
-  looseExamples: readonly string[];
-  links: LinksOf;
-}) {
-  const [first, ...rest] = items;
-  const more = rest.length > 0 || leadHoldsMore(first) || looseExamples.length > 0;
-  const list = `definition-list-${owner}`;
+function DefinitionList({ owner, runs }: { owner: string; runs: readonly [DefinitionRun, ...DefinitionRun[]] }) {
+  const [lead] = runs[0].definitions;
+  const more =
+    runs.length > 1 || runs[0].definitions.length > 1 || leadHoldsMore(lead.item) || runs.some((run) => run.looseExamples.length > 0);
+  const listId = (i: number): string => (i === 0 ? `definition-list-${owner}` : `definition-list-${owner}-${i + 1}`);
   return (
     <Block id={`definitions-${owner}`} label="Definitions">
       <MoreBlock kind="definitions">
-        <ol className={DEFINITIONS} id={list}>
-          {items.map((item, i) => (
-            <li key={definitionKey(item)} className={i === 0 ? DEFINITION : DEFINITION_EXTRA} data-definition={i + 1}>
-              <span className={DEFINITION_NUMBER} aria-hidden="true">
-                {i + 1}.
-              </span>
-              <div className={DEFINITION_BODY}>
-                <DefinitionContent item={item} reading={links} lead={i === 0} />
-              </div>
-            </li>
-          ))}
-        </ol>
-        {looseExamples.map((text, i) => (
-          <Example key={`loose-${i}`} text={text} className={EXAMPLE_LOOSE} />
+        {runs.map((run, r) => (
+          <Fragment key={listId(r)}>
+            {run.label !== undefined && (
+              <h4 className={r === 0 ? DEFINITION_GROUP_LABEL : DEFINITION_GROUP_LABEL_EXTRA} lang="it">
+                {run.label}
+              </h4>
+            )}
+            <ol className={DEFINITIONS} id={listId(r)}>
+              {run.definitions.map(({ key, item, links }, i) => {
+                const first = r === 0 && i === 0;
+                return (
+                  <li key={key} className={first ? DEFINITION : DEFINITION_EXTRA} data-definition={i + 1}>
+                    <span className={DEFINITION_NUMBER} aria-hidden="true">
+                      {i + 1}.
+                    </span>
+                    <div className={DEFINITION_BODY}>
+                      <DefinitionContent item={item} reading={links} lead={first} />
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
+            {run.looseExamples.map((text, i) => (
+              <Example key={`loose-${i}`} text={text} className={EXAMPLE_LOOSE} />
+            ))}
+          </Fragment>
         ))}
-        {more && <More place="definitions" controls={list} />}
+        {more && <More place="definitions" controls={runs.map((_, r) => listId(r)).join(" ")} />}
       </MoreBlock>
     </Block>
   );
@@ -249,18 +276,40 @@ function Definitions({ reading, text }: { reading: Reading; text: OwnText }) {
       </Block>
     );
   }
-  return <DefinitionList owner={entryKey(reading)} items={text.items} looseExamples={text.looseExamples} links={reading} />;
+  const [first, ...rest] = text.items.map((item) => ({ key: definitionKey(item), item, links: reading }));
+  return <DefinitionList owner={entryKey(reading)} runs={[{ label: undefined, definitions: [first, ...rest], looseExamples: text.looseExamples }]} />;
 }
 
+/** The lemma lists' definitions as one run, each keyed by its record, so two records' lists number on from each other. */
+function runOf(label: string | undefined, lists: readonly [LemmaDefinitionList, ...LemmaDefinitionList[]]): DefinitionRun {
+  const [first, ...rest] = lists.flatMap((list) =>
+    list.items.map((item) => ({ key: lists.length === 1 ? definitionKey(item) : `${entryKey(list.lemma)}-${definitionKey(item)}`, item, links: list })),
+  );
+  // Each list holds a definition, so the run does.
+  if (first === undefined) throw new Error(`no definition for ${lists[0].lemma.word}`);
+  return { label, definitions: [first, ...rest], looseExamples: lists.flatMap((list) => list.looseExamples) };
+}
+
+/** A verb's or a grid's block's one lemma list, as a form's block's *Definitions* of one part of speech. */
+const oneList = (list: LemmaDefinitionList | undefined): BlockDefinitions | undefined =>
+  list === undefined ? undefined : { kind: "one", lists: [list] };
+
 /**
- * A form's lemma's *Definitions* (#686): the lemma record's own, listed as its
- * own page lists them, under the form's lines. A lemma with none shows none.
+ * A form's lemma's *Definitions* (#686): the lemma records' own, listed as
+ * their own page lists them, under the form's lines, grouped by part of speech
+ * when the block names several (#727). A lemma with none shows none.
  */
-function LemmaDefinitions({ owner, list }: { owner: string; list: LemmaDefinitionList | undefined }) {
-  if (list === undefined) return null;
+function LemmaDefinitions({ owner, definitions }: { owner: string; definitions: BlockDefinitions | undefined }) {
+  if (definitions === undefined) return null;
+  const [group, ...groups] = definitions.kind === "one" ? [{ partOfSpeech: undefined, lists: definitions.lists }] : definitions.groups;
+  const runs: [DefinitionRun, ...DefinitionRun[]] = [
+    runOf(group.partOfSpeech, group.lists),
+    ...groups.map((one) => runOf(one.partOfSpeech, one.lists)),
+  ];
+  const [lead] = group.lists;
   return (
-    <div data-definitions-of={list.lemma.word}>
-      <DefinitionList owner={owner} items={list.items} looseExamples={list.looseExamples} links={list} />
+    <div data-definitions-of={lead.lemma.word}>
+      <DefinitionList owner={owner} runs={runs} />
     </div>
   );
 }
@@ -425,7 +474,7 @@ export function VerbFormBlockView({ block }: { block: VerbFormBlock }) {
       {block.sources.map((source) => (
         <LemmaLineList key={entryKey(source.reading)} words={unlinkedLemmas(source.reading, source.lemmaWords)} />
       ))}
-      <LemmaDefinitions owner={anchor} list={block.definitions} />
+      <LemmaDefinitions owner={anchor} definitions={oneList(block.definitions)} />
       <LemmaForms owner={anchor} tables={block.tables} />
     </article>
   );
@@ -463,7 +512,7 @@ export function GridFormBlockView({ block }: { block: GridFormBlock }) {
           <RuleFormLineText key={line.text} line={line} />
         ))}
       </FormLines>
-      <LemmaDefinitions owner={anchor} list={block.definitions} />
+      <LemmaDefinitions owner={anchor} definitions={oneList(block.definitions)} />
       <LemmaForms owner={anchor} tables={block.tables} />
     </article>
   );
@@ -504,7 +553,7 @@ function ReadingPartView({ reading, part }: { reading: Reading; part: LemmaPart 
     case "own-forms":
       return <OwnFormsView owner={reading} forms={part.forms} />;
     case "lemma-definitions":
-      return <LemmaDefinitions owner={owner} list={part.list} />;
+      return <LemmaDefinitions owner={owner} definitions={part.definitions} />;
     case "lemma-forms":
       return <LemmaForms owner={owner} tables={part.tables} />;
     case "etymology":
@@ -518,6 +567,29 @@ function ReadingPartView({ reading, part }: { reading: Reading; part: LemmaPart 
     case "synonyms":
       return <WordList id={`synonyms-${owner}`} label="Synonyms" items={part.items} level="h3" />;
   }
+}
+
+/**
+ * A heading's part of speech, or a form's block's several, each once, the dot
+ * between them muted as every heading's dot is: `Aggettivo · Sostantivo` (#727).
+ */
+function HeadingPartsOfSpeech({ heading }: { heading: BlockHeading }) {
+  if (heading.kind === "one") return <span lang="it">{heading.posTitle}</span>;
+  const [first, ...rest] = heading.partsOfSpeech;
+  return (
+    <>
+      <span lang="it">{first}</span>
+      {rest.map((partOfSpeech) => (
+        // The dot travels with the part of speech after it, so a wrapped heading never ends on it.
+        <span key={partOfSpeech} className={READING_GRAMMAR_GROUP}>
+          <span className={READING_DOT} aria-hidden="true">
+            ·
+          </span>
+          <span lang="it">{partOfSpeech}</span>
+        </span>
+      ))}
+    </>
+  );
 }
 
 /**
@@ -550,7 +622,7 @@ export function ReadingView({ entry }: { entry: PageReading | BareReading | Lone
             </span>
           </>
         )}
-        <span lang="it">{reading.posTitle}</span>
+        <HeadingPartsOfSpeech heading={entry.kind === "source" && entry.role === "form-of" ? entry.heading : { kind: "one", posTitle: reading.posTitle }} />
         {grammar !== undefined && (
           // The dot travels with the grammar, so a wrapped heading never ends on it.
           <span className={READING_GRAMMAR_GROUP}>

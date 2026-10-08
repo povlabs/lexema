@@ -78,6 +78,8 @@ import { NOT_FOUND_SMOKE_WORDS, readingProblem, SMOKE_WORDS, wordPageProblems } 
 // restyle that changes one changes both together.
 import {
   DEFINITION,
+  DEFINITION_GROUP_LABEL,
+  DEFINITION_GROUP_LABEL_EXTRA,
   DEFINITION_EXTRA,
   DEFINITION_NUMBER_CLOSED,
   DEFINITION_NUMBER_OPEN,
@@ -386,9 +388,9 @@ test("every record about the query is a reading or a block, headed by its number
       ],
       sale: ["1·Sostantivo·maschile, singolare", "2·Sostantivo, forma flessa·femminile, plurale", "3·Voce verbale·salire"],
       // A form's page keeps only the records about it: case's one, andati's
-      // two (#626), and bella's two in one block for bello, headed by the
-      // first (rule 1, #695).
-      bella: ["1·Aggettivo, forma flessa·femminile, singolare"],
+      // two (#626), and bella's two in one block for bello (rule 1, #695),
+      // headed by both their parts of speech (#727).
+      bella: ["1·Aggettivo·Sostantivo·femminile, singolare"],
       case: ["1·Sostantivo, forma flessa·femminile, plurale"],
       andati: ["1·Aggettivo, forma flessa·maschile", "2·Voce verbale·andare"],
     };
@@ -587,7 +589,7 @@ test("a searched noun or adjective form, headword or inflected, is found but nev
       studente: ["1·Sostantivo·maschile, singolare", "2·Voce verbale·studiare"],
       // studentessa is another form of studente, as studenti is, so studenti's page leaves it out (#626).
       studenti: ["1·Sostantivo, forma flessa·maschile, plurale"],
-      bella: ["1·Aggettivo, forma flessa·femminile, singolare"],
+      bella: ["1·Aggettivo·Sostantivo·femminile, singolare"],
     };
     for (const [query, headings] of Object.entries(pages)) {
       const html = await render(db, query);
@@ -1355,12 +1357,16 @@ test("a noun or adjective form that shows its lemma's grid draws its line under 
     assert.ok(forms.length > 0, "bella shows bello's grid");
     for (const entry of forms) {
       assert.ok(entry.kind === "source" && entry.role === "form-of");
-      const [{ list: definitions }] = partsOf(entry, "lemma-definitions");
+      const [{ definitions }] = partsOf(entry, "lemma-definitions");
       const table = partsOf(entry, "lemma-forms")[0]?.tables.find((one) => one.kind === "grid");
       assert.ok(table !== undefined, "bello's grid");
-      assert.equal(definitions.lemma.recordId, table.lemma.recordId, "the record whose grid shows first");
-      assert.deepEqual(definitions.items.map(definitionRef), definitionsOf(table.lemma).items.map(definitionRef));
-      assert.equal(definitions.lemmaLinks, table.lemma.lemmaLinks);
+      // bella's records are an adjective's and a noun's, so bello's meanings
+      // group by part of speech, the adjective's first (#727).
+      assert.ok(definitions.kind === "grouped");
+      const [adjective] = definitions.groups[0].lists;
+      assert.equal(adjective.lemma.recordId, table.lemma.recordId, "the record whose grid shows first");
+      assert.deepEqual(adjective.items.map(definitionRef), definitionsOf(table.lemma).items.map(definitionRef));
+      assert.equal(adjective.lemmaLinks, table.lemma.lemmaLinks);
     }
 
     // The page: the heading, bella's line under it with no label or number,
@@ -1369,13 +1375,21 @@ test("a noun or adjective form that shows its lemma's grid draws its line under 
     const html = await render(db, "bella");
     const [reading] = readingsOfPage(html);
     assert.ok(reading !== undefined);
-    assert.deepEqual(headingTexts(reading), ["1·Aggettivo, forma flessa·femminile, singolare", "Definitions", "Forms ofbello"]);
+    assert.deepEqual(headingTexts(reading), ["1·Aggettivo·Sostantivo·femminile, singolare", "Definitions", "Forms ofbello"]);
     // Its noun record's line follows in the same block, both linking bello (rule 1, #695).
     assert.deepEqual(formLines(reading), ["femminile singolare di bello", "femminile di bello"]);
     assert.match(reading, /femminile singolare di <a class="[^"]*" href="\/\?q=bello">bello<\/a><\/p>/);
     assert.match(reading, /femminile di <a class="[^"]*" href="\/\?q=bello">bello<\/a><\/p>/);
-    const bello = readingsOfPage(await render(db, "bello")).find((one) => /<h2 [^>]*>.*?Aggettivo.*?<\/h2>/.test(one)) ?? "";
-    assert.deepEqual(lemmaDefinitions(reading), [{ lemma: "bello", all: definitionLines(bello), closed: closedLines(bello) }]);
+    // bello's adjective, then its two nouns, as bello's own page lists them;
+    // closed, only the adjective's first shows (#727).
+    const bello = readingsOfPage(await render(db, "bello"));
+    assert.deepEqual(lemmaDefinitions(reading), [{ lemma: "bello", all: bello.flatMap(definitionLines), closed: closedLines(bello[0] ?? "") }]);
+    // Each group under a small label naming its part of speech; the first
+    // shows closed, the second waits with its meanings, and one + more opens both.
+    assert.deepEqual(groupLabels(reading), ["Aggettivo", "Sostantivo"]);
+    assert.equal(occurrencesOf(reading, `<h4 class="${DEFINITION_GROUP_LABEL}" lang="it">Aggettivo</h4>`), 1);
+    assert.equal(occurrencesOf(reading, `<h4 class="${DEFINITION_GROUP_LABEL_EXTRA}" lang="it">Sostantivo</h4>`), 1);
+    assert.equal(occurrencesOf(reading, "+ more</span>"), 1);
     assert.doesNotMatch(reading, /Meaning|Grammar|data-meaning-of/);
   });
 });
@@ -1395,7 +1409,7 @@ test("a form-of reading whose lemma shows no table on the page still draws its l
     // bello linked, after the adjective record's; then bello's Definitions and
     // one table follow (rule 1, #695).
     const block = nth(await render(db, "bella"), 1);
-    assert.deepEqual(headingTexts(block), ["1·Aggettivo, forma flessa·femminile, singolare", "Definitions", "Forms ofbello"]);
+    assert.deepEqual(headingTexts(block), ["1·Aggettivo·Sostantivo·femminile, singolare", "Definitions", "Forms ofbello"]);
     assert.deepEqual(formLines(block), ["femminile singolare di bello", "femminile di bello"]);
     assert.doesNotMatch(block, /data-definition="\d+"[^>]*>[^<]*femminile di/);
 
@@ -1550,6 +1564,9 @@ test("a lemma the release has is linked where the gloss names it, every one of t
 /** The definition lines of a page, as text, in page order. */
 const definitionLines = (html: string): string[] =>
   [...html.matchAll(/<li class="[^"]*" data-definition="\d+">(.*?)<\/li>/g)].map((match) => textOf(match[1]).replace(/^(\d+\.)+/, ""));
+
+/** The labels naming each part of speech's definitions in a form's block (#727), in page order. */
+const groupLabels = (html: string): string[] => [...html.matchAll(/<h4 class="[^"]*" lang="it">(.*?)<\/h4>/g)].map((match) => textOf(match[1]));
 
 /** The definition lines that show before `+ more` opens: a folded one carries `DEFINITION_EXTRA`. */
 const closedLines = (html: string): string[] =>
@@ -3131,7 +3148,7 @@ test("a form-of reading never draws a Forms table of its own, with or without it
     // bella: its one block keeps the #686 layout, both records' lines, then
     // bello's Definitions and table (#695), and no Forms of its own.
     const bella = await render(db, "bella");
-    assert.deepEqual(headingTexts(nth(bella, 1)), ["1·Aggettivo, forma flessa·femminile, singolare", "Definitions", "Forms ofbello"]);
+    assert.deepEqual(headingTexts(nth(bella, 1)), ["1·Aggettivo·Sostantivo·femminile, singolare", "Definitions", "Forms ofbello"]);
     assert.deepEqual(formLines(nth(bella, 1)), ["femminile singolare di bello", "femminile di bello"]);
     assert.doesNotMatch(bella, /id="forms-/);
 
@@ -3189,14 +3206,16 @@ test("costruttrici: only its own records, in one block for costruttore: its line
     // costruttrici's own records show, in the one block.
     assert.deepEqual(await shownWords(db, "costruttrici"), ["costruttrici", "costruttrici"]);
     // Rule 1: costruttrice is itself a form, so the base word is costruttore,
-    // and both records are forms of it: one block, headed by the first.
-    assert.deepEqual(headingsOf(html), ["1·Aggettivo, forma flessa·femminile, singolare"]);
+    // and both records are forms of it: one block, headed by both parts of
+    // speech, the first record's gender and number after them (#727).
+    assert.deepEqual(headingsOf(html), ["1·Aggettivo·Sostantivo·femminile, singolare"]);
     const block = nth(html, 1);
-    assert.deepEqual(headingTexts(block), ["1·Aggettivo, forma flessa·femminile, singolare", "Definitions", "Forms ofcostruttore"]);
+    assert.deepEqual(headingTexts(block), ["1·Aggettivo·Sostantivo·femminile, singolare", "Definitions", "Forms ofcostruttore"]);
     // Both records read "plurale di costruttrice": the line shows once.
     assert.deepEqual(formLines(block), ["plurale di costruttrice"]);
-    // The Definitions of the record whose grid the block draws, as a verb form block reads its first table's.
-    assert.deepEqual(definitionLines(block), ["che costruisce"]);
+    // costruttore's adjective meaning, then its noun meaning, each under its label (#727).
+    assert.deepEqual(definitionLines(block), ["che costruisce", "chi costruisce"]);
+    assert.deepEqual(groupLabels(block), ["Aggettivo", "Sostantivo"]);
     assert.equal(grids(html), 1);
     assert.doesNotMatch(html, /id="forms-/);
   });
@@ -3295,10 +3314,10 @@ test("grande and grandi: the superlative record grandissimo is not a reading, an
     }
     assert.equal(headingsOf(await render(db, "grande")).length, 2);
     // grandi's adjective and noun records are both forms of grande: one block,
-    // both lines, one table of grande (rule 1).
+    // headed by both parts of speech (#727), both lines, one table of grande (rule 1).
     const grandi = await render(db, "grandi");
     assert.deepEqual(await shownWords(db, "grandi"), ["grandi", "grandi"]);
-    assert.deepEqual(headingsOf(grandi), ["1·Aggettivo, forma flessa·maschile e femminile, plurale"]);
+    assert.deepEqual(headingsOf(grandi), ["1·Aggettivo·Sostantivo·maschile e femminile, plurale"]);
     assert.deepEqual(lemmaTableWords(grandi), ["grande"]);
     assert.equal(occurrencesOf(grandi, 'aria-label="Forms of grande"'), 1);
   });
@@ -3865,7 +3884,7 @@ test("a noun or adjective form's page shows no `vedi <lemma>` Etymology and no E
     }
     // bella keeps its block: its lines, bello's Definitions and bello's grid.
     const bella = await render(db, "bella");
-    assert.deepEqual(headingTexts(nth(bella, 1)), ["1·Aggettivo, forma flessa·femminile, singolare", "Definitions", "Forms ofbello"]);
+    assert.deepEqual(headingTexts(nth(bella, 1)), ["1·Aggettivo·Sostantivo·femminile, singolare", "Definitions", "Forms ofbello"]);
     // belli's synonyms are bello's, inflected: its form record's, so not shown.
     assert.deepEqual(synonymWords(afterReadings(await render(db, "belli")), "synonyms"), []);
   });

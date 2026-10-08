@@ -33,7 +33,10 @@
 // (`Drawn`; rule 1, "never two blocks or two tables for the same word"):
 // `essere`'s two verb records draw one conjugation. A noun or adjective
 // form's records of one base word are one block (`FormOfReading`):
-// `costruttrici`'s, `bella`'s and `grandi`'s adjective and noun records.
+// `costruttrici`'s, `bella`'s and `grandi`'s adjective and noun records. Its
+// heading names each part of speech of its records, `Aggettivo · Sostantivo`,
+// and its *Definitions* group the base word's meanings by them (Huey's ruling
+// of 2026-10-07 on #727).
 //
 // A searched verb form shows one block per verb it is a form of (#636; Huey's
 // ruling of 2026-10-06, frame 37): `1 · Voce verbale · salire`, that verb's
@@ -285,17 +288,54 @@ export interface RecordLines {
 }
 
 /**
+ * What a form's block is headed with (Huey's ruling of 2026-10-07 on #727):
+ * the part of speech of its one record, or of its records when they share one,
+ * as the source writes it (`Aggettivo, forma flessa`); or, when its records
+ * have several, each of them once in record order (`Aggettivo · Sostantivo`).
+ */
+export type BlockHeading =
+  | { kind: "one"; posTitle: string }
+  | { kind: "several"; partsOfSpeech: [string, string, ...string[]] };
+
+/** The heading's parts of speech as one title: `Aggettivo · Sostantivo`. */
+export const headingTitle = (heading: BlockHeading): string =>
+  heading.kind === "one" ? heading.posTitle : heading.partsOfSpeech.join(" · ");
+
+/**
+ * One part of speech's meanings in a block's *Definitions*: those of its base
+ * word's records of that part of speech, each record's list in turn
+ * (`bello`'s two `Sostantivo` records under `Sostantivo`).
+ */
+export interface DefinitionGroup {
+  /** As the block's heading names it: `Sostantivo`. */
+  partOfSpeech: string;
+  lists: NonEmpty<LemmaDefinitionList>;
+}
+
+/**
+ * A form's block's *Definitions*, behind one `+ more` (#686, #727). A block
+ * headed by one part of speech lists its base word's meanings with no label;
+ * a block headed by several groups them by part of speech, in the heading's
+ * order, each under a small label naming it (Huey's ruling of 2026-10-07 on
+ * #727). No meaning shows twice in a block.
+ */
+export type BlockDefinitions =
+  | { kind: "one"; lists: NonEmpty<LemmaDefinitionList> }
+  | { kind: "grouped"; groups: NonEmpty<DefinitionGroup> };
+
+/**
  * What a form-of reading shows. Its own definitions are its form lines, under
  * its heading with no label or number (#686, #690): every record of the block's
  * in turn, a line another record already gave shown once. When a lemma's grid
  * lists it (`bella` the adjective, of bello), that lemma's *Definitions* follow
- * (#686), then the grid as *Forms of bello*. It never shows a *Forms* table of
+ * (#686), grouped by part of speech when its records have several (#727), then
+ * the grid as *Forms of bello*. It never shows a *Forms* table of
  * its own, with or without a lemma's (Huey, 2026-10-06, #694), nor an
  * Etymology or Synonyms (rule 3, #695), so there is no part for either.
  */
 export type FormOfPart =
   | { kind: "form-lines"; records: NonEmpty<RecordLines> }
-  | { kind: "lemma-definitions"; list: LemmaDefinitionList }
+  | { kind: "lemma-definitions"; definitions: BlockDefinitions }
   | SharedPart;
 
 /** A source reading with something to show: what it shows, in page order. */
@@ -334,6 +374,8 @@ export type PageReading = ShownReading<"lemma", LemmaPart> | FormOfReading;
  */
 export interface FormOfReading extends ShownReading<"form-of", FormOfPart> {
   also: Reading[];
+  /** The parts of speech of its records that are not verbs' (#727); a block of only a verb's form record is headed by its own. */
+  heading: BlockHeading;
   /**
    * The word this block is a form of: its first base word (`bello` for
    * `bella`, and for `bellissima` through `bellissimo`), or, when the page
@@ -510,8 +552,11 @@ const isLoneBare = (readings: WordReadings): readings is [LoneBareReading] => re
 export const blockTitle = (block: VerbFormBlock): string => `${block.posTitle} · ${block.verb}`;
 
 /** What an entry's jump link and report choice name it by: a verb block's title, or a part of speech. */
-export const entryTitle = (entry: ShownEntry): string =>
-  entry.kind === "verb-form" ? blockTitle(entry) : entry.kind === "grid-form" ? entry.posTitle : entry.reading.posTitle;
+export const entryTitle = (entry: ShownEntry): string => {
+  if (entry.kind === "verb-form") return blockTitle(entry);
+  if (entry.kind === "grid-form") return entry.posTitle;
+  return entry.kind === "source" && entry.role === "form-of" ? headingTitle(entry.heading) : entry.reading.posTitle;
+};
 
 /** Jump links appear from this many readings up, on any page. */
 export const JUMP_LINKS_FROM = 3;
@@ -1333,9 +1378,10 @@ type PlacedFacts = Pick<ReturnType<typeof placeWordFacts>, "etymologies" | "syno
  *
  * `records` are the slot's: one for any reading but a noun or adjective form,
  * whose block holds every form record of its base word (rule 1, #695). The
- * first heads it; each record's lines show in turn, and the block draws the
- * *Definitions* of the first record's first base word, as a verb form block
- * draws its first table's, and one table per base word. A verb form record's
+ * first heads it, with every part of speech of the records (#727); each
+ * record's lines show in turn, and the block draws its base word's
+ * *Definitions*, one group per part of speech when there are several, and one
+ * table per base word. A verb form record's
  * lines that joined the block (`joined`, Q5 of #708) follow the records'.
  */
 function shownReading(
@@ -1375,11 +1421,12 @@ function shownReading(
     const shown = nonEmpty(parts);
     return shown === undefined ? undefined : { kind: "source", role: "lemma", reading, parts: shown };
   }
-  // A noun or adjective form: its records' lines, then its first base word's
-  // Definitions, then one table per base word (#695), each shown once a page.
+  // A noun or adjective form: its records' lines, then its base word's
+  // Definitions, grouped by part of speech when its records have several
+  // (#727), then one table per base word (#695), each shown once a page.
   const [lead] = formBasesOf(reading, lemmas, own);
-  const definitions =
-    lead !== undefined && drawn.first(`definitions\u0000${entryKey(lead)}`) ? definitionListOf(lead, lead) : undefined;
+  const speech = speechPartsOf(records, lemmas, own);
+  const definitions = blockDefinitionsOf(speech, drawn);
   const bases = new Map<string, Reading>();
   for (const base of records.flatMap((record) => formBasesOf(record, lemmas, own))) if (!bases.has(base.word)) bases.set(base.word, base);
   const grids = [...bases.values()].flatMap((base) => gridOf(base) ?? []);
@@ -1391,11 +1438,88 @@ function shownReading(
   const parts: FormOfPart[] = [];
   if (formLines !== undefined) parts.push({ kind: "form-lines", records: formLines });
   parts.push(...lines);
-  if (definitions !== undefined) parts.push({ kind: "lemma-definitions", list: definitions });
+  if (definitions !== undefined) parts.push({ kind: "lemma-definitions", definitions });
   parts.push(...tablesPart([...records.flatMap(conjugationTablesOf), ...grids, ...joinedTables]));
   const shown = nonEmpty(parts);
   const baseWord = lead?.word ?? reading.lemmaLinks[0]?.targetWord ?? reading.word;
-  return shown === undefined ? undefined : { kind: "source", role: "form-of", reading, also, baseWord, parts: shown };
+  const heading = blockHeadingOf(speech, reading.posTitle);
+  return shown === undefined ? undefined : { kind: "source", role: "form-of", reading, also, heading, baseWord, parts: shown };
+}
+
+/** One part of speech of a form's block: as its heading names it, and the base word's records of it, whose meanings show under it. */
+interface SpeechPart {
+  partOfSpeech: string;
+  bases: Reading[];
+}
+
+/** A form record's part of speech as a heading of several names it: its `pos_title` without the source's `, forma flessa` (`Aggettivo`). */
+function partOfSpeechOf(record: Reading): string {
+  const suffix = `, ${FORMA_FLESSA}`;
+  return record.posTitle.endsWith(suffix) ? record.posTitle.slice(0, -suffix.length) : record.posTitle;
+}
+
+/**
+ * The parts of speech of a block's records, each once in record order (Huey's
+ * ruling of 2026-10-07 on #727), each with its base word's records of that part
+ * of speech: `bella`'s adjective record brings bello's adjective, and its noun
+ * record bello's two nouns. A verb's form record in the block (Q5 of #708)
+ * adds none: the block is the noun's or adjective's, shaped by its base word.
+ */
+function speechPartsOf(records: readonly Reading[], lemmas: readonly Reading[], own: ReadonlySet<string>): SpeechPart[] {
+  const parts = new Map<string, SpeechPart>();
+  for (const record of records) {
+    if (isVerbReading(record)) continue;
+    const partOfSpeech = partOfSpeechOf(record);
+    const part = parts.get(partOfSpeech) ?? { partOfSpeech, bases: [] };
+    parts.set(partOfSpeech, part);
+    const [base] = formBasesOf(record, lemmas, own);
+    if (base === undefined) continue;
+    for (const one of baseRecordsLike(base, lemmas)) if (!part.bases.some((known) => entryKey(known) === entryKey(one))) part.bases.push(one);
+  }
+  return [...parts.values()];
+}
+
+/** The base word's records of `base`'s part of speech that are not forms, in the order the search read them; `base` among them. */
+function baseRecordsLike(base: Reading, lemmas: readonly Reading[]): Reading[] {
+  const same = lemmas.filter((record) => record.word === base.word && record.pos === base.pos && record.lemmaLinks.length === 0);
+  return same.some((record) => entryKey(record) === entryKey(base)) ? same : [base, ...same];
+}
+
+/** A block's heading: every part of speech of its records when they have several, else the first record's own `pos_title`. */
+function blockHeadingOf(parts: readonly SpeechPart[], posTitle: string): BlockHeading {
+  const [first, second, ...rest] = parts;
+  return first !== undefined && second !== undefined
+    ? { kind: "several", partsOfSpeech: [first.partOfSpeech, second.partOfSpeech, ...rest.map((part) => part.partOfSpeech)] }
+    : { kind: "one", posTitle };
+}
+
+/**
+ * A block's *Definitions*: each part of speech's base records' own, as their
+ * own page lists them, grouped when the heading names several parts of speech,
+ * and none when no base record has a definition. A base record's *Definitions*
+ * show once a page (rule 1), and a meaning once a block.
+ */
+function blockDefinitionsOf(parts: readonly SpeechPart[], drawn: Drawn): BlockDefinitions | undefined {
+  const shown = new Set<string>();
+  const unseen = (item: DefinitionItem): boolean => {
+    const key = definitionTextKey(item);
+    if (shown.has(key)) return false;
+    shown.add(key);
+    return true;
+  };
+  const groups = parts.flatMap((part): DefinitionGroup[] => {
+    const lists = nonEmpty(
+      part.bases.flatMap((base): LemmaDefinitionList[] => {
+        const list = drawn.first(`definitions\u0000${entryKey(base)}`) ? definitionListOf(base, base) : undefined;
+        const items = list === undefined ? undefined : nonEmpty(list.items.filter(unseen));
+        return list === undefined || items === undefined ? [] : [{ ...list, items }];
+      }),
+    );
+    return lists === undefined ? [] : [{ partOfSpeech: part.partOfSpeech, lists }];
+  });
+  const [first, ...rest] = groups;
+  if (first === undefined) return undefined;
+  return parts.length > 1 ? { kind: "grouped", groups: [first, ...rest] } : { kind: "one", lists: first.lists };
 }
 
 /** A record and the text of it a block shows: its own, or only the lines of it that joined the block. */
