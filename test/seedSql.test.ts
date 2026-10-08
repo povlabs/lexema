@@ -170,6 +170,50 @@ test("committed fixture matches archive-derived expectations", async () => {
   }
 });
 
+// The words whose form_of edges lead to a word with no record, which the dev
+// seed cannot hold (docs/DEV_SEED.md): each word whole, every line of it the
+// archive's, in archive order, and none of them a dev-seed word.
+test("the no-base-record fixture is the archive's lines of words whose edges lead to a word with no record", async () => {
+  const lines = readFileSync(resolve("fixtures/no-base-record.jsonl"), "utf8").trimEnd().split("\n");
+  const records = lines.map((raw) => JSON.parse(raw) as { word: string; senses?: Array<{ form_of?: Array<{ word: string }> }> });
+  const words = new Set(records.map((record) => record.word));
+  const devWords = new Set(Object.keys(expectations.recordsByWord));
+  assert.deepEqual([...words].filter((word) => devWords.has(word)), [], "a word in both fixtures");
+  const devKeys = new Set([...devWords].map(normalizeItalianExact));
+  const ownKeys = new Set([...words].map(normalizeItalianExact));
+  // Each word's edge targets, by the key the release resolves them by.
+  const targetsOf = new Map<string, string[]>([...words].map((word) => [word, []]));
+  for (const record of records) {
+    for (const sense of record.senses ?? []) for (const edge of sense.form_of ?? []) targetsOf.get(record.word)!.push(normalizeItalianExact(edge.word));
+  }
+  const dangling = [...targetsOf.values()].flat().filter((key) => !devKeys.has(key) && !ownKeys.has(key));
+  // A word belongs here when one of its edges names a word with no record, or a word that belongs here.
+  const kept = new Set([...targetsOf].filter(([, keys]) => keys.some((key) => dangling.includes(key))).map(([word]) => word));
+  for (let grew = true; grew; ) {
+    grew = false;
+    for (const [word, keys] of targetsOf) {
+      if (kept.has(word) || !keys.some((key) => [...kept].some((other) => normalizeItalianExact(other) === key))) continue;
+      kept.add(word);
+      grew = true;
+    }
+  }
+  assert.deepEqual([...words].filter((word) => !kept.has(word)), [], "a word whose edges all reach a record belongs in the dev seed");
+
+  if (!existsSync(resolve(".data/source/it-extract.jsonl.gz"))) return;
+  const input = createReadStream(resolve(".data/source/it-extract.jsonl.gz")).pipe(createGunzip());
+  const archive = createInterface({ input, crlfDelay: Infinity, maxLineLength: 1_000_000 } as any);
+  const selected: string[] = [];
+  const headwordKeys = new Set<string>();
+  for await (const raw of archive) {
+    const record = JSON.parse(raw) as { word?: string; lang_code?: string };
+    if (record.lang_code !== "it" || !record.word) continue;
+    headwordKeys.add(normalizeItalianExact(record.word));
+    if (words.has(record.word)) selected.push(raw);
+  }
+  assert.deepEqual(lines, selected, "the fixture must be the archive selection in archive order");
+  for (const key of dangling) assert.ok(!headwordKeys.has(key), `${key} has a record in the archive`);
+});
+
 test("missing required fixture words and repeated output are deterministic", async () => {
   const { dir, input, outputDir } = await fixture([rawLemma]);
   const outputDir2 = join(dir, "sql-2");
@@ -253,9 +297,9 @@ test("the fifty-word dev seed is one part with the same rows", async () => {
     const report = await devSeed(join(dir, "sql"));
     assert.deepEqual(report.parts, [join(dir, "sql", "part-001.sql")]);
     assert.deepEqual(report.rows, {
-      source_record: 191, source_record_json: 191, lookup_form: 2976, accent_fold: 113, typo_key: 767, form_of_edge: 88,
-      sense: 468, sense_gloss: 466, sense_label: 223, grammar_claim: 12002,
-      raw_page: 18, recovered_definition: 7, recovered_label: 6, recovered_example: 7, hidden_record: 0,
+      source_record: 1085, source_record_json: 1085, lookup_form: 12358, accent_fold: 488, typo_key: 3772, form_of_edge: 496,
+      sense: 1776, sense_gloss: 1760, sense_label: 857, grammar_claim: 48170,
+      raw_page: 20, recovered_definition: 10, recovered_label: 6, recovered_example: 7, hidden_record: 0,
       // The curated corrections are keyed to it-0c432803's lines, not the fixture's.
       corrected_claim: 0,
       // Only the fixture pages on the committed list of it-0c432803's
@@ -268,11 +312,13 @@ test("the fifty-word dev seed is one part with the same rows", async () => {
       corrected_definition: 2,
       release_table_rows: 22,
     });
-    // Ten of the fixture's records have a raw page under fixtures/; `casa` is
-    // the one whose page states definitions the record does not carry.
+    // 36 of the fixture's records have a raw page under fixtures/. Three pages
+    // state definitions their record does not carry: `casa`'s seven and
+    // `beato`'s verb form's one, whose records carry none, and `servizio`'s
+    // two more beside its own.
     assert.deepEqual(report.recovery, {
-      rawPages: rawPages.size, recordsWithAPage: 10, fullLoss: 1, partialLoss: 0,
-      definitions: 7, examples: 7, unrendered: 0,
+      rawPages: rawPages.size, recordsWithAPage: 36, fullLoss: 2, partialLoss: 1,
+      definitions: 10, examples: 7, unrendered: 0,
     });
   } finally { await rm(dir, { recursive: true, force: true }); }
 });

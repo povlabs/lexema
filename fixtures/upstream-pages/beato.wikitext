@@ -1,0 +1,91 @@
+<!-- it.wiktionary.org/wiki/beato revision 3996216 (2024-09-15T13:25:45Z), CC BY-SA 4.0. Saved verbatim. -->
+== {{-it-}} ==
+{{-agg-|it}}
+{{Pn}} ''m sing'' {{Tabs|beato|beati|beata|beate}}
+[[File:Monza -lapide-don-Luigi-Talamoni-pz-santa-Margherita.jpg|thumb|[[lapide]] [[raffigurante]]  il {{Pn}} [[don]] Luigi Talamoni collocata Monza [[presso]] [[la]] [[chiesa]] [[di]] Santa Margherita]]
+# [[persona]] [[serena]] che si trova in uno [[stato]] di [[felicità]]
+
+{{-sost-|it}}
+{{Pn}} ''m sing'' {{Linkp|beati}}
+# [[anima]] eletta in [[paradiso]]; chi gode la perfetta [[felicità]] nella [[contemplazione]] di Dio
+# {{Term|ecclesiastico|it}} colui che per [[santità]] di vita è tenuto dalla [[chiesa]] in concetto di [[Santo]], ma non ancora [[canonizzare|canonizzato]] per tale
+# {{Est}} [[persona]] [[pacifica]] [[consapevole]] di esserlo, cercando di [[instillare]] e/o far [[trovare]] [[bene]] e [[verità]] per il [[prossimo]]
+
+{{-verb form-|it}}
+participio passato di [[beare]]
+
+{{-sill-}}
+; be | à | to
+
+{{-pron-}}
+{{IPA|/beˈato/}}
+
+{{-etim-}}
+dal [[latino]] ''[[beatus]]''
+
+{{-quote-}}
+{{Quote
+|'''Beato''' l'uomo che non segue il consiglio degli empi, non indugia nella via dei peccatori e non siede in compagnia degli stolti
+|[[w:Salmi|Salmo]]  {{Passo biblico|Sal|1,1}}}}
+
+{{-sin-}}
+*[[appagato]], [[calmo]], [[contento]], [[estasiato]], [[estatico]], [[esultante]],[[felice]], [[gioioso]], [[pago]], [[sereno]], [[soddisfatto]], [[tranquillo]],  
+*''(in usi enfatici)'' [[fortunato]], [[invidiabile]]
+* ''(cattolicesimo)'' [[canonizzato]]
+* spirito angelico, spirito celeste, spirito eletto,
+
+{{-ant-}}
+*[[angosciato]], [[infelice]], [[insoddisfatto]], [[nervoso]].[[scontento]],   [[triste]],  
+* [[sciagurato]], [[sfortunato]], [[maledetto]]
+* spirito demoniaco, spirito diabolico,
+
+{{-noconf-}}
+* [[venerabile]]: il venerabile è un "mezzo" santo perché, la Chiesa pur attestando che è degno di diventar santo ( possedere le cosiddette "virtù eroiche") deve ancora riconoscere che abbia compiuto un miracolo * [[venerabile]]: ad esempio papa [[w:Paolo VI|Paolo VI]] è stato recentemente nominato venerabile ma non è ancora diventato santo 
+
+{{-prov-}}
+* ''il regno dei beati'': il paradiso
+* ''beato lui !'': baciato dalla fortuna
+* ''beato tra le donne'': uomo attorniato da donne
+
+{{-trad-}}
+{{Trad1|}}
+:*{{en}}: [[blessed]], [[lucky]]
+{{Trad2}}
+
+=={{-la-}}==
+{{-agg form-|la}}
+{{Pn}}
+# dativo maschile singolare di [[beatus#Latino|beātus]]
+# ablativo maschile singolare di [[beatus#Latino|beātus]]
+# dativo neutro singolare di [[beatus#Latino|beātus]]
+# ablativo neutro singolare di [[beatus#Latino|beātus]]
+
+{{-verb form-|la}}
+{{Pn}}
+# seconda persona singolare dell'imperativo futuro attivo di [[beo#Latino|beō]]
+# terza persona singolare dell'imperativo futuro attivo di [[beo#Latino|beō]]
+# dativo maschile singolare del participio perfetto ([[beatus#Latino|beātus]]) di [[beo#Latino|beō]]
+# ablativo maschile singolare del participio perfetto ([[beatus#Latino|beātus]]) di [[beo#Latino|beō]]
+# dativo neutro singolare del participio perfetto ([[beatus#Latino|beātus]]) di [[beo#Latino|beō]]
+# ablativo neutro singolare del participio perfetto ([[beatus#Latino|beātus]]) di [[beo#Latino|beō]]
+
+{{-sill-}}
+; bĕ | ā | tō
+
+{{-pron-}}
+* {{La-pronclass|nocat}} {{IPA|/beˈaː.toː/}}
+* {{La-proneccl|nocat}} {{IPA|/beˈa.to/}}
+
+{{-etim-}}
+vedi [[beatus#Latino|beātus]], [[beo#Latino|beō]]
+
+{{-ref-}}
+* italiano
+** {{Fonte|zin|128|1922}}
+** {{Fonte|sabco}}
+** {{Fonte|desan|B}}
+** {{Fonte|sin-co}}
+** {{Fonte|trec}}
+**AA.VV., ''Dizionario sinonimi e contrari'', Mariotti, 2006, pagina 82
+* latino
+** {{Ref-link|beatus}}

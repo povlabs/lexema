@@ -1,7 +1,37 @@
 {
   "source": "it-extract.jsonl.gz",
-  "selection": "Huey's fifty required words, the multi-word search words of #214 (andare via, tirare fuori, volgere and voltare le spalle, fare l'amore, fare l'abitudine, fare fuori, aereo and aerei a reazione, and the words that spell them), the word-page words of #695 (costruttrici, bellissima, lavoratrici, stato, parti, grandi, and every record that lists one of them or grande in its table), the word-page words of #700 (belli, belle, attrici, andassi, andata, gravida, and every record that lists one of them in its table), plus the archive's form_of closure",
+  "selection": "Huey's fifty required words, the multi-word search words of #214 (andare via, tirare fuori, volgere and voltare le spalle, fare l'amore, fare l'abitudine, fare fuori, aereo and aerei a reazione, and the words that spell them), the word-page words of #695 (costruttrici, bellissima, lavoratrici, stato, parti, grandi, and every record that lists one of them or grande in its table), the word-page words of #700 (belli, belle, attrici, andassi, andata, gravida, and every record that lists one of them in its table), the word-page rule words of #709 (the words each rule names, and one word for each page shape of the #707 census, listed in web/test/wordPageShapeWords.ts, each with the other words its page needs to keep the shape it has in the release), plus the archive's form_of closure",
   "recordsByWord": {
+    "6": {
+      "recordCount": 5,
+      "records": [
+        {
+          "pos": "num",
+          "keyCount": 9,
+          "forms": 0
+        },
+        {
+          "pos": "adj",
+          "keyCount": 10,
+          "forms": 0
+        },
+        {
+          "pos": "noun",
+          "keyCount": 10,
+          "forms": 0
+        },
+        {
+          "pos": "abbrev",
+          "keyCount": 10,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 11,
+          "forms": 0
+        }
+      ]
+    },
     "acqua": {
       "recordCount": 1,
       "records": [
@@ -1559,6 +1589,7086 @@
           "pos": "verb",
           "keyCount": 11,
           "forms": 0
+        }
+      ]
+    },
+    "inglese": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 18,
+          "forms": 1
+        },
+        {
+          "pos": "noun",
+          "keyCount": 18,
+          "forms": 1
+        },
+        {
+          "pos": "noun",
+          "keyCount": 18,
+          "forms": 0
+        }
+      ]
+    },
+    "sbucciapatate": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 7,
+          "forms": 0
+        }
+      ]
+    },
+    "AC": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "abbrev",
+          "keyCount": 10,
+          "forms": 0
+        }
+      ]
+    },
+    "altro": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 17,
+          "forms": 3
+        },
+        {
+          "pos": "pron",
+          "keyCount": 16,
+          "forms": 0
+        },
+        {
+          "pos": "noun",
+          "keyCount": 16,
+          "forms": 0
+        }
+      ]
+    },
+    "Venerdì Santo": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "name",
+          "keyCount": 10,
+          "forms": 0
+        }
+      ]
+    },
+    "santo": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 17,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 17,
+          "forms": 1
+        }
+      ]
+    },
+    "Russia": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "name",
+          "keyCount": 16,
+          "forms": 1
+        }
+      ]
+    },
+    "Daria": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "name",
+          "keyCount": 7,
+          "forms": 0
+        }
+      ]
+    },
+    "Dario": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "name",
+          "keyCount": 13,
+          "forms": 1
+        }
+      ]
+    },
+    "abaco": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 16,
+          "forms": 1
+        }
+      ]
+    },
+    "venerdì santo": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 9,
+          "forms": 0
+        }
+      ]
+    },
+    "Abaco": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "name",
+          "keyCount": 10,
+          "forms": 0
+        }
+      ]
+    },
+    "nazionale": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 16,
+          "forms": 1
+        },
+        {
+          "pos": "noun",
+          "keyCount": 16,
+          "forms": 1
+        },
+        {
+          "pos": "noun",
+          "keyCount": 16,
+          "forms": 1
+        }
+      ]
+    },
+    "genio": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 17,
+          "forms": 1
+        }
+      ]
+    },
+    "litigare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 17,
+          "forms": 94
+        }
+      ]
+    },
+    "laureato": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 14,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 14,
+          "forms": 1
+        },
+        {
+          "pos": "verb",
+          "keyCount": 13,
+          "forms": 0
+        }
+      ]
+    },
+    "litigante": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 16,
+          "forms": 1
+        },
+        {
+          "pos": "noun",
+          "keyCount": 14,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 15,
+          "forms": 0
+        }
+      ]
+    },
+    "santi": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 12,
+          "forms": 0
+        },
+        {
+          "pos": "noun",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "innanzi": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 15,
+          "forms": 0
+        },
+        {
+          "pos": "adv",
+          "keyCount": 14,
+          "forms": 0
+        }
+      ]
+    },
+    "all'improvviso": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "adv",
+          "keyCount": 9,
+          "forms": 0
+        }
+      ]
+    },
+    "altri": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 14,
+          "forms": 3
+        },
+        {
+          "pos": "pron",
+          "keyCount": 13,
+          "forms": 0
+        }
+      ]
+    },
+    "inglesi": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 10,
+          "forms": 0
+        },
+        {
+          "pos": "noun",
+          "keyCount": 10,
+          "forms": 0
+        }
+      ]
+    },
+    "laureati": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 11,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 10,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 10,
+          "forms": 0
+        }
+      ]
+    },
+    "geni": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "nazionali": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 12,
+          "forms": 0
+        },
+        {
+          "pos": "noun",
+          "keyCount": 12,
+          "forms": 0
+        },
+        {
+          "pos": "noun",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "blasfema": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 9,
+          "forms": 0
+        }
+      ]
+    },
+    "gene": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 16,
+          "forms": 1
+        }
+      ]
+    },
+    "presiedere": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 14,
+          "forms": 97
+        }
+      ]
+    },
+    "blasfeme": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 11,
+          "forms": 3
+        },
+        {
+          "pos": "adj",
+          "keyCount": 11,
+          "forms": 3
+        }
+      ]
+    },
+    "servizio sanitario nazionale": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "phrase",
+          "keyCount": 11,
+          "forms": 0
+        }
+      ]
+    },
+    "vuote": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 11,
+          "forms": 0
+        }
+      ]
+    },
+    "ac": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "abbrev",
+          "keyCount": 9,
+          "forms": 0
+        }
+      ]
+    },
+    "laurearsi": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "blasfemare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 13,
+          "forms": 94
+        }
+      ]
+    },
+    "laureare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 14,
+          "forms": 95
+        }
+      ]
+    },
+    "Russie": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "name",
+          "keyCount": 10,
+          "forms": 0
+        }
+      ]
+    },
+    "presiedute": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 12,
+          "forms": 3
+        },
+        {
+          "pos": "verb",
+          "keyCount": 11,
+          "forms": 0
+        }
+      ]
+    },
+    "abbattette": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 10,
+          "forms": 0
+        }
+      ]
+    },
+    "gommiste": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 11,
+          "forms": 3
+        }
+      ]
+    },
+    "fare l'occhiolino": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "phrase",
+          "keyCount": 10,
+          "forms": 0
+        }
+      ]
+    },
+    "fare l’occhiolino": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "phrase",
+          "keyCount": 11,
+          "forms": 0
+        }
+      ]
+    },
+    "all’improvviso": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "adv_phrase",
+          "keyCount": 10,
+          "forms": 0
+        }
+      ]
+    },
+    "zuppa inglese": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "phrase",
+          "keyCount": 11,
+          "forms": 1
+        }
+      ]
+    },
+    "Betula": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 9,
+          "forms": 0
+        }
+      ]
+    },
+    "betula": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 11,
+          "forms": 0
+        }
+      ]
+    },
+    "dinoccolare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 15,
+          "forms": 94
+        }
+      ]
+    },
+    "dinoccolato": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 14,
+          "forms": 3
+        },
+        {
+          "pos": "verb",
+          "keyCount": 13,
+          "forms": 0
+        }
+      ]
+    },
+    "duellante": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 11,
+          "forms": 1
+        },
+        {
+          "pos": "noun",
+          "keyCount": 11,
+          "forms": 1
+        },
+        {
+          "pos": "verb",
+          "keyCount": 10,
+          "forms": 0
+        }
+      ]
+    },
+    "duellanti": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 10,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 10,
+          "forms": 0
+        }
+      ]
+    },
+    "duellare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 13,
+          "forms": 94
+        }
+      ]
+    },
+    "assegnare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 17,
+          "forms": 94
+        }
+      ]
+    },
+    "assegno": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 16,
+          "forms": 1
+        },
+        {
+          "pos": "verb",
+          "keyCount": 15,
+          "forms": 0
+        }
+      ]
+    },
+    "barricare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 14,
+          "forms": 94
+        }
+      ]
+    },
+    "formicolio": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 14,
+          "forms": 1
+        }
+      ]
+    },
+    "informicolirsi": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "informicolito": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 12,
+          "forms": 3
+        },
+        {
+          "pos": "verb",
+          "keyCount": 11,
+          "forms": 0
+        }
+      ]
+    },
+    "Estero": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "name",
+          "keyCount": 8,
+          "forms": 0
+        }
+      ]
+    },
+    "estere": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 13,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 13,
+          "forms": 1
+        },
+        {
+          "pos": "noun",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "estero": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 16,
+          "forms": 1
+        },
+        {
+          "pos": "noun",
+          "keyCount": 16,
+          "forms": 1
+        }
+      ]
+    },
+    "imperativo": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 14,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 15,
+          "forms": 1
+        }
+      ]
+    },
+    "imporre": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 17,
+          "forms": 95
+        }
+      ]
+    },
+    "imposta": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 17,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 17,
+          "forms": 1
+        },
+        {
+          "pos": "verb",
+          "keyCount": 16,
+          "forms": 0
+        }
+      ]
+    },
+    "impostare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 18,
+          "forms": 94
+        }
+      ]
+    },
+    "imposte": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 15,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 14,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 14,
+          "forms": 0
+        }
+      ]
+    },
+    "imposti": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 12,
+          "forms": 3
+        },
+        {
+          "pos": "verb",
+          "keyCount": 11,
+          "forms": 0
+        }
+      ]
+    },
+    "imposto": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 14,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 15,
+          "forms": 0
+        }
+      ]
+    },
+    "Pizie": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "pizia": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 14,
+          "forms": 1
+        }
+      ]
+    },
+    "pizie": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 10,
+          "forms": 0
+        }
+      ]
+    },
+    "Gaia": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "name",
+          "keyCount": 12,
+          "forms": 1
+        },
+        {
+          "pos": "name",
+          "keyCount": 11,
+          "forms": 0
+        }
+      ]
+    },
+    "Gaio": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "name",
+          "keyCount": 8,
+          "forms": 0
+        }
+      ]
+    },
+    "gai": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 13,
+          "forms": 3
+        }
+      ]
+    },
+    "gaia": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 15,
+          "forms": 3
+        }
+      ]
+    },
+    "gaie": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 15,
+          "forms": 3
+        }
+      ]
+    },
+    "gaio": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 15,
+          "forms": 3
+        }
+      ]
+    },
+    "sarà": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "phrase",
+          "keyCount": 12,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 13,
+          "forms": 0
+        }
+      ]
+    },
+    "Grazio": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "name",
+          "keyCount": 8,
+          "forms": 0
+        }
+      ]
+    },
+    "graziare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 16,
+          "forms": 94
+        }
+      ]
+    },
+    "grazio": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 9,
+          "forms": 0
+        }
+      ]
+    },
+    "eurogruppo": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 11,
+          "forms": 1
+        },
+        {
+          "pos": "noun",
+          "keyCount": 10,
+          "forms": 0
+        }
+      ]
+    },
+    "assegni": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 10,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 10,
+          "forms": 0
+        }
+      ]
+    },
+    "Tiro": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "name",
+          "keyCount": 8,
+          "forms": 0
+        }
+      ]
+    },
+    "al di là": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adv_phrase",
+          "keyCount": 10,
+          "forms": 0
+        },
+        {
+          "pos": "noun",
+          "keyCount": 11,
+          "forms": 0
+        }
+      ]
+    },
+    "Beata": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "name",
+          "keyCount": 8,
+          "forms": 0
+        }
+      ]
+    },
+    "beare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 15,
+          "forms": 94
+        }
+      ]
+    },
+    "beata": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 14,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 13,
+          "forms": 0
+        }
+      ]
+    },
+    "beate": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 14,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 13,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 13,
+          "forms": 0
+        }
+      ]
+    },
+    "beati": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 14,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 13,
+          "forms": 0
+        }
+      ]
+    },
+    "beato": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 17,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 17,
+          "forms": 1
+        },
+        {
+          "pos": "verb",
+          "keyCount": 16,
+          "forms": 0
+        }
+      ]
+    },
+    "logorare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 16,
+          "forms": 95
+        }
+      ]
+    },
+    "logorò": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "Ternano": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "ternano": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 12,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 10,
+          "forms": 0
+        }
+      ]
+    },
+    "Ortolano": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "name",
+          "keyCount": 9,
+          "forms": 0
+        }
+      ]
+    },
+    "ortolana": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 11,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 11,
+          "forms": 3
+        }
+      ]
+    },
+    "ortolane": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 11,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 11,
+          "forms": 3
+        }
+      ]
+    },
+    "ortolano": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 12,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 13,
+          "forms": 1
+        }
+      ]
+    },
+    "Fermo": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "name",
+          "keyCount": 10,
+          "forms": 0
+        }
+      ]
+    },
+    "ferma": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 14,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 13,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 13,
+          "forms": 0
+        }
+      ]
+    },
+    "fermare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 16,
+          "forms": 95
+        }
+      ]
+    },
+    "fermi": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 14,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 13,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 13,
+          "forms": 0
+        }
+      ]
+    },
+    "fermo": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 17,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 15,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 16,
+          "forms": 0
+        }
+      ]
+    },
+    "miliardi": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "miliardo": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 16,
+          "forms": 1
+        }
+      ]
+    },
+    "Chino": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "name",
+          "keyCount": 8,
+          "forms": 0
+        }
+      ]
+    },
+    "china": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 16,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 16,
+          "forms": 1
+        },
+        {
+          "pos": "verb",
+          "keyCount": 15,
+          "forms": 0
+        }
+      ]
+    },
+    "chinare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 15,
+          "forms": 94
+        }
+      ]
+    },
+    "chino": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 13,
+          "forms": 3
+        },
+        {
+          "pos": "verb",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "volti": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 11,
+          "forms": 0
+        },
+        {
+          "pos": "noun",
+          "keyCount": 11,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 11,
+          "forms": 0
+        }
+      ]
+    },
+    "sottovento": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 7,
+          "forms": 0
+        },
+        {
+          "pos": "adv",
+          "keyCount": 7,
+          "forms": 0
+        }
+      ]
+    },
+    "logorarsi": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "logorata": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 13,
+          "forms": 3
+        },
+        {
+          "pos": "verb",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "logorate": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 12,
+          "forms": 3
+        },
+        {
+          "pos": "verb",
+          "keyCount": 11,
+          "forms": 0
+        }
+      ]
+    },
+    "logorato": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 14,
+          "forms": 3
+        },
+        {
+          "pos": "verb",
+          "keyCount": 13,
+          "forms": 0
+        }
+      ]
+    },
+    "affiatare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 9,
+          "forms": 0
+        }
+      ]
+    },
+    "affiatata": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 13,
+          "forms": 3
+        },
+        {
+          "pos": "verb",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "affiatato": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 10,
+          "forms": 3
+        }
+      ]
+    },
+    "ci sono": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 11,
+          "forms": 0
+        },
+        {
+          "pos": "phrase",
+          "keyCount": 10,
+          "forms": 0
+        }
+      ]
+    },
+    "luogo": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 17,
+          "forms": 1
+        }
+      ]
+    },
+    "Gemmo": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "name",
+          "keyCount": 8,
+          "forms": 0
+        }
+      ]
+    },
+    "fu": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 13,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 13,
+          "forms": 0
+        }
+      ]
+    },
+    "Scandinaviano": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "scandinaviano": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "domiciliare": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 14,
+          "forms": 1
+        },
+        {
+          "pos": "verb",
+          "keyCount": 13,
+          "forms": 95
+        }
+      ]
+    },
+    "domicilio": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 15,
+          "forms": 1
+        },
+        {
+          "pos": "verb",
+          "keyCount": 14,
+          "forms": 0
+        }
+      ]
+    },
+    "Massima": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "name",
+          "keyCount": 12,
+          "forms": 1
+        }
+      ]
+    },
+    "Stati": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 10,
+          "forms": 0
+        }
+      ]
+    },
+    "stati": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 11,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 11,
+          "forms": 0
+        }
+      ]
+    },
+    "Sante": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "name",
+          "keyCount": 9,
+          "forms": 0
+        }
+      ]
+    },
+    "santa": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 9,
+          "forms": 0
+        },
+        {
+          "pos": "noun",
+          "keyCount": 10,
+          "forms": 1
+        }
+      ]
+    },
+    "sante": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 8,
+          "forms": 0
+        }
+      ]
+    },
+    "Farinose": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "farinose": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 12,
+          "forms": 3
+        }
+      ]
+    },
+    "farinoso": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 12,
+          "forms": 3
+        }
+      ]
+    },
+    "fa": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adv",
+          "keyCount": 12,
+          "forms": 0
+        },
+        {
+          "pos": "noun",
+          "keyCount": 13,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 13,
+          "forms": 0
+        }
+      ]
+    },
+    "Veneranda": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "name",
+          "keyCount": 9,
+          "forms": 0
+        }
+      ]
+    },
+    "veneranda": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 13,
+          "forms": 3
+        },
+        {
+          "pos": "verb",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "venerando": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 13,
+          "forms": 3
+        },
+        {
+          "pos": "verb",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "venerare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 16,
+          "forms": 94
+        }
+      ]
+    },
+    "scalare": {
+      "recordCount": 4,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 17,
+          "forms": 1
+        },
+        {
+          "pos": "noun",
+          "keyCount": 16,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 17,
+          "forms": 94
+        },
+        {
+          "pos": "verb",
+          "keyCount": 17,
+          "forms": 94
+        }
+      ]
+    },
+    "ventenne": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 12,
+          "forms": 1
+        },
+        {
+          "pos": "adj",
+          "keyCount": 12,
+          "forms": 1
+        }
+      ]
+    },
+    "Punica": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "punica": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 13,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 13,
+          "forms": 1
+        }
+      ]
+    },
+    "punico": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 13,
+          "forms": 3
+        }
+      ]
+    },
+    "Grecia": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 13,
+          "forms": 0
+        }
+      ]
+    },
+    "greca": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 13,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 13,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 13,
+          "forms": 1
+        }
+      ]
+    },
+    "greche": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 12,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 12,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 11,
+          "forms": 0
+        }
+      ]
+    },
+    "greci": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 14,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 14,
+          "forms": 3
+        }
+      ]
+    },
+    "greco": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 17,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 17,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 16,
+          "forms": 0
+        }
+      ]
+    },
+    "palazzi": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 11,
+          "forms": 0
+        }
+      ]
+    },
+    "palazzo": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 17,
+          "forms": 1
+        }
+      ]
+    },
+    "ragione": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 17,
+          "forms": 1
+        }
+      ]
+    },
+    "rinsavire": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 13,
+          "forms": 137
+        },
+        {
+          "pos": "verb",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "savio": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 17,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 17,
+          "forms": 1
+        }
+      ]
+    },
+    "decima": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 13,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 13,
+          "forms": 1
+        },
+        {
+          "pos": "verb",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "decimare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 15,
+          "forms": 95
+        }
+      ]
+    },
+    "decime": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 12,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 11,
+          "forms": 0
+        }
+      ]
+    },
+    "decimi": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 11,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 10,
+          "forms": 0
+        }
+      ]
+    },
+    "decimo": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 15,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 13,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 14,
+          "forms": 0
+        }
+      ]
+    },
+    "China": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "name",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "MP3": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 9,
+          "forms": 0
+        }
+      ]
+    },
+    "Mp3": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 8,
+          "forms": 0
+        }
+      ]
+    },
+    "mp3": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 8,
+          "forms": 0
+        }
+      ]
+    },
+    "sciamannare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 9,
+          "forms": 94
+        }
+      ]
+    },
+    "sciamannati": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 13,
+          "forms": 3
+        },
+        {
+          "pos": "verb",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "sciamannato": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 14,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 13,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 13,
+          "forms": 0
+        }
+      ]
+    },
+    "Foggiano": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "foggiano": {
+      "recordCount": 4,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 14,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 14,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 14,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 13,
+          "forms": 0
+        }
+      ]
+    },
+    "foggiare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 14,
+          "forms": 95
+        }
+      ]
+    },
+    "EI": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "abbrev",
+          "keyCount": 8,
+          "forms": 0
+        }
+      ]
+    },
+    "ei": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "article",
+          "keyCount": 11,
+          "forms": 0
+        },
+        {
+          "pos": "pron",
+          "keyCount": 9,
+          "forms": 0
+        }
+      ]
+    },
+    "socchiudere": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 14,
+          "forms": 94
+        }
+      ]
+    },
+    "socchiuso": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 14,
+          "forms": 3
+        },
+        {
+          "pos": "verb",
+          "keyCount": 13,
+          "forms": 0
+        }
+      ]
+    },
+    "tanghera": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 13,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 12,
+          "forms": 0
+        },
+        {
+          "pos": "noun",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "tanghere": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 13,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 13,
+          "forms": 3
+        }
+      ]
+    },
+    "tanghero": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 15,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 15,
+          "forms": 1
+        },
+        {
+          "pos": "noun",
+          "keyCount": 15,
+          "forms": 1
+        }
+      ]
+    },
+    "faccendone": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 12,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 12,
+          "forms": 3
+        }
+      ]
+    },
+    "fuoriuscito": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 12,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "dovere": {
+      "recordCount": 4,
+      "records": [
+        {
+          "pos": "intj",
+          "keyCount": 16,
+          "forms": 0
+        },
+        {
+          "pos": "noun",
+          "keyCount": 18,
+          "forms": 1
+        },
+        {
+          "pos": "verb",
+          "keyCount": 18,
+          "forms": 138
+        },
+        {
+          "pos": "verb",
+          "keyCount": 18,
+          "forms": 138
+        }
+      ]
+    },
+    "dovremmo": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 8,
+          "forms": 0
+        }
+      ]
+    },
+    "Gennaro": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "name",
+          "keyCount": 8,
+          "forms": 0
+        }
+      ]
+    },
+    "gennaro": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 12,
+          "forms": 1
+        }
+      ]
+    },
+    "mordere": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 17,
+          "forms": 95
+        }
+      ]
+    },
+    "morsa": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 15,
+          "forms": 1
+        },
+        {
+          "pos": "verb",
+          "keyCount": 14,
+          "forms": 0
+        }
+      ]
+    },
+    "morse": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 10,
+          "forms": 0
+        },
+        {
+          "pos": "noun",
+          "keyCount": 10,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 10,
+          "forms": 0
+        }
+      ]
+    },
+    "laureanda": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 11,
+          "forms": 3
+        }
+      ]
+    },
+    "laureande": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 11,
+          "forms": 3
+        }
+      ]
+    },
+    "laureandi": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 11,
+          "forms": 3
+        }
+      ]
+    },
+    "laureando": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 13,
+          "forms": 3
+        },
+        {
+          "pos": "verb",
+          "keyCount": 11,
+          "forms": 0
+        }
+      ]
+    },
+    "Primati": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 13,
+          "forms": 0
+        }
+      ]
+    },
+    "primate": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 16,
+          "forms": 1
+        }
+      ]
+    },
+    "primati": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 13,
+          "forms": 0
+        },
+        {
+          "pos": "noun",
+          "keyCount": 14,
+          "forms": 0
+        }
+      ]
+    },
+    "primato": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 15,
+          "forms": 1
+        }
+      ]
+    },
+    "all'incirca": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "adv",
+          "keyCount": 10,
+          "forms": 0
+        }
+      ]
+    },
+    "all’incirca": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "adv_phrase",
+          "keyCount": 9,
+          "forms": 0
+        }
+      ]
+    },
+    "glutei": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 12,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 11,
+          "forms": 0
+        }
+      ]
+    },
+    "gluteo": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 14,
+          "forms": 1
+        }
+      ]
+    },
+    "impiegare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 16,
+          "forms": 95
+        }
+      ]
+    },
+    "impieghi": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 11,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 11,
+          "forms": 0
+        }
+      ]
+    },
+    "impiego": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 13,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 14,
+          "forms": 0
+        }
+      ]
+    },
+    "aggruppare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 15,
+          "forms": 94
+        }
+      ]
+    },
+    "aggruppato": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 10,
+          "forms": 0
+        },
+        {
+          "pos": "phrase",
+          "keyCount": 9,
+          "forms": 0
+        }
+      ]
+    },
+    "fiatare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 16,
+          "forms": 94
+        }
+      ]
+    },
+    "fiati": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 10,
+          "forms": 0
+        }
+      ]
+    },
+    "Primina": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "name",
+          "keyCount": 10,
+          "forms": 0
+        }
+      ]
+    },
+    "Primino": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "name",
+          "keyCount": 10,
+          "forms": 0
+        }
+      ]
+    },
+    "primina": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 10,
+          "forms": 0
+        },
+        {
+          "pos": "noun",
+          "keyCount": 9,
+          "forms": 0
+        }
+      ]
+    },
+    "asfodelo": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 15,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 15,
+          "forms": 1
+        }
+      ]
+    },
+    "augurare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 16,
+          "forms": 95
+        }
+      ]
+    },
+    "augure": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 15,
+          "forms": 1
+        }
+      ]
+    },
+    "auguri": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 14,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 14,
+          "forms": 0
+        }
+      ]
+    },
+    "augurio": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 16,
+          "forms": 1
+        }
+      ]
+    },
+    "avvenimento": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 14,
+          "forms": 1
+        }
+      ]
+    },
+    "compartecipare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 15,
+          "forms": 94
+        }
+      ]
+    },
+    "compartecipe": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 13,
+          "forms": 1
+        }
+      ]
+    },
+    "compartecipi": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 10,
+          "forms": 0
+        },
+        {
+          "pos": "noun",
+          "keyCount": 10,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 10,
+          "forms": 0
+        }
+      ]
+    },
+    "logora": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 14,
+          "forms": 3
+        },
+        {
+          "pos": "verb",
+          "keyCount": 13,
+          "forms": 0
+        }
+      ]
+    },
+    "logore": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 14,
+          "forms": 3
+        }
+      ]
+    },
+    "logori": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 13,
+          "forms": 3
+        },
+        {
+          "pos": "verb",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "logoro": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 15,
+          "forms": 3
+        },
+        {
+          "pos": "verb",
+          "keyCount": 14,
+          "forms": 0
+        }
+      ]
+    },
+    "rozzona": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 11,
+          "forms": 3
+        }
+      ]
+    },
+    "rozzone": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 12,
+          "forms": 2
+        },
+        {
+          "pos": "noun",
+          "keyCount": 11,
+          "forms": 0
+        }
+      ]
+    },
+    "rozzoni": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 11,
+          "forms": 3
+        }
+      ]
+    },
+    "Alessandrina": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "name",
+          "keyCount": 8,
+          "forms": 0
+        }
+      ]
+    },
+    "alessandrina": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 8,
+          "forms": 0
+        }
+      ]
+    },
+    "coercitivo": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 16,
+          "forms": 3
+        }
+      ]
+    },
+    "instillare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "lesive": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 11,
+          "forms": 3
+        }
+      ]
+    },
+    "lesivo": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 15,
+          "forms": 3
+        }
+      ]
+    },
+    "plagiare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 16,
+          "forms": 94
+        }
+      ]
+    },
+    "unificanti": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 9,
+          "forms": 0
+        }
+      ]
+    },
+    "unificare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 16,
+          "forms": 94
+        }
+      ]
+    },
+    "coartare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 14,
+          "forms": 94
+        }
+      ]
+    },
+    "coartata": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 12,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 12,
+          "forms": 3
+        },
+        {
+          "pos": "verb",
+          "keyCount": 11,
+          "forms": 0
+        }
+      ]
+    },
+    "coartato": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 10,
+          "forms": 3
+        }
+      ]
+    },
+    "alquanto": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 15,
+          "forms": 3
+        },
+        {
+          "pos": "adv",
+          "keyCount": 13,
+          "forms": 0
+        },
+        {
+          "pos": "pron",
+          "keyCount": 13,
+          "forms": 0
+        }
+      ]
+    },
+    "Ortolana": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "name",
+          "keyCount": 9,
+          "forms": 0
+        }
+      ]
+    },
+    "Italo": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "name",
+          "keyCount": 7,
+          "forms": 0
+        }
+      ]
+    },
+    "italo": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 12,
+          "forms": 3
+        }
+      ]
+    },
+    "Tifa": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 10,
+          "forms": 0
+        }
+      ]
+    },
+    "tifa": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 9,
+          "forms": 0
+        }
+      ]
+    },
+    "tifare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 10,
+          "forms": 0
+        }
+      ]
+    },
+    "STA": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "abbrev",
+          "keyCount": 10,
+          "forms": 0
+        },
+        {
+          "pos": "abbrev",
+          "keyCount": 9,
+          "forms": 0
+        }
+      ]
+    },
+    "sta": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "avambraccio": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 16,
+          "forms": 1
+        }
+      ]
+    },
+    "basilica": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 15,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 15,
+          "forms": 1
+        },
+        {
+          "pos": "noun",
+          "keyCount": 15,
+          "forms": 1
+        }
+      ]
+    },
+    "basilico": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 14,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 14,
+          "forms": 1
+        }
+      ]
+    },
+    "pettinare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 14,
+          "forms": 0
+        }
+      ]
+    },
+    "pettinata": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 15,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 15,
+          "forms": 1
+        },
+        {
+          "pos": "verb",
+          "keyCount": 14,
+          "forms": 0
+        }
+      ]
+    },
+    "pettinate": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 11,
+          "forms": 3
+        }
+      ]
+    },
+    "pettinati": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 11,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 10,
+          "forms": 0
+        }
+      ]
+    },
+    "pettinato": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 16,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 15,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 15,
+          "forms": 0
+        }
+      ]
+    },
+    "rimbambire": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 15,
+          "forms": 94
+        }
+      ]
+    },
+    "stampante": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 15,
+          "forms": 1
+        },
+        {
+          "pos": "noun",
+          "keyCount": 15,
+          "forms": 1
+        },
+        {
+          "pos": "verb",
+          "keyCount": 14,
+          "forms": 0
+        }
+      ]
+    },
+    "poma": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 12,
+          "forms": 1
+        },
+        {
+          "pos": "noun",
+          "keyCount": 12,
+          "forms": 0
+        },
+        {
+          "pos": "noun",
+          "keyCount": 10,
+          "forms": 1
+        }
+      ]
+    },
+    "Bari": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "name",
+          "keyCount": 10,
+          "forms": 0
+        }
+      ]
+    },
+    "barare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 14,
+          "forms": 94
+        }
+      ]
+    },
+    "bari": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 12,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "baro": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 13,
+          "forms": 1
+        },
+        {
+          "pos": "verb",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "Sdentati": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 13,
+          "forms": 0
+        }
+      ]
+    },
+    "Rubino": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "name",
+          "keyCount": 8,
+          "forms": 0
+        }
+      ]
+    },
+    "rubare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 17,
+          "forms": 94
+        }
+      ]
+    },
+    "rubino": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 13,
+          "forms": 1
+        },
+        {
+          "pos": "verb",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "Neodevoniano": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 10,
+          "forms": 0
+        }
+      ]
+    },
+    "neodevoniano": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 10,
+          "forms": 0
+        }
+      ]
+    },
+    "Argentino": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "name",
+          "keyCount": 8,
+          "forms": 0
+        }
+      ]
+    },
+    "argentare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 15,
+          "forms": 94
+        }
+      ]
+    },
+    "argentina": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 11,
+          "forms": 3
+        }
+      ]
+    },
+    "argentine": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 13,
+          "forms": 3
+        }
+      ]
+    },
+    "argentini": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 13,
+          "forms": 3
+        }
+      ]
+    },
+    "argentino": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 17,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 17,
+          "forms": 3
+        },
+        {
+          "pos": "verb",
+          "keyCount": 15,
+          "forms": 0
+        }
+      ]
+    },
+    "leggera": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 14,
+          "forms": 3
+        }
+      ]
+    },
+    "leggere": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 17,
+          "forms": 3
+        },
+        {
+          "pos": "verb",
+          "keyCount": 17,
+          "forms": 94
+        }
+      ]
+    },
+    "leggero": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 18,
+          "forms": 3
+        }
+      ]
+    },
+    "messinese": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 15,
+          "forms": 1
+        },
+        {
+          "pos": "noun",
+          "keyCount": 15,
+          "forms": 1
+        },
+        {
+          "pos": "noun",
+          "keyCount": 15,
+          "forms": 0
+        }
+      ]
+    },
+    "parlata": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 16,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 15,
+          "forms": 0
+        }
+      ]
+    },
+    "parlato": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 15,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 15,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 14,
+          "forms": 0
+        }
+      ]
+    },
+    "pascente": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 14,
+          "forms": 1
+        },
+        {
+          "pos": "verb",
+          "keyCount": 13,
+          "forms": 0
+        }
+      ]
+    },
+    "pensionare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 15,
+          "forms": 94
+        }
+      ]
+    },
+    "pensionata": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 13,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 13,
+          "forms": 3
+        },
+        {
+          "pos": "verb",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "pensionati": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 13,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 12,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "pensionato": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 15,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 15,
+          "forms": 1
+        },
+        {
+          "pos": "verb",
+          "keyCount": 14,
+          "forms": 0
+        }
+      ]
+    },
+    "vigilare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 14,
+          "forms": 0
+        }
+      ]
+    },
+    "vigile": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 17,
+          "forms": 2
+        },
+        {
+          "pos": "noun",
+          "keyCount": 17,
+          "forms": 1
+        }
+      ]
+    },
+    "vigili": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 12,
+          "forms": 0
+        },
+        {
+          "pos": "noun",
+          "keyCount": 13,
+          "forms": 3
+        },
+        {
+          "pos": "verb",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "PA": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "abbrev",
+          "keyCount": 8,
+          "forms": 0
+        }
+      ]
+    },
+    "pA": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "abbrev",
+          "keyCount": 8,
+          "forms": 0
+        }
+      ]
+    },
+    "pa": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 10,
+          "forms": 0
+        }
+      ]
+    },
+    "papà": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 14,
+          "forms": 0
+        }
+      ]
+    },
+    "involgere": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 14,
+          "forms": 94
+        }
+      ]
+    },
+    "orbe": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 13,
+          "forms": 1
+        }
+      ]
+    },
+    "orbi": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 12,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 12,
+          "forms": 3
+        }
+      ]
+    },
+    "orbo": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 13,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 13,
+          "forms": 1
+        }
+      ]
+    },
+    "saggezza": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 15,
+          "forms": 0
+        }
+      ]
+    },
+    "massare": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 12,
+          "forms": 3
+        },
+        {
+          "pos": "verb",
+          "keyCount": 11,
+          "forms": 0
+        }
+      ]
+    },
+    "massaro": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 14,
+          "forms": 3
+        }
+      ]
+    },
+    "slanciare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 16,
+          "forms": 94
+        }
+      ]
+    },
+    "asciugare": {
+      "recordCount": 4,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 17,
+          "forms": 95
+        },
+        {
+          "pos": "verb",
+          "keyCount": 16,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 16,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 16,
+          "forms": 0
+        }
+      ]
+    },
+    "acclimare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 14,
+          "forms": 94
+        }
+      ]
+    },
+    "acclimata": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 9,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 9,
+          "forms": 0
+        }
+      ]
+    },
+    "acclimatare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 15,
+          "forms": 95
+        }
+      ]
+    },
+    "acclimato": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 10,
+          "forms": 3
+        }
+      ]
+    },
+    "Giusta": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "name",
+          "keyCount": 9,
+          "forms": 0
+        }
+      ]
+    },
+    "giusta": {
+      "recordCount": 4,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 14,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 14,
+          "forms": 3
+        },
+        {
+          "pos": "prep",
+          "keyCount": 12,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 13,
+          "forms": 0
+        }
+      ]
+    },
+    "giuste": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 13,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 13,
+          "forms": 3
+        }
+      ]
+    },
+    "giusto": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 18,
+          "forms": 7
+        },
+        {
+          "pos": "noun",
+          "keyCount": 16,
+          "forms": 0
+        }
+      ]
+    },
+    "SLA": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "abbrev",
+          "keyCount": 9,
+          "forms": 0
+        }
+      ]
+    },
+    "Sla": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "abbrev",
+          "keyCount": 9,
+          "forms": 0
+        }
+      ]
+    },
+    "Pellegrina": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "name",
+          "keyCount": 8,
+          "forms": 0
+        }
+      ]
+    },
+    "pellegrino": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 17,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 17,
+          "forms": 1
+        }
+      ]
+    },
+    "Lisa": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "name",
+          "keyCount": 9,
+          "forms": 0
+        }
+      ]
+    },
+    "Rosa": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "name",
+          "keyCount": 9,
+          "forms": 0
+        }
+      ]
+    },
+    "rodere": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 15,
+          "forms": 95
+        }
+      ]
+    },
+    "rosa": {
+      "recordCount": 5,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 15,
+          "forms": 0
+        },
+        {
+          "pos": "adj",
+          "keyCount": 17,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 17,
+          "forms": 1
+        },
+        {
+          "pos": "noun",
+          "keyCount": 16,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 16,
+          "forms": 0
+        }
+      ]
+    },
+    "rose": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 13,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 12,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "roso": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 15,
+          "forms": 3
+        },
+        {
+          "pos": "verb",
+          "keyCount": 14,
+          "forms": 0
+        }
+      ]
+    },
+    "Ferma": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "name",
+          "keyCount": 8,
+          "forms": 0
+        }
+      ]
+    },
+    "Umiliati": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 11,
+          "forms": 0
+        }
+      ]
+    },
+    "umiliare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 18,
+          "forms": 95
+        }
+      ]
+    },
+    "umiliati": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 14,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 14,
+          "forms": 3
+        },
+        {
+          "pos": "verb",
+          "keyCount": 13,
+          "forms": 0
+        }
+      ]
+    },
+    "umiliato": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 16,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 16,
+          "forms": 3
+        },
+        {
+          "pos": "verb",
+          "keyCount": 15,
+          "forms": 0
+        }
+      ]
+    },
+    "Slava": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "name",
+          "keyCount": 8,
+          "forms": 0
+        }
+      ]
+    },
+    "slava": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 11,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 11,
+          "forms": 1
+        }
+      ]
+    },
+    "slavi": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 11,
+          "forms": 3
+        }
+      ]
+    },
+    "slavo": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 12,
+          "forms": 0
+        },
+        {
+          "pos": "noun",
+          "keyCount": 14,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 14,
+          "forms": 0
+        }
+      ]
+    },
+    "Uccelli": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 14,
+          "forms": 0
+        }
+      ]
+    },
+    "uccellare": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 14,
+          "forms": 1
+        },
+        {
+          "pos": "verb",
+          "keyCount": 13,
+          "forms": 94
+        }
+      ]
+    },
+    "uccelli": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "name",
+          "keyCount": 14,
+          "forms": 0
+        },
+        {
+          "pos": "noun",
+          "keyCount": 14,
+          "forms": 0
+        }
+      ]
+    },
+    "uccello": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 19,
+          "forms": 1
+        }
+      ]
+    },
+    "Sincero": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "name",
+          "keyCount": 9,
+          "forms": 0
+        }
+      ]
+    },
+    "Incoronato": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "name",
+          "keyCount": 8,
+          "forms": 0
+        }
+      ]
+    },
+    "incoronare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 17,
+          "forms": 94
+        }
+      ]
+    },
+    "Vulgata": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 12,
+          "forms": 1
+        }
+      ]
+    },
+    "Beato": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "name",
+          "keyCount": 9,
+          "forms": 0
+        }
+      ]
+    },
+    "Sorbo": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 11,
+          "forms": 0
+        }
+      ]
+    },
+    "sorbo": {
+      "recordCount": 4,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 16,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 16,
+          "forms": 1
+        },
+        {
+          "pos": "noun",
+          "keyCount": 15,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 15,
+          "forms": 0
+        }
+      ]
+    },
+    "Loro": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "name",
+          "keyCount": 9,
+          "forms": 0
+        }
+      ]
+    },
+    "loro": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 12,
+          "forms": 0
+        },
+        {
+          "pos": "pron",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "lui": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "pron",
+          "keyCount": 13,
+          "forms": 2
+        },
+        {
+          "pos": "noun",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "Divino": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "name",
+          "keyCount": 8,
+          "forms": 0
+        }
+      ]
+    },
+    "divina": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 13,
+          "forms": 3
+        },
+        {
+          "pos": "verb",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "divinare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 16,
+          "forms": 94
+        }
+      ]
+    },
+    "divine": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 14,
+          "forms": 3
+        }
+      ]
+    },
+    "divini": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 11,
+          "forms": 3
+        }
+      ]
+    },
+    "divino": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 14,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 15,
+          "forms": 0
+        }
+      ]
+    },
+    "Nana": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "name",
+          "keyCount": 7,
+          "forms": 0
+        }
+      ]
+    },
+    "nana": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 10,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 10,
+          "forms": 1
+        }
+      ]
+    },
+    "Roso": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "name",
+          "keyCount": 8,
+          "forms": 0
+        }
+      ]
+    },
+    "Grazia": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "name",
+          "keyCount": 10,
+          "forms": 0
+        }
+      ]
+    },
+    "grazia": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 18,
+          "forms": 1
+        },
+        {
+          "pos": "verb",
+          "keyCount": 16,
+          "forms": 0
+        }
+      ]
+    },
+    "Corona": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "name",
+          "keyCount": 9,
+          "forms": 0
+        }
+      ]
+    },
+    "corona": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 16,
+          "forms": 1
+        },
+        {
+          "pos": "verb",
+          "keyCount": 15,
+          "forms": 0
+        }
+      ]
+    },
+    "coronare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 17,
+          "forms": 94
+        }
+      ]
+    },
+    "Incoronata": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "name",
+          "keyCount": 9,
+          "forms": 0
+        }
+      ]
+    },
+    "incoronata": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 11,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 10,
+          "forms": 0
+        }
+      ]
+    },
+    "agghiacciante": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 15,
+          "forms": 1
+        }
+      ]
+    },
+    "agghiaccianti": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 13,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 13,
+          "forms": 0
+        }
+      ]
+    },
+    "scalata": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 17,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 17,
+          "forms": 1
+        },
+        {
+          "pos": "verb",
+          "keyCount": 16,
+          "forms": 0
+        }
+      ]
+    },
+    "scalato": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 12,
+          "forms": 3
+        },
+        {
+          "pos": "verb",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "badante": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 13,
+          "forms": 1
+        },
+        {
+          "pos": "verb",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "badanti": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 11,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 11,
+          "forms": 0
+        }
+      ]
+    },
+    "badare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 18,
+          "forms": 94
+        }
+      ]
+    },
+    "sommosso": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 9,
+          "forms": 4
+        },
+        {
+          "pos": "verb",
+          "keyCount": 9,
+          "forms": 0
+        }
+      ]
+    },
+    "sommuovere": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 15,
+          "forms": 94
+        }
+      ]
+    },
+    "rimuovere": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 17,
+          "forms": 94
+        }
+      ]
+    },
+    "rimpatriare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 13,
+          "forms": 0
+        }
+      ]
+    },
+    "rimpatriata": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 15,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 15,
+          "forms": 1
+        },
+        {
+          "pos": "verb",
+          "keyCount": 14,
+          "forms": 0
+        }
+      ]
+    },
+    "rimpatriate": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 11,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 10,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 10,
+          "forms": 0
+        }
+      ]
+    },
+    "rimpatriati": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 11,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 11,
+          "forms": 3
+        },
+        {
+          "pos": "verb",
+          "keyCount": 10,
+          "forms": 0
+        }
+      ]
+    },
+    "rimpatriato": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 14,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 14,
+          "forms": 3
+        },
+        {
+          "pos": "verb",
+          "keyCount": 13,
+          "forms": 0
+        }
+      ]
+    },
+    "indicativo": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 15,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 15,
+          "forms": 1
+        }
+      ]
+    },
+    "lamentare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 15,
+          "forms": 95
+        }
+      ]
+    },
+    "lamenti": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 12,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "lamento": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 16,
+          "forms": 1
+        },
+        {
+          "pos": "verb",
+          "keyCount": 15,
+          "forms": 0
+        }
+      ]
+    },
+    "piccare": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 12,
+          "forms": 94
+        },
+        {
+          "pos": "verb",
+          "keyCount": 11,
+          "forms": 0
+        }
+      ]
+    },
+    "picchi": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 13,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 13,
+          "forms": 0
+        }
+      ]
+    },
+    "picchiare": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 16,
+          "forms": 95
+        },
+        {
+          "pos": "verb",
+          "keyCount": 16,
+          "forms": 95
+        }
+      ]
+    },
+    "picchio": {
+      "recordCount": 4,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 17,
+          "forms": 1
+        },
+        {
+          "pos": "noun",
+          "keyCount": 17,
+          "forms": 1
+        },
+        {
+          "pos": "noun",
+          "keyCount": 17,
+          "forms": 1
+        },
+        {
+          "pos": "verb",
+          "keyCount": 16,
+          "forms": 0
+        }
+      ]
+    },
+    "picco": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 16,
+          "forms": 1
+        },
+        {
+          "pos": "verb",
+          "keyCount": 15,
+          "forms": 0
+        }
+      ]
+    },
+    "smuovere": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 15,
+          "forms": 94
+        }
+      ]
+    },
+    "chiarificatore": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 15,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 15,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 15,
+          "forms": 1
+        }
+      ]
+    },
+    "chiarificatori": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 13,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 13,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "smentirsi": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 14,
+          "forms": 0
+        }
+      ]
+    },
+    "smentita": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 16,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 16,
+          "forms": 1
+        },
+        {
+          "pos": "verb",
+          "keyCount": 14,
+          "forms": 0
+        }
+      ]
+    },
+    "smentito": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 14,
+          "forms": 3
+        }
+      ]
+    },
+    "ballerina": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 14,
+          "forms": 1
+        },
+        {
+          "pos": "noun",
+          "keyCount": 14,
+          "forms": 1
+        },
+        {
+          "pos": "noun",
+          "keyCount": 14,
+          "forms": 3
+        }
+      ]
+    },
+    "ballerine": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 13,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 13,
+          "forms": 3
+        }
+      ]
+    },
+    "ballerini": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 13,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 13,
+          "forms": 3
+        }
+      ]
+    },
+    "ballerino": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 15,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 15,
+          "forms": 3
+        }
+      ]
+    },
+    "onda": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 17,
+          "forms": 1
+        }
+      ]
+    },
+    "onde": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adv",
+          "keyCount": 10,
+          "forms": 0
+        },
+        {
+          "pos": "conj",
+          "keyCount": 10,
+          "forms": 0
+        },
+        {
+          "pos": "noun",
+          "keyCount": 11,
+          "forms": 0
+        }
+      ]
+    },
+    "domicili": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 12,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 11,
+          "forms": 0
+        }
+      ]
+    },
+    "vestire": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 16,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 17,
+          "forms": 95
+        },
+        {
+          "pos": "verb",
+          "keyCount": 17,
+          "forms": 95
+        }
+      ]
+    },
+    "vestita": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 12,
+          "forms": 3
+        },
+        {
+          "pos": "verb",
+          "keyCount": 11,
+          "forms": 0
+        }
+      ]
+    },
+    "vestiti": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 13,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 13,
+          "forms": 0
+        }
+      ]
+    },
+    "vestito": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 17,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 17,
+          "forms": 1
+        },
+        {
+          "pos": "verb",
+          "keyCount": 16,
+          "forms": 0
+        }
+      ]
+    },
+    "stagnare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 14,
+          "forms": 94
+        }
+      ]
+    },
+    "stagnati": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 11,
+          "forms": 3
+        }
+      ]
+    },
+    "diserbante": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 13,
+          "forms": 2
+        },
+        {
+          "pos": "noun",
+          "keyCount": 13,
+          "forms": 1
+        },
+        {
+          "pos": "verb",
+          "keyCount": 11,
+          "forms": 0
+        }
+      ]
+    },
+    "diserbare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 12,
+          "forms": 94
+        }
+      ]
+    },
+    "disadorna": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 10,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 10,
+          "forms": 0
+        }
+      ]
+    },
+    "disadornare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 12,
+          "forms": 94
+        }
+      ]
+    },
+    "disadorne": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 11,
+          "forms": 3
+        }
+      ]
+    },
+    "disadorni": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 14,
+          "forms": 3
+        },
+        {
+          "pos": "verb",
+          "keyCount": 13,
+          "forms": 0
+        }
+      ]
+    },
+    "disadorno": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 16,
+          "forms": 3
+        },
+        {
+          "pos": "verb",
+          "keyCount": 15,
+          "forms": 0
+        }
+      ]
+    },
+    "Addolorata": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "name",
+          "keyCount": 11,
+          "forms": 0
+        }
+      ]
+    },
+    "addolorare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 16,
+          "forms": 95
+        }
+      ]
+    },
+    "addolorarsi": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 14,
+          "forms": 0
+        }
+      ]
+    },
+    "addolorata": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 13,
+          "forms": 3
+        },
+        {
+          "pos": "verb",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "addolorato": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 15,
+          "forms": 3
+        },
+        {
+          "pos": "verb",
+          "keyCount": 14,
+          "forms": 0
+        }
+      ]
+    },
+    "Numeri": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 11,
+          "forms": 0
+        }
+      ]
+    },
+    "numerare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 14,
+          "forms": 94
+        }
+      ]
+    },
+    "numeri": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 12,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "numero": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 18,
+          "forms": 1
+        },
+        {
+          "pos": "verb",
+          "keyCount": 17,
+          "forms": 0
+        }
+      ]
+    },
+    "Vulgato": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 10,
+          "forms": 0
+        }
+      ]
+    },
+    "Vania": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "name",
+          "keyCount": 13,
+          "forms": 0
+        },
+        {
+          "pos": "name",
+          "keyCount": 13,
+          "forms": 0
+        }
+      ]
+    },
+    "V": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "character",
+          "keyCount": 10,
+          "forms": 0
+        }
+      ]
+    },
+    "v": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 11,
+          "forms": 0
+        },
+        {
+          "pos": "abbrev",
+          "keyCount": 8,
+          "forms": 0
+        }
+      ]
+    },
+    "controllora": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 11,
+          "forms": 3
+        }
+      ]
+    },
+    "controllore": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 16,
+          "forms": 2
+        }
+      ]
+    },
+    "controllori": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 8,
+          "forms": 0
+        }
+      ]
+    },
+    "esteri": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 10,
+          "forms": 0
+        },
+        {
+          "pos": "noun",
+          "keyCount": 10,
+          "forms": 0
+        }
+      ]
+    },
+    "predatore": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 16,
+          "forms": 3
+        }
+      ]
+    },
+    "predatori": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 12,
+          "forms": 0
+        },
+        {
+          "pos": "noun",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "predatorio": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 13,
+          "forms": 3
+        }
+      ]
+    },
+    "predatrice": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 13,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "pali": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 11,
+          "forms": 0
+        },
+        {
+          "pos": "noun",
+          "keyCount": 11,
+          "forms": 0
+        }
+      ]
+    },
+    "palio": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 15,
+          "forms": 1
+        }
+      ]
+    },
+    "palo": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 17,
+          "forms": 1
+        }
+      ]
+    },
+    "esercitare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 15,
+          "forms": 95
+        }
+      ]
+    },
+    "operatore": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 15,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 15,
+          "forms": 3
+        }
+      ]
+    },
+    "operatori": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 11,
+          "forms": 3
+        },
+        {
+          "pos": "adj",
+          "keyCount": 11,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 10,
+          "forms": 0
+        }
+      ]
+    },
+    "operatorio": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "operatrice": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 12,
+          "forms": 3
+        }
+      ]
+    },
+    "operatrici": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 11,
+          "forms": 3
+        }
+      ]
+    },
+    "estenso": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 12,
+          "forms": 3
+        }
+      ]
+    },
+    "poltrona": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 15,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 15,
+          "forms": 1
+        }
+      ]
+    },
+    "poltrone": {
+      "recordCount": 4,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 16,
+          "forms": 2
+        },
+        {
+          "pos": "adj",
+          "keyCount": 15,
+          "forms": 0
+        },
+        {
+          "pos": "noun",
+          "keyCount": 16,
+          "forms": 1
+        },
+        {
+          "pos": "noun",
+          "keyCount": 16,
+          "forms": 0
+        }
+      ]
+    },
+    "poltroni": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 13,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 13,
+          "forms": 3
+        }
+      ]
+    },
+    "sumero": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 14,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 14,
+          "forms": 1
+        },
+        {
+          "pos": "noun",
+          "keyCount": 14,
+          "forms": 0
+        }
+      ]
+    },
+    "morire": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 18,
+          "forms": 106
+        }
+      ]
+    },
+    "morta": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 15,
+          "forms": 3
+        },
+        {
+          "pos": "verb",
+          "keyCount": 14,
+          "forms": 0
+        }
+      ]
+    },
+    "morte": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 17,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 17,
+          "forms": 1
+        }
+      ]
+    },
+    "morti": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 16,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 15,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 15,
+          "forms": 0
+        }
+      ]
+    },
+    "morto": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 17,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 17,
+          "forms": 3
+        },
+        {
+          "pos": "verb",
+          "keyCount": 16,
+          "forms": 0
+        }
+      ]
+    },
+    "parecchi": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 14,
+          "forms": 3
+        }
+      ]
+    },
+    "parecchia": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 11,
+          "forms": 3
+        }
+      ]
+    },
+    "parecchie": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 10,
+          "forms": 0
+        },
+        {
+          "pos": "pron",
+          "keyCount": 10,
+          "forms": 0
+        }
+      ]
+    },
+    "parecchio": {
+      "recordCount": 4,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 14,
+          "forms": 3
+        },
+        {
+          "pos": "adv",
+          "keyCount": 13,
+          "forms": 0
+        },
+        {
+          "pos": "noun",
+          "keyCount": 13,
+          "forms": 0
+        },
+        {
+          "pos": "pron",
+          "keyCount": 13,
+          "forms": 0
+        }
+      ]
+    },
+    "divergere": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 16,
+          "forms": 94
+        }
+      ]
+    },
+    "diversa": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 12,
+          "forms": 3
+        }
+      ]
+    },
+    "diverse": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 14,
+          "forms": 3
+        },
+        {
+          "pos": "verb",
+          "keyCount": 13,
+          "forms": 0
+        }
+      ]
+    },
+    "diversi": {
+      "recordCount": 4,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 14,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 14,
+          "forms": 3
+        },
+        {
+          "pos": "pron",
+          "keyCount": 13,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 13,
+          "forms": 0
+        }
+      ]
+    },
+    "diverso": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 16,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 16,
+          "forms": 1
+        }
+      ]
+    },
+    "imbelle": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 15,
+          "forms": 2
+        },
+        {
+          "pos": "adj",
+          "keyCount": 15,
+          "forms": 2
+        }
+      ]
+    },
+    "protettore": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 16,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 16,
+          "forms": 1
+        }
+      ]
+    },
+    "protettori": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 11,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 11,
+          "forms": 3
+        }
+      ]
+    },
+    "protettrice": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 11,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 11,
+          "forms": 3
+        }
+      ]
+    },
+    "protettrici": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 11,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 11,
+          "forms": 3
+        }
+      ]
+    },
+    "carbonara": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 14,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 14,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 14,
+          "forms": 1
+        }
+      ]
+    },
+    "carbonaro": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 15,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 15,
+          "forms": 1
+        }
+      ]
+    },
+    "calma": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 17,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 16,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 16,
+          "forms": 0
+        }
+      ]
+    },
+    "calmare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 15,
+          "forms": 95
+        }
+      ]
+    },
+    "calmo": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 15,
+          "forms": 3
+        },
+        {
+          "pos": "verb",
+          "keyCount": 14,
+          "forms": 0
+        }
+      ]
+    },
+    "guasta": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 12,
+          "forms": 3
+        },
+        {
+          "pos": "verb",
+          "keyCount": 11,
+          "forms": 0
+        }
+      ]
+    },
+    "guastare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 14,
+          "forms": 95
+        }
+      ]
+    },
+    "guasti": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 14,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 13,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "guasto": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 15,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 14,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 14,
+          "forms": 0
+        }
+      ]
+    },
+    "burlona": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 11,
+          "forms": 3
+        }
+      ]
+    },
+    "burlone": {
+      "recordCount": 4,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 15,
+          "forms": 2
+        },
+        {
+          "pos": "adj",
+          "keyCount": 15,
+          "forms": 2
+        },
+        {
+          "pos": "noun",
+          "keyCount": 15,
+          "forms": 2
+        },
+        {
+          "pos": "noun",
+          "keyCount": 15,
+          "forms": 2
+        }
+      ]
+    },
+    "burloni": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 11,
+          "forms": 3
+        }
+      ]
+    },
+    "scolara": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "scolare": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 12,
+          "forms": 1
+        },
+        {
+          "pos": "noun",
+          "keyCount": 12,
+          "forms": 3
+        },
+        {
+          "pos": "verb",
+          "keyCount": 10,
+          "forms": 0
+        }
+      ]
+    },
+    "scolari": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 13,
+          "forms": 3
+        }
+      ]
+    },
+    "scolaro": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 15,
+          "forms": 3
+        }
+      ]
+    },
+    "colla": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "prep",
+          "keyCount": 13,
+          "forms": 0
+        },
+        {
+          "pos": "noun",
+          "keyCount": 15,
+          "forms": 1
+        }
+      ]
+    },
+    "colle": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "prep",
+          "keyCount": 14,
+          "forms": 0
+        },
+        {
+          "pos": "noun",
+          "keyCount": 16,
+          "forms": 1
+        },
+        {
+          "pos": "noun",
+          "keyCount": 16,
+          "forms": 0
+        }
+      ]
+    },
+    "sparare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 16,
+          "forms": 94
+        }
+      ]
+    },
+    "sparata": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 15,
+          "forms": 1
+        },
+        {
+          "pos": "noun",
+          "keyCount": 15,
+          "forms": 3
+        },
+        {
+          "pos": "verb",
+          "keyCount": 14,
+          "forms": 0
+        }
+      ]
+    },
+    "sparato": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 15,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 15,
+          "forms": 1
+        },
+        {
+          "pos": "verb",
+          "keyCount": 14,
+          "forms": 0
+        }
+      ]
+    },
+    "manifesta": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 11,
+          "forms": 3
+        }
+      ]
+    },
+    "manifestare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 17,
+          "forms": 95
+        }
+      ]
+    },
+    "manifeste": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 13,
+          "forms": 3
+        }
+      ]
+    },
+    "manifesti": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 13,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 12,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "manifesto": {
+      "recordCount": 4,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 18,
+          "forms": 3
+        },
+        {
+          "pos": "adv",
+          "keyCount": 16,
+          "forms": 0
+        },
+        {
+          "pos": "noun",
+          "keyCount": 18,
+          "forms": 1
+        },
+        {
+          "pos": "verb",
+          "keyCount": 17,
+          "forms": 0
+        }
+      ]
+    },
+    "spicciole": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 15,
+          "forms": 3
+        }
+      ]
+    },
+    "spicciolo": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 13,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 13,
+          "forms": 1
+        }
+      ]
+    },
+    "soverchi": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 12,
+          "forms": 3
+        },
+        {
+          "pos": "verb",
+          "keyCount": 11,
+          "forms": 0
+        }
+      ]
+    },
+    "soverchiare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 14,
+          "forms": 0
+        }
+      ]
+    },
+    "soverchie": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 10,
+          "forms": 0
+        }
+      ]
+    },
+    "soverchio": {
+      "recordCount": 4,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 14,
+          "forms": 3
+        },
+        {
+          "pos": "adv",
+          "keyCount": 12,
+          "forms": 0
+        },
+        {
+          "pos": "noun",
+          "keyCount": 13,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 13,
+          "forms": 0
+        }
+      ]
+    },
+    "scartare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 17,
+          "forms": 94
+        }
+      ]
+    },
+    "scarti": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 13,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 12,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "scarto": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 14,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 14,
+          "forms": 1
+        },
+        {
+          "pos": "verb",
+          "keyCount": 13,
+          "forms": 0
+        }
+      ]
+    },
+    "giubilare": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 14,
+          "forms": 2
+        },
+        {
+          "pos": "verb",
+          "keyCount": 13,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 13,
+          "forms": 0
+        }
+      ]
+    },
+    "buttare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 17,
+          "forms": 95
+        }
+      ]
+    },
+    "buttata": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 10,
+          "forms": 1
+        },
+        {
+          "pos": "verb",
+          "keyCount": 9,
+          "forms": 0
+        },
+        {
+          "pos": "noun",
+          "keyCount": 10,
+          "forms": 1
+        }
+      ]
+    },
+    "buttate": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 13,
+          "forms": 3
+        },
+        {
+          "pos": "verb",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "buttati": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 11,
+          "forms": 3
+        },
+        {
+          "pos": "verb",
+          "keyCount": 10,
+          "forms": 0
+        }
+      ]
+    },
+    "buttato": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 14,
+          "forms": 3
+        }
+      ]
+    },
+    "producente": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 9,
+          "forms": 0
+        },
+        {
+          "pos": "adj",
+          "keyCount": 9,
+          "forms": 1
+        }
+      ]
+    },
+    "producenti": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 10,
+          "forms": 0
+        },
+        {
+          "pos": "adj",
+          "keyCount": 10,
+          "forms": 0
+        }
+      ]
+    },
+    "pome": {
+      "recordCount": 5,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 11,
+          "forms": 1
+        },
+        {
+          "pos": "noun",
+          "keyCount": 10,
+          "forms": 0
+        },
+        {
+          "pos": "noun",
+          "keyCount": 10,
+          "forms": 0
+        },
+        {
+          "pos": "noun",
+          "keyCount": 10,
+          "forms": 0
+        },
+        {
+          "pos": "noun",
+          "keyCount": 10,
+          "forms": 0
+        }
+      ]
+    },
+    "cestinare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 12,
+          "forms": 94
+        }
+      ]
+    },
+    "cestino": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 12,
+          "forms": 0
+        },
+        {
+          "pos": "noun",
+          "keyCount": 13,
+          "forms": 1
+        },
+        {
+          "pos": "verb",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "assistere": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 17,
+          "forms": 97
+        },
+        {
+          "pos": "verb",
+          "keyCount": 17,
+          "forms": 97
+        }
+      ]
+    },
+    "assistita": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 12,
+          "forms": 3
+        },
+        {
+          "pos": "verb",
+          "keyCount": 11,
+          "forms": 0
+        }
+      ]
+    },
+    "assistiti": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 11,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 11,
+          "forms": 3
+        },
+        {
+          "pos": "verb",
+          "keyCount": 10,
+          "forms": 0
+        }
+      ]
+    },
+    "assistito": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 16,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 16,
+          "forms": 1
+        },
+        {
+          "pos": "verb",
+          "keyCount": 15,
+          "forms": 0
+        }
+      ]
+    },
+    "to": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 9,
+          "forms": 0
+        },
+        {
+          "pos": "intj",
+          "keyCount": 7,
+          "forms": 0
+        }
+      ]
+    },
+    "zuppa": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 17,
+          "forms": 1
+        }
+      ]
+    },
+    "zuppe": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 14,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 14,
+          "forms": 3
+        }
+      ]
+    },
+    "zuppe inglesi": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 8,
+          "forms": 0
+        }
+      ]
+    },
+    "zuppo": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 11,
+          "forms": 0
+        }
+      ]
+    },
+    "sanitario": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 15,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 15,
+          "forms": 1
+        }
+      ]
+    },
+    "servizio": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 18,
+          "forms": 1
+        }
+      ]
+    },
+    "Torre Faro": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "name",
+          "keyCount": 11,
+          "forms": 0
+        }
+      ]
+    },
+    "fari": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 10,
+          "forms": 0
+        }
+      ]
+    },
+    "faro": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 15,
+          "forms": 1
+        }
+      ]
+    },
+    "torre": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 16,
+          "forms": 1
+        }
+      ]
+    },
+    "torre faro": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 12,
+          "forms": 1
+        }
+      ]
+    },
+    "torri faro": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 10,
+          "forms": 0
+        }
+      ]
+    },
+    "venerdì": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 13,
+          "forms": 0
+        }
+      ]
+    },
+    "perossido di idrogeno": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 11,
+          "forms": 1
+        }
+      ]
+    },
+    "albero a camme": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "phrase",
+          "keyCount": 11,
+          "forms": 1
+        }
+      ]
+    },
+    "albero a gomiti": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "phrase",
+          "keyCount": 11,
+          "forms": 1
+        }
+      ]
+    },
+    "bancata": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "phrase",
+          "keyCount": 11,
+          "forms": 1
         }
       ]
     }

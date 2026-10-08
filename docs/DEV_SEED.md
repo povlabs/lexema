@@ -25,28 +25,52 @@ The demo's `web/.wrangler` directory is never touched. The seed clears only
 every local account, key and reader report. Nothing else is
 written to: no other state directory, and in `SEED_SQL` only its own
 `part-NNN.sql` files and `rejections.tsv`. Point `SEED_STATE` at an existing
-database only when you mean to replace it. The fixture covers
-Huey's fifty required words, the words of the multi-word searches in
-[#214](https://github.com/povlabs/lexema/issues/214) (`andare via`, `tirare fuori`,
-`volgere le spalle`, `voltare le spalle`, `fare l'amore`, `aereo a reazione`,
-`aerei a reazione`, the words that spell them, `vada` for `vada via` and
-`faccio` for `faccio l'amore`, `fare fuori` with `hanno` and `fatte` for
-`hanno fatte fuori`, and `fare l'abitudine`, a headword with no
-gloss), the words of the word-page rules of
-[#695](https://github.com/povlabs/lexema/issues/695) (`costruttrici`, `bellissima`,
-`lavoratrici`, `stato`, `parti`, `grandi`, with every record that lists one of
-them in its table: `stare` and `Stato` for `stato`, `parto` for `parti`,
-`grandissimo` and its siblings for `grande`), the words of rules 3 and 4 of
-[#700](https://github.com/povlabs/lexema/issues/700) (`belli`, `belle`, `attrici`,
-`andassi`, `andata`, `gravida`, with every record that lists one of them in
-its table: `attore`, `attori`, `attrice`, `andate` and `gravido` among them),
-and their `form_of` closure: 191 source records across 121 words, including
-`andare` for `andavano`. `citta`'s one such record, `citto`, stays out, in
-`fixtures/citto.jsonl`: with it, the fixture would have no word left whose
-search finds nothing but an accent offer, which the not-found tests read. An edge's
-target counts by the key the release resolves it by, so `parti`'s edge to
-`Parti` is closed by `parti`. A missing required word or fixture
-target stops the run with that word's name.
+database only when you mean to replace it.
+
+The fixture covers these words, each with every record of it in the archive:
+
+- Huey's fifty required words.
+- The multi-word searches of
+  [#214](https://github.com/povlabs/lexema/issues/214): `andare via`,
+  `tirare fuori`, `volgere le spalle`, `voltare le spalle`, `fare l'amore`,
+  `aereo a reazione`, `aerei a reazione` and the words that spell them; `vada`
+  for `vada via`; `faccio` for `faccio l'amore`; `fare fuori`, with `hanno` and
+  `fatte` for `hanno fatte fuori`; and `fare l'abitudine`, a headword with no
+  gloss.
+- The word-page rules of [#695](https://github.com/povlabs/lexema/issues/695):
+  `costruttrici`, `bellissima`, `lavoratrici`, `stato`, `parti` and `grandi`.
+  Every record that lists one of them in its table comes too: `stare` and
+  `Stato` for `stato`, `parto` for `parti`, `grandissimo` and its siblings for
+  `grande`.
+- Rules 3 and 4 of [#700](https://github.com/povlabs/lexema/issues/700):
+  `belli`, `belle`, `attrici`, `andassi`, `andata` and `gravida`, with every
+  record that lists one of them in its table, such as `attore`, `attori`,
+  `attrice`, `andate` and `gravido`.
+- The page-wide rule checks of [#709](https://github.com/povlabs/lexema/issues/709):
+  the words each rule names, such as `litigante`, `sbucciapatate`, `abaco` and
+  `Venerdì santi`, and one real word for each page shape of the
+  [census](../reports/2026-10-07-word-page-shapes.md). The shape words are
+  listed in [wordPageShapeWords.ts](../web/test/wordPageShapeWords.ts). Each
+  comes with the other words its page needs to keep the shape it has in the
+  release, such as its base word, a headword that is it in other capitals,
+  or a record that lists it in its table.
+
+Then comes their `form_of` closure, which adds `andare` for `andavano`. The
+whole fixture is 1,085 source records across 649 words. An edge's target
+counts by the key the release resolves it by, so `parti`'s edge to `Parti` is
+closed by `parti`. A missing required word or fixture target stops the run
+with that word's name.
+
+Two fixtures beside it hold real words the dev seed cannot hold:
+
+- `fixtures/citto.jsonl` holds `citta`'s one such record, `citto`. With it,
+  the fixture would have no word left whose search finds nothing but an
+  accent offer, which the not-found tests read.
+- `fixtures/no-base-record.jsonl` holds words whose `form_of` edges lead to a
+  word with no record in the release: `calabra` names `calabro`, `zurlò`
+  names `zurlare`, and `tessere` names `tessera`, which names `tesserare`. The
+  fixture holds no edge without a target. `test/seedSql.test.ts` checks these
+  lines against the archive when it is cached, as it checks the fixture's.
 
 ## What is emitted
 
@@ -64,8 +88,8 @@ example — go to `recovered_definition`, with their labels and examples, beside
 the record and naming the page revision and line each was read from. The
 record's own rows are the same with or without it. The run prints where it read
 the pages and how many definitions and examples it recovered, for how many
-records; for the fifty-word fixture that is `casa`'s seven definitions and seven
-examples. How the lines are chosen, and how much the extraction loses, is in
+records; for the fixture that is ten definitions and seven examples, for three
+records: `casa`'s seven, `beato`'s verb form's one and `servizio`'s two. How the lines are chosen, and how much the extraction loses, is in
 [the measurement](../reports/2026-09-23-recovered-definitions-full-release.md).
 
 The seed also writes [page-only entries](PAGE_ENTRIES.md): words with a raw
@@ -147,7 +171,7 @@ A part ends only between two statements; a statement is never split, and one
 larger than the ceiling stops the seed with its size. Starting a seed removes
 the parts an earlier seed left in `SEED_SQL`.
 
-The fifty-word fixture is 2.6 MB of SQL, so it is one part, byte for byte the
+The fixture is 11.5 MB of SQL, so it is one part, byte for byte the
 single file the seeder wrote before parts existed.
 
 After the last part, the seeder reads back the dictionary's tables and stops
