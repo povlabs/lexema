@@ -42,6 +42,7 @@ import {
   type WordCard,
 } from "@/lib/dictionary/card.ts";
 import { headingGender, headingGrammar } from "@/lib/dictionary/genderGrid.ts";
+import { headingTitle, wordPage } from "@/lib/dictionary/wordPage.ts";
 import { searchAttempt } from "@/lib/dictionary/searchAttempt.ts";
 import { requestOrigin } from "@/lib/shared/requestOrigin.ts";
 import { answerCard, CARD_SOURCE_HEADER, type CardDesk } from "@/worker/dictionary/card.ts";
@@ -191,6 +192,29 @@ test("a compound verb form's card speaks for its Voce verbale line, as its page 
     partOfSpeech: "Voce verbale",
     meaning: "prima persona singolare del passato prossimo indicativo di andare",
   });
+});
+
+test("a form's block whose records have several parts of speech: its card names each, as the block's heading does (#735)", async () => {
+  const bella = await wordCard("bella");
+  assert.equal(bella.partOfSpeech, "Aggettivo · Sostantivo");
+  assert.equal(bella.gender, "femminile");
+  assert.equal((await wordCard("costruttrici")).partOfSpeech, "Aggettivo · Sostantivo");
+});
+
+test("a form's block whose records share one part of speech: its card keeps the first record's pos_title (#735)", async () => {
+  assert.equal((await wordCard("blasfeme")).partOfSpeech, "Aggettivo, forma flessa");
+  assert.equal((await wordCard("bellissima")).partOfSpeech, "Aggettivo, forma flessa");
+});
+
+test("a form page's card reads its part of speech off the heading of the block its page opens with (#735)", async () => {
+  for (const word of ["bella", "costruttrici", "grandi", "blasfeme", "bellissima"]) {
+    const found = await attempt(word);
+    assert.equal(found.outcome, "found", word);
+    if (found.outcome !== "found" || found.route.kind === "phrase") assert.fail(`${word} has a word page`);
+    const [block] = wordPage(word, found.readings, found.lemmas, found.route).readings;
+    assert.ok(block.kind === "source" && block.role === "form-of", `${word}'s page opens with a form's block`);
+    assert.equal((await wordCard(word)).partOfSpeech, headingTitle(block.heading), word);
+  }
 });
 
 test("a searched expression's card is titled as typed, with no pronunciation and no gender", async () => {
