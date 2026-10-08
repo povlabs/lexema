@@ -563,7 +563,6 @@ const S2_APOSTROPHES: Rule = {
   row: "§ 2 Headwords that differ only in their apostrophe are one word (Q4).",
   home: `${MANIFEST} (§ 2)`,
   words: ["all'improvviso", "fare l'occhiolino"],
-  todo: "#720",
   check: jumpLinkProblems,
 };
 

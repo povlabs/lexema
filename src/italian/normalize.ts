@@ -10,8 +10,13 @@ export const IT_NORMALIZER_VERSION = "it-normalize/v1" as const;
  */
 const apostrophes = /['\u2019\u2018\u02bc]/gu;
 
+/** `value` with each of those apostrophes written as U+0027, and nothing else changed. */
+export function foldItalianApostrophes(value: string): string {
+  return value.replace(apostrophes, "'");
+}
+
 export function normalizeItalianExact(value: string): string {
-  return value.trim().normalize("NFC").replace(apostrophes, "'").toLocaleLowerCase("it-IT");
+  return foldItalianApostrophes(value.trim().normalize("NFC")).toLocaleLowerCase("it-IT");
 }
 
 export function containsExactItalianSurface(sentence: string, surface: string): boolean {
