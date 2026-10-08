@@ -721,9 +721,10 @@ CREATE TABLE corrected_claim (
 -- and names nothing), or in place of the edges it declares when they name the
 -- wrong word (`parti`'s senses about `parto` name `neonato` and `Parti`). The
 -- committed list names each by release, archive line, line digest and sense.
--- Its evidence is two lines of the same archive: the record's own, whose gloss
--- names the target after "di" (`json_pointer`), and the target's record whose
--- forms table lists the word (`lemma_*`). form_of_edge and source_record_json
+-- Its evidence is two Wiktionary pages, each at the revision the archive was
+-- extracted from: the record's own, whose gloss names the target after "di"
+-- (`json_pointer`, `evidence_url`), and the target's, whose forms table lists
+-- the word (`base_evidence_url`). form_of_edge and source_record_json
 -- stay as imported; a lookup reads this row in place of the sense's own edges.
 -- A hidden record gets none (ADR 0023), and a record a later release replaced
 -- loses it with its form_of_edge rows: the update reports it.
@@ -738,10 +739,12 @@ CREATE TABLE corrected_edge (
   target_word_key   TEXT    NOT NULL, -- release's normalizer applied to target_word
   -- The list entry it was written from: release, archive line and sense, `it-0c432803:77162/senses/1`.
   correction_id     TEXT    NOT NULL,
-  -- The line of the record's release that lists the word, its digest, and the cell: '/forms/0/form'.
-  lemma_line_no     INTEGER NOT NULL CHECK (lemma_line_no > 0),
-  lemma_line_sha256 TEXT    NOT NULL,
-  lemma_pointer     TEXT    NOT NULL,
+  -- The record's own page and the target's page, each as a permanent link to
+  -- its revision. Each CHECK is two GLOBs, as corrected_claim's (#489).
+  evidence_url      TEXT    NOT NULL CHECK (evidence_url GLOB 'https://*'
+                                            AND evidence_url GLOB '*.wiktionary.org/w/index.php?title=*&oldid=*'),
+  base_evidence_url TEXT    NOT NULL CHECK (base_evidence_url GLOB 'https://*'
+                                            AND base_evidence_url GLOB '*.wiktionary.org/w/index.php?title=*&oldid=*'),
   PRIMARY KEY (record_id, sense_index),
   FOREIGN KEY (record_id, release_id)
     REFERENCES source_record(record_id, release_id) ON DELETE CASCADE

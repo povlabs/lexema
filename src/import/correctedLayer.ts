@@ -4,8 +4,8 @@
 // one record by release, archive line and line digest. When the seed writes
 // that line with that digest, each fact the entry sets becomes one
 // `corrected_claim` row, naming the entry and the revision it cites, and each
-// edge one `corrected_edge` row, naming the entry and the archive line it
-// cites. A line whose digest differs is another record, and gets none: the
+// edge one `corrected_edge` row, naming the entry and the two page revisions
+// it cites. A line whose digest differs is another record, and gets none: the
 // list was checked against those bytes and no others. A hidden record gets no
 // edge (ADR 0023), as it gets no `form_of_edge` row. The record's own rows,
 // its line in `source_record_json` least of all, are written by `writeRecord`
@@ -32,9 +32,9 @@ export function correctedClaimValues(correction: RecordCorrection): [dimension: 
 /** One `corrected_edge` row's values after its record id and release, in `COLUMNS` order. */
 export function correctedEdgeValues(
   correction: EdgeCorrection,
-): [senseIndex: number, jsonPointer: string, targetWord: string, targetWordKey: string, correctionId: string, lemmaLineNo: number, lemmaLineSha256: string, lemmaPointer: string] {
+): [senseIndex: number, jsonPointer: string, targetWord: string, targetWordKey: string, correctionId: string, evidenceUrl: string, baseEvidenceUrl: string] {
   const { edge, evidence } = correction;
-  return [edge.sense, edge.gloss.pointer, edge.target, normalizeItalianExact(edge.target), correctionId(correction), evidence.lineNo, evidence.lineSha256, evidence.pointer];
+  return [edge.sense, edge.gloss.pointer, edge.target, normalizeItalianExact(edge.target), correctionId(correction), evidenceUrl(evidence.form), evidenceUrl(evidence.base)];
 }
 
 /** Why an entry keyed to the seeded release was not written. */

@@ -8,7 +8,11 @@
 // ruled rule may add the missing edge beside the record (ADR 0030), only where
 // both hold: the gloss names X after "di", and X's own forms table lists the
 // record's word. This file is that rule, `it-form-of-gloss-edge/v1`. It judges
-// a sense from two archive lines only, the record's own and a record of X, so
+// a sense from two archive lines only, the record's own and a record of X, and
+// cites the two Wiktionary pages those lines were extracted from, each at its
+// revision in the release's dump: the record's own page and X's (Huey's
+// ruling of 2026-10-08,
+// https://github.com/povlabs/lexema/issues/722#issuecomment-6058471600). So
 // the same release always gives the same edges.
 //
 // A sense gets an edge to X when all of these hold:
@@ -24,13 +28,15 @@
 //   rule's: only a hand entry fixes a wrong edge (question 9), and this rule
 //   lists each such sense in its report.
 // - **X's own forms table lists the word.** Some Italian record whose `word`
-//   is X lists the record's word, exactly, in its `forms`. That record's line
-//   is the evidence the correction cites.
+//   is X lists the record's word, exactly, in its `forms`.
+// - **Both pages are in the dump.** The record's page and X's page each have a
+//   revision in the dump the release was extracted from; those two revisions
+//   are the evidence the correction cites.
 //
 // Everything else stays as the source states it, and the report gives the
 // reason (`LeftAlone`).
 
-import type { ArchiveEvidence, CorrectedRecord, EdgeCorrection } from "./curatedCorrections.js";
+import type { CorrectedRecord, EdgeCorrection, EdgeEvidence } from "./curatedCorrections.js";
 
 /** Every version of the rule, oldest first. A change to what it confirms is a new version and a new ruling. */
 export const FORM_OF_GLOSS_EDGE_RULES = ["it-form-of-gloss-edge/v1"] as const;
@@ -146,24 +152,32 @@ export type LeftAlone =
   /** A form's gloss, and no Italian record of X lists the word. */
   | "base-table-does-not-list"
   /** The sense declares an edge to another word, which X's table lists: only a ruling fixes it (question 9). */
-  | "edge-names-another-word";
+  | "edge-names-another-word"
+  /** The record's page or X's has no revision in the release's dump, so there is no page to cite. */
+  | "page-not-in-dump";
+
+/** The revision of each it.wiktionary page in the dump a release was extracted from, by title. */
+export type PageRevisions = ReadonlyMap<string, number>;
+
+/** The record of X whose forms table lists the word, and the place it lists it. */
+export type ListingLemma = Omit<ScannedLemma, "forms"> & { formIndex: number };
 
 /** The rule's answer for one sense it reads. */
 export type SenseVerdict =
-  | { kind: "edge"; sense: ScannedSense; correction: RuleMadeEdgeCorrection }
+  | { kind: "edge"; sense: ScannedSense; lemma: ListingLemma; correction: RuleMadeEdgeCorrection }
   | { kind: "left-alone"; sense: ScannedSense; base: string; reason: LeftAlone };
 
-/** An edge correction the rule made, citing the record of X whose table lists the word. */
+/** An edge correction the rule made, citing the record's page and X's. */
 export interface RuleMadeEdgeCorrection extends EdgeCorrection {
   rule: FormOfGlossEdgeRule;
 }
 
 /** The first Italian record of `base` among `lemmas`, in archive order, whose forms list `word`, and where. */
-function listing(base: string, word: string, lemmas: readonly ScannedLemma[]): { lemma: ScannedLemma; formIndex: number } | undefined {
+function listing(base: string, word: string, lemmas: readonly ScannedLemma[]): ListingLemma | undefined {
   for (const lemma of [...lemmas].sort((a, b) => a.lineNo - b.lineNo)) {
     if (lemma.word !== base || lemma.langCode !== "it") continue;
     const formIndex = lemma.forms.indexOf(word);
-    if (formIndex !== -1) return { lemma, formIndex };
+    if (formIndex !== -1) return { lineNo: lemma.lineNo, lineSha256: lemma.lineSha256, word: lemma.word, pos: lemma.pos, langCode: lemma.langCode, formIndex };
   }
   return undefined;
 }
@@ -171,15 +185,17 @@ function listing(base: string, word: string, lemmas: readonly ScannedLemma[]): {
 /**
  * Judge one sense of `releaseId`. `lemmas` are the archive's records whose
  * `word` is the base the gloss names; `handSenses` holds `<line>:<sense>` of
- * every sense a hand entry sets. Undefined for a sense the rule does not
- * read: one whose gloss names no word after "di", or names one whose table
- * does not list the word while its opening is no form's.
+ * every sense a hand entry sets; `pages` are the revisions of the release's
+ * dump. Undefined for a sense the rule does not read: one whose gloss names
+ * no word after "di", or names one whose table does not list the word while
+ * its opening is no form's.
  */
 export function judgeSense(
   sense: ScannedSense,
   releaseId: string,
   lemmas: readonly ScannedLemma[],
   handSenses: ReadonlySet<string>,
+  pages: PageRevisions,
 ): SenseVerdict | undefined {
   const named = glossBase(sense.gloss);
   if (named === undefined) return undefined;
@@ -197,19 +213,18 @@ export function judgeSense(
   if (found === undefined) {
     return leftAlone(lemmas.some((lemma) => lemma.word === base && lemma.langCode === "it") ? "base-table-does-not-list" : "no-record-of-base");
   }
+  const formRevision = pages.get(sense.word);
+  const baseRevision = pages.get(base);
+  if (formRevision === undefined || baseRevision === undefined) return leftAlone("page-not-in-dump");
   const record: CorrectedRecord = { releaseId, lineNo: sense.lineNo, lineSha256: sense.lineSha256, word: sense.word, pos: sense.pos };
-  const evidence: ArchiveEvidence = {
-    releaseId,
-    lineNo: found.lemma.lineNo,
-    lineSha256: found.lemma.lineSha256,
-    word: found.lemma.word,
-    pos: found.lemma.pos,
-    pointer: `/forms/${found.formIndex}/form`,
-    shows: sense.word,
+  const evidence: EdgeEvidence = {
+    form: { wiki: "it.wiktionary.org", title: sense.word, revisionId: formRevision, shows: sense.gloss },
+    base: { wiki: "it.wiktionary.org", title: base, revisionId: baseRevision, shows: sense.word },
   };
   return {
     kind: "edge",
     sense,
+    lemma: found,
     correction: {
       record,
       edge: { sense: sense.senseIndex, gloss: { pointer: `/senses/${sense.senseIndex}/glosses/0`, text: sense.gloss }, target: base },
@@ -219,13 +234,17 @@ export function judgeSense(
   };
 }
 
-/** One edge the rule confirmed, pinned: the sense it reads and the record of X it cites. */
+/**
+ * One edge the rule confirmed, pinned: the sense it reads, the record of X
+ * whose table lists the word, and the dump revisions of the two pages it cites.
+ */
 export interface PinnedEdge {
   sense: ScannedSense;
-  lemma: Omit<ScannedLemma, "forms"> & { formIndex: number };
+  lemma: ListingLemma;
+  revisions: { form: number; base: number };
 }
 
-/** The senses the rule confirms on one release, pinned with the line each cites. */
+/** The senses the rule confirms on one release, pinned with the lines each reads and the pages each cites. */
 export interface FormOfGlossEdgeEvidence {
   releaseId: string;
   edges: readonly PinnedEdge[];
@@ -233,9 +252,9 @@ export interface FormOfGlossEdgeEvidence {
 
 /**
  * The corrections the rule makes from its pinned evidence, in archive order:
- * each pinned sense judged again from the two lines it pins, so an entry the
- * rule would no longer confirm makes none. A sense a hand entry sets is never
- * also set by the rule.
+ * each pinned sense judged again from the two lines and two revisions it pins,
+ * so an entry the rule would no longer confirm makes none. A sense a hand
+ * entry sets is never also set by the rule.
  */
 export function formOfGlossEdgeCorrections(evidence: FormOfGlossEdgeEvidence, hand: readonly EdgeCorrection[]): RuleMadeEdgeCorrection[] {
   const handSenses = new Set(
@@ -243,10 +262,15 @@ export function formOfGlossEdgeCorrections(evidence: FormOfGlossEdgeEvidence, ha
   );
   return [...evidence.edges]
     .sort((a, b) => a.sense.lineNo - b.sense.lineNo || a.sense.senseIndex - b.sense.senseIndex)
-    .flatMap(({ sense, lemma }) => {
+    .flatMap(({ sense, lemma, revisions }) => {
+      const { formIndex, ...scanned } = lemma;
       const forms: (string | undefined)[] = [];
-      forms[lemma.formIndex] = sense.word;
-      const verdict = judgeSense(sense, evidence.releaseId, [{ ...lemma, forms }], handSenses);
+      forms[formIndex] = sense.word;
+      const pages = new Map([
+        [sense.word, revisions.form],
+        [lemma.word, revisions.base],
+      ]);
+      const verdict = judgeSense(sense, evidence.releaseId, [{ ...scanned, forms }], handSenses, pages);
       return verdict?.kind === "edge" ? [verdict.correction] : [];
     });
 }

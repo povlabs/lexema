@@ -279,12 +279,13 @@ sense's `form_of` edge where the source states none or names the wrong word
 ([ADR 0030](../.decisions/0030-corrections-may-fix-edges-and-cells.md),
 [#722](https://github.com/povlabs/lexema/issues/722)): `aerei`'s noun sense
 gets an edge to `aereo`, and `parti`'s two lines about `parto` name it in
-place of `neonato` and `Parti`. Each cites two archive lines, the record's own
-gloss naming the word after "di" and that word's forms table listing the
-record's word; rule `it-form-of-gloss-edge/v1` makes most of them
+place of `neonato` and `Parti`. Each cites two it.wiktionary pages, at the
+revisions in the dump the archive was extracted from: the record's own, whose
+gloss names the word after "di", and that word's, whose forms table lists the
+record's word. Rule `it-form-of-gloss-edge/v1` makes most of them
 ([report](../reports/2026-10-08-form-of-gloss-edges.md)). The seed writes each
-as a `corrected_edge` row, and a lookup reads it in place of the sense's own
-edges. A hidden record gets none. A database seeded
+as a `corrected_edge` row with both links, and a lookup reads it in place of
+the sense's own edges. A hidden record gets none. A database seeded
 before an entry gets it by a one-off update, with no reseed and no archive:
 
 ```sh

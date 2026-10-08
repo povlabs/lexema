@@ -80,7 +80,7 @@ export const COLUMNS: Record<TableName, string> = {
   recovered_example: "recovered_id,example_index,page_line,wikitext,text",
   hidden_record: "record_id,release_id,page_id,rule,because,language,page_line,lemma_line",
   corrected_claim: "record_id,release_id,dimension,value,correction_id,evidence_url",
-  corrected_edge: "record_id,release_id,sense_index,json_pointer,target_word,target_word_key,correction_id,lemma_line_no,lemma_line_sha256,lemma_pointer",
+  corrected_edge: "record_id,release_id,sense_index,json_pointer,target_word,target_word_key,correction_id,evidence_url,base_evidence_url",
   recovered_entry: "entry_id,release_id,page_id,word,word_key,pos,pos_title,rule,page_line,wikitext",
   entry_definition: "entry_id,definition_index,route,term,page_line,wikitext,text,lead_in_index",
   entry_label: "entry_id,definition_index,label_index,label",

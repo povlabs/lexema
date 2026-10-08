@@ -276,16 +276,15 @@ function heldEdges(reader: MasterReader, ids: readonly number[]): Map<string, st
       target_word: string;
       target_word_key: string;
       correction_id: string;
-      lemma_line_no: number;
-      lemma_line_sha256: string;
-      lemma_pointer: string;
+      evidence_url: string;
+      base_evidence_url: string;
     }>(
       reader,
-      `SELECT record_id, sense_index, json_pointer, target_word, target_word_key, correction_id, lemma_line_no, lemma_line_sha256, lemma_pointer
+      `SELECT record_id, sense_index, json_pointer, target_word, target_word_key, correction_id, evidence_url, base_evidence_url
          FROM corrected_edge WHERE record_id IN (SELECT value FROM json_each(${json([...new Set(ids)])}))`,
     ).map((row) => [
       `${row.record_id}:${row.sense_index}`,
-      JSON.stringify([row.sense_index, row.json_pointer, row.target_word, row.target_word_key, row.correction_id, row.lemma_line_no, row.lemma_line_sha256, row.lemma_pointer]),
+      JSON.stringify([row.sense_index, row.json_pointer, row.target_word, row.target_word_key, row.correction_id, row.evidence_url, row.base_evidence_url]),
     ]),
   );
 }

@@ -48,9 +48,11 @@
 // about `parto` name `neonato` and `Parti`. Huey ruled on 2026-10-07 (#708,
 // questions 7 to 9) that a correction may add the missing edge, or fix the
 // wrong one, where the gloss names the word after "di" and that word's own
-// forms table lists the record's word. Such an entry cites those two lines of
-// the archive, whose release id is its digest: the record's gloss
-// (`edge.gloss`) and the table's cell (`evidence`). Rule
+// forms table lists the record's word. Such an entry cites the two Wiktionary
+// pages those facts come from, each at the revision the archive was extracted
+// from: the record's own page, which shows the gloss (`edge.gloss`), and the
+// word's page, whose table lists it (`evidence`; Huey's ruling of 2026-10-08,
+// https://github.com/povlabs/lexema/issues/722#issuecomment-6058471600). Rule
 // `it-form-of-gloss-edge/v1` (formOfGlossEdge.ts) makes the added edges from
 // its pinned scan (formOfGlossEdgeEvidence.ts); the two fixed ones are hand
 // entries. The seed writes each as a `corrected_edge` row, a hidden record
@@ -131,22 +133,24 @@ export interface RecordCorrection {
   edge?: never;
 }
 
+/** An it.wiktionary page at one revision, and what it shows that settles the fact. */
+export interface ItWiktionaryEvidence extends Evidence {
+  wiki: "it.wiktionary.org";
+}
+
 /**
- * An archive line a correction cites: one record of the release, pinned by
- * its digest, and what it states at `pointer`, verbatim. The release id is
- * the archive's own digest (`it-0c432803`), so the line is a fixed revision
- * of the source, as a Wiktionary `oldid` is of a page.
+ * The two Wiktionary pages an edge correction cites, each at the revision the
+ * archive was extracted from (dump `itwiktionary-20260701` for `it-0c432803`):
+ * the record's own entry and the target's entry. Huey ruled on 2026-10-08
+ * that an edge correction cites the Wiktionary pages it comes from, not lines
+ * of Lexema's archive
+ * (https://github.com/povlabs/lexema/issues/722#issuecomment-6058471600).
  */
-export interface ArchiveEvidence {
-  releaseId: string;
-  lineNo: number;
-  lineSha256: string;
-  word: string;
-  pos: string;
-  /** RFC 6901 into the line: `/forms/0/form`, the cell of the forms table that lists the word. */
-  pointer: string;
-  /** What the line holds at `pointer`, verbatim. */
-  shows: string;
+export interface EdgeEvidence {
+  /** The record's own page: it shows the gloss that names the target after "di". */
+  form: ItWiktionaryEvidence;
+  /** The target's page: its forms table lists the record's word. */
+  base: ItWiktionaryEvidence;
 }
 
 /** The `form_of` edge a correction sets on one sense (ADR 0030). */
@@ -163,16 +167,15 @@ export interface CorrectedEdge {
 
 /**
  * A sense's `form_of` edge, added where the source states none or replacing
- * one that names the wrong word (ADR 0030, #722). It cites two archive lines:
- * the record's own, whose gloss names the target after "di" (`edge.gloss`),
- * and a record of the target whose forms table lists the word (`evidence`).
- * ADR 0030 takes the two together as the evidence, and neither alone.
+ * one that names the wrong word (ADR 0030, #722). It cites two Wiktionary
+ * pages: the record's own, whose gloss names the target after "di"
+ * (`edge.gloss`), and the target's, whose forms table lists the word. ADR
+ * 0030 takes the two together as the evidence, and neither alone.
  */
 export interface EdgeCorrection {
   record: CorrectedRecord;
   edge: CorrectedEdge;
-  /** The target's record whose forms table lists the record's word. */
-  evidence: ArchiveEvidence;
+  evidence: EdgeEvidence;
   facts?: never;
   entry?: never;
 }
@@ -289,17 +292,15 @@ export function correctedFacts(correction: RecordCorrection): CorrectedFact[] {
 
 const IT = "it-0c432803";
 
-/** `parto`'s noun record, whose forms table lists `parti` at `/forms/0/form` (#701). */
-const PARTO_LISTS_PARTI: ArchiveEvidence = {
-  releaseId: IT,
-  lineNo: 42147,
-  lineSha256: "7b7c84f0793d58f1903f9521849169dfbe8809cf644f8bbf780571a340cae839",
-  word: "parto",
-  pos: "noun",
-  pointer: "/forms/0/form",
-  shows: "parti",
-};
 const PARTI: CorrectedRecord = { releaseId: IT, lineNo: 77162, lineSha256: "82f272443a694ca4619ed61e5d9ef96aed36c4fa1204731e5cbe8405648dccd2", word: "parti", pos: "noun" };
+/** `parti`'s page at its revision in dump `itwiktionary-20260701`, which `it-0c432803` was extracted from (#701). */
+const PARTI_PAGE = { wiki: "it.wiktionary.org", title: "parti", revisionId: 3948893 } as const;
+/** `parto`'s page at its revision in the same dump: its forms table lists `parti`. */
+const PARTO_LISTS_PARTI: ItWiktionaryEvidence = { wiki: "it.wiktionary.org", title: "parto", revisionId: 3892725, shows: "parti" };
+/** `parti`'s page showing `gloss`, and `parto`'s page listing `parti`. */
+const partoEvidence = (gloss: string): EdgeEvidence => ({ form: { ...PARTI_PAGE, shows: gloss }, base: PARTO_LISTS_PARTI });
+const PARTO_BIRTH = "plurale di parto, nell'accezione di atto biologico di espulsione dal grembo materno di un neonato";
+const PARTO_PARTHIAN = "plurale di parto, nell'accezione di persona della popolazione dei Parti";
 
 const tag = (index: number, text: string): OverriddenText => ({ pointer: `/tags/${index}`, text });
 const firstGloss = (text: string): OverriddenText => ({ pointer: "/senses/0/glosses/0", text });
@@ -471,21 +472,21 @@ export const HAND_CORRECTIONS: readonly CuratedCorrection[] = [
     record: PARTI,
     edge: {
       sense: 1,
-      gloss: { pointer: "/senses/1/glosses/0", text: "plurale di parto, nell'accezione di atto biologico di espulsione dal grembo materno di un neonato" },
+      gloss: { pointer: "/senses/1/glosses/0", text: PARTO_BIRTH },
       replaces: { pointer: "/senses/1/form_of/0/word", text: "neonato" },
       target: "parto",
     },
-    evidence: PARTO_LISTS_PARTI,
+    evidence: partoEvidence(PARTO_BIRTH),
   },
   {
     record: PARTI,
     edge: {
       sense: 2,
-      gloss: { pointer: "/senses/2/glosses/0", text: "plurale di parto, nell'accezione di persona della popolazione dei Parti" },
+      gloss: { pointer: "/senses/2/glosses/0", text: PARTO_PARTHIAN },
       replaces: { pointer: "/senses/2/form_of/0/word", text: "Parti" },
       target: "parto",
     },
-    evidence: PARTO_LISTS_PARTI,
+    evidence: partoEvidence(PARTO_PARTHIAN),
   },
   // Huey's rulings on #450, 2026-10-03: correct both, with wording the builder drafts and he approves.
   {

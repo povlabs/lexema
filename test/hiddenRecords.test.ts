@@ -274,8 +274,9 @@ test("a hide takes a hidden record's corrected edge with its source edges, so no
     const found = await foundInArchive();
     const id = recordIdAt(db, found[0].lineNo);
     // A synthetic row on a record the rules hide, to test the mechanism; the seed itself never writes one there.
-    db.exec(`INSERT INTO corrected_edge (record_id, release_id, sense_index, json_pointer, target_word, target_word_key, correction_id, lemma_line_no, lemma_line_sha256, lemma_pointer)
-             VALUES (${id}, '${RELEASE}', 0, '/senses/0/glosses/0', 'x', 'x', 'synthetic', 1, '${"0".repeat(64)}', '/forms/0/form')`);
+    db.exec(`INSERT INTO corrected_edge (record_id, release_id, sense_index, json_pointer, target_word, target_word_key, correction_id, evidence_url, base_evidence_url)
+             VALUES (${id}, '${RELEASE}', 0, '/senses/0/glosses/0', 'x', 'x', 'synthetic',
+                     'https://it.wiktionary.org/w/index.php?title=y&oldid=1', 'https://it.wiktionary.org/w/index.php?title=x&oldid=2')`);
     const plan = planHide(readerOf(db), found);
     assert.equal(plan.counts.deleted.corrected_edge, 1);
     db.exec("BEGIN");

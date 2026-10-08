@@ -973,7 +973,10 @@ test("a corrected edge goes with the source edges of the record a change retires
     const casa: CuratedCorrection = {
       record: { releaseId: MASTER, lineNo: 1, lineSha256: createHash("sha256").update(CASA_JULY, "utf8").digest("hex"), word: "casa", pos: "noun" },
       edge: { sense: 0, gloss: { pointer: "/senses/0/glosses/0", text: "synthetic" }, target: "casale" },
-      evidence: { releaseId: MASTER, lineNo: 1, lineSha256: "0".repeat(64), word: "casale", pos: "noun", pointer: "/forms/0/form", shows: "casa" },
+      evidence: {
+        form: { wiki: "it.wiktionary.org", title: "casa", revisionId: 1, shows: "synthetic" },
+        base: { wiki: "it.wiktionary.org", title: "casale", revisionId: 2, shows: "casa" },
+      },
     };
     execute(db, planCorrections(readerOf(db), [casa]).sql);
     assert.deepEqual(db.prepare("SELECT record_id FROM corrected_edge").all().map((row) => ({ ...row })), [{ record_id: casaId }]);

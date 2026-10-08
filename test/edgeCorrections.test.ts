@@ -10,8 +10,16 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { gzipSync } from "node:zlib";
-import { CURATED_CORRECTIONS, correctionId, edgeCorrections, HAND_CORRECTIONS, type EdgeCorrection } from "../src/italian/curatedCorrections.js";
-import { FORM_OF_GLOSS_EDGE_RULE, formOfGlossEdgeCorrections, glossBase, judgeSense, type ScannedLemma, type ScannedSense } from "../src/italian/formOfGlossEdge.js";
+import { CURATED_CORRECTIONS, correctionId, edgeCorrections, evidenceUrl, HAND_CORRECTIONS, type EdgeCorrection } from "../src/italian/curatedCorrections.js";
+import {
+  FORM_OF_GLOSS_EDGE_RULE,
+  formOfGlossEdgeCorrections,
+  glossBase,
+  judgeSense,
+  type PageRevisions,
+  type ScannedLemma,
+  type ScannedSense,
+} from "../src/italian/formOfGlossEdge.js";
 import { FORM_OF_GLOSS_EDGE_EVIDENCE } from "../src/italian/formOfGlossEdgeEvidence.js";
 import { CorrectedLayer } from "../src/import/correctedLayer.js";
 import { describeEntry, planCorrections, unwritten } from "../src/import/correctRecords.js";
@@ -34,6 +42,8 @@ async function fixtureLines(): Promise<string[]> {
 
 const readerOf = (db: DatabaseSync): MasterReader => ({ query: <Row>(sql: string) => db.prepare(sql).all() as Row[] });
 const all = (db: DatabaseSync, sql: string): unknown[] => db.prepare(sql).all().map((row) => ({ ...row }));
+/** A permanent link to an it.wiktionary page's revision. */
+const page = (title: string, revisionId: number): string => `https://it.wiktionary.org/w/index.php?title=${title}&oldid=${revisionId}`;
 
 async function seeded(corrections: readonly EdgeCorrection[]): Promise<DatabaseSync> {
   const dir = await mkdtemp(join(tmpdir(), "lexema-edges-"));
@@ -98,22 +108,37 @@ const sense = (gloss: string, formOf: readonly string[] = [], word = "aerei", la
 });
 const lemma = (word: string, forms: readonly string[], lineNo = 5, langCode = "it"): ScannedLemma => ({ lineNo, lineSha256: "b".repeat(64), word, pos: "noun", langCode, forms });
 
-test("the rule adds an edge only to a form's gloss with no edge, whose base word's own table lists the word, citing that table's line", () => {
-  const verdict = judgeSense(sense("plurale di aereo"), "it-x", [lemma("aereo", ["aerei"], 7), lemma("aereo", ["aerei"], 3)], new Set());
+/** The dump revisions of the pages the rule's examples cite. */
+const PAGES: PageRevisions = new Map([
+  ["aerei", 4016979],
+  ["aereo", 3963800],
+]);
+
+test("the rule adds an edge only to a form's gloss with no edge, whose base word's own table lists the word, citing both words' pages", () => {
+  const verdict = judgeSense(sense("plurale di aereo"), "it-x", [lemma("aereo", ["aerei"], 7), lemma("aereo", ["aerei"], 3)], new Set(), PAGES);
   assert.equal(verdict?.kind, "edge");
   if (verdict?.kind !== "edge") return;
+  // The first record of the base word in archive order that lists it.
+  assert.deepEqual(verdict.lemma, { lineNo: 3, lineSha256: "b".repeat(64), word: "aereo", pos: "noun", langCode: "it", formIndex: 0 });
   assert.deepEqual(verdict.correction, {
     record: { releaseId: "it-x", lineNo: 10, lineSha256: "a".repeat(64), word: "aerei", pos: "noun" },
     edge: { sense: 0, gloss: { pointer: "/senses/0/glosses/0", text: "plurale di aereo" }, target: "aereo" },
-    // The first record of the base word in archive order that lists it.
-    evidence: { releaseId: "it-x", lineNo: 3, lineSha256: "b".repeat(64), word: "aereo", pos: "noun", pointer: "/forms/0/form", shows: "aerei" },
+    // The two Wiktionary pages, at their dump revisions (Huey's ruling of 2026-10-08 on #722).
+    evidence: {
+      form: { wiki: "it.wiktionary.org", title: "aerei", revisionId: 4016979, shows: "plurale di aereo" },
+      base: { wiki: "it.wiktionary.org", title: "aereo", revisionId: 3963800, shows: "aerei" },
+    },
     rule: FORM_OF_GLOSS_EDGE_RULE,
   });
+  assert.deepEqual([verdict.correction.evidence.form, verdict.correction.evidence.base].map(evidenceUrl), [
+    "https://it.wiktionary.org/w/index.php?title=aerei&oldid=4016979",
+    "https://it.wiktionary.org/w/index.php?title=aereo&oldid=3963800",
+  ]);
 });
 
 test("every other sense the rule reads stays as the source states it, with its reason", () => {
-  const reason = (scanned: ScannedSense, lemmas: readonly ScannedLemma[], hand = new Set<string>()) => {
-    const verdict = judgeSense(scanned, "it-x", lemmas, hand);
+  const reason = (scanned: ScannedSense, lemmas: readonly ScannedLemma[], hand = new Set<string>(), pages = PAGES) => {
+    const verdict = judgeSense(scanned, "it-x", lemmas, hand, pages);
     return verdict?.kind === "left-alone" ? verdict.reason : verdict?.kind;
   };
   const listing = [lemma("aereo", ["aerei"])];
@@ -126,21 +151,25 @@ test("every other sense the rule reads stays as the source states it, with its r
   assert.equal(reason(sense("plurale di aereo", [], "aerei", "scn"), listing), "not-italian");
   assert.equal(reason(sense("plurale di aereo"), listing, new Set(["10:0"])), "hand-entry");
   assert.equal(reason(sense("plurale di aereo", ["aria"]), listing), "edge-names-another-word");
+  // With no page to cite, either the word's or the base's, there is no correction.
+  assert.equal(reason(sense("plurale di aereo"), listing, new Set(), new Map([["aerei", 4016979]])), "page-not-in-dump");
+  assert.equal(reason(sense("plurale di aereo"), listing, new Set(), new Map([["aereo", 3963800]])), "page-not-in-dump");
   // A sense whose edge names the base word is right, and one with no "di" not the rule's at all.
-  assert.equal(judgeSense(sense("plurale di aereo", ["aereo"]), "it-x", listing, new Set()), undefined);
-  assert.equal(judgeSense(sense("veicolo a motore"), "it-x", listing, new Set()), undefined);
+  assert.equal(judgeSense(sense("plurale di aereo", ["aereo"]), "it-x", listing, new Set(), PAGES), undefined);
+  assert.equal(judgeSense(sense("veicolo a motore"), "it-x", listing, new Set(), PAGES), undefined);
   // A gloss that is no form's, whose base word's table does not list the word, is not read either.
-  assert.equal(judgeSense(sense("studioso di chimica"), "it-x", [lemma("chimica", [])], new Set()), undefined);
+  assert.equal(judgeSense(sense("studioso di chimica"), "it-x", [lemma("chimica", [])], new Set(), PAGES), undefined);
 });
 
 // The committed list ---------------------------------------------------------------
 
-test("the committed edges: aerei's and costruttori's from the rule, parti's two from a hand entry, each citing its two lines", () => {
+test("the committed edges: aerei's and costruttori's from the rule, parti's two from a hand entry, each citing its two Wiktionary pages", () => {
   const edges = edgeCorrections(CURATED_CORRECTIONS);
-  const at = (lineNo: number) => edges.filter((correction) => correction.record.lineNo === lineNo).map((correction) => `${correction.edge.sense} ${correction.edge.replaces?.text ?? "-"} -> ${correction.edge.target} (${correction.evidence.lineNo} ${correction.evidence.pointer})`);
-  assert.deepEqual(at(69147), ["0 - -> aereo (2298 /forms/0/form)"]);
-  assert.deepEqual(at(449508), ["0 - -> costruttore (449501 /forms/0/form)"]);
-  assert.deepEqual(at(77162), ["1 neonato -> parto (42147 /forms/0/form)", "2 Parti -> parto (42147 /forms/0/form)"]);
+  const cited = ({ evidence }: EdgeCorrection) => `${evidence.form.title}@${evidence.form.revisionId} ${evidence.base.title}@${evidence.base.revisionId}`;
+  const at = (lineNo: number) => edges.filter((correction) => correction.record.lineNo === lineNo).map((correction) => `${correction.edge.sense} ${correction.edge.replaces?.text ?? "-"} -> ${correction.edge.target} (${cited(correction)})`);
+  assert.deepEqual(at(69147), ["0 - -> aereo (aerei@4016979 aereo@3963800)"]);
+  assert.deepEqual(at(449508), ["0 - -> costruttore (costruttori@3635849 costruttore@3782550)"]);
+  assert.deepEqual(at(77162), ["1 neonato -> parto (parti@3948893 parto@3892725)", "2 Parti -> parto (parti@3948893 parto@3892725)"]);
   assert.deepEqual(edgeCorrections(HAND_CORRECTIONS).map(correctionId), ["it-0c432803:77162/senses/1", "it-0c432803:77162/senses/2"]);
 
   const made = formOfGlossEdgeCorrections(FORM_OF_GLOSS_EDGE_EVIDENCE, edgeCorrections(HAND_CORRECTIONS));
@@ -150,13 +179,13 @@ test("the committed edges: aerei's and costruttori's from the rule, parti's two 
   for (const correction of edges) {
     const id = correctionId(correction);
     assert.ok(!made.some((one) => correctionId(one) === id) || !hand.has(id), `${id} is set by hand and by the rule`);
-    // Both lines are the archive's, of one release: the gloss names the target, and the target's table lists the word.
-    assert.equal(correction.evidence.releaseId, correction.record.releaseId, id);
+    // The record's own page shows the gloss that names the target, and the target's page lists the word.
+    const { form, base } = correction.evidence;
     assert.equal(glossBase(correction.edge.gloss.text)?.base, correction.edge.target, id);
     assert.equal(correction.edge.gloss.pointer, `/senses/${correction.edge.sense}/glosses/0`, id);
-    assert.equal(correction.evidence.word, correction.edge.target, id);
-    assert.equal(correction.evidence.shows, correction.record.word, id);
-    assert.match(correction.evidence.pointer, /^\/forms\/\d+\/form$/, id);
+    assert.deepEqual([form.wiki, form.title, form.shows], ["it.wiktionary.org", correction.record.word, correction.edge.gloss.text], id);
+    assert.deepEqual([base.wiki, base.title, base.shows], ["it.wiktionary.org", correction.edge.target, correction.record.word], id);
+    assert.ok(Number.isInteger(form.revisionId) && form.revisionId > 0 && Number.isInteger(base.revisionId) && base.revisionId > 0, id);
   }
 });
 
@@ -173,13 +202,13 @@ test("the seed writes each edge beside its sense and leaves the record's own row
     }
     assert.deepEqual(all(plain, "SELECT * FROM corrected_edge"), []);
     assert.deepEqual(
-      all(corrected, `SELECT r.word, e.sense_index, e.json_pointer, e.target_word, e.target_word_key, e.correction_id, e.lemma_line_no, e.lemma_pointer
+      all(corrected, `SELECT r.word, e.sense_index, e.json_pointer, e.target_word, e.target_word_key, e.correction_id, e.evidence_url, e.base_evidence_url
                         FROM corrected_edge e JOIN source_record r ON r.record_id = e.record_id ORDER BY r.word, e.sense_index`),
       [
-        { word: "aerei", sense_index: 0, json_pointer: "/senses/0/glosses/0", target_word: "aereo", target_word_key: "aereo", correction_id: `${RELEASE}:${corrections.find((one) => one.record.word === "aerei")?.record.lineNo}/senses/0`, lemma_line_no: 2298, lemma_pointer: "/forms/0/form" },
-        { word: "costruttori", sense_index: 0, json_pointer: "/senses/0/glosses/0", target_word: "costruttore", target_word_key: "costruttore", correction_id: `${RELEASE}:${corrections.find((one) => one.record.word === "costruttori")?.record.lineNo}/senses/0`, lemma_line_no: 449501, lemma_pointer: "/forms/0/form" },
-        { word: "parti", sense_index: 1, json_pointer: "/senses/1/glosses/0", target_word: "parto", target_word_key: "parto", correction_id: `${RELEASE}:${corrections.find((one) => one.record.word === "parti")?.record.lineNo}/senses/1`, lemma_line_no: 42147, lemma_pointer: "/forms/0/form" },
-        { word: "parti", sense_index: 2, json_pointer: "/senses/2/glosses/0", target_word: "parto", target_word_key: "parto", correction_id: `${RELEASE}:${corrections.find((one) => one.record.word === "parti")?.record.lineNo}/senses/2`, lemma_line_no: 42147, lemma_pointer: "/forms/0/form" },
+        { word: "aerei", sense_index: 0, json_pointer: "/senses/0/glosses/0", target_word: "aereo", target_word_key: "aereo", correction_id: `${RELEASE}:${corrections.find((one) => one.record.word === "aerei")?.record.lineNo}/senses/0`, evidence_url: page("aerei", 4016979), base_evidence_url: page("aereo", 3963800) },
+        { word: "costruttori", sense_index: 0, json_pointer: "/senses/0/glosses/0", target_word: "costruttore", target_word_key: "costruttore", correction_id: `${RELEASE}:${corrections.find((one) => one.record.word === "costruttori")?.record.lineNo}/senses/0`, evidence_url: page("costruttori", 3635849), base_evidence_url: page("costruttore", 3782550) },
+        { word: "parti", sense_index: 1, json_pointer: "/senses/1/glosses/0", target_word: "parto", target_word_key: "parto", correction_id: `${RELEASE}:${corrections.find((one) => one.record.word === "parti")?.record.lineNo}/senses/1`, evidence_url: page("parti", 3948893), base_evidence_url: page("parto", 3892725) },
+        { word: "parti", sense_index: 2, json_pointer: "/senses/2/glosses/0", target_word: "parto", target_word_key: "parto", correction_id: `${RELEASE}:${corrections.find((one) => one.record.word === "parti")?.record.lineNo}/senses/2`, evidence_url: page("parti", 3948893), base_evidence_url: page("parto", 3892725) },
       ],
     );
   } finally {
