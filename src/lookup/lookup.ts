@@ -15,6 +15,7 @@ import { placeRecovered, type RecoveredOfRecord, type StoredRecovered } from "./
 import { dictionaryTables, lineagesOf, servedBy, type DictionaryTables } from "./served.js";
 import { readSourceRecord, type SourceRecordFields } from "./sourceRecord.js";
 import { correctionOf, correctionsByRecord, type CorrectionRow } from "./correctedClaim.js";
+import { correctedEdgeServed, sourceEdgeServed } from "./correctedEdge.js";
 import { agreeingQuery, essereAgreement } from "../italian/essereAgreement.js";
 import { prefixUpperBound } from "./keyRange.js";
 import { personOfItalianVerbForm } from "../italian/moods.js";
@@ -243,10 +244,12 @@ export async function lookup({ db, releaseId, query }: LookupOptions): Promise<L
   // there would fail every statement batched with it (`fromD1`), so no
   // correction is read where there is none.
   const corrected = tables.corrections;
+  // The same holds for `corrected_edge` before #722: every sense keeps its own edges.
+  const edges = tables.edgeCorrections;
 
   const pageReadings = pages.readings(key);
   if (hits.length > 0) {
-    const [result, read] = await Promise.all([found(db, releaseId, pages, queryInfo, release, hits, { kind: "surface" }, corrected), pageReadings]);
+    const [result, read] = await Promise.all([found(db, releaseId, pages, queryInfo, release, hits, { kind: "surface" }, corrected, edges), pageReadings]);
     return { ...result, readings: [...result.readings, ...read] };
   }
   const [page, ...otherPages] = await pageReadings;
@@ -257,7 +260,7 @@ export async function lookup({ db, releaseId, query }: LookupOptions): Promise<L
   const phrase = await phraseHits(db, releaseId, key);
   if (phrase !== undefined) {
     const forms = await phraseForms(db, releaseId, phrase.phrases);
-    return found(db, releaseId, pages, queryInfo, release, phrase.hits, { kind: "phrase", phrases: phrase.phrases, forms }, corrected);
+    return found(db, releaseId, pages, queryInfo, release, phrase.hits, { kind: "phrase", phrases: phrase.phrases, forms }, corrected, edges);
   }
 
   // Nor a phrase. It may be the feminine of a compound form the source lists
@@ -266,7 +269,7 @@ export async function lookup({ db, releaseId, query }: LookupOptions): Promise<L
   // (#676).
   const agreement = await agreementHits(db, releaseId, key, corrected);
   if (agreement === undefined) return { outcome: "not-found", query: queryInfo, release };
-  return found(db, releaseId, pages, queryInfo, release, agreement.hits, agreement.route, corrected, agreement.tables);
+  return found(db, releaseId, pages, queryInfo, release, agreement.hits, agreement.route, corrected, edges, agreement.tables);
 }
 
 /**
@@ -343,6 +346,8 @@ async function found(
   hits: readonly HitRow[],
   route: FoundRoute,
   corrected: boolean,
+  /** Whether the master has corrected edges (#722), read in place of the senses' own. */
+  edges: boolean,
   /** Record tables already read for these hits, so none is read again. */
   read: ReadonlyMap<number, Promise<RecordTable>> = new Map(),
 ): Promise<FoundResult> {
@@ -398,7 +403,7 @@ async function found(
     const recordId = group[0].record_id;
     let started = reads.get(recordId);
     if (started === undefined) {
-      started = startReadingReads(db, releaseId, group[0], corrected, recordOf(recordId));
+      started = startReadingReads(db, releaseId, group[0], corrected, edges, recordOf(recordId));
       reads.set(recordId, started);
     }
     return started;
@@ -408,12 +413,12 @@ async function found(
 
   // The lines of the lemmas each record's links name, read beside the links,
   // so a lemma's expressions wait on nothing the links wait on.
-  const lemmaLines = handled(readLemmaLines(db, releaseId, groups.map((group) => group[0].record_id)));
+  const lemmaLines = handled(readLemmaLines(db, releaseId, groups.map((group) => group[0].record_id), edges));
   const declared = new Map(
     await Promise.all(
       groups.map(async (group) => {
         const recordId = group[0].record_id;
-        return [recordId, await readLemmaLinks(db, releaseId, recordId, refOn(group[0]))] as const;
+        return [recordId, await readLemmaLinks(db, releaseId, recordId, refOn(group[0]), edges)] as const;
       }),
     ),
   );
@@ -717,12 +722,13 @@ function startReadingReads(
   releaseId: string,
   first: HitRow,
   corrected: boolean,
+  edges: boolean,
   record: Promise<RecordLine>,
 ): ReadingReads {
   return {
     recovered: handled(readRecovered(db, first.record_id, record)),
     senseRows: handled(readSenseRows(db, first.record_id)),
-    inflections: handled(readInflections(db, releaseId, first.record_id, first.record_word, corrected)),
+    inflections: handled(readInflections(db, releaseId, first.record_id, first.record_word, corrected, edges)),
     reviews: handled(readReviews(db, first.record_id)),
   };
 }
@@ -896,9 +902,27 @@ export const LEMMA_LINE_SQL: KeyedRead = keyedRead(`SELECT c.set_key AS set_key,
        JOIN source_record r ON r.record_id = c.record_id
        JOIN source_record_json j ON j.record_id = c.record_id`);
 
+/** The headword records an edge table's rows on the records at `?1` name, for `LEMMA_LINE_SQL`'s corrected form. */
+const lemmaLineArm = (edges: "form_of_edge" | "corrected_edge"): string => `SELECT e.record_id AS set_key, lf.record_id
+               FROM ${edges} e
+               JOIN lookup_form lf
+                 ON lf.release_id IN (${servedBy("?2")})
+                AND lf.surface_key = e.target_word_key
+                AND lf.origin = 'headword'
+              WHERE e.record_id IN (SELECT value FROM json_each(?1)) AND e.release_id IN (${servedBy("?2")})
+                AND ${edges === "form_of_edge" ? sourceEdgeServed("e") : correctedEdgeServed("e")}`;
+
+/** `LEMMA_LINE_SQL` on a master with corrected edges: each sense's corrected edge in place of its own (src/lookup/correctedEdge.ts). */
+export const CORRECTED_LEMMA_LINE_SQL: KeyedRead = keyedRead(`SELECT c.set_key AS set_key, c.record_id, r.pos_title, j.raw_json
+       FROM (${lemmaLineArm("form_of_edge")}
+             UNION
+             ${lemmaLineArm("corrected_edge")}) c
+       JOIN source_record r ON r.record_id = c.record_id
+       JOIN source_record_json j ON j.record_id = c.record_id`);
+
 /** The lines of the lemmas the links of `recordIds` name, by lemma record. */
-async function readLemmaLines(db: LookupDatabase, releaseId: string, recordIds: readonly number[]): Promise<Map<number, RecordLine>> {
-  const rows = await readKeys<{ record_id: number; pos_title: string; raw_json: string }>(db, LEMMA_LINE_SQL, recordIds, [releaseId]);
+async function readLemmaLines(db: LookupDatabase, releaseId: string, recordIds: readonly number[], edges: boolean): Promise<Map<number, RecordLine>> {
+  const rows = await readKeys<{ record_id: number; pos_title: string; raw_json: string }>(db, edges ? CORRECTED_LEMMA_LINE_SQL : LEMMA_LINE_SQL, recordIds, [releaseId]);
   return new Map(rows.map((row) => [row.record_id, { posTitle: row.pos_title, rawJson: row.raw_json }]));
 }
 
@@ -1132,11 +1156,45 @@ export const LEMMA_LINK_SQL: KeyedRead = keyedRead(`SELECT e.record_id AS set_ke
       WHERE e.record_id IN (SELECT value FROM json_each(?1)) AND e.release_id IN (${servedBy("?2")})
       ORDER BY e.edge_id, t.line_no`);
 
+/**
+ * One arm of `CORRECTED_LEMMA_LINK_SQL`: `LEMMA_LINK_SQL`'s read over one edge
+ * table, with each edge's sense. A corrected edge has no `edge_id`; it is the
+ * only edge of its sense, so `-1 - sense_index` names it apart from every
+ * source edge.
+ */
+const lemmaLinkArm = (edges: "form_of_edge" | "corrected_edge"): string => `SELECT e.record_id AS set_key, ${edges === "form_of_edge" ? "e.edge_id" : "-1 - e.sense_index"} AS edge_id,
+            e.sense_index AS sense_index, e.json_pointer, e.target_word,
+            t.record_id   AS candidate_record_id,
+            t.release_id  AS candidate_release_id,
+            t.line_no     AS candidate_line_no,
+            t.line_sha256 AS candidate_line_sha256,
+            t.pos         AS candidate_pos,
+            t.word        AS candidate_word
+       FROM ${edges} e
+       LEFT JOIN lookup_form lf
+         ON lf.release_id IN (${servedBy("?2")})
+        AND lf.surface_key = e.target_word_key
+        AND lf.origin = 'headword'
+       LEFT JOIN source_record t ON t.record_id = lf.record_id
+      WHERE e.record_id IN (SELECT value FROM json_each(?1)) AND e.release_id IN (${servedBy("?2")})
+        AND ${edges === "form_of_edge" ? sourceEdgeServed("e") : correctedEdgeServed("e")}`;
+
+/**
+ * `LEMMA_LINK_SQL` on a master with corrected edges: each sense's corrected
+ * edge in place of its own, in sense order (src/lookup/correctedEdge.ts).
+ * Exported so a test can assert the plan.
+ */
+export const CORRECTED_LEMMA_LINK_SQL: KeyedRead = keyedRead(`${lemmaLinkArm("form_of_edge")}
+     UNION ALL
+     ${lemmaLinkArm("corrected_edge")}
+      ORDER BY set_key, sense_index, edge_id, candidate_line_no`);
+
 async function readLemmaLinks(
   db: LookupDatabase,
   releaseId: string,
   recordId: number,
   ref: (pointer: string) => SourceRef,
+  edges: boolean,
 ): Promise<DeclaredLink[]> {
   // LEFT JOIN on purpose: an edge whose target word matches no headword record
   // must still appear. Dropping it would turn "the source points somewhere we
@@ -1151,7 +1209,7 @@ async function readLemmaLinks(
     candidate_line_sha256: string | null;
     candidate_pos: string | null;
     candidate_word: string | null;
-  }>(db, LEMMA_LINK_SQL, [recordId], [releaseId]);
+  }>(db, edges ? CORRECTED_LEMMA_LINK_SQL : LEMMA_LINK_SQL, [recordId], [releaseId]);
 
   const byEdge = new Map<number, DeclaredLink>();
   for (const row of rows) {
@@ -1197,16 +1255,49 @@ async function readLemmaLinks(
  * release on the `release_id` prefix alone, about two million rows per record
  * on `it-0c432803` (#381).
  */
-export const INFLECTION_SQL: KeyedRead = keyedRead(`SELECT lf.record_id AS set_key, f.record_id, f.release_id, f.line_no, f.line_sha256, f.word, f.pos,
-            e.json_pointer, e.target_word, g.text AS gloss, g.json_pointer AS gloss_pointer
-       FROM lookup_form lf
-       CROSS JOIN form_of_edge e
-         ON e.release_id IN (${servedBy("?2")}) AND e.target_word_key = lf.surface_key
-       JOIN source_record f ON f.record_id = e.record_id
-       LEFT JOIN sense s ON s.record_id = e.record_id AND s.sense_index = e.sense_index
-       LEFT JOIN sense_gloss g ON g.sense_id = s.sense_id AND g.gloss_index = 0
-      WHERE lf.record_id IN (SELECT value FROM json_each(?1)) AND lf.origin = 'headword' AND lf.release_id IN (${servedBy("?2")})
+export const INFLECTION_SQL: KeyedRead = keyedRead(`${incoming("form_of_edge", inflectionRows())}
       ORDER BY f.line_no, e.json_pointer`);
+
+/** Which edges an incoming read takes: the source's alone, the source's no correction stands in for, or the corrected ones. */
+type IncomingEdges = "form_of_edge" | "served form_of_edge" | "corrected_edge";
+
+/**
+ * A read of the edges of `edges` that name the word the record at `?1`
+ * spells, from its headword row, in `CROSS JOIN` order. `rows` is the read's
+ * SELECT list and its joins after the edge, `e`, and its record, `f`.
+ */
+function incoming(edges: IncomingEdges, rows: { select: string; joins: string }): string {
+  const table = edges === "corrected_edge" ? "corrected_edge" : "form_of_edge";
+  return `SELECT ${rows.select}
+       FROM lookup_form lf
+       CROSS JOIN ${table} e
+         ON e.release_id IN (${servedBy("?2")}) AND e.target_word_key = lf.surface_key
+       JOIN source_record f ON f.record_id = e.record_id${rows.joins}
+      WHERE lf.record_id IN (SELECT value FROM json_each(?1)) AND lf.origin = 'headword' AND lf.release_id IN (${servedBy("?2")})${
+        edges === "served form_of_edge" ? ` AND ${sourceEdgeServed("e")}` : edges === "corrected_edge" ? ` AND ${correctedEdgeServed("e")}` : ""
+      }`;
+}
+
+/** `INFLECTION_SQL`'s rows: the declaring record and the first gloss of the declaring sense. */
+function inflectionRows(): { select: string; joins: string } {
+  return {
+    select: `lf.record_id AS set_key, f.record_id, f.release_id, f.line_no AS line_no, f.line_sha256, f.word, f.pos,
+            e.json_pointer AS json_pointer, e.target_word, g.text AS gloss, g.json_pointer AS gloss_pointer`,
+    joins: `
+       LEFT JOIN sense s ON s.record_id = e.record_id AND s.sense_index = e.sense_index
+       LEFT JOIN sense_gloss g ON g.sense_id = s.sense_id AND g.gloss_index = 0`,
+  };
+}
+
+/**
+ * `INFLECTION_SQL` on a master with corrected edges: a sense's corrected edge
+ * names the word in place of its own (src/lookup/correctedEdge.ts), read
+ * through `corrected_edge_by_target`. Exported so a test can assert the plan.
+ */
+export const CORRECTED_INFLECTION_SQL: KeyedRead = keyedRead(`${incoming("served form_of_edge", inflectionRows())}
+     UNION ALL
+     ${incoming("corrected_edge", inflectionRows())}
+      ORDER BY line_no, json_pointer`);
 
 /**
  * Every headword record spelling what this one spells — itself included. An
@@ -1230,16 +1321,25 @@ export const INFLECTION_CANDIDATE_SQL: KeyedRead = keyedRead(`SELECT self.record
  * this word's plural, and beside the candidate read, so it adds no round trip.
  * The numbers are read only so a correction of one can say what it replaces.
  */
-export const INFLECTION_GRAMMAR_SQL: KeyedRead = keyedRead(`SELECT DISTINCT lf.record_id AS set_key, c.record_id, c.dimension, c.value, c.source_text, c.json_pointer,
-            f.release_id, f.line_no, f.line_sha256
-       FROM lookup_form lf
-       CROSS JOIN form_of_edge e
-         ON e.release_id IN (${servedBy("?2")}) AND e.target_word_key = lf.surface_key
-       JOIN source_record f ON f.record_id = e.record_id
-       JOIN grammar_claim c
-         ON c.record_id = e.record_id AND c.scope = 'record' AND c.status = 'stated' AND c.dimension IN ('gender', 'number')
-      WHERE lf.record_id IN (SELECT value FROM json_each(?1)) AND lf.origin = 'headword' AND lf.release_id IN (${servedBy("?2")})
+export const INFLECTION_GRAMMAR_SQL: KeyedRead = keyedRead(`${incoming("form_of_edge", inflectionGrammarRows())}
       ORDER BY c.record_id, c.json_pointer`);
+
+/** `INFLECTION_GRAMMAR_SQL`'s rows, `DISTINCT` on the first read of a compound. */
+function inflectionGrammarRows(distinct = true): { select: string; joins: string } {
+  return {
+    select: `${distinct ? "DISTINCT " : ""}lf.record_id AS set_key, c.record_id AS record_id, c.dimension, c.value, c.source_text, c.json_pointer AS json_pointer,
+            f.release_id, f.line_no, f.line_sha256`,
+    joins: `
+       JOIN grammar_claim c
+         ON c.record_id = e.record_id AND c.scope = 'record' AND c.status = 'stated' AND c.dimension IN ('gender', 'number')`,
+  };
+}
+
+/** `INFLECTION_GRAMMAR_SQL` off `CORRECTED_INFLECTION_SQL`'s edges; `UNION` keeps each row once. */
+export const CORRECTED_INFLECTION_GRAMMAR_SQL: KeyedRead = keyedRead(`${incoming("served form_of_edge", inflectionGrammarRows(false))}
+     UNION
+     ${incoming("corrected_edge", inflectionGrammarRows(false))}
+      ORDER BY record_id, json_pointer`);
 
 /** The `/word` field of a headword record, which is where its spelling is. */
 function headwordRef(releaseId: string, lineNo: number, lineSha256: string): SourceRef {
@@ -1259,13 +1359,23 @@ const lineRef = (row: { release_id: string; line_no: number; line_sha256: string
  * this record spells, read off the same edges as `INFLECTION_SQL`. Sent beside
  * the gender read, and only when the master has corrections at all.
  */
-export const INFLECTION_CORRECTION_SQL: KeyedRead = keyedRead(`SELECT DISTINCT lf.record_id AS set_key, k.record_id, k.dimension, k.value, k.correction_id, k.evidence_url
-       FROM lookup_form lf
-       CROSS JOIN form_of_edge e
-         ON e.release_id IN (${servedBy("?2")}) AND e.target_word_key = lf.surface_key
-       JOIN corrected_claim k ON k.record_id = e.record_id
-      WHERE lf.record_id IN (SELECT value FROM json_each(?1)) AND lf.origin = 'headword' AND lf.release_id IN (${servedBy("?2")})
+export const INFLECTION_CORRECTION_SQL: KeyedRead = keyedRead(`${incoming("form_of_edge", inflectionCorrectionRows())}
       ORDER BY k.record_id, k.dimension`);
+
+/** `INFLECTION_CORRECTION_SQL`'s rows, `DISTINCT` on the first read of a compound. */
+function inflectionCorrectionRows(distinct = true): { select: string; joins: string } {
+  return {
+    select: `${distinct ? "DISTINCT " : ""}lf.record_id AS set_key, k.record_id AS record_id, k.dimension AS dimension, k.value, k.correction_id, k.evidence_url`,
+    joins: `
+       JOIN corrected_claim k ON k.record_id = e.record_id`,
+  };
+}
+
+/** `INFLECTION_CORRECTION_SQL` off `CORRECTED_INFLECTION_SQL`'s edges; `UNION` keeps each row once. */
+export const CORRECTED_INFLECTION_CORRECTION_SQL: KeyedRead = keyedRead(`${incoming("served form_of_edge", inflectionCorrectionRows(false))}
+     UNION
+     ${incoming("corrected_edge", inflectionCorrectionRows(false))}
+      ORDER BY record_id, dimension`);
 
 /** `word` is the reading's own headword, which a plural gloss has to name. */
 async function readInflections(
@@ -1274,6 +1384,7 @@ async function readInflections(
   recordId: number,
   word: string,
   corrected: boolean,
+  edges: boolean,
 ): Promise<InflectionOf[]> {
   const rows = await readKeys<{
     record_id: number;
@@ -1286,7 +1397,7 @@ async function readInflections(
     target_word: string;
     gloss: string | null;
     gloss_pointer: string | null;
-  }>(db, INFLECTION_SQL, [recordId], [releaseId]);
+  }>(db, edges ? CORRECTED_INFLECTION_SQL : INFLECTION_SQL, [recordId], [releaseId]);
 
   if (rows.length === 0) return [];
 
@@ -1330,10 +1441,10 @@ async function readInflections(
           release_id: string;
           line_no: number;
           line_sha256: string;
-        }>(db, INFLECTION_GRAMMAR_SQL, [recordId], [releaseId]),
+        }>(db, edges ? CORRECTED_INFLECTION_GRAMMAR_SQL : INFLECTION_GRAMMAR_SQL, [recordId], [releaseId]),
     pluralGlosses.size === 0 || !corrected
       ? Promise.resolve([])
-      : readKeys<CorrectionRow>(db, INFLECTION_CORRECTION_SQL, [recordId], [releaseId]),
+      : readKeys<CorrectionRow>(db, edges ? CORRECTED_INFLECTION_CORRECTION_SQL : INFLECTION_CORRECTION_SQL, [recordId], [releaseId]),
   ]);
 
   const targetCandidates = candidates.map((row) => ({

@@ -196,6 +196,14 @@ test("every declaration already in dictionary-changes parses as before, with no 
       );
       continue;
     }
+    // The form_of edge corrections (#722) name the words whose pages they change.
+    if (name === "2026-10-08-correct-form-of-edges.json") {
+      assert.deepEqual(
+        parseDraft(path, text).lookups?.map((item) => item.word),
+        ["aerei", "costruttori", "parti"],
+      );
+      continue;
+    }
     for (const parsed of [parseDeclaration(path, text), parseDraft(path, text)]) {
       assert.deepEqual(Object.keys(parsed).sort(), ["command", "expected", "file", "inputs"], path);
     }

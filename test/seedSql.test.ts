@@ -302,6 +302,7 @@ test("the fifty-word dev seed is one part with the same rows", async () => {
       raw_page: 20, recovered_definition: 10, recovered_label: 6, recovered_example: 7, hidden_record: 0,
       // The curated corrections are keyed to it-0c432803's lines, not the fixture's.
       corrected_claim: 0,
+      corrected_edge: 0,
       // Only the fixture pages on the committed list of it-0c432803's
       // record-less titles are page-only candidates (#499): 20 of them, of
       // which 17 recover (`lungo` as two entries), `grufolare` and `tremare`
@@ -310,7 +311,7 @@ test("the fifty-word dev seed is one part with the same rows", async () => {
       // Their other fields, each read from the entry's own page (ADR 0026).
       entry_fact: 367,
       corrected_definition: 2,
-      release_table_rows: 22,
+      release_table_rows: 23,
     });
     // 36 of the fixture's records have a raw page under fixtures/. Three pages
     // state definitions their record does not carry: `casa`'s seven and

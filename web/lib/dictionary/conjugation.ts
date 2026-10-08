@@ -309,3 +309,6 @@ export function declaredConjugationOf(forms: readonly DeclaredVerbForm[]): Conju
 /** Whether a conjugation places any form at all. */
 export const placesAny = (conjugation: Conjugation<TableForm>): boolean =>
   conjugation.moods.length > 0 || conjugation.nonFinite.length > 0;
+
+/** Whether any of a verb's forms fills a cell of its conjugation; forms that fill none would draw only a row of dashes (#674). */
+export const conjugates = (forms: readonly SourceForm[]): boolean => placesAny(layOut(placedBy(forms, placeOf), () => false));

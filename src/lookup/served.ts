@@ -85,7 +85,7 @@ export const PAGE_ENTRY_FACT_TABLE = "entry_fact";
  * #450). Presence is read from the schema, never inferred from a failed read,
  * so an error on a table that exists still fails.
  */
-export const OPTIONAL_TABLES_SQL: DictionaryRead = `SELECT name FROM sqlite_schema WHERE type = 'table' AND name IN (${["hide_version", "corrected_claim", "correction_version", ...PAGE_ENTRY_TABLES, PAGE_ENTRY_FACT_TABLE, "corrected_definition"].map((name) => `'${name}'`).join(", ")})`;
+export const OPTIONAL_TABLES_SQL: DictionaryRead = `SELECT name FROM sqlite_schema WHERE type = 'table' AND name IN (${["hide_version", "corrected_claim", "corrected_edge", "correction_version", ...PAGE_ENTRY_TABLES, PAGE_ENTRY_FACT_TABLE, "corrected_definition"].map((name) => `'${name}'`).join(", ")})`;
 export const HIDE_VERSION_SQL: DictionaryRead = `SELECT revision FROM hide_version WHERE singleton = 1`;
 export const CORRECTION_VERSION_SQL: DictionaryRead = `SELECT revision FROM correction_version WHERE singleton = 1`;
 
@@ -109,6 +109,12 @@ export interface DictionaryTables {
   pageFacts: boolean;
   /** `corrected_claim`; absent on a master seeded before #420 until `update:upgrade` creates it, and read as empty. */
   corrections: boolean;
+  /**
+   * `corrected_edge`; absent on a master seeded before #722 until
+   * `update:upgrade` creates it, and read as empty: every sense keeps the
+   * edges its record declares.
+   */
+  edgeCorrections: boolean;
   /** `correction_version`; absent on a master seeded before #420 until `update:upgrade` creates it, and read as revision zero. */
   correctionVersion: boolean;
 }
@@ -133,6 +139,7 @@ export async function dictionaryTables(db: LookupDatabase): Promise<DictionaryTa
     definitionCorrections: pageEntries && present.has("corrected_definition"),
     pageFacts: pageEntries && present.has(PAGE_ENTRY_FACT_TABLE),
     corrections: present.has("corrected_claim"),
+    edgeCorrections: present.has("corrected_edge"),
     correctionVersion: present.has("correction_version"),
   };
 }

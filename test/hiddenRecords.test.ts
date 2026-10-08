@@ -268,6 +268,38 @@ test("the update finds what the seed hides", async () => {
   assert.deepEqual(found.map(({ rule, word, lineNo }) => [rule, word, lineNo]), EXPECTED_HIDDEN().map((row) => [row.rule, row.word, row.line_no]));
 });
 
+test("a hide keeps a hidden record's corrected edge beside it, and no lookup lists the record as a form through it (ADR 0023, #722)", async () => {
+  const { db } = await seed("edges", false);
+  try {
+    const found = await foundInArchive();
+    const id = recordIdAt(db, found[0].lineNo);
+    const hiding = found.map(({ lineNo }) => recordIdAt(db, lineNo));
+    // A word the hide leaves served, for the synthetic edge to name.
+    const [{ word, surface_key: key }] = db
+      .prepare(`SELECT r.word, lf.surface_key FROM lookup_form lf JOIN source_record r ON r.record_id = lf.record_id
+                 WHERE lf.origin = 'headword' AND lf.record_id NOT IN (${hiding.join(",")}) ORDER BY r.line_no LIMIT 1`)
+      .all() as { word: string; surface_key: string }[];
+    // A synthetic row on a record the rules hide, to test the mechanism; the seed itself never writes one there.
+    db.exec(`INSERT INTO corrected_edge (record_id, release_id, sense_index, json_pointer, target_word, target_word_key, correction_id, evidence_url, base_evidence_url)
+             VALUES (${id}, '${RELEASE}', 0, '/senses/0/glosses/0', '${word}', '${key}', 'synthetic',
+                     'https://it.wiktionary.org/w/index.php?title=y&oldid=1', 'https://it.wiktionary.org/w/index.php?title=x&oldid=2')`);
+    const formsOf = async (): Promise<number[]> => {
+      const result = await lookup({ db: fromNodeSqlite(db), releaseId: RELEASE, query: word });
+      return result.outcome === "found" ? result.readings.flatMap((reading) => ("inflections" in reading ? reading.inflections.map((link) => link.recordId) : [])) : [];
+    };
+    assert.ok((await formsOf()).includes(id));
+    const plan = planHide(readerOf(db), found);
+    assert.doesNotMatch(plan.sql, /corrected_edge/);
+    db.exec("BEGIN");
+    db.exec(plan.sql);
+    db.exec("COMMIT");
+    assert.deepEqual(db.prepare("SELECT record_id FROM corrected_edge").all().map((row) => ({ ...row })), [{ record_id: id }]);
+    assert.ok(!(await formsOf()).includes(id));
+  } finally {
+    db.close();
+  }
+});
+
 test("the one-off update brings a dictionary seeded before both rules to what a seed now writes, and a second run plans nothing", async () => {
   const { db: before } = await seed("before", false, archiveBefore389);
   try {

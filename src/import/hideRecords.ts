@@ -4,7 +4,9 @@
 // `hidden_record` row, naming the rule and its evidence, and loses its
 // `lookup_form` and `form_of_edge` rows; the `accent_fold` and `typo_key` rows
 // of the keys they spelled are recomputed with the seed's rules. Nothing else
-// of the record is touched, `source_record_json` least of all.
+// of the record is touched, `source_record_json` least of all: a corrected
+// edge on it stays, and no lookup reads it (`correctedEdgeServed`,
+// src/lookup/correctedEdge.ts).
 //
 // The SQL is one file, run as one transaction, like an apply
 // (src/update/apply.ts). A record already hidden is left alone, so a second

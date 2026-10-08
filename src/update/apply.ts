@@ -11,14 +11,16 @@
 //   the later release, its line stored byte for byte;
 // - retires the record a `changed` change replaces: its lookup_form and
 //   form_of_edge rows go, so no search reaches it, and nothing else of it is
-//   touched, the rows written by hand beside it least of all;
+//   touched, the rows written by hand beside it least of all: its curated
+//   corrections stay, no lookup reads them (`correctedEdgeServed`,
+//   src/lookup/correctedEdge.ts), and the update reports them;
 // - recomputes the `accent_fold` and `typo_key` rows of every key those
 //   records spell, with the seed's own rules, writing only rows that change;
 // - records the later release ('partial', with its checksum), the master it
 //   feeds, and each change under its id.
 //
 // It never deletes a record, never touches a table written by hand beside the
-// records (raw_page, recovered_*, claim_review, corrected_claim), and never applies a lost
+// records (raw_page, recovered_*, claim_review, corrected_claim, corrected_edge), and never applies a lost
 // word: removing a record is not ruled.
 //
 // The file holds no DDL and changes no schema (#509): it writes into the
@@ -444,18 +446,24 @@ export interface NearbyEdits {
 /** Nothing to recompute: no key moved. */
 export const NO_NEARBY_EDITS: NearbyEdits = { deletes: [], accent: [], typo: [], replaced: { accent_fold: 0, typo_key: 0 } };
 
+/** Which of the tables a record's curated corrections are written to the master has: `corrected_claim` (#420), `corrected_edge` (#722). */
+const correctionTablesIn = (reader: MasterReader): string[] =>
+  select<{ name: string }>(reader, "SELECT name FROM sqlite_schema WHERE type = 'table' AND name IN ('corrected_claim', 'corrected_edge') ORDER BY name").map((row) => row.name);
+
 /** The curated corrections on the records `planned` changes retire, read where the master holds them. */
 function correctionsOn(reader: MasterReader, planned: readonly PlannedChange[]): RetiredCorrection[] {
   const replacing = new Map(
     planned.flatMap(({ change, recordId }) => (change.kind === "changed" ? [[change.master.recordId, { recordId, changeId: change.id }] as const] : [])),
   );
   if (replacing.size === 0) return [];
-  // A master seeded before #420 holds none until `correct:records` writes some.
-  if (select<{ name: string }>(reader, "SELECT name FROM sqlite_schema WHERE type = 'table' AND name = 'corrected_claim'").length === 0) return [];
+  // A master seeded before #420, or before #722, holds none until `correct:records` writes some.
+  const tables = correctionTablesIn(reader);
+  if (tables.length === 0) return [];
   return select<{ record_id: number; correction_id: string }>(
     reader,
-    `SELECT DISTINCT record_id, correction_id FROM corrected_claim
-      WHERE record_id IN (SELECT value FROM json_each(${json([...replacing.keys()])})) ORDER BY record_id`,
+    `SELECT record_id, correction_id FROM (${tables
+      .map((table) => `SELECT record_id, correction_id FROM ${table} WHERE record_id IN (SELECT value FROM json_each(${json([...replacing.keys()])}))`)
+      .join(" UNION ")}) ORDER BY record_id, correction_id`,
   ).map((row) => {
     const by = replacing.get(row.record_id) as { recordId: number; changeId: ChangeId };
     return { correctionId: row.correction_id, recordId: row.record_id, replacedBy: by.recordId, changeId: by.changeId };

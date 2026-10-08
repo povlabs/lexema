@@ -38,16 +38,19 @@ import { seedSql } from "../../src/import/seedSql.js";
 import { loadFixturePages } from "../../src/source/rawPage.js";
 import { compoundAuxiliary } from "../../src/italian/compoundAuxiliary.js";
 import { essereAgreement } from "../../src/italian/essereAgreement.js";
+import { glossBase } from "../../src/italian/formOfGlossEdge.js";
 import { fromNodeSqlite } from "../../src/lookup/database.js";
-import { entryKey, isFormOfReading, type Reading } from "../../src/lookup/types.js";
+import { entryKey, isFormOfReading, isSourceRef, type LemmaLink, type Reading } from "../../src/lookup/types.js";
+import { edgeCorrectionsAt } from "../../test/correctionFixture.js";
 import { seededDictionary } from "../../test/seededDictionary.js";
 import { phrasePageFacts, wordPageFacts } from "../../tools/wordPageShapes/facts.ts";
 import { shapeOf } from "../../tools/wordPageShapes/shape.ts";
 import { SHAPE_WORDS } from "./wordPageShapeWords.ts";
+import { wordPageProblems } from "@/builds/previewSmokeCommand.ts";
 import { Outcome, SearchPage } from "@/components/dictionary/SearchPage";
 import { FORM_LINES, JUMP_LINK } from "@/components/shared/styles.ts";
 import type { Conjugation } from "@/lib/dictionary/conjugation.ts";
-import { definitionsOf } from "@/lib/dictionary/definitions.ts";
+import { definitionsOf, type DefinitionItem } from "@/lib/dictionary/definitions.ts";
 import { phrasePage, type PhrasePage } from "@/lib/dictionary/phrasePage.ts";
 import { searchAttempt } from "@/lib/dictionary/searchAttempt.ts";
 import {
@@ -68,9 +71,15 @@ const RELEASE = "it-word-page-rules";
 
 const linesOf = async (file: string): Promise<string[]> => (await readFile(join(REPO, file), "utf8")).trimEnd().split("\n");
 
-/** The dev seed and the five companion fixtures, with the committed raw pages, seeded once for this file. */
-async function dictionary(): Promise<DatabaseSync> {
-  return seededDictionary("word-page-rules", async (outputDir) => {
+/**
+ * The dev seed and the five companion fixtures, with the committed raw pages,
+ * seeded once for this file: with the committed list's edges (ADR 0030, #722)
+ * on these lines, as the seed of it-0c432803 writes them and the page serves
+ * them, or, for the #707 census, as the source stated them when the census
+ * read the release (`as-censused`).
+ */
+async function dictionary(edges: "corrected" | "as-censused" = "corrected"): Promise<DatabaseSync> {
+  return seededDictionary(`word-page-rules-${edges}`, async (outputDir) => {
     const lines = [
       ...(await linesOf("fixtures/dev-seed.jsonl")),
       ...(await linesOf("fixtures/salivate.jsonl")),
@@ -90,6 +99,7 @@ async function dictionary(): Promise<DatabaseSync> {
       archiveR2Key: `releases/${RELEASE}.jsonl.gz`,
       license: "CC-BY-SA-4.0",
       rawPages: await loadFixturePages(join(REPO, "fixtures")),
+      corrections: edges === "corrected" ? edgeCorrectionsAt(lines, RELEASE) : [],
       onRejection: (rejection) => {
         throw new Error(`fixture line rejected: ${JSON.stringify(rejection)}`);
       },
@@ -583,6 +593,23 @@ const S4_NO_ETYMOLOGY: Rule = {
   },
 };
 
+const S4_BASE_TABLE: Rule = {
+  row: "§ 4 The base word's table.",
+  home: `${MANIFEST} (§ 4)`,
+  words: ["smentita"],
+  // A table the page draws fills a cell: a base word's conjugation none of
+  // whose forms fills one is not drawn, so no Forms row is dashes only (#674).
+  check: (p) => wordPageProblems(p.html, p.query).filter((problem) => problem.endsWith("a Forms row of dashes only")),
+  named: {
+    // smentito's one record is a participle whose forms are its agreement: its
+    // block keeps smentito's meaning and draws no Forms of smentito.
+    smentita: (p) => [
+      ...(textOf(p.html).includes("participio passato di smentire, smentirsi") ? [] : ["smentita's block drops smentito's meaning"]),
+      ...(/Forms of<span[^>]*>smentito</.test(p.html) ? ["smentita draws Forms of smentito"] : []),
+    ],
+  },
+};
+
 const S4_NO_RECORD: Rule = {
   row: "§ 4 A form no record describes (P3).",
   home: `${MANIFEST} (§ 4)`,
@@ -731,22 +758,53 @@ const S2_APOSTROPHES: Rule = {
   check: jumpLinkProblems,
 };
 
-/** The word a gloss names after its first "di": `plurale di aereo`, `plurale di parto, nell'accezione di …`. */
-const glossBase = (gloss: string): string | undefined => /(?:^|\s)di\s+([\p{L}'’]+)/u.exec(gloss)?.[1];
+/**
+ * The senses whose lines an entry shows, each with its record: a form block's
+ * form lines, a verb block's source lines, and any other reading's every
+ * sense. A record split across blocks, or a verb form record's lines across
+ * verbs, shows each sense in one entry only.
+ */
+function sensesShownIn(entry: ShownEntry): { record: Reading; sense: Reading["senses"][number] }[] {
+  const ofItem = (record: Reading, item: DefinitionItem) => (item.from === "record" ? [{ record, sense: item.sense }] : []);
+  if (entry.kind === "verb-form") return entry.lines.flatMap((line) => (line.kind === "source" ? ofItem(line.reading, line.item) : []));
+  if (entry.kind !== "source") return [];
+  if (entry.role !== "form-of") return entry.reading.senses.map((sense) => ({ record: entry.reading, sense }));
+  return entry.parts.flatMap((part) =>
+    part.kind === "form-lines" ? part.records.flatMap(({ reading, text }) => (text.kind === "definitions" ? text.items.flatMap((item) => ofItem(reading, item)) : [])) : [],
+  );
+}
+
+/**
+ * Whether `link` is a `form_of` edge the source states on sense `sense`, read
+ * at `/senses/<sense>/form_of/<i>/word`; an edge a correction set is read at
+ * the gloss that names its word (ADR 0030).
+ */
+const isSourceEdgeOn = (link: LemmaLink, sense: number): boolean =>
+  isSourceRef(link.ref) && new RegExp(`^/senses/${sense}/form_of/\\d+/word$`).test(link.ref.jsonPointer);
+
+/** The words ADR 0030 names for its edges: each base word their glosses name must be found, or the check proves nothing. */
+const EDGE_WORDS = ["aerei", "costruttori", "parti"];
+
+/** The page is one block, about `base`, with no reading list. */
+const oneBlockAbout = (base: string) => (p: SearchedPage): Problems =>
+  p.kind === "word" ? [...assertEqual(p.page.readings.map(baseWordOf), [base]), ...links(false)(p)] : ["no word page"];
 
 const ADR_0030_EDGES: Rule = {
   row: "ADR 0030: a form_of edge added or fixed when the gloss names X after \"di\" and X's own table lists the word (Q7 to Q9).",
   home: ".decisions/0030-corrections-may-fix-edges-and-cells.md",
-  words: ["aerei", "costruttori", "parti"],
-  todo: "#722",
-  // Every line of a record about the word whose gloss names X after "di", where
-  // X's own table lists the word, sits in X's block or draws X's table.
+  words: EDGE_WORDS,
+  // Every line of a form record about the word that the source leaves with no
+  // edge, whose gloss names X after "di" as a form's gloss does (rule
+  // `it-form-of-gloss-edge/v1`) and whose word X's own table lists, sits in
+  // X's block or draws X's table. A line whose source edge names another word
+  // stays as the source states it unless a ruling fixed it (question 9), so
+  // only an edge a correction set counts. On the rule's own words a base word
+  // the lookup does not find is a problem: a missing record would otherwise
+  // leave the check nothing to hold.
   async check(p, lookup) {
     if (p.kind !== "word") return [];
     const problems: Problems = [];
     for (const entry of p.page.readings) {
-      const records: Reading[] =
-        entry.kind === "source" ? [entry.reading, ...(entry.role === "form-of" ? entry.also : [])] : entry.kind === "verb-form" ? entry.sources.map((source) => source.reading) : [];
       const named = new Set<string>([baseWordOf(entry)]);
       if (entry.kind === "source") {
         for (const part of entry.parts) {
@@ -754,16 +812,38 @@ const ADR_0030_EDGES: Rule = {
           if (part.kind === "lemma-lines") for (const word of part.words) named.add(word);
         }
       }
-      for (const record of records) {
-        for (const gloss of record.senses.flatMap((sense) => sense.glosses)) {
-          const base = glossBase(gloss.text);
-          if (base === undefined || base === p.query || named.has(base)) continue;
-          const listed = (await lookup.recordsOf(base)).some((reading) => reading.forms.some((form) => form.surface === p.query));
-          if (listed) problems.push(`"${gloss.text}" is not in ${base}'s block`);
-        }
+      for (const { record, sense } of sensesShownIn(entry)) {
+        const [gloss] = sense.glosses;
+        const read = gloss === undefined ? undefined : glossBase(gloss.text);
+        if (!record.isAboutQuery || gloss === undefined || read === undefined || !read.formOpening || read.base === record.word) continue;
+        if (record.lemmaLinks.some((link) => isSourceEdgeOn(link, sense.index))) continue;
+        const bases = await lookup.recordsOf(read.base);
+        if (EDGE_WORDS.includes(p.query) && bases.length === 0) problems.push(`${read.base}, which "${gloss.text}" names, has no record here`);
+        if (named.has(read.base)) continue;
+        if (bases.some((base) => base.forms.some((form) => form.surface === record.word))) problems.push(`"${gloss.text}" is not in ${read.base}'s block`);
       }
     }
     return problems;
+  },
+  named: {
+    aerei: oneBlockAbout("aereo"),
+    costruttori: oneBlockAbout("costruttore"),
+    // A parto block holding parti's two lines about parto, and a parte block holding neither.
+    parti: (p) => {
+      if (p.kind !== "word") return ["no word page"];
+      const blockOf = (base: string) => p.page.readings.find((entry) => baseWordOf(entry) === base);
+      const parto = blockOf("parto");
+      const parte = blockOf("parte");
+      const partoLines = ["nell'accezione di atto biologico", "nell'accezione di persona della popolazione dei Parti"];
+      return [
+        ...(parto === undefined
+          ? ["no parto block"]
+          : partoLines.filter((line) => !textOf(articleOf(p.html, parto)).includes(line)).map((line) => `parto's block lacks "${line}"`)),
+        ...(parte === undefined
+          ? ["no parte block"]
+          : partoLines.filter((line) => textOf(articleOf(p.html, parte)).includes(line)).map((line) => `parte's block holds "${line}"`)),
+      ];
+    },
   },
 };
 
@@ -807,6 +887,7 @@ const RULES: readonly Rule[] = [
   S4_MERGED_BLOCK,
   S4_NO_OWN_FORMS,
   S4_NO_ETYMOLOGY,
+  S4_BASE_TABLE,
   S4_NO_RECORD,
   S4_ADJECTIVE_AND_VERB,
   S5_WORD_FACTS,
@@ -860,6 +941,28 @@ const PARTS_A_FIX_REMOVES: Record<string, Rule> = {
   "a verb block and a noun or adjective block about one word": S4_ADJECTIVE_AND_VERB,
 };
 
+/** A noun or adjective form block that names a second base word (`shape.ts`). */
+const SECOND_BASE_WORD = "form-of 2+ base words";
+
+/**
+ * The census shapes whose word a built fix takes a part off, where other
+ * shapes keep that part for another cause. A noun or adjective form whose
+ * lines name two base words, each of whose tables lists it, shows a block per
+ * base word (Q9 of #708; #722), so no block of `geni` names a second base word
+ * any more; `instillare`'s verb form still names one by a lemma line.
+ */
+const SHAPES_A_FIX_TAKES_APART: Record<string, { part: string; fix: Rule }> = Object.fromEntries(
+  [
+    "form-of 2+ base words · form-of noun · 1 reading · no links",
+    "form-of 2+ base words · form-of noun · verb-form · 2 readings, 2+ words · links",
+    "form-of 2+ base words · form-of adjective · verb-form · 2 readings, 2+ words · links",
+    "form-of 2+ base words · form-of noun · verb-form · 3+ readings · links",
+    "form-of 2+ base words · form-of adjective · 1 reading · no links",
+    "form-of 2+ base words · form-of adjective · form-of noun · 2 readings, 2+ words · links",
+    "form-of 2+ base words · form-of noun · own noun · 2 readings, 2+ words · links",
+  ].map((shape) => [shape, { part: SECOND_BASE_WORD, fix: ADR_0030_EDGES }]),
+);
+
 /** The fix not built yet that takes a part of `shape` off the page, if one does. */
 const pendingFixOf = (shape: string): Rule | undefined =>
   shape.split(" · ").map((part) => PARTS_A_FIX_REMOVES[part]).find((fix) => fix !== undefined && fix.todo !== undefined);
@@ -886,12 +989,19 @@ test("every shape the #707 census found has one real word here whose page has th
     [],
     "a word for a shape the census did not find",
   );
-  const db = await dictionary();
+  // The census read the release before #722's edges; with them, a form record
+  // the source left without an edge is no longer a reading of its own (`aerei`).
+  const db = await dictionary("as-censused");
   try {
     const wrong: Record<string, string> = {};
     for (const shape of CENSUS_SHAPES) {
       const word = SHAPE_WORDS[shape];
       const found = await shapeOfSearch(db, word);
+      const apart = SHAPES_A_FIX_TAKES_APART[shape];
+      if (apart !== undefined && apart.fix.todo === undefined) {
+        if (found.parts.includes(apart.part)) wrong[`${word} · ${shape}`] = found.key;
+        continue;
+      }
       // A part a built fix removes is gone from the page, so the word now has another shape.
       const removed = shape.split(" · ").filter((part) => PARTS_A_FIX_REMOVES[part] !== undefined && PARTS_A_FIX_REMOVES[part].todo === undefined);
       if (removed.length > 0 ? removed.some((part) => found.parts.includes(part)) : found.key !== shape) wrong[`${word} · ${shape}`] = found.key;
