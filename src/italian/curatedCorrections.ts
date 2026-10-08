@@ -53,9 +53,14 @@
 // from: the record's own page, which shows the gloss (`edge.gloss`), and the
 // word's page, whose table lists it (`evidence`; Huey's ruling of 2026-10-08,
 // https://github.com/povlabs/lexema/issues/722#issuecomment-6058471600). Rule
-// `it-form-of-gloss-edge/v1` (formOfGlossEdge.ts) makes the added edges from
-// its pinned scan (formOfGlossEdgeEvidence.ts); the two fixed ones are hand
-// entries. The seed writes each as a `corrected_edge` row, a hidden record
+// `it-form-of-gloss-edge/v1` (formOfGlossEdge.ts) made the added edges from
+// its pinned scan (formOfGlossEdgeEvidence.ts); `parti`'s two fixed ones are
+// hand entries. Huey ruled on 2026-10-08 (#733,
+// https://github.com/povlabs/lexema/issues/733#issuecomment-6066281058) to fix
+// every other edge that names another word under the same two conditions, so
+// `it-form-of-gloss-edge/v2` makes v1's edges and replaces those too, each
+// keeping the source's edge verbatim (`edge.replaces`), as `parti`'s entries
+// do. The seed writes each as a `corrected_edge` row, a hidden record
 // gets none, and a lookup reads it in place of the sense's own edges
 // (src/lookup/correctedEdge.ts).
 //
@@ -614,8 +619,8 @@ export const HAND_CORRECTIONS: readonly CuratedCorrection[] = [
 /**
  * The committed list: the hand entries, then the corrections rule
  * `it-plural-gloss-number/v3` makes from its pinned evidence (#483, #515, #516), in archive
- * order, then the edges rule `it-form-of-gloss-edge/v1` adds (#722), in
- * archive order. A record a hand entry names is never also corrected by the
+ * order, then the edges rule `it-form-of-gloss-edge/v2` adds or replaces
+ * (#722, #733), in archive order. A record a hand entry names is never also corrected by the
  * first rule, and a sense a hand entry sets never by the second.
  */
 export const CURATED_CORRECTIONS: readonly CuratedCorrection[] = [

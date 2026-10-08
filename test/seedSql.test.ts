@@ -307,11 +307,12 @@ test("the fifty-word dev seed is one part with the same rows", async () => {
       sense: 1776, sense_gloss: 1760, sense_label: 857, grammar_claim: 48170,
       raw_page: 20, recovered_definition: 10, recovered_label: 6, recovered_example: 7, hidden_record: 0,
       // The curated corrections whose lines the fixture holds, keyed to its
-      // own (#742): seven records' gender or number and 78 senses' edges. The
+      // own (#742): seven records' gender or number and 86 senses' edges, 8 of
+      // them replacing an edge that names another word (#733). The
       // one table-cell entry's line, `assorbire`'s, is not in the fixture.
       corrected_claim: 7,
       corrected_form: 0,
-      corrected_edge: 78,
+      corrected_edge: 86,
       // Only the fixture pages on the committed list of it-0c432803's
       // record-less titles are page-only candidates (#499): 20 of them, of
       // which 17 recover (`lungo` as two entries), `grufolare` and `tremare`
@@ -338,12 +339,12 @@ test("the dev seed writes the committed corrections the fixture holds, keyed to 
   try {
     const { held, leftOut } = devCorrections;
     const keyed = held.filter((correction) => correction.record !== undefined);
-    assert.equal(keyed.length, 85);
+    assert.equal(keyed.length, 93);
     // Entries whose archive lines the fixture does not carry, `fissazione`'s and `assorbire`'s among them.
     const leftOutWords = new Set(leftOut.map((correction) => correction.record?.word));
     for (const word of ["fissazione", "assorbire"]) assert.ok(leftOutWords.has(word), word);
     const report = await devSeed(join(dir, "sql"));
-    assert.deepEqual(report.corrections, { keyed: 85, applied: 85, unapplied: [] });
+    assert.deepEqual(report.corrections, { keyed: 93, applied: 93, unapplied: [] });
     const db = openSeed(report.parts, ":memory:");
     try {
       const edges = db.prepare(
@@ -360,7 +361,7 @@ test("the dev seed writes the committed corrections the fixture holds, keyed to 
       assert.match(idOf("costruttori", 0), /^it-dev:\d+\/senses\/0$/);
       // Every row is keyed to the fixture; no entry left out reaches the SQL.
       const ids = db.prepare("SELECT correction_id AS id FROM corrected_edge UNION ALL SELECT correction_id FROM corrected_claim").all().map((row) => row.id as string);
-      assert.equal(ids.length, 85);
+      assert.equal(ids.length, 93);
       assert.ok(ids.every((id) => id.startsWith("it-dev:")), ids.join(", "));
     } finally { db.close(); }
   } finally { await rm(dir, { recursive: true, force: true }); }
