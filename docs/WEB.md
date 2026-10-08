@@ -68,6 +68,7 @@ web/components/developers/dashboard/Dashboard.tsx  the dashboard's markup; what 
 src/lookup/                                the query layer, shared with the importer's tests
 web/test/page.test.tsx                     the page, rendered over a fixture release
 web/test/wordPageRules.test.tsx            one page-wide check per word-page rule, on real words; a rule not built is a todo
+web/test/wordPageShapeWords.ts             one real word for each page shape of the #707 census, which those checks run on
 web/test/rateLimit.test.ts                 the limits, with a fake binding
 web/test/dashboard.test.ts                 the dashboard's actions and pages, their CSRF and session checks
 web/test/signedIn.test.tsx                 sign-in, the dashboard and its two dialogs, rendered

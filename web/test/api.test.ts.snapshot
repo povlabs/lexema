@@ -4,7 +4,7 @@ exports[`bello's whole /lookup answer is the one the snapshot holds (#385) 1`] =
   "release_id": "it-api-test",
   "results": [
     {
-      "id": "it-api-test:92",
+      "id": "it-api-test:152",
       "word": "bello",
       "pos": "adj",
       "pos_title": "Aggettivo",
@@ -270,7 +270,7 @@ exports[`bello's whole /lookup answer is the one the snapshot holds (#385) 1`] =
       }
     },
     {
-      "id": "it-api-test:93",
+      "id": "it-api-test:153",
       "word": "bello",
       "pos": "noun",
       "pos_title": "Sostantivo",
@@ -490,7 +490,7 @@ exports[`bello's whole /lookup answer is the one the snapshot holds (#385) 1`] =
       }
     },
     {
-      "id": "it-api-test:94",
+      "id": "it-api-test:154",
       "word": "bello",
       "pos": "noun",
       "pos_title": "Sostantivo",
@@ -704,7 +704,7 @@ exports[`bello's whole /lookup answer is the one the snapshot holds (#385) 1`] =
       }
     },
     {
-      "id": "it-api-test:121",
+      "id": "it-api-test:354",
       "word": "bellissimo",
       "pos": "adj",
       "pos_title": "Aggettivo, forma flessa",
@@ -788,7 +788,7 @@ exports[`bello's whole /lookup answer is the one the snapshot holds (#385) 1`] =
       }
     },
     {
-      "id": "it-api-test:155",
+      "id": "it-api-test:468",
       "word": "bella",
       "pos": "adj",
       "pos_title": "Aggettivo, forma flessa",
@@ -993,7 +993,7 @@ exports[`bello's whole /lookup answer is the one the snapshot holds (#385) 1`] =
       }
     },
     {
-      "id": "it-api-test:157",
+      "id": "it-api-test:470",
       "word": "belli",
       "pos": "adj",
       "pos_title": "Aggettivo, forma flessa",
@@ -1136,7 +1136,7 @@ exports[`bello's whole /lookup answer is the one the snapshot holds (#385) 1`] =
       }
     },
     {
-      "id": "it-api-test:158",
+      "id": "it-api-test:471",
       "word": "bellissime",
       "pos": "adj",
       "pos_title": "Aggettivo, forma flessa",
@@ -1216,7 +1216,7 @@ exports[`bello's whole /lookup answer is the one the snapshot holds (#385) 1`] =
       }
     },
     {
-      "id": "it-api-test:159",
+      "id": "it-api-test:472",
       "word": "bellissimi",
       "pos": "adj",
       "pos_title": "Aggettivo, forma flessa",
@@ -1296,7 +1296,7 @@ exports[`bello's whole /lookup answer is the one the snapshot holds (#385) 1`] =
       }
     },
     {
-      "id": "it-api-test:194",
+      "id": "it-api-test:651",
       "word": "bellissima",
       "pos": "adj",
       "pos_title": "Aggettivo, forma flessa",
@@ -1376,7 +1376,7 @@ exports[`bello's whole /lookup answer is the one the snapshot holds (#385) 1`] =
       }
     },
     {
-      "id": "it-api-test:205",
+      "id": "it-api-test:723",
       "word": "belle",
       "pos": "adj",
       "pos_title": "Aggettivo, forma flessa",

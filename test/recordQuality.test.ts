@@ -3,7 +3,9 @@
 // now verifies. Every record is a verbatim archive line: the twelve's words
 // from fixtures/dev-seed.jsonl, the rest from fixtures/quality-regressions.jsonl
 // (archive lines 196 `gallo`, 43791 `palo`, 139668 `vogare`, 140523 `voga`,
-// 226888 `raccontavo`, 429722 `rifritto`, 56392 `balzana`). No case needs `it-extract.jsonl.gz`.
+// 226888 `raccontavo`, 429722 `rifritto`, 56392 `balzana`). `palo` is in the
+// dev seed too (#709), and a line in both files is read once. No case needs
+// `it-extract.jsonl.gz`.
 //
 // The cases for #400 — the measurement reads the gloss text the page shows,
 // not the archive's — use fixtures/headword-echo.jsonl (archive lines 31614
@@ -42,11 +44,9 @@ interface ArchiveLine extends QualityRecord {
   senses: (QualityRecord["senses"][number] & { glosses?: string[]; raw_tags?: string[] })[];
 }
 
-/** Lines as the archive parser admits them: `forms` and every sense's `form_of` always arrays. */
-function read(file: string): ArchiveLine[] {
-  return readFileSync(resolve(file), "utf8")
-    .trim()
-    .split("\n")
+/** Lines as the archive parser admits them: `forms` and every sense's `form_of` always arrays. A line in two files is one record. */
+function read(...files: string[]): ArchiveLine[] {
+  return [...new Set(files.flatMap((file) => readFileSync(resolve(file), "utf8").trim().split("\n")))]
     .map((line) => {
       const record = JSON.parse(line);
       return {
@@ -57,7 +57,7 @@ function read(file: string): ArchiveLine[] {
     });
 }
 
-const records = [...read("fixtures/dev-seed.jsonl"), ...read("fixtures/quality-regressions.jsonl")];
+const records = read("fixtures/dev-seed.jsonl", "fixtures/quality-regressions.jsonl");
 const all = (word: string, pos?: string) => records.filter((record) => record.word === word && (pos === undefined || record.pos === pos));
 const one = (word: string, pos: string) => {
   const found = all(word, pos);

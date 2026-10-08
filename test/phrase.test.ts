@@ -473,7 +473,7 @@ test("every phrase offered finds each headword it names, for every multi-word he
       .prepare("SELECT DISTINCT surface_key FROM lookup_form WHERE release_id = ? AND origin = 'headword' AND surface_key LIKE '% %'")
       .all(RELEASE) as { surface_key: string }[]
   ).map((row) => row.surface_key);
-  assert.equal(headwords.length, 13, headwords.join(", "));
+  assert.equal(headwords.length, 21, headwords.join(", "));
   const formsOf = sqlite.prepare(
     `SELECT DISTINCT lf.surface_key FROM form_of_edge e
        JOIN lookup_form lf ON lf.record_id = e.record_id AND lf.origin = 'headword'

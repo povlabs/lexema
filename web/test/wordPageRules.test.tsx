@@ -5,7 +5,8 @@
 // `wordPage()` or `phrasePage()` model the search builds, and the HTML the page
 // renders from it. A check reads every reading of the page, never one word's
 // snapshot, so it holds for any word it is given. Each rule runs on the words
-// the manifest and the #707 census name for it.
+// the manifest and the #707 census name for it, and every built rule runs on
+// one real word for each shape the census found (wordPageShapeWords.ts).
 //
 // A rule whose fix is not built yet is a `node:test` todo naming its fix
 // issue: the check runs, and its failure is reported, not counted. The fix
@@ -17,12 +18,16 @@
 // salivate's and salivare's from `fixtures/salivate.jsonl`, which page.test.tsx
 // adds to the dev seed; citto's from `fixtures/citto.jsonl`, which would take
 // away the dev seed's accent-offer page; assorbire's from
-// `fixtures/essere-compound-cells.jsonl`, which page.test.tsx adds too; and
-// calabra's and zurlò's from `fixtures/no-base-record.jsonl`, whose base words
-// have no record, since the dev seed holds no edge without a target.
+// `fixtures/essere-compound-cells.jsonl`, which page.test.tsx adds too;
+// sfocato's from `fixtures/sfocato.jsonl`, which pageStatements.test.ts adds;
+// and the words of `fixtures/no-base-record.jsonl`, such as calabra and zurlò,
+// one of whose form_of edges names a word with no record, since the dev seed
+// holds no edge without a target. The raw pages are the ones committed under
+// `fixtures/`, as the dev seed reads them when no dump is cached.
 
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFileSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -30,6 +35,7 @@ import type { DatabaseSync } from "node:sqlite";
 import { gzipSync } from "node:zlib";
 import { renderToStaticMarkup } from "react-dom/server";
 import { seedSql } from "../../src/import/seedSql.js";
+import { loadFixturePages } from "../../src/source/rawPage.js";
 import { compoundAuxiliary } from "../../src/italian/compoundAuxiliary.js";
 import { essereAgreement } from "../../src/italian/essereAgreement.js";
 import { fromNodeSqlite } from "../../src/lookup/database.js";
@@ -37,6 +43,7 @@ import { entryKey, isFormOfReading, type Reading } from "../../src/lookup/types.
 import { seededDictionary } from "../../test/seededDictionary.js";
 import { phrasePageFacts, wordPageFacts } from "../../tools/wordPageShapes/facts.ts";
 import { shapeOf } from "../../tools/wordPageShapes/shape.ts";
+import { SHAPE_WORDS } from "./wordPageShapeWords.ts";
 import { Outcome, SearchPage } from "@/components/dictionary/SearchPage";
 import { FORM_LINES, JUMP_LINK } from "@/components/shared/styles.ts";
 import type { Conjugation } from "@/lib/dictionary/conjugation.ts";
@@ -61,7 +68,7 @@ const RELEASE = "it-word-page-rules";
 
 const linesOf = async (file: string): Promise<string[]> => (await readFile(join(REPO, file), "utf8")).trimEnd().split("\n");
 
-/** The dev seed and the four companion fixtures, seeded once for this file. */
+/** The dev seed and the five companion fixtures, with the committed raw pages, seeded once for this file. */
 async function dictionary(): Promise<DatabaseSync> {
   return seededDictionary("word-page-rules", async (outputDir) => {
     const lines = [
@@ -69,6 +76,7 @@ async function dictionary(): Promise<DatabaseSync> {
       ...(await linesOf("fixtures/salivate.jsonl")),
       ...(await linesOf("fixtures/citto.jsonl")),
       ...(await linesOf("fixtures/essere-compound-cells.jsonl")),
+      ...(await linesOf("fixtures/sfocato.jsonl")),
       ...(await linesOf("fixtures/no-base-record.jsonl")),
     ];
     await mkdir(outputDir, { recursive: true });
@@ -81,6 +89,7 @@ async function dictionary(): Promise<DatabaseSync> {
       releaseId: RELEASE,
       archiveR2Key: `releases/${RELEASE}.jsonl.gz`,
       license: "CC-BY-SA-4.0",
+      rawPages: await loadFixturePages(join(REPO, "fixtures")),
       onRejection: (rejection) => {
         throw new Error(`fixture line rejected: ${JSON.stringify(rejection)}`);
       },
@@ -660,16 +669,6 @@ const RULES: readonly Rule[] = [
   ADR_0030_CELLS,
 ];
 
-/**
- * Words the #707 census names for shapes no rule above names a word for: an
- * empty reading of two (`innanzi`), another word's record (`Daria`), a form of
- * two base words (`geni`), a verb form whose verb has no record (`zurlò`), a
- * record headed as a form with no edge (`abbattette`, `vuote`, `gommiste`), a
- * form of a proper name (`Russie`), and an expression page of two readings
- * (`zuppa inglesi`).
- */
-const SHAPE_WORDS = ["innanzi", "Daria", "geni", "zurlò", "abbattette", "vuote", "gommiste", "Russie", "zuppa inglesi"] as const;
-
 function assertEqual<T>(actual: readonly T[], expected: readonly T[]): Problems {
   return JSON.stringify(actual) === JSON.stringify(expected) ? [] : [`${JSON.stringify(actual)}, expected ${JSON.stringify(expected)}`];
 }
@@ -692,70 +691,109 @@ for (const rule of RULES) {
   });
 }
 
-/** The words of rules that are built, and the census's shape words: each page must keep every built rule. */
-const ASSERTED = RULES.filter((rule) => rule.todo === undefined);
-const TODO_WORDS = new Set(RULES.flatMap((rule) => (rule.todo === undefined ? [] : rule.words)));
-const PAGE_WORDS = [...new Set([...ASSERTED.flatMap((rule) => rule.words), ...SHAPE_WORDS])].filter((word) => !TODO_WORDS.has(word));
+// One real word per census shape ---------------------------------------------------
 
-test("every word here keeps every rule that is built, not only its own (#709)", async () => {
-  const db = await dictionary();
-  try {
-    const lookup = lookupOf(db);
-    const broken: Record<string, Problems> = {};
-    for (const word of PAGE_WORDS) {
-      const p = await searched(db, word);
-      for (const rule of ASSERTED) {
-        const problems = await rule.check(p, lookup);
-        if (problems.length > 0) broken[`${word} · ${rule.row}`] = problems;
-      }
-    }
-    assert.deepEqual(broken, {});
-  } finally {
-    db.close();
-  }
-});
-
-interface CensusShape {
-  shape: string;
-}
 interface Census {
-  headwords: { shapes: CensusShape[] };
-  expressionSearches: { shapes: CensusShape[] };
+  headwords: { shapes: { shape: string }[] };
+  expressionSearches: { shapes: { shape: string }[] };
 }
 
-/** The parts of a census shape: its key without the jump-link mark. */
-const partsOfShape = (shape: string): string[] => (shape.startsWith("no page") ? [] : shape.split(" · ").filter((part) => part !== "links" && part !== "no links"));
+const census = JSON.parse(readFileSync(join(REPO, "reports/2026-10-07-word-page-shapes.json"), "utf8")) as Census;
+/** Every shape the #707 census found, headword pages and expression searches together, each once. */
+const CENSUS_SHAPES = [...new Set([...census.headwords.shapes, ...census.expressionSearches.shapes].map(({ shape }) => shape))];
 
 /**
- * The census parts a rule not built yet takes off the page once its fix lands:
- * until then its todo words carry them, and after it no page has them.
+ * The census parts a rule not built yet takes off the page once its fix lands.
+ * Until then a shape with the part breaks that rule, so its word is checked
+ * under the fix's todo; once the fix is built, its word no longer has the part
+ * and keeps every built rule like any other.
  */
 const PARTS_A_FIX_REMOVES: Record<string, Rule> = {
   "two blocks about one word": S4_NO_BASE_RECORD,
   "a verb block and a noun or adjective block about one word": S4_ADJECTIVE_AND_VERB,
 };
 
-test("every part of every shape the #707 census found is on a page here that keeps every built rule, or on a todo word until its fix lands", async () => {
-  const census = JSON.parse(await readFile(join(REPO, "reports/2026-10-07-word-page-shapes.json"), "utf8")) as Census;
-  const parts = new Set([...census.headwords.shapes, ...census.expressionSearches.shapes].flatMap(({ shape }) => partsOfShape(shape)));
+/** The fix not built yet that takes a part of `shape` off the page, if one does. */
+const pendingFixOf = (shape: string): Rule | undefined =>
+  shape.split(" · ").map((part) => PARTS_A_FIX_REMOVES[part]).find((fix) => fix !== undefined && fix.todo !== undefined);
+
+/** A shape with no page: the search finds nothing, so no rule has a page to read. */
+const NO_PAGE = "no page (not-found)";
+
+/** The shape `word`'s search opens, read as the census reads it. */
+async function shapeOfSearch(db: DatabaseSync, word: string): Promise<{ key: string; parts: string[] }> {
+  const attempt = await searchAttempt(fromNodeSqlite(db), RELEASE, word);
+  if (attempt.outcome !== "found") return shapeOf({ word, page: "none", outcome: attempt.outcome });
+  if (attempt.route.kind === "phrase") return shapeOf(phrasePageFacts(word, phrasePage(word, attempt.route, attempt.readings)));
+  return shapeOf(wordPageFacts(word, wordPage(word, attempt.readings, attempt.lemmas, attempt.route)));
+}
+
+test("every shape the #707 census found has one real word here whose page has that shape (#709)", async () => {
+  assert.deepEqual(
+    CENSUS_SHAPES.filter((shape) => SHAPE_WORDS[shape] === undefined),
+    [],
+    "a census shape with no word",
+  );
+  assert.deepEqual(
+    Object.keys(SHAPE_WORDS).filter((shape) => !CENSUS_SHAPES.includes(shape)),
+    [],
+    "a word for a shape the census did not find",
+  );
   const db = await dictionary();
   try {
-    const carried = new Map<string, string[]>();
-    for (const word of [...PAGE_WORDS, ...TODO_WORDS]) {
-      const p = await searched(db, word);
-      const facts = p.kind === "word" ? wordPageFacts(word, p.page) : phrasePageFacts(word, p.page);
-      for (const part of shapeOf(facts).parts) carried.set(part, [...(carried.get(part) ?? []), word]);
+    const wrong: Record<string, string> = {};
+    for (const shape of CENSUS_SHAPES) {
+      const word = SHAPE_WORDS[shape];
+      const found = await shapeOfSearch(db, word);
+      // A part a built fix removes is gone from the page, so the word now has another shape.
+      const removed = shape.split(" · ").filter((part) => PARTS_A_FIX_REMOVES[part] !== undefined && PARTS_A_FIX_REMOVES[part].todo === undefined);
+      if (removed.length > 0 ? removed.some((part) => found.parts.includes(part)) : found.key !== shape) wrong[`${word} · ${shape}`] = found.key;
     }
-    const uncovered = [...parts].filter((part) => {
-      const words = carried.get(part) ?? [];
-      if (words.some((word) => !TODO_WORDS.has(word))) return false;
-      const fix = PARTS_A_FIX_REMOVES[part];
-      if (fix === undefined) return true;
-      // Built: the part is gone from the law's pages. Not built: its todo words carry it.
-      return fix.todo !== undefined && !words.some((word) => fix.words.includes(word));
-    });
-    assert.deepEqual(uncovered, []);
+    assert.deepEqual(wrong, {});
   } finally {
     db.close();
   }
 });
+
+/** The words of rules that are built, and each census shape's word: each page must keep every built rule. */
+const ASSERTED = RULES.filter((rule) => rule.todo === undefined);
+const TODO_WORDS = new Set(RULES.flatMap((rule) => (rule.todo === undefined ? [] : rule.words)));
+const SHAPE_PAGE_WORDS = CENSUS_SHAPES.filter((shape) => shape !== NO_PAGE && pendingFixOf(shape) === undefined).map((shape) => SHAPE_WORDS[shape]);
+const PAGE_WORDS = [...new Set([...ASSERTED.flatMap((rule) => rule.words).filter((word) => !TODO_WORDS.has(word)), ...SHAPE_PAGE_WORDS])];
+
+async function brokenRules(db: DatabaseSync, words: readonly string[]): Promise<Record<string, Problems>> {
+  const lookup = lookupOf(db);
+  const broken: Record<string, Problems> = {};
+  for (const word of words) {
+    const p = await searched(db, word);
+    for (const rule of ASSERTED) {
+      const problems = await rule.check(p, lookup);
+      if (problems.length > 0) broken[`${word} · ${rule.row}`] = problems;
+    }
+  }
+  return broken;
+}
+
+test("every word here, one for each census shape among them, keeps every rule that is built, not only its own (#709)", async () => {
+  const db = await dictionary();
+  try {
+    assert.deepEqual(await brokenRules(db, PAGE_WORDS), {});
+  } finally {
+    db.close();
+  }
+});
+
+// A census shape a fix not built yet takes apart: its word breaks that fix's
+// rule today, so it keeps every built rule only once the fix lands.
+for (const fix of new Set(Object.values(PARTS_A_FIX_REMOVES))) {
+  const words = CENSUS_SHAPES.filter((shape) => pendingFixOf(shape) === fix).map((shape) => SHAPE_WORDS[shape]);
+  if (words.length === 0) continue;
+  test(`the census shapes ${fix.todo} takes apart keep every built rule once it lands: ${words.join(", ")}`, { todo: fix.todo }, async () => {
+    const db = await dictionary();
+    try {
+      assert.deepEqual(await brokenRules(db, words), {});
+    } finally {
+      db.close();
+    }
+  });
+}
