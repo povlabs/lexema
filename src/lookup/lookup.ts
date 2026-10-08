@@ -197,6 +197,7 @@ export async function exists({ db, releaseId, query }: LookupOptions): Promise<E
   const { key } = prepared.query;
   const word =
     first?.record_word ??
+    (await correctedCellHits(db, releaseId, key, tables))[0]?.record_word ??
     (await pages.candidates(key))[0]?.word ??
     (await phraseHits(db, releaseId, key))?.hits[0].record_word ??
     (await agreementHits(db, releaseId, key, tables))?.hits[0].record_word;
@@ -249,11 +250,20 @@ export async function lookup({ db, releaseId, query }: LookupOptions): Promise<L
   const edges = tables.edgeCorrections;
 
   const pageReadings = pages.readings(key);
-  if (hits.length > 0) {
-    const [result, read] = await Promise.all([found(db, releaseId, pages, queryInfo, release, hits, { kind: "surface" }, corrected, edges), pageReadings]);
+  // A curated table cell spelled as the query (#743) is read once the tables
+  // say the master keys them, beside the page entries. A lookup the source's
+  // spellings already found builds its readings meanwhile, and builds them
+  // again only when a cell adds a row: no cell spells most queries.
+  const cells = handled(correctedCellHits(db, releaseId, key, tables));
+  const sourceOnly = hits.length > 0 ? handled(found(db, releaseId, pages, queryInfo, release, hits, { kind: "surface" }, corrected, edges)) : undefined;
+  const [cellRows, read] = await Promise.all([cells, pageReadings]);
+  if (hits.length > 0 || cellRows.length > 0) {
+    const result = await (sourceOnly !== undefined && cellRows.length === 0
+      ? sourceOnly
+      : found(db, releaseId, pages, queryInfo, release, withCells(hits, cellRows), { kind: "surface" }, corrected, edges));
     return { ...result, readings: [...result.readings, ...read] };
   }
-  const [page, ...otherPages] = await pageReadings;
+  const [page, ...otherPages] = read;
   if (page !== undefined) return { outcome: "found", query: queryInfo, release, route: { kind: "surface" }, readings: [page, ...otherPages] };
 
   // Nothing spells the query. A query of several words may still be a
@@ -268,7 +278,7 @@ export async function lookup({ db, releaseId, query }: LookupOptions): Promise<L
   // only as the masculine, `sono andata` of `sono andato`, or the first of the
   // spellings one cell holds, `mi sono arreso` of `mi sono arreso, arresosi`
   // (#676).
-  const agreement = await agreementHits(db, releaseId, key, corrected);
+  const agreement = await agreementHits(db, releaseId, key, tables);
   if (agreement === undefined) return { outcome: "not-found", query: queryInfo, release };
   return found(db, releaseId, pages, queryInfo, release, agreement.hits, agreement.route, corrected, edges, agreement.tables);
 }
@@ -290,7 +300,7 @@ async function agreementHits(
   db: LookupDatabase,
   releaseId: string,
   key: string,
-  corrected: Corrected,
+  corrected: Corrected & Pick<DictionaryTables, "cellSearch">,
 ): Promise<{ hits: [HitRow, ...HitRow[]]; route: FoundRoute; tables: ReadonlyMap<number, Promise<RecordTable>> } | undefined> {
   const query = agreeingQuery(key);
   if (query === undefined) return undefined;
@@ -312,10 +322,18 @@ async function agreementHits(
     );
     return cells.filter((_, i) => kept[i]);
   };
-  const exact = query.spelled === "feminine" ? await agreeing(await queryAll<HitRow>(db, SEARCH_SQL, releaseId, spelling.first)) : [];
+  // Each probe reads the source's cells and the curated ones (#743) at once: `siamo assorbite` agrees with assorbire's corrected `siamo assorbiti, assorti`.
+  const spelled = async (source: DictionaryRead, cells: DictionaryRead, ...keys: string[]): Promise<HitRow[]> => {
+    const [rows, cellRows] = await Promise.all([
+      queryAll<HitRow>(db, source, releaseId, ...keys),
+      corrected.cellSearch ? queryAll<HitRow>(db, cells, releaseId, ...keys) : [],
+    ]);
+    return withCells(rows, cellRows);
+  };
+  const exact = query.spelled === "feminine" ? await agreeing(await spelled(SEARCH_SQL, CORRECTED_CELL_SEARCH_SQL, spelling.first)) : [];
   const prefix = `${spelling.first}, `;
   const [first, ...rest] =
-    exact.length > 0 ? exact : await agreeing(await queryAll<HitRow>(db, FIRST_SPELLING_SQL, releaseId, prefix, prefixUpperBound(prefix)));
+    exact.length > 0 ? exact : await agreeing(await spelled(FIRST_SPELLING_SQL, CORRECTED_CELL_FIRST_SPELLING_SQL, prefix, prefixUpperBound(prefix)));
   if (first === undefined) return undefined;
   const route: FoundRoute =
     query.spelled === "feminine" ? { kind: "feminine", agreement: spelling } : { kind: "first-spelling", agreement: spelling };
@@ -548,6 +566,56 @@ export const SEARCH_SQL: DictionaryRead = searchWhere("lf.surface_key = ?2");
  * `mi sono arreso, arresosi`. Exported so a test can assert the plan.
  */
 export const FIRST_SPELLING_SQL: DictionaryRead = searchWhere("lf.surface_key >= ?2 AND lf.surface_key < ?3");
+
+/**
+ * The rows of every curated table cell (ADR 0030, #723) whose corrected
+ * spelling is the query, read through `corrected_form_by_key` (#743): each is
+ * its cell's own `lookup_form` row, under the auxiliary rule `SEARCH_SQL`
+ * applies, with the spelling the correction sets as its `surface`.
+ * `lookup_form` keeps the source's spelling, so `SEARCH_SQL` still finds that
+ * one. A cell stays on the record it was written for: a record a change
+ * retired, or a hide took out, has no `lookup_form` row left to join, so no
+ * search reaches it here either. Exported so a test can assert the plan.
+ */
+export const CORRECTED_CELL_SEARCH_SQL: DictionaryRead = correctedCellWhere("c.surface_key = ?2");
+
+/** `CORRECTED_CELL_SEARCH_SQL` over a range of keys, as `FIRST_SPELLING_SQL` reads `lookup_form`'s. Exported so a test can assert the plan. */
+export const CORRECTED_CELL_FIRST_SPELLING_SQL: DictionaryRead = correctedCellWhere("c.surface_key >= ?2 AND c.surface_key < ?3");
+
+function correctedCellWhere(keys: string): DictionaryRead {
+  return `SELECT r.record_id, r.release_id, r.line_no, r.line_sha256, r.word AS record_word, r.pos AS record_pos,
+            lf.origin, lf.json_pointer, lf.form_source, c.surface,
+            0 AS is_headword_hit
+       FROM corrected_form c
+       JOIN lookup_form lf ON lf.record_id = c.record_id AND lf.form_index = c.form_index
+       JOIN source_record r ON r.record_id = c.record_id
+      WHERE c.release_id IN (${servedBy("?1")}) AND ${keys}
+        AND NOT EXISTS (
+              SELECT 1 FROM grammar_claim g
+               WHERE g.record_id = lf.record_id
+                 AND g.scope = 'form' AND g.scope_index = lf.form_index
+                 AND g.status = 'stated'
+                 AND g.dimension = 'form-role' AND g.value = 'auxiliary')
+      ORDER BY r.line_no, lf.json_pointer`;
+}
+
+/** The corrected cells spelled as `key`, where the master keys them (`DictionaryTables.cellSearch`); none where it does not. */
+function correctedCellHits(db: LookupDatabase, releaseId: string, key: string, tables: Pick<DictionaryTables, "cellSearch">): Promise<HitRow[]> {
+  return tables.cellSearch ? queryAll<HitRow>(db, CORRECTED_CELL_SEARCH_SQL, releaseId, key) : Promise.resolve([]);
+}
+
+/**
+ * `rows` and the corrected cells `cells`, in `SEARCH_SQL`'s order. A cell both
+ * read is kept once, as its correction spells it.
+ */
+function withCells(rows: readonly HitRow[], cells: readonly HitRow[]): HitRow[] {
+  if (cells.length === 0) return [...rows];
+  const at = (row: HitRow): string => `${row.record_id}${row.json_pointer}`;
+  const corrected = new Set(cells.map(at));
+  return [...rows.filter((row) => !corrected.has(at(row))), ...cells].sort(
+    (a, b) => b.is_headword_hit - a.is_headword_hit || a.line_no - b.line_no || (a.json_pointer < b.json_pointer ? -1 : a.json_pointer > b.json_pointer ? 1 : 0),
+  );
+}
 
 /** `SEARCH_SQL`'s read, over the keys `keys` names. */
 function searchWhere(keys: string): DictionaryRead {

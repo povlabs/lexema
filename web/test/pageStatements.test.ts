@@ -180,7 +180,17 @@ const TABLE_READ_STATEMENTS = 3;
  */
 const DEFINITIONS_READ_STATEMENTS = 4;
 
-/** What each page reads beyond what it read before: a table its verb's does not list, and a verb's definitions. */
+/**
+ * The statement every lookup sends for the curated table cells spelled as the
+ * query (`CORRECTED_CELL_SEARCH_SQL`, #743). It goes in the call that reads
+ * the page-only entries, so it adds no call.
+ */
+const CELL_SEARCH_STATEMENTS = 1;
+
+/** The lookups a page runs: its own, and for `andati` and `bella` the lookup of the lemma whose grid the page draws (#626). */
+const LOOKUPS: Record<string, number> = { andati: 2, bella: 2 };
+
+/** What each page reads beyond what it read before: a table its verb's does not list, a verb's definitions, and the corrected cells' search. */
 const EXTRA: Record<string, number> = {
   andavano: DEFINITIONS_READ_STATEMENTS,
   andati: TABLE_READ_STATEMENTS + DEFINITIONS_READ_STATEMENTS,
@@ -189,7 +199,7 @@ const EXTRA: Record<string, number> = {
 };
 
 for (const [word, then] of Object.entries(VERB_FORMS_BEFORE)) {
-  const extra = EXTRA[word] ?? 0;
+  const extra = (EXTRA[word] ?? 0) + (LOOKUPS[word] ?? 1) * CELL_SEARCH_STATEMENTS;
   test(`the page for '${word}' sends ${then.statements + extra} statements in ${then.calls} calls, and reads the page SQLite reads`, async () => {
     const sent = nothingSent();
     const attempt = await searchAttempt(fromD1(countingD1(sqlite, sent)), RELEASE, word);
@@ -239,7 +249,7 @@ const CUT: Record<string, { statements: number; calls: number }> = {
 };
 
 for (const [word, then] of Object.entries(DEFINITIONS_PAGES_BEFORE)) {
-  const now = { statements: then.statements - CUT[word].statements, calls: then.calls - CUT[word].calls };
+  const now = { statements: then.statements - CUT[word].statements + CELL_SEARCH_STATEMENTS, calls: then.calls - CUT[word].calls };
   test(`the page for '${word}' sends ${now.statements} statements in ${now.calls} calls, and reads the page SQLite reads`, async () => {
     const sent = nothingSent();
     const attempt = await searchAttempt(fromD1(countingD1(sqlite, sent)), RELEASE, word);
@@ -327,7 +337,8 @@ const NOT_FOUND: Record<string, { kind: string; statements: number; calls: numbe
   mangare: { kind: "typo", statements: 14, calls: 8 },
 };
 
-for (const [word, ceiling] of Object.entries(NOT_FOUND)) {
+for (const [word, then] of Object.entries(NOT_FOUND)) {
+  const ceiling = { ...then, statements: then.statements + CELL_SEARCH_STATEMENTS };
   test(`the not-found page for '${word}' sends at most ${ceiling.statements} statements in at most ${ceiling.calls} calls, and reads the page SQLite reads`, async () => {
     const sent = nothingSent();
     const db = fromD1(countingD1(sqlite, sent));

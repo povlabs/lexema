@@ -27,7 +27,8 @@ import { literal } from "../import/seedSql.js";
 import { normalizeItalianExact } from "../italian/normalize.js";
 import { correctedEdgeServed } from "../lookup/correctedEdge.js";
 import { bareKey, deletionKeys, foldKey } from "../lookup/nearby.js";
-import { select, type MasterReader } from "../update/master.js";
+import { lacksKeyedColumn, select, type MasterReader } from "../update/master.js";
+import { keyedColumnOf } from "../update/masterUpgrade.js";
 
 /** The version of how a slice is built; part of the fingerprint, so a changed build rebuilds every slice. */
 export const SLICE_FORMAT = "preview-slice/v1";
@@ -106,6 +107,32 @@ const tablesOf = (reader: MasterReader): Set<string> =>
 export const sliceKeys = (words: readonly string[]): string[] => [...new Set(words.map((word) => normalizeItalianExact(word.trim())))].sort();
 
 /**
+ * `corrected_form`'s rows as the slice's schema holds them: a shared
+ * dictionary whose table predates `surface_key` (#743) has each row keyed
+ * here, as its upgrade will key it (`keyedColumnOf`).
+ */
+function correctedFormRows(reader: MasterReader, rows: readonly Row[]): Row[] {
+  const keyed = keyedColumnOf("corrected_form");
+  if (keyed === undefined || !lacksKeyedColumn(reader, "corrected_form")) return [...rows];
+  return rows.map((row) => ({ ...row, [keyed.column]: keyed.key(String(row[keyed.from])) }));
+}
+
+/** The records with a corrected cell spelled as one of `keys` (#743), which a search reads beside `lookup_form`. */
+function correctedCellsSpelling(reader: MasterReader, keys: readonly string[], tables: ReadonlySet<string>): number[] {
+  if (!tables.has("corrected_form")) return [];
+  if (!lacksKeyedColumn(reader, "corrected_form")) {
+    return select<{ record_id: number }>(
+      reader,
+      `SELECT DISTINCT record_id FROM corrected_form WHERE release_id IN (${releasesIn}) AND surface_key IN (SELECT value FROM json_each(${json(keys)}))`,
+    ).map(({ record_id }) => record_id);
+  }
+  // The table holds only curated cells, a few dozen rows, so one without the key is keyed whole.
+  const wanted = new Set(keys);
+  const rows = correctedFormRows(reader, select<Row>(reader, "SELECT record_id, surface FROM corrected_form"));
+  return [...new Set(rows.filter((row) => wanted.has(String(row.surface_key))).map((row) => Number(row.record_id)))];
+}
+
+/**
  * The records a lookup of `keys` reads, in two kinds. Whole: those spelling a
  * key, the headword records their own edges name, and every record an applied
  * change links one of those to, until no link adds one. Listed: the records
@@ -115,10 +142,13 @@ export const sliceKeys = (words: readonly string[]): string[] => [...new Set(wor
  */
 function recordsFor(reader: MasterReader, keys: readonly string[], tables: ReadonlySet<string>): { whole: number[]; listed: number[]; targets: string[] } {
   const keyList = json(keys);
-  const spelling = select<{ record_id: number }>(
-    reader,
-    `SELECT DISTINCT record_id FROM lookup_form WHERE release_id IN (${releasesIn}) AND surface_key IN (SELECT value FROM json_each(${keyList}))`,
-  ).map(({ record_id }) => record_id);
+  const spelling = [
+    ...select<{ record_id: number }>(
+      reader,
+      `SELECT DISTINCT record_id FROM lookup_form WHERE release_id IN (${releasesIn}) AND surface_key IN (SELECT value FROM json_each(${keyList}))`,
+    ).map(({ record_id }) => record_id),
+    ...correctedCellsSpelling(reader, keys, tables),
+  ];
   // A corrected edge (#722) names a word as a source edge does, while its record is served.
   const edgeTables = ["form_of_edge", ...(tables.has("corrected_edge") ? ["corrected_edge"] : [])];
   const naming = edgeTables.flatMap((table) =>
@@ -171,7 +201,8 @@ function rowsToCopy(reader: MasterReader, keys: readonly string[]): Map<string, 
   for (const table of ["source_release", "release_table_rows", "feed_release", "hide_version", "correction_version", "grammar_value"]) all(table);
 
   // A whole record's every row; a listed record's only the rows its listing reads.
-  for (const table of ["source_record_json", "lookup_form", "corrected_form", "claim_review", "recovered_definition", "hidden_record"]) byRecord(table);
+  for (const table of ["source_record_json", "lookup_form", "claim_review", "recovered_definition", "hidden_record"]) byRecord(table);
+  read("corrected_form", () => correctedFormRows(reader, rowsWhere(reader, "corrected_form", inList("record_id"), whole)));
   for (const table of ["source_record", "form_of_edge", "corrected_claim", "corrected_edge"]) byRecord(table, "1 = 1");
   byRecord(
     "sense",

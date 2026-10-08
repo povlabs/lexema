@@ -82,10 +82,12 @@ export const PAGE_ENTRY_FACT_TABLE = "entry_fact";
 /**
  * Which of the tables an older master may lack it has: `hide_version` (#408),
  * the page-entry tables (#403) and the curated-correction tables (#420,
- * #450, #723). Presence is read from the schema, never inferred from a failed
- * read, so an error on a table that exists still fails.
+ * #450, #723), and `corrected_form_by_key`, the index a search reads a
+ * corrected cell through (#743): it is on `surface_key`, so it stands only
+ * where that column does. Presence is read from the schema, never inferred
+ * from a failed read, so an error on a table that exists still fails.
  */
-export const OPTIONAL_TABLES_SQL: DictionaryRead = `SELECT name FROM sqlite_schema WHERE type = 'table' AND name IN (${["hide_version", "corrected_claim", "corrected_form", "corrected_edge", "correction_version", ...PAGE_ENTRY_TABLES, PAGE_ENTRY_FACT_TABLE, "corrected_definition"].map((name) => `'${name}'`).join(", ")})`;
+export const OPTIONAL_TABLES_SQL: DictionaryRead = `SELECT name FROM sqlite_schema WHERE (type = 'table' AND name IN (${["hide_version", "corrected_claim", "corrected_form", "corrected_edge", "correction_version", ...PAGE_ENTRY_TABLES, PAGE_ENTRY_FACT_TABLE, "corrected_definition"].map((name) => `'${name}'`).join(", ")})) OR (type = 'index' AND name = 'corrected_form_by_key')`;
 export const HIDE_VERSION_SQL: DictionaryRead = `SELECT revision FROM hide_version WHERE singleton = 1`;
 export const CORRECTION_VERSION_SQL: DictionaryRead = `SELECT revision FROM correction_version WHERE singleton = 1`;
 
@@ -111,6 +113,13 @@ export interface DictionaryTables {
   corrections: boolean;
   /** `corrected_form`; absent on a master seeded before #723 until `update:upgrade` creates it, and read as empty. */
   cellCorrections: boolean;
+  /**
+   * `corrected_form` with its `surface_key` and the index on it (#743), so a
+   * search reads each corrected cell's spelling. Absent on a master whose
+   * `corrected_form` predates the key until `update:upgrade` rebuilds it: a
+   * lookup then shows the cells and searches only the source's spellings.
+   */
+  cellSearch: boolean;
   /**
    * `corrected_edge`; absent on a master seeded before #722 until
    * `update:upgrade` creates it, and read as empty: every sense keeps the
@@ -142,6 +151,7 @@ export async function dictionaryTables(db: LookupDatabase): Promise<DictionaryTa
     pageFacts: pageEntries && present.has(PAGE_ENTRY_FACT_TABLE),
     corrections: present.has("corrected_claim"),
     cellCorrections: present.has("corrected_form"),
+    cellSearch: present.has("corrected_form") && present.has("corrected_form_by_key"),
     edgeCorrections: present.has("corrected_edge"),
     correctionVersion: present.has("correction_version"),
   };

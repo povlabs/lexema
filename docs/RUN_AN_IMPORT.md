@@ -280,7 +280,9 @@ and the text the line holds there
 ([ADR 0030](../.decisions/0030-corrections-may-fix-edges-and-cells.md),
 [#723](https://github.com/povlabs/lexema/issues/723)); the seed writes those
 as `corrected_form` rows, one per cell, and refuses an entry that misquotes its
-line. The list also sets a
+line. Each row carries its spelling's search key, so a search finds the corrected
+spelling, `siamo assorbiti`, beside the source's, which `lookup_form` keeps
+([#743](https://github.com/povlabs/lexema/issues/743)). The list also sets a
 sense's `form_of` edge where the source states none or names the wrong word
 ([ADR 0030](../.decisions/0030-corrections-may-fix-edges-and-cells.md),
 [#722](https://github.com/povlabs/lexema/issues/722)): `aerei`'s noun sense
@@ -306,8 +308,9 @@ suggestion addresses move ([cache identity](DEPLOY.md#card-and-suggestion-cache-
 `source_record_json`, `grammar_claim`, `lookup_form` and `form_of_edge` are not
 touched. The file holds no DDL: on a master without `corrected_claim`,
 `corrected_form`, `corrected_edge`, `correction_version` or
-`corrected_definition` the command refuses to write and names
-`pnpm run update:upgrade`, which creates them. It then reads the rows
+`corrected_definition`, or with a `corrected_form` from before its
+`surface_key`, the command refuses to write and names
+`pnpm run update:upgrade`, which creates them and keys the cells. It then reads the rows
 back and fails if one differs. It prints one line per entry: written, already
 written, or why not. An entry is not written when the master holds no record at
 its line, when that record's digest is not the one the entry names, or when a

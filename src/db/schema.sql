@@ -722,16 +722,21 @@ CREATE TABLE corrected_claim (
 -- corrected_claim, and each cell by its place in `forms[]` and the text the
 -- line holds there. A layer beside the record, never an edit of it:
 -- source_record_json and lookup_form stay as imported, and a lookup reads
--- `surface` in place of the cell's own spelling. Like corrected_claim, a row
--- stays on the record it was written for, and a record that replaced it does
--- not inherit it. Absent on a master seeded before it until `update:upgrade`
--- creates it; a lookup reads an absent one as empty.
+-- `surface` in place of the cell's own spelling. A search reads it too, by
+-- `surface_key`, beside the cell's lookup_form row (#743): `siamo assorbiti`
+-- finds assorbire, and so does the source's `siamo assorbito`. Like
+-- corrected_claim, a row stays on the record it was written for, and a record
+-- that replaced it does not inherit it. Absent on a master seeded before it
+-- until `update:upgrade` creates it; a lookup reads an absent one as empty. A
+-- master whose table predates `surface_key` is rebuilt by the upgrade, each
+-- row keyed as the seed keys it (src/update/masterUpgrade.ts).
 CREATE TABLE corrected_form (
   record_id     INTEGER NOT NULL REFERENCES source_record(record_id) ON DELETE CASCADE,
   release_id    TEXT    NOT NULL,
   -- The cell's place in the record's `forms[]`: the cell at `/forms/<form_index>/form`.
   form_index    INTEGER NOT NULL CHECK (form_index >= 0),
   surface       TEXT    NOT NULL CHECK (surface <> ''),
+  surface_key   TEXT    NOT NULL, -- release's normalizer applied to surface, as lookup_form's
   -- The list entry it was written from: release id, archive line and `cells`, `it-0c432803:113784:cells`.
   correction_id TEXT    NOT NULL,
   -- The first revision the entry cites, as a permanent link. Split as
@@ -742,6 +747,10 @@ CREATE TABLE corrected_form (
   FOREIGN KEY (record_id, release_id)
     REFERENCES source_record(record_id, release_id) ON DELETE CASCADE
 ) STRICT;
+
+-- "Which corrected cell spells this?", as lookup_form_by_key.
+CREATE INDEX corrected_form_by_key
+  ON corrected_form (release_id, surface_key);
 
 -- A sense's `form_of` edge, set right beside the record (ADR 0030, #722):
 -- added where the sense declares none (`aerei`'s noun says "plurale di aereo"
