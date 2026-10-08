@@ -15,6 +15,8 @@ import { PageOnlyCandidates, readUnrecordedPageTitles, UNRECORDED_PAGE_TITLES_FI
 import { unrecordedPageTitlesOf } from "../src/import/measureUnrecordedPages.js";
 import { applyParts, PartFailure } from "../src/import/sqlParts.js";
 import { normalizeItalianExact } from "../src/italian/normalize.js";
+import { CURATED_CORRECTIONS, correctionId } from "../src/italian/curatedCorrections.js";
+import { FixtureLines } from "../src/italian/correctionsAtLines.js";
 
 const rawLemma = '{ "word":"lemma", "pos":"noun", "pos_title":"Sostantivo", "lang_code":"it", "forms":[{"form":"forma","source":"Appendice:Coniugazioni/Italiano/lemma","tags":["plural"]}], "senses":[{"glosses":["una voce"],"tags":["rare"]}] }';
 const rawForm = JSON.stringify({
@@ -277,10 +279,14 @@ const rawPages = await loadFixturePages(resolve("fixtures"));
 const unrecorded = await readUnrecordedPageTitles(resolve(UNRECORDED_PAGE_TITLES_FILE));
 const devPageOnly = await PageOnlyCandidates.forSeedInput(fixturePath, resolve(UNRECORDED_PAGE_TITLES_FILE));
 
+// The committed corrections seedDev keys to the fixture's lines (#742).
+const devCorrections = (await FixtureLines.read(fixturePath, "it-dev")).key(CURATED_CORRECTIONS);
+
 const devSeed = (outputDir: string, partCeilingBytes?: number, pages: RawPageSource = rawPages) =>
   seedSql({
     input: fixturePath, outputDir, schema: resolve("src/db/schema.sql"), releaseId: "it-dev",
     requiredWords: HUEY_WORDS, validateFixtureClosure: true, partCeilingBytes, rawPages: pages, pageOnly: devPageOnly,
+    corrections: devCorrections.held,
   });
 
 /** The words the seed wrote page-only entries for, sorted. */
@@ -300,10 +306,12 @@ test("the fifty-word dev seed is one part with the same rows", async () => {
       source_record: 1085, source_record_json: 1085, lookup_form: 12358, accent_fold: 488, typo_key: 3772, form_of_edge: 496,
       sense: 1776, sense_gloss: 1760, sense_label: 857, grammar_claim: 48170,
       raw_page: 20, recovered_definition: 10, recovered_label: 6, recovered_example: 7, hidden_record: 0,
-      // The curated corrections are keyed to it-0c432803's lines, not the fixture's.
-      corrected_claim: 0,
+      // The curated corrections whose lines the fixture holds, keyed to its
+      // own (#742): seven records' gender or number and 78 senses' edges. The
+      // one table-cell entry's line, `assorbire`'s, is not in the fixture.
+      corrected_claim: 7,
       corrected_form: 0,
-      corrected_edge: 0,
+      corrected_edge: 78,
       // Only the fixture pages on the committed list of it-0c432803's
       // record-less titles are page-only candidates (#499): 20 of them, of
       // which 17 recover (`lungo` as two entries), `grufolare` and `tremare`
@@ -322,6 +330,39 @@ test("the fifty-word dev seed is one part with the same rows", async () => {
       rawPages: rawPages.size, recordsWithAPage: 36, fullLoss: 2, partialLoss: 1,
       definitions: 10, examples: 7, unrendered: 0,
     });
+  } finally { await rm(dir, { recursive: true, force: true }); }
+});
+
+test("the dev seed writes the committed corrections the fixture holds, keyed to it-dev, and leaves out the rest (#742)", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "lexema-seed-"));
+  try {
+    const { held, leftOut } = devCorrections;
+    const keyed = held.filter((correction) => correction.record !== undefined);
+    assert.equal(keyed.length, 85);
+    // Entries whose archive lines the fixture does not carry, `fissazione`'s and `assorbire`'s among them.
+    const leftOutWords = new Set(leftOut.map((correction) => correction.record?.word));
+    for (const word of ["fissazione", "assorbire"]) assert.ok(leftOutWords.has(word), word);
+    const report = await devSeed(join(dir, "sql"));
+    assert.deepEqual(report.corrections, { keyed: 85, applied: 85, unapplied: [] });
+    const db = openSeed(report.parts, ":memory:");
+    try {
+      const edges = db.prepare(
+        `SELECT r.word, e.sense_index, e.target_word, e.correction_id FROM corrected_edge e
+           JOIN source_record r ON r.record_id = e.record_id WHERE r.word IN ('costruttori', 'parti') ORDER BY r.word, e.sense_index`,
+      ).all().map((row) => ({ ...row }));
+      const idOf = (word: string, sense: number) =>
+        correctionId(held.find((correction) => correction.record?.word === word && correction.edge?.sense === sense) ?? assert.fail(`${word} ${sense}`));
+      assert.deepEqual(edges, [
+        { word: "costruttori", sense_index: 0, target_word: "costruttore", correction_id: idOf("costruttori", 0) },
+        { word: "parti", sense_index: 1, target_word: "parto", correction_id: idOf("parti", 1) },
+        { word: "parti", sense_index: 2, target_word: "parto", correction_id: idOf("parti", 2) },
+      ]);
+      assert.match(idOf("costruttori", 0), /^it-dev:\d+\/senses\/0$/);
+      // Every row is keyed to the fixture; no entry left out reaches the SQL.
+      const ids = db.prepare("SELECT correction_id AS id FROM corrected_edge UNION ALL SELECT correction_id FROM corrected_claim").all().map((row) => row.id as string);
+      assert.equal(ids.length, 85);
+      assert.ok(ids.every((id) => id.startsWith("it-dev:")), ids.join(", "));
+    } finally { db.close(); }
   } finally { await rm(dir, { recursive: true, force: true }); }
 });
 
@@ -428,7 +469,7 @@ test("the recovered layer sits beside casa's record and leaves every source row 
     const withPages = await devSeed(join(dir, "pages"));
     const without = await seedSql({
       input: fixturePath, outputDir: join(dir, "bare"), schema: resolve("src/db/schema.sql"), releaseId: "it-dev",
-      requiredWords: HUEY_WORDS, validateFixtureClosure: true,
+      requiredWords: HUEY_WORDS, validateFixtureClosure: true, corrections: devCorrections.held,
     });
     const pagesDb = openSeed(withPages.parts, ":memory:");
     const bareDb = openSeed(without.parts, ":memory:");
