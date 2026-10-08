@@ -257,6 +257,14 @@ export const DEFINITIONS = "m-0 flex list-none flex-col gap-4 p-0";
 export const DEFINITION = "flex gap-[0.4375rem] sm:gap-3";
 /** A definition after the first: in the document, shown once the reading's `+ more` is open. */
 export const DEFINITION_EXTRA = "hidden gap-[0.4375rem] group-data-open/definitions:flex sm:gap-3";
+/**
+ * The small label over one part of speech's definitions in a form's block
+ * whose records have several (#727): a grammar label, so Inter and muted, as
+ * the reading's heading draws its grammar. The first shows closed; the rest
+ * wait for `+ more` with their definitions, 16 px under the last one above.
+ */
+export const DEFINITION_GROUP_LABEL = "m-0 mb-2 font-sans text-[0.8rem] font-normal italic text-text-muted sm:text-[0.85rem]";
+export const DEFINITION_GROUP_LABEL_EXTRA = `${DEFINITION_GROUP_LABEL} mt-4 hidden group-data-open/definitions:block`;
 export const DEFINITION_NUMBER = "w-5 shrink-0 pt-1 font-mono text-[0.85rem] text-text-muted sm:pt-0 sm:leading-[1.125rem]";
 /**
  * A searched expression's form line numbers what shows (Phrase.tsx): closed,

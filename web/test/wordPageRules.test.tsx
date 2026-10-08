@@ -441,6 +441,108 @@ const S4_NO_BASE_RECORD: Rule = {
   },
 };
 
+/** The labels over a form block's groups of meanings (#727), in page order. */
+const groupLabelsOf = (html: string): string[] => [...html.matchAll(/<h4 class="[^"]*" lang="it">(.*?)<\/h4>/g)].map((match) => textOf(match[1]));
+
+/** The texts of a block's numbered meanings, in page order. */
+const meaningsOf = (html: string): string[] =>
+  [...html.matchAll(/<li class="[^"]*" data-definition="\d+">(.*?)<\/li>/g)].map((match) => textOf(match[1]).replace(/^\d+\./, ""));
+
+/** `parts` show in this order in the page's text, each after the one before. */
+const inOrder = (html: string, parts: readonly string[]): Problems => {
+  const text = textOf(html);
+  let at = -1;
+  for (const part of parts) {
+    at = text.indexOf(part, at + 1);
+    if (at === -1) return [`expected in order: ${parts.join(" | ")}`];
+  }
+  return [];
+};
+
+/** A block's *Definitions* section, up to its end. */
+const definitionsSectionOf = (article: string): string => {
+  const open = article.indexOf('id="definitions-');
+  return open === -1 ? "" : article.slice(open, article.indexOf("</section>", open));
+};
+
+const S4_MERGED_BLOCK: Rule = {
+  row: "§ 4 One block per base word: a block whose records have several parts of speech names each in its heading, and groups its base word's meanings by them under small labels.",
+  home: `${MANIFEST} (§ 4)`,
+  words: ["bella", "costruttrici", "grandi", "bellissima", "blasfeme", "poltroni"],
+  // A noun or adjective form block's heading names each part of speech of its
+  // records that are not verbs', in record order, each once, or the first
+  // record's own pos_title when they share one. Its meanings group under a
+  // label per part of speech, in the heading's order, only when it names
+  // several; no meaning shows twice (Huey's ruling of 2026-10-07 on #727).
+  check(p) {
+    if (p.kind !== "word") return [];
+    return p.page.readings.flatMap((entry) => {
+      if (entry.kind !== "source" || entry.role !== "form-of") return [];
+      const records = [entry.reading, ...entry.also].filter((record) => record.pos !== "verb");
+      const parts = [...new Set(records.map((record) => record.posTitle.replace(/, forma flessa$/, "")))];
+      const title = parts.length > 1 ? parts.join("·") : entry.reading.posTitle;
+      const article = articleOf(p.html, entry);
+      const [heading = ""] = headingsOf(article);
+      const head = `${entry.number}·${title}`;
+      const labels = groupLabelsOf(article);
+      const meanings = meaningsOf(article);
+      return [
+        ...(heading === head || heading.startsWith(`${head}·`) ? [] : [`${entry.baseWord}'s block is headed ${heading}, expected ${head}`]),
+        ...(parts.length > 1
+          ? labels.length === new Set(labels).size && labels.every((label, i) => parts.includes(label) && (i === 0 || parts.indexOf(label) > parts.indexOf(labels[i - 1])))
+            ? []
+            : [`${entry.baseWord}'s groups are ${JSON.stringify(labels)}, expected a run of ${JSON.stringify(parts)}`]
+          : labels.map((label) => `${entry.baseWord}'s block of one part of speech labels a group ${label}`)),
+        ...(parts.length > 1 && meanings.length > 0 && labels.length === 0 ? [`${entry.baseWord}'s meanings carry no label`] : []),
+        ...duplicates(meanings).map((meaning) => `"${meaning}" shows twice in ${entry.baseWord}'s block`),
+        ...(occurrencesIn(definitionsSectionOf(article), "+ more</span>") > 1 ? [`${entry.baseWord}'s Definitions have more than one + more`] : []),
+      ];
+    });
+  },
+  named: {
+    // bello's adjective meanings, then its noun meanings, each under its label.
+    bella: (p) => [
+      // bello's adjective record's six meanings, then its two noun records', two and one.
+      ...assertEqual([JSON.stringify(modelBlock(p))], [JSON.stringify({ heading: ["Aggettivo", "Sostantivo"], groups: ["Aggettivo bello 6", "Sostantivo bello 2, bello 1"] })]),
+      ...assertEqual(headingsOf(p.html), ["1·Aggettivo·Sostantivo·femminile, singolare"]),
+      ...assertEqual(groupLabelsOf(p.html), ["Aggettivo", "Sostantivo"]),
+      ...inOrder(p.html, ["femminile singolare di bello", "femminile di bello", "Aggettivo", "che desta impressione di piacere e gradimento", "Sostantivo", "individuo di particolare fascino", "Forms of"]),
+    ],
+    costruttrici: (p) => [
+      ...assertEqual([JSON.stringify(modelBlock(p))], [JSON.stringify({ heading: ["Aggettivo", "Sostantivo"], groups: ["Aggettivo costruttore 1", "Sostantivo costruttore 1"] })]),
+      ...assertEqual(headingsOf(p.html), ["1·Aggettivo·Sostantivo·femminile, singolare"]),
+      ...inOrder(p.html, ["plurale di costruttrice", "Aggettivo", "che costruisce", "Sostantivo", "chi costruisce", "Forms of"]),
+    ],
+    grandi: (p) => assertEqual(groupLabelsOf(p.html), ["Aggettivo", "Sostantivo"]),
+    // One record, or two of one part of speech: the source's own heading, and no label.
+    bellissima: (p) => [...assertEqual(headingsOf(p.html), ["1·Aggettivo, forma flessa·femminile, singolare"]), ...assertEqual(groupLabelsOf(p.html), [])],
+    blasfeme: (p) => [...assertEqual(headingsOf(p.html).map((heading) => heading.split("·").slice(0, 2).join("·")), ["1·Aggettivo, forma flessa"]), ...assertEqual(groupLabelsOf(p.html), [])],
+    poltroni: (p) => [...assertEqual(headingsOf(p.html).map((heading) => heading.split("·").slice(0, 2).join("·")), ["1·Sostantivo, forma flessa"]), ...assertEqual(groupLabelsOf(p.html), [])],
+  },
+};
+
+/**
+ * What the page model says of a page's one form block: its heading's parts of
+ * speech, and each group of meanings with the base records it is read from.
+ */
+function modelBlock(p: SearchedPage): { heading: string[]; groups: string[] } | undefined {
+  if (p.kind !== "word") return undefined;
+  const [only] = p.page.readings;
+  if (p.page.readings.length !== 1 || only.kind !== "source" || only.role !== "form-of") return undefined;
+  const definitions = only.parts.flatMap((part) => (part.kind === "lemma-definitions" ? [part.definitions] : []));
+  return {
+    heading: only.heading.kind === "one" ? [only.heading.posTitle] : only.heading.partsOfSpeech,
+    groups: definitions.flatMap((one) =>
+      one.kind === "one"
+        ? one.lists.map((list) => `- ${list.lemma.word}`)
+        : one.groups.map((group) => `${group.partOfSpeech} ${group.lists.map((list) => `${list.lemma.word} ${list.items.length}`).join(", ")}`),
+    ),
+  };
+}
+
+/** How many times a literal string occurs. */
+const occurrencesIn = (html: string, text: string): number => html.split(text).length - 1;
+
 const S4_NO_OWN_FORMS: Rule = {
   row: "§ 4 One block per base word: a form-of reading never shows a Forms table of its own.",
   home: `${MANIFEST} (§ 4)`,
@@ -542,7 +644,8 @@ const S4_ADJECTIVE_AND_VERB: Rule = {
       p.kind === "word"
         ? [
             ...assertEqual(p.page.readings.map((entry) => `${entry.kind} ${baseWordOf(entry)}`), ["source laureato", "verb-form laurearsi"]),
-            ...assertEqual(headingsOf(p.html), ["1·Aggettivo, forma flessa·maschile, plurale", "2·Voce verbale·laurearsi"]),
+            // Its adjective and noun records name both parts of speech (#727); the verb form record adds none.
+            ...assertEqual(headingsOf(p.html), ["1·Aggettivo·Sostantivo·maschile, plurale", "2·Voce verbale·laurearsi"]),
             ...assertEqual(tablesOf(p.page).map((name) => name.split(" {")[0]), ["grid laureato"]),
           ]
         : ["no word page"],
@@ -701,6 +804,7 @@ const RULES: readonly Rule[] = [
   S3_TABLE_ONCE,
   S4_ONE_BLOCK,
   S4_NO_BASE_RECORD,
+  S4_MERGED_BLOCK,
   S4_NO_OWN_FORMS,
   S4_NO_ETYMOLOGY,
   S4_NO_RECORD,
