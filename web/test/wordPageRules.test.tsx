@@ -46,6 +46,7 @@ import { seededDictionary } from "../../test/seededDictionary.js";
 import { phrasePageFacts, wordPageFacts } from "../../tools/wordPageShapes/facts.ts";
 import { shapeOf } from "../../tools/wordPageShapes/shape.ts";
 import { SHAPE_WORDS } from "./wordPageShapeWords.ts";
+import { wordPageProblems } from "@/builds/previewSmokeCommand.ts";
 import { Outcome, SearchPage } from "@/components/dictionary/SearchPage";
 import { FORM_LINES, JUMP_LINK } from "@/components/shared/styles.ts";
 import type { Conjugation } from "@/lib/dictionary/conjugation.ts";
@@ -592,6 +593,23 @@ const S4_NO_ETYMOLOGY: Rule = {
   },
 };
 
+const S4_BASE_TABLE: Rule = {
+  row: "§ 4 The base word's table.",
+  home: `${MANIFEST} (§ 4)`,
+  words: ["smentita"],
+  // A table the page draws fills a cell: a base word's conjugation none of
+  // whose forms fills one is not drawn, so no Forms row is dashes only (#674).
+  check: (p) => wordPageProblems(p.html, p.query).filter((problem) => problem.endsWith("a Forms row of dashes only")),
+  named: {
+    // smentito's one record is a participle whose forms are its agreement: its
+    // block keeps smentito's meaning and draws no Forms of smentito.
+    smentita: (p) => [
+      ...(textOf(p.html).includes("participio passato di smentire, smentirsi") ? [] : ["smentita's block drops smentito's meaning"]),
+      ...(/Forms of<span[^>]*>smentito</.test(p.html) ? ["smentita draws Forms of smentito"] : []),
+    ],
+  },
+};
+
 const S4_NO_RECORD: Rule = {
   row: "§ 4 A form no record describes (P3).",
   home: `${MANIFEST} (§ 4)`,
@@ -869,6 +887,7 @@ const RULES: readonly Rule[] = [
   S4_MERGED_BLOCK,
   S4_NO_OWN_FORMS,
   S4_NO_ETYMOLOGY,
+  S4_BASE_TABLE,
   S4_NO_RECORD,
   S4_ADJECTIVE_AND_VERB,
   S5_WORD_FACTS,

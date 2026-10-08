@@ -123,7 +123,7 @@ import {
   type SourceRef,
 } from "@lexema/lookup/types.ts";
 import { definitionTextKey, definitionsOf, placeOf, readAt, type DefinitionItem } from "./definitions.ts";
-import { conjugationOf, placesAny, type Conjugation } from "./conjugation.ts";
+import { conjugates, conjugationOf, placesAny, type Conjugation } from "./conjugation.ts";
 import { agreementOf, placesOf, type Agreement, type GridPlace, type Spelling } from "./genderGrid.ts";
 import { GRID_FORM_LINE_RULE, gridFormLine } from "./gridFormLine.ts";
 import { unlinkedLemmas } from "./lemmaLines.ts";
@@ -1016,6 +1016,17 @@ function drawnKey(table: LemmaTable | { kind: "own"; reading: Reading; forms: Ow
 }
 
 /**
+ * Whether a lemma's table is drawn here: once per page, and never a
+ * conjugation none of whose forms fills a cell, which would draw only a row of
+ * dashes (#674, design-system-manifest.md § 4 "The base word's table").
+ * `smentita`'s block of smentito, a participle record whose forms are only its
+ * agreement, shows smentito's meanings and no *Forms of smentito*.
+ */
+function drawsHere(table: LemmaTable, drawn: Drawn): boolean {
+  return (table.kind !== "conjugation" || conjugates(table.listing.forms)) && drawn.first(drawnKey(table));
+}
+
+/**
  * The page for `query`. `lemmas` are the records of the words
  * `gridLemmaWords(readings)` names, as the lookup reads them; a lemma grid is
  * drawn only from one of them. `route` is how the lookup reached the readings:
@@ -1196,7 +1207,7 @@ function pageDrafts({ ordered, about, own, lemmas, placed, gender }: PageParts, 
         lines,
         sources: block.sources,
         verbs: block.verbs,
-        tables: tables.filter((table) => drawn.first(drawnKey(table))),
+        tables: tables.filter((table) => drawsHere(table, drawn)),
         definitions: lemmaDefinitionsOf(tables),
       },
     ];
@@ -1456,7 +1467,7 @@ function shownReading(
   ]);
   const lines: SharedPart[] = lemmaLines === undefined ? [] : [{ kind: "lemma-lines", words: lemmaLines }];
   const tablesPart = (tables: LemmaTable[]): SharedPart[] => {
-    const listed = nonEmpty(tables.filter((table) => drawn.first(drawnKey(table))));
+    const listed = nonEmpty(tables.filter((table) => drawsHere(table, drawn)));
     return listed === undefined ? [] : [{ kind: "lemma-forms", tables: listed }];
   };
   const conjugations = conjugationTablesOf(reading);
