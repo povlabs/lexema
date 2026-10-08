@@ -1,7 +1,9 @@
-// `pnpm run api-key`: create and revoke API keys in the local app database (#150).
+// `pnpm run api-key`: create and revoke API keys in the local app database (#150),
+// or in production's with `--remote` first (#737, src/db/productionD1.ts).
 //
 //   pnpm run api-key create --label "learning app" --per-minute 60
 //   pnpm run api-key revoke 3
+//   pnpm run api-key --remote create --label "Lisvo" --per-minute 60
 //
 // `create` prints the key once; only its hash is stored, so it cannot be shown
 // again. It also prints the key's id, which is what `revoke` takes. The
@@ -13,6 +15,7 @@
 import { finish, flags, isMain, positive, usageError, type CommandResult } from "../commandLine.js";
 import type { AppTables } from "../db/app/database.js";
 import { seededAppDatabase } from "../db/localD1.js";
+import { runHandCommand } from "../db/productionD1.js";
 import { createKey, revokeKey } from "./keys.js";
 
 const USAGE = `usage:
@@ -53,4 +56,6 @@ export async function runKeyCommand(args: readonly string[], db: AppTables, now:
   return usage(command === undefined ? "no command" : `unknown command ${command}`);
 }
 
-if (isMain(import.meta.url)) finish(await runKeyCommand(process.argv.slice(2), seededAppDatabase(), Date.now()));
+if (isMain(import.meta.url)) {
+  finish(await runHandCommand("api-key", process.argv.slice(2), (args, db) => runKeyCommand(args, db, Date.now()), seededAppDatabase));
+}
