@@ -20,12 +20,19 @@
 // for it. A lookup of a touched word then reads in the slice what it reads in
 // the shared dictionary, less what other words alone hold: the multi-word
 // expressions and inflection listings of words outside the slice.
+//
+// When the slice of every touched word would write more rows than a Preview
+// may (#741, ADR 0018), the slice is a sample: the words the declarations name
+// in their `lookups` first, then the others in key order, as many as fit. The
+// touched words it leaves out read the shared dictionary, as any other word
+// does, and a change's rows for them are dropped from the sample.
 
 import { createHash } from "node:crypto";
 import { DatabaseSync } from "node:sqlite";
 import { literal } from "../import/seedSql.js";
 import { normalizeItalianExact } from "../italian/normalize.js";
 import { correctedEdgeServed } from "../lookup/correctedEdge.js";
+import { readOnly } from "../lookup/database.js";
 import { bareKey, deletionKeys, foldKey } from "../lookup/nearby.js";
 import { lacksKeyedColumn, select, type MasterReader } from "../update/master.js";
 import { keyedColumnOf } from "../update/masterUpgrade.js";
@@ -243,10 +250,132 @@ interface StoredTable {
   readonly indexes: number;
 }
 
+/** Every table of `db`, in the order schema.sql creates them, which puts each parent before its children. */
+function storedTables(db: DatabaseSync): StoredTable[] {
+  const names = db.prepare("SELECT name FROM sqlite_schema WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY rowid").all() as { name: string }[];
+  return names.map(({ name }) => ({
+    name,
+    columns: (db.prepare(`SELECT name FROM pragma_table_info(${literal(name)})`).all() as { name: string }[]).map((column) => column.name),
+    indexes: (db.prepare("SELECT count(*) AS n FROM sqlite_schema WHERE type = 'index' AND tbl_name = ?").get(name) as { n: number }).n,
+  }));
+}
+
+function transaction(db: DatabaseSync, run: () => void): void {
+  db.exec("BEGIN");
+  try {
+    run();
+    db.exec("COMMIT");
+  } catch (error: unknown) {
+    db.exec("ROLLBACK");
+    throw error;
+  }
+}
+
+/**
+ * Copy `rows` into `table`, each with the columns both have: a master's
+ * older table may lack a newer column or keep a dropped one. A row the
+ * schema already wrote, such as `grammar_value`'s, is kept as it is.
+ */
+function copyRows(db: DatabaseSync, table: StoredTable, rows: readonly Row[]): void {
+  for (const row of rows) {
+    const columns = table.columns.filter((column) => Object.hasOwn(row, column));
+    db.prepare(`INSERT OR IGNORE INTO ${table.name} (${columns.join(", ")}) VALUES (${columns.map(() => "?").join(", ")})`).run(...columns.map((column) => row[column]));
+  }
+}
+
+/**
+ * A new local database holding `schema`, then `extra`, and the rows `keys`
+ * read from the dictionary `reader` reads. Foreign keys are on, as on D1.
+ */
+function copiedDatabase(reader: MasterReader, keys: readonly string[], schema: string, extra: string): DatabaseSync {
+  const copied = rowsToCopy(reader, keys);
+  const db = new DatabaseSync(":memory:");
+  try {
+    db.exec("PRAGMA foreign_keys = ON");
+    db.exec(schema);
+    db.exec(extra);
+    transaction(db, () => {
+      for (const table of storedTables(db)) copyRows(db, table, ordered(table.name, copied.get(table.name) ?? []));
+    });
+    return db;
+  } catch (error: unknown) {
+    db.close();
+    throw error;
+  }
+}
+
+/**
+ * Delete every row of `db` whose foreign key names a row `db` lacks, until
+ * none is left. On a sample these are the rows a change writes for a word the
+ * sample left out, whose own rows were not copied. Deleting a row can leave
+ * a row that names it, so the check runs again.
+ */
+function dropOrphans(db: DatabaseSync): void {
+  for (;;) {
+    const broken = db.prepare("PRAGMA foreign_key_check").all() as { table: string; fkid: number }[];
+    if (broken.length === 0) return;
+    for (const key of new Set(broken.map(({ table, fkid }) => JSON.stringify([table, fkid])))) {
+      const [table, fkid] = JSON.parse(key) as [string, number];
+      const pairs = db.prepare(`SELECT "table" AS parent, "from" AS child, "to" AS referenced FROM pragma_foreign_key_list(${literal(table)}) WHERE id = ? ORDER BY seq`).all(fkid) as {
+        parent: string;
+        child: string;
+        referenced: string | null;
+      }[];
+      const parent = pairs[0].parent;
+      const primaryKey = (db.prepare(`SELECT name FROM pragma_table_info(${literal(parent)}) WHERE pk > 0 ORDER BY pk`).all() as { name: string }[]).map(({ name }) => name);
+      const columns = pairs.map(({ child, referenced }, index) => ({ child, referenced: referenced ?? primaryKey[index] }));
+      const named = columns.map(({ child }) => `${table}.${child} IS NOT NULL`).join(" AND ");
+      const matches = columns.map(({ child, referenced }) => `p.${referenced} = ${table}.${child}`).join(" AND ");
+      db.exec(`DELETE FROM ${table} WHERE ${named} AND NOT EXISTS (SELECT 1 FROM ${parent} p WHERE ${matches})`);
+    }
+  }
+}
+
+/**
+ * The rows every word a branch touches reads, copied once from the shared
+ * dictionary into a local database (#741). Every slice of those words, or of
+ * fewer, is built from it, so the shared dictionary is read once however
+ * many slices a sample measures: the rows a set of words reads only grow
+ * with the set, so fewer words read a part of what the copy holds.
+ */
+export class SliceSource {
+  private constructor(
+    private readonly db: DatabaseSync,
+    /** The lookup keys of every touched word, sorted. */
+    readonly keys: readonly string[],
+  ) {}
+
+  /** Copy what `words` read from the shared dictionary `reader` reads. Throws `SliceRefused` for no word. */
+  static copy({ reader, words, schema }: { reader: MasterReader; words: readonly string[]; schema: string }): SliceSource {
+    const keys = sliceKeys(words);
+    if (keys.length === 0) throw new SliceRefused("a slice needs at least one word");
+    return new SliceSource(copiedDatabase(reader, keys, schema, ""), keys);
+  }
+
+  /** The copy, read as the shared dictionary is: single SELECTs only. */
+  get reader(): MasterReader {
+    return { query: <R>(sql: string): R[] => this.db.prepare(readOnly(sql)).all() as R[] };
+  }
+
+  close(): void {
+    this.db.close();
+  }
+}
+
+/** What a slice is built of beside its words: the schema, the pull request's changes in order, and the fingerprint. */
+interface SliceInputs {
+  readonly schema: string;
+  readonly changes: readonly { file: string; sql: string }[];
+  readonly fingerprint: string;
+}
+
 /**
  * One Preview's dictionary slice, built locally: the schema, the rows its
  * words read, the pull request's changes applied, and the words it serves.
- * `build` is the only way to make one, so a slice always holds all four.
+ * `build` and `fitting` are the only ways to make one, so a slice always
+ * holds all four. A whole slice serves every word it was asked for; a sample
+ * (#741) serves some of the words a branch touches and names the rest in
+ * `leftOut`, which a lookup reads from the shared dictionary.
  */
 export class PreviewSlice {
   private constructor(
@@ -255,6 +384,8 @@ export class PreviewSlice {
     /** The lookup keys it serves. */
     readonly keys: readonly string[],
     readonly fingerprint: string,
+    /** The touched words' keys it does not serve, sorted: none for a whole slice. */
+    readonly leftOut: readonly string[],
   ) {}
 
   /**
@@ -263,29 +394,78 @@ export class PreviewSlice {
    * record the words and the fingerprint. Foreign keys are on, as on D1.
    * Throws `SliceRefused` when a change's SQL does not run on the slice.
    */
-  static build({ reader, words, schema, changes, fingerprint }: { reader: MasterReader; words: readonly string[]; schema: string; changes: readonly { file: string; sql: string }[]; fingerprint: string }): PreviewSlice {
+  static build({ reader, words, ...inputs }: { reader: MasterReader; words: readonly string[] } & SliceInputs): PreviewSlice {
     const keys = sliceKeys(words);
     if (keys.length === 0) throw new SliceRefused("a slice needs at least one word");
-    const copied = rowsToCopy(reader, keys);
-    const db = new DatabaseSync(":memory:");
+    return PreviewSlice.assemble(reader, keys, [], inputs);
+  }
+
+  /**
+   * The slice of every word `source` holds when it writes at most `cap`
+   * rows; else a sample of them that does (#741). The sample takes the
+   * touched words `named` names first, in their order, then the other
+   * touched words in key order, while the slice built of them writes at most
+   * `cap` rows: the first word past that, and every word after it, is left
+   * out. Each candidate is measured on the slice actually built, since two
+   * words can share rows, and the longest run that fits is found by halving.
+   *
+   * The whole slice is built first, with foreign keys checked as each change
+   * runs, so a change that does not run on it is refused as `build` refuses
+   * it. On a sample, a row a change writes that names a row the sample left
+   * out is dropped, and the change's rows for the sampled words are kept.
+   * Throws `SliceRefused` when not even the first word fits under the cap.
+   */
+  static fitting({ source, named, cap, ...inputs }: { source: SliceSource; named: readonly string[]; cap: number } & SliceInputs): PreviewSlice {
+    const whole = PreviewSlice.assemble(source.reader, source.keys, [], inputs);
+    if (whole.rowsWritten <= cap) return whole;
+    whole.close();
+    const order = sampleOrder(source.keys, named);
+    const sampleOf = (count: number) => PreviewSlice.assemble(source.reader, order.slice(0, count), order.slice(count), inputs);
+    // `fits` is the longest run found that fits; a run of `over` words is known not to.
+    let fits = sampleOf(1);
+    if (fits.rowsWritten > cap) {
+      const rows = fits.rowsWritten;
+      fits.close();
+      throw new SliceRefused(`not even one word fits under the cap: a slice of ${order[0]} alone would write ${rows} rows, over the cap of ${cap}; nothing was written`);
+    }
+    let over = order.length;
+    while (over - fits.keys.length > 1) {
+      const count = Math.floor((fits.keys.length + over) / 2);
+      const candidate = sampleOf(count);
+      if (candidate.rowsWritten <= cap) {
+        fits.close();
+        fits = candidate;
+      } else {
+        candidate.close();
+        over = count;
+      }
+    }
+    return fits;
+  }
+
+  /** The slice of `keys`, leaving out `leftOut`: a change's orphaned rows are dropped only when it leaves one out. */
+  private static assemble(reader: MasterReader, keys: readonly string[], leftOut: readonly string[], { schema, changes, fingerprint }: SliceInputs): PreviewSlice {
+    const served = sliceKeys(keys);
+    const db = copiedDatabase(reader, served, schema, SLICE_TABLES);
     try {
-      db.exec("PRAGMA foreign_keys = ON");
-      db.exec(schema);
-      db.exec(SLICE_TABLES);
-      const slice = new PreviewSlice(db, keys, fingerprint);
-      slice.transaction(() => {
-        for (const table of slice.tables()) slice.copy(table, ordered(table.name, copied.get(table.name) ?? []));
-      });
+      const slice = new PreviewSlice(db, served, fingerprint, [...leftOut].sort());
       for (const { file, sql } of changes) {
         try {
-          slice.transaction(() => db.exec(sql));
+          transaction(db, () => {
+            if (!slice.isSample) db.exec(sql);
+            else {
+              db.exec("PRAGMA defer_foreign_keys = ON");
+              db.exec(sql);
+              dropOrphans(db);
+            }
+          });
         } catch (error: unknown) {
           throw new SliceRefused(`${file} does not run on the slice: ${error instanceof Error ? error.message : String(error)}`);
         }
       }
-      slice.transaction(() => {
+      transaction(db, () => {
         const word = db.prepare("INSERT INTO preview_slice_word (word_key) VALUES (?)");
-        for (const key of keys) word.run(key);
+        for (const key of served) word.run(key);
         db.prepare("INSERT INTO preview_slice (singleton, fingerprint, format) VALUES (1, ?, ?)").run(fingerprint, SLICE_FORMAT);
       });
       return slice;
@@ -293,6 +473,11 @@ export class PreviewSlice {
       db.close();
       throw error;
     }
+  }
+
+  /** Whether the slice serves only some of the words the branch touches. */
+  get isSample(): boolean {
+    return this.leftOut.length > 0;
   }
 
   /**
@@ -332,43 +517,12 @@ export class PreviewSlice {
     this.db.close();
   }
 
-  /** Every table, in the order schema.sql creates them, which puts each parent before its children. */
   private tables(): StoredTable[] {
-    const names = this.db.prepare("SELECT name FROM sqlite_schema WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY rowid").all() as { name: string }[];
-    return names.map(({ name }) => ({
-      name,
-      columns: (this.db.prepare(`SELECT name FROM pragma_table_info(${literal(name)})`).all() as { name: string }[]).map((column) => column.name),
-      indexes: (this.db.prepare("SELECT count(*) AS n FROM sqlite_schema WHERE type = 'index' AND tbl_name = ?").get(name) as { n: number }).n,
-    }));
+    return storedTables(this.db);
   }
 
   private count(table: string): number {
     return (this.db.prepare(`SELECT count(*) AS n FROM ${table}`).get() as { n: number }).n;
-  }
-
-  private transaction(run: () => void): void {
-    this.db.exec("BEGIN");
-    try {
-      run();
-      this.db.exec("COMMIT");
-    } catch (error: unknown) {
-      this.db.exec("ROLLBACK");
-      throw error;
-    }
-  }
-
-  /**
-   * Copy `rows` into `table`, each with the columns both have: a master's
-   * older table may lack a newer column or keep a dropped one. A row the
-   * schema already wrote, such as `grammar_value`'s, is kept as it is.
-   */
-  private copy(table: StoredTable, rows: readonly Row[]): void {
-    for (const row of rows) {
-      const columns = table.columns.filter((column) => Object.hasOwn(row, column));
-      this.db
-        .prepare(`INSERT OR IGNORE INTO ${table.name} (${columns.join(", ")}) VALUES (${columns.map(() => "?").join(", ")})`)
-        .run(...columns.map((column) => row[column]));
-    }
   }
 
   /** `table`'s rows as INSERTs of at most `STATEMENT_BYTES` each, in the order they were written here. */
@@ -392,6 +546,19 @@ export class PreviewSlice {
     if (batch.length > 0) statements.push(`${head}${batch.join(",\n  ")};`);
     return statements;
   }
+}
+
+/**
+ * The order a sample takes the touched `keys` in (#741): the key of each word
+ * `named` names, in its order and once, then every other key in key order. A
+ * named word the branch does not touch is not the slice's to serve, so it is
+ * not taken.
+ */
+export function sampleOrder(keys: readonly string[], named: readonly string[]): string[] {
+  const touched = new Set(keys);
+  const first = [...new Set(named.map((word) => normalizeItalianExact(word.trim())))].filter((key) => touched.has(key));
+  const taken = new Set(first);
+  return [...first, ...keys.filter((key) => !taken.has(key))];
 }
 
 /** Rows in an order their own table's foreign keys accept: a lead-in before the definition it opens. */

@@ -344,19 +344,21 @@ const NO_DECLARATION: SliceDeclared = { state: "none", reason: "the branch adds 
  */
 function planner(account: FakeAccount, declared: SliceDeclared, built?: SliceBuilt) {
   const asked: string[] = [];
+  const caps: number[] = [];
   const slices: SlicePlanner = {
     declared: () => {
       asked.push("declared");
       return declared;
     },
-    build: () => {
+    build: (cap) => {
       asked.push("build");
+      caps.push(cap);
       if (built === undefined) throw new Error("this branch's slice is not built");
-      if (built.state === "built") account.sqlFiles.set(built.sql, built.fingerprint);
+      if (built.state !== "none") account.sqlFiles.set(built.sql, built.fingerprint);
       return built;
     },
   };
-  return { slices, asked };
+  return { slices, asked, caps };
 }
 
 /** The prepare step's inputs against `account`, keeping every file it writes and every step it runs, in order. */
@@ -748,6 +750,46 @@ test("a slice over the cap is not written: no slice D1, no binding, a log line w
   assert.ok(prepare(atCap, DICTIONARY_BRANCH, undefined, planner(atCap, declaring(), builtSlice(SLICE_ROWS_WRITTEN_CAP)).slices).slice);
 });
 
+test("a branch whose slice of every touched word is over the cap gets a sample written and bound, and the log line names the words left out", () => {
+  const account = new FakeAccount([{ name: DICTIONARY.name, uuid: DICTIONARY.id }]);
+  const sample: SliceBuilt = { state: "sample", fingerprint: FINGERPRINT, words: 3, rowsWritten: 248_000, sql: "/tmp/slice/sample.sql", leftOut: ["abaco", "zuppa"] };
+  const { slices, caps } = planner(account, declaring(), sample);
+  const { name, config, slice, logged } = previewCommand(account, DICTIONARY_BRANCH, undefined, slices);
+  // The planner is asked for a slice under the cap.
+  assert.deepEqual(caps, [SLICE_ROWS_WRITTEN_CAP]);
+  const created = account.databases.find((db) => db.name === name.sliceDatabase);
+  assert.ok(created);
+  assert.deepEqual(slice, { binding: "DICTIONARY_SLICE", database_name: name.sliceDatabase, database_id: created.uuid });
+  assert.deepEqual(bindingsOf(config).map(([binding]) => binding), ["DB", "APP_DB", "DICTIONARY_SLICE"]);
+  assert.deepEqual(d1Writes(account), [
+    `d1 create ${name.appDatabase} --update-config=false`,
+    `d1 create ${name.sliceDatabase} --update-config=false`,
+    `d1 execute ${name.sliceDatabase} --remote --yes --file /tmp/slice/sample.sql`,
+  ]);
+  assert.ok(
+    logged.includes(
+      `dictionary slice: wrote a sample, ${name.sliceDatabase} (${created.uuid}): 3 of 5 touched word(s), 248000 rows written, under the cap of 250000; the slice of every touched word is over the cap, so 2 word(s) read the shared dictionary: abaco, zuppa`,
+    ),
+    logged.join("\n"),
+  );
+});
+
+test("when not even one touched word fits under the cap, nothing is written, no slice is bound, the line gives the rows and the cap, and the Preview still deploys", () => {
+  const account = new FakeAccount([{ name: DICTIONARY.name, uuid: DICTIONARY.id }]);
+  const reason = "not even one word fits under the cap: a slice of essere alone would write 260000 rows, over the cap of 250000; nothing was written";
+  const { name, config, slice, logged } = previewCommand(account, DICTIONARY_BRANCH, undefined, planner(account, declaring(), { state: "none", reason }).slices);
+  assert.equal(slice, undefined);
+  assert.deepEqual(bindingsOf(config).map(([binding]) => binding), ["DB", "APP_DB"]);
+  assert.deepEqual(d1Writes(account), [`d1 create ${name.appDatabase} --update-config=false`]);
+  assert.ok(logged.includes(`dictionary slice: none, ${reason}`), logged.join("\n"));
+  assert.ok(account.previews.has(name.value));
+
+  // A sample answered over the cap is not written either.
+  const over = new FakeAccount([{ name: DICTIONARY.name, uuid: DICTIONARY.id }]);
+  const tooBig: SliceBuilt = { state: "sample", fingerprint: FINGERPRINT, words: 1, rowsWritten: SLICE_ROWS_WRITTEN_CAP + 1, sql: "/tmp/slice/sample.sql", leftOut: ["zuppa"] };
+  assert.equal(prepare(over, DICTIONARY_BRANCH, undefined, planner(over, declaring(), tooBig).slices).slice, undefined);
+});
+
 test("a push whose declarations and schema are unchanged reuses the slice and writes no row; a changed one rebuilds it under the cap", () => {
   const account = new FakeAccount([{ name: DICTIONARY.name, uuid: DICTIONARY.id }]);
   const first = previewCommand(account, DICTIONARY_BRANCH, undefined, planner(account, declaring(), builtSlice(41_250)).slices);
@@ -814,8 +856,24 @@ test("the slice planner's answers are read strictly: anything but a reason, a fi
   assert.deepEqual(readDeclared('{"state":"none","reason":"why"}'), { state: "none", reason: "why" });
   assert.deepEqual(readDeclared(`{"state":"declared","fingerprint":"${FINGERPRINT}","files":["a.json"]}`), { state: "declared", fingerprint: FINGERPRINT, files: ["a.json"] });
   assert.deepEqual(readBuilt('{"state":"built","fingerprint":"f","words":3,"rowsWritten":120,"sql":"/s.sql","rowsByTable":{}}'), { state: "built", fingerprint: "f", words: 3, rowsWritten: 120, sql: "/s.sql" });
-  for (const bad of ['{"state":"none"}', '{"state":"declared","fingerprint":"f"}', "[]", '{"state":"built","fingerprint":"f","words":3,"rowsWritten":-1,"sql":"/s.sql"}']) {
-    assert.throws(() => (bad.includes("built") ? readBuilt(bad) : readDeclared(bad)), /preview:slice/, bad);
+  assert.deepEqual(readBuilt('{"state":"sample","fingerprint":"f","words":3,"rowsWritten":120,"sql":"/s.sql","rowsByTable":{},"leftOut":["a","b"]}'), {
+    state: "sample",
+    fingerprint: "f",
+    words: 3,
+    rowsWritten: 120,
+    sql: "/s.sql",
+    leftOut: ["a", "b"],
+  });
+  for (const bad of [
+    '{"state":"none"}',
+    '{"state":"declared","fingerprint":"f"}',
+    "[]",
+    '{"state":"built","fingerprint":"f","words":3,"rowsWritten":-1,"sql":"/s.sql"}',
+    '{"state":"sample","fingerprint":"f","words":3,"rowsWritten":120,"sql":"/s.sql","leftOut":[]}',
+    '{"state":"sample","fingerprint":"f","words":0,"rowsWritten":120,"sql":"/s.sql","leftOut":["a"]}',
+    '{"state":"sample","fingerprint":"f","words":3,"rowsWritten":120,"sql":"/s.sql","leftOut":["a",""]}',
+  ]) {
+    assert.throws(() => (/"state":"(built|sample)"/.test(bad) ? readBuilt(bad) : readDeclared(bad)), /preview:slice/, bad);
   }
 });
 

@@ -15,8 +15,8 @@ import { join, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { after, before, test } from "node:test";
 import { gzipSync } from "node:zlib";
-import { PreviewSlice, sliceFingerprint, SliceRefused, sliceKeys } from "../src/deploy/previewSlice.js";
-import { builtSlice, declaredSlice, readOnlyReader } from "../src/deploy/sliceCli.js";
+import { PreviewSlice, sampleOrder, sliceFingerprint, SliceRefused, sliceKeys } from "../src/deploy/previewSlice.js";
+import { builtSlice, declaredSlice, main as sliceMain, readOnlyReader } from "../src/deploy/sliceCli.js";
 import { NO_WORDS, touchedWords, unbounded, unionOf, wordsOfApply, wordsOfCorrections, wordsOfHide, wordsOfPageEntries } from "../src/deploy/touchedWords.js";
 import { planWrite, readyChange, type WritePlan } from "../src/deploy/writePlan.js";
 import type { Git } from "../src/deploy/pending.js";
@@ -391,5 +391,131 @@ test("a build plans each declaration, and gives no slice for a whole-dictionary 
     }
   } finally {
     db.close();
+  }
+});
+
+// --- A sample, when the slice of every touched word is over the cap (#741) ---
+
+test("a sample takes the touched words the declarations name first, in their order, then the others in key order; a named word it does not touch is not taken", () => {
+  assert.deepEqual(sampleOrder(["a", "b", "c", "d"], ["D", "x", "b", "d"]), ["d", "b", "a", "c"]);
+  assert.deepEqual(sampleOrder(["a", "b"], []), ["a", "b"]);
+});
+
+/** A branch that corrects the fixture's records in one `correct:records` declaration naming `lookups`, planned against `db`. */
+async function correctionBranch(db: DatabaseSync, lookups: readonly string[]) {
+  const reader = readerOf(db);
+  const fixture = atFixtureLines(await correctionFixtureLines(), RELEASE);
+  const text = JSON.stringify({ command: "correct:records", ...(lookups.length === 0 ? {} : { lookups: lookups.map((word) => ({ word })) }) });
+  const declared = { state: "declared" as const, fingerprint: "f".repeat(64), declarations: [parseDraft("dictionary-changes/a.json", text)] };
+  const plan = (declaration: DeclarationDraft): Promise<WritePlan> => planWrite(readyChange(declaration, null), reader, "2026-10-04T00:00:00Z", { corrections: fixture });
+  const build = async (cap?: number) => {
+    const built = await builtSlice(declared, schema, { reader, plan, ...(cap === undefined ? {} : { cap }) });
+    assert.ok(built.state === "built", JSON.stringify(built));
+    return built.slice;
+  };
+  return { build, built: (cap: number) => builtSlice(declared, schema, { reader, plan, cap }), touched: (await plan(declared.declarations[0])).touched };
+}
+
+const servedRecords = (slice: PreviewSlice, table: string): number => (slice.db.prepare(`SELECT count(DISTINCT record_id) AS n FROM ${table}`).get() as { n: number }).n;
+
+test("under the cap a capped build gives the same slice as an uncapped one: every touched word, nothing left out", async () => {
+  const db = await seeded(correctionArchive);
+  try {
+    const { build } = await correctionBranch(db, []);
+    const today = await build();
+    const capped = await build(today.rowsWritten);
+    try {
+      assert.equal(capped.isSample, false);
+      assert.deepEqual(capped.leftOut, []);
+      assert.deepEqual(capped.keys, today.keys);
+      assert.equal(capped.rowsWritten, today.rowsWritten);
+      assert.deepEqual(snapshot(capped.db), snapshot(today.db));
+    } finally {
+      today.close();
+      capped.close();
+    }
+  } finally {
+    db.close();
+  }
+});
+
+test("over the cap the slice is a sample under it: the named words first, then others in key order, the same twice, with the left-out words read from the shared dictionary", async () => {
+  const db = await seeded(correctionArchive);
+  try {
+    const whole = await (await correctionBranch(db, [])).build();
+    const all = whole.keys;
+    const wholeRows = whole.rowsWritten;
+    const corrected = servedRecords(whole, "corrected_claim");
+    whole.close();
+    // The two words that sort last, the last named first: in key order alone, a sample of few words would leave both out.
+    const named = [all[all.length - 1], all[all.length - 2]];
+    const { build, touched } = await correctionBranch(db, named);
+    assert.ok(touched.kind === "words" && sliceKeys(touched.words).length === all.length);
+    const cap = Math.floor(wholeRows / 2);
+    const sample = await build(cap);
+    const again = await build(cap);
+    try {
+      assert.equal(sample.isSample, true);
+      assert.ok(sample.rowsWritten <= cap, `${sample.rowsWritten} over ${cap}`);
+      assert.ok(sample.keys.length >= named.length && sample.leftOut.length > 0, JSON.stringify({ keys: sample.keys, leftOut: sample.leftOut }));
+      // Every touched word is served or left out, never both; the served ones are the head of the fixed order.
+      assert.deepEqual([...sample.keys, ...sample.leftOut].sort(), all);
+      const order = sampleOrder(all, named);
+      assert.deepEqual(order.slice(0, 2), named);
+      assert.deepEqual(sample.keys, order.slice(0, sample.keys.length).sort());
+      // The same declarations, schema and dictionary give the same sample, byte for byte.
+      assert.deepEqual(again.keys, sample.keys);
+      assert.deepEqual(again.leftOut, sample.leftOut);
+      assert.equal(again.sql(), sample.sql());
+
+      // The Worker's route: the slice for a sampled word, the shared dictionary for a left-out one.
+      const shared = fromNodeSqlite(db);
+      const sliced = fromNodeSqlite(sample.db);
+      for (const word of named) assert.equal(await dictionaryFor(word, shared, sliced), sliced, word);
+      for (const word of sample.leftOut) assert.equal(await dictionaryFor(word, shared, sliced), shared, word);
+      assert.deepEqual((sample.db.prepare("SELECT word_key FROM preview_slice_word ORDER BY word_key").all() as { word_key: string }[]).map(({ word_key }) => word_key), sample.keys);
+
+      // The change ran: the sampled words' corrections are on the slice, the left-out words' rows were dropped, and every foreign key holds.
+      const served = servedRecords(sample, "corrected_claim");
+      assert.ok(served > 0 && served < corrected, `${served} of ${corrected}`);
+      const correctedWords = (sample.db.prepare("SELECT DISTINCT r.word FROM corrected_claim c JOIN source_record r USING (record_id)").all() as { word: string }[]).map(({ word }) => sliceKeys([word])[0]);
+      for (const word of named) assert.ok(correctedWords.includes(word), word);
+      for (const word of sample.leftOut) assert.equal(correctedWords.includes(word), false, word);
+      assert.deepEqual(sample.db.prepare("PRAGMA foreign_key_check").all(), []);
+      const empty = new DatabaseSync(":memory:");
+      try {
+        empty.exec("PRAGMA foreign_keys = ON");
+        empty.exec("BEGIN");
+        empty.exec(sample.sql());
+        empty.exec("COMMIT");
+        assert.deepEqual(snapshot(empty), snapshot(sample.db));
+      } finally {
+        empty.close();
+      }
+    } finally {
+      sample.close();
+      again.close();
+    }
+  } finally {
+    db.close();
+  }
+});
+
+test("when not even the first word fits under the cap there is no slice, and the reason gives the rows and the cap", async () => {
+  const db = await seeded(correctionArchive);
+  try {
+    const built = await (await correctionBranch(db, [])).built(10);
+    assert.equal(built.state, "none");
+    assert.match((built as { reason: string }).reason, /^not even one word fits under the cap: a slice of \S+ alone would write \d+ rows, over the cap of 10; nothing was written$/);
+  } finally {
+    db.close();
+  }
+});
+
+test("preview:slice build refuses a cap that is not a whole number of rows above 0", async () => {
+  for (const cap of ["0", "-5", "1.5", "lots"]) {
+    const answer = await sliceMain(["build", "--dictionary", "lexema-dictionary", "--answer", join(dir, "answer.json"), "--sql", join(dir, "slice.sql"), "--cap", cap]);
+    assert.notEqual(answer.status, 0, cap);
+    assert.match(answer.out, /--cap must be a whole number of rows above 0/, cap);
   }
 });
