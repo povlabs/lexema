@@ -726,8 +726,11 @@ CREATE TABLE corrected_claim (
 -- (`json_pointer`, `evidence_url`), and the target's, whose forms table lists
 -- the word (`base_evidence_url`). form_of_edge and source_record_json
 -- stay as imported; a lookup reads this row in place of the sense's own edges.
--- A hidden record gets none (ADR 0023), and a record a later release replaced
--- loses it with its form_of_edge rows: the update reports it.
+-- A hidden record gets none (ADR 0023). A row stays on the record it was
+-- written for, as corrected_claim's: when a later release's change retires
+-- that record, or a hiding rule hides it after, the row and its evidence stay
+-- beside it (ADR 0025, ADR 0027), no lookup reads it (`correctedEdgeServed`,
+-- src/lookup/correctedEdge.ts), and the update that retires it reports it.
 CREATE TABLE corrected_edge (
   record_id         INTEGER NOT NULL REFERENCES source_record(record_id) ON DELETE CASCADE,
   release_id        TEXT    NOT NULL,

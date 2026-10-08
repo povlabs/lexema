@@ -10,16 +10,17 @@
 //   path with its source text normalizations (ADR 0019), as a new record of
 //   the later release, its line stored byte for byte;
 // - retires the record a `changed` change replaces: its lookup_form and
-//   form_of_edge rows go, so no search reaches it, and so do its corrected
-//   edges (#722), which the update reports with its other corrections; nothing
-//   else of it is touched, the rows written by hand beside it least of all;
+//   form_of_edge rows go, so no search reaches it, and nothing else of it is
+//   touched, the rows written by hand beside it least of all: its curated
+//   corrections stay, no lookup reads them (`correctedEdgeServed`,
+//   src/lookup/correctedEdge.ts), and the update reports them;
 // - recomputes the `accent_fold` and `typo_key` rows of every key those
 //   records spell, with the seed's own rules, writing only rows that change;
 // - records the later release ('partial', with its checksum), the master it
 //   feeds, and each change under its id.
 //
 // It never deletes a record, never touches a table written by hand beside the
-// records (raw_page, recovered_*, claim_review, corrected_claim), and never applies a lost
+// records (raw_page, recovered_*, claim_review, corrected_claim, corrected_edge), and never applies a lost
 // word: removing a record is not ruled.
 //
 // The file holds no DDL and changes no schema (#509): it writes into the
@@ -340,10 +341,6 @@ export async function planApply(
   const [{ n: retiredEdges }] = retired.length === 0
     ? [{ n: 0 }]
     : select<{ n: number }>(reader, `SELECT count(*) AS n FROM form_of_edge WHERE record_id IN (SELECT value FROM json_each(${json(retired)}))`);
-  // A retired record's corrected edges go with its source edges, so no lookup lists it as a form; the correction is reported.
-  const [{ n: retiredCorrectedEdges }] = retired.length === 0 || !correctionTablesIn(reader).includes("corrected_edge")
-    ? [{ n: 0 }]
-    : select<{ n: number }>(reader, `SELECT count(*) AS n FROM corrected_edge WHERE record_id IN (SELECT value FROM json_each(${json(retired)}))`);
 
   const writtenAccent = nearby.accent.length;
   const writtenTypo = nearby.typo.length;
@@ -396,7 +393,6 @@ export async function planApply(
     sql.push(
       `DELETE FROM lookup_form WHERE record_id IN (${retired.join(",")});`,
       `DELETE FROM form_of_edge WHERE record_id IN (${retired.join(",")});`,
-      ...(retiredCorrectedEdges > 0 ? [`DELETE FROM corrected_edge WHERE record_id IN (${retired.join(",")});`] : []),
     );
   }
   for (const table of APPLIED_TABLES.slice(0, -2)) sql.push(...inserts.sql(table));
@@ -433,7 +429,7 @@ export async function planApply(
         applied_change: appliedTuples.length,
         release_table_rows: APPLIED_TABLES.length,
       },
-      { lookup_form: retiredKeys.length, form_of_edge: retiredEdges, corrected_edge: retiredCorrectedEdges, ...nearby.replaced },
+      { lookup_form: retiredKeys.length, form_of_edge: retiredEdges, ...nearby.replaced },
     ),
     sql: `${sql.join("\n")}\n`,
   };

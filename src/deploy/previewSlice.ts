@@ -25,6 +25,7 @@ import { createHash } from "node:crypto";
 import { DatabaseSync } from "node:sqlite";
 import { literal } from "../import/seedSql.js";
 import { normalizeItalianExact } from "../italian/normalize.js";
+import { correctedEdgeServed } from "../lookup/correctedEdge.js";
 import { bareKey, deletionKeys, foldKey } from "../lookup/nearby.js";
 import { select, type MasterReader } from "../update/master.js";
 
@@ -118,12 +119,14 @@ function recordsFor(reader: MasterReader, keys: readonly string[], tables: Reado
     reader,
     `SELECT DISTINCT record_id FROM lookup_form WHERE release_id IN (${releasesIn}) AND surface_key IN (SELECT value FROM json_each(${keyList}))`,
   ).map(({ record_id }) => record_id);
-  // A corrected edge (#722) names a word as a source edge does.
+  // A corrected edge (#722) names a word as a source edge does, while its record is served.
   const edgeTables = ["form_of_edge", ...(tables.has("corrected_edge") ? ["corrected_edge"] : [])];
   const naming = edgeTables.flatMap((table) =>
     select<{ record_id: number }>(
       reader,
-      `SELECT DISTINCT record_id FROM ${table} WHERE release_id IN (${releasesIn}) AND target_word_key IN (SELECT value FROM json_each(${keyList}))`,
+      `SELECT DISTINCT e.record_id FROM ${table} e WHERE e.release_id IN (${releasesIn}) AND e.target_word_key IN (SELECT value FROM json_each(${keyList}))${
+        table === "corrected_edge" ? ` AND ${correctedEdgeServed("e")}` : ""
+      }`,
     ).map(({ record_id }) => record_id),
   );
   const targets = [

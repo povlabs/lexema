@@ -19,7 +19,7 @@ import { POS_TITLE_BY_TEMPLATE } from "../italian/wikitext.js";
 import { readPluralGloss } from "../italian/pluralGloss.js";
 import { readVerbFormGloss } from "../italian/verbFormGloss.js";
 import { correctionOf, correctionsByRecord, type CorrectionRow } from "./correctedClaim.js";
-import { sourceEdgeServed } from "./correctedEdge.js";
+import { correctedEdgeServed, sourceEdgeServed } from "./correctedEdge.js";
 import type { DictionaryRead, LookupDatabase } from "./database.js";
 import { dictionaryTables, servedBy } from "./served.js";
 import { pluralDeclaration } from "./types.js";
@@ -92,7 +92,7 @@ const DECLARED_CORRECTION_JOINS = `
 /** `FROM` and `WHERE` of one arm: the edges of `arm` naming the key at `?2`, with the declaring record `d`. */
 const edgesNaming = (arm: CorrectedArm, joins: string): string => `FROM ${arm === "corrected_edge" ? "corrected_edge" : "form_of_edge"} e
        JOIN source_record d ON d.record_id = e.record_id${joins}
-      WHERE e.release_id IN (${servedBy("?1")}) AND e.target_word_key = ?2${arm === "served form_of_edge" ? ` AND ${sourceEdgeServed("e")}` : ""}`;
+      WHERE e.release_id IN (${servedBy("?1")}) AND e.target_word_key = ?2 AND ${arm === "served form_of_edge" ? sourceEdgeServed("e") : correctedEdgeServed("e")}`;
 
 /**
  * `DECLARED_LEMMA_SQL` on a master with corrected edges: a sense's corrected

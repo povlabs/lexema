@@ -18,7 +18,7 @@
 import type { DictionaryRead, LookupDatabase } from "./database.js";
 import { queryInfoOf, rejectionOf, servableRelease } from "./lookup.js";
 import { phraseMatchesOf } from "./phrase.js";
-import { sourceEdgeServed } from "./correctedEdge.js";
+import { correctedEdgeServed, sourceEdgeServed } from "./correctedEdge.js";
 import { dictionaryTables, servedBy, type DictionaryTables } from "./served.js";
 import { lemmasOfPartOfSpeech, type QueryInfo, type RejectedResult, type ReleaseInfo } from "./types.js";
 
@@ -151,7 +151,7 @@ function batchLinks(pageEntries: boolean, edges: "form_of_edge" | "served form_o
         AND lf.origin = 'headword'
        LEFT JOIN source_record t ON t.record_id = lf.record_id${pages.joins}
       WHERE e.record_id IN (SELECT value FROM json_each(?1)) AND e.release_id IN (${servedBy("?2")})${
-        edges === "served form_of_edge" ? ` AND ${sourceEdgeServed("e")}` : ""
+        edges === "served form_of_edge" ? ` AND ${sourceEdgeServed("e")}` : edges === "corrected_edge" ? ` AND ${correctedEdgeServed("e")}` : ""
       }`;
 }
 

@@ -4,7 +4,9 @@
 // `hidden_record` row, naming the rule and its evidence, and loses its
 // `lookup_form` and `form_of_edge` rows; the `accent_fold` and `typo_key` rows
 // of the keys they spelled are recomputed with the seed's rules. Nothing else
-// of the record is touched, `source_record_json` least of all.
+// of the record is touched, `source_record_json` least of all: a corrected
+// edge on it stays, and no lookup reads it (`correctedEdgeServed`,
+// src/lookup/correctedEdge.ts).
 //
 // The SQL is one file, run as one transaction, like an apply
 // (src/update/apply.ts). A record already hidden is left alone, so a second
@@ -138,9 +140,6 @@ export function planHide(reader: MasterReader, found: readonly FoundRecord[]): H
   const keys = select<{ surface_key: string }>(reader, `SELECT DISTINCT surface_key FROM lookup_form WHERE record_id ${byRecord}`).map((row) => row.surface_key).sort();
   const [{ n: lookupRows }] = select<{ n: number }>(reader, `SELECT count(*) AS n FROM lookup_form WHERE record_id ${byRecord}`);
   const [{ n: edgeRows }] = select<{ n: number }>(reader, `SELECT count(*) AS n FROM form_of_edge WHERE record_id ${byRecord}`);
-  // A hidden record declares no edge, so a corrected one goes too (ADR 0023, ADR 0030).
-  const edgeCorrected = select<{ name: string }>(reader, "SELECT name FROM sqlite_schema WHERE type = 'table' AND name = 'corrected_edge'").length > 0;
-  const correctedEdgeRows = edgeCorrected ? select<{ n: number }>(reader, `SELECT count(*) AS n FROM corrected_edge WHERE record_id ${byRecord}`)[0].n : 0;
   const served = [master.releaseId, ...master.feeds.map((feed) => feed.releaseId)];
   const nearby = keys.length === 0 ? NO_NEARBY_EDITS : nearbyEdits(reader, served, keys, new Set(ids), [], []);
   const rules = [...new Set(hides.map(({ found: record }) => record.rule))].sort();
@@ -152,7 +151,6 @@ export function planHide(reader: MasterReader, found: readonly FoundRecord[]): H
     ...inserts("raw_page", newPages),
     `DELETE FROM lookup_form WHERE record_id ${byRecord};`,
     `DELETE FROM form_of_edge WHERE record_id ${byRecord};`,
-    ...(correctedEdgeRows > 0 ? [`DELETE FROM corrected_edge WHERE record_id ${byRecord};`] : []),
     ...inserts(
       "hidden_record",
       hides.map(({ recordId, found: record }) => [
@@ -172,7 +170,7 @@ export function planHide(reader: MasterReader, found: readonly FoundRecord[]): H
     counts: new PlanCounts(
       { added: 0, changed: 0, removed: hides.length },
       { hide_version: 1, raw_page: newPages.length, hidden_record: hides.length, accent_fold: nearby.accent.length, typo_key: nearby.typo.length },
-      { lookup_form: lookupRows, form_of_edge: edgeRows, corrected_edge: correctedEdgeRows, ...nearby.replaced },
+      { lookup_form: lookupRows, form_of_edge: edgeRows, ...nearby.replaced },
     ),
     sql: `${sql.join("\n")}\n`,
   };

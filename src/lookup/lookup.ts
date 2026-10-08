@@ -15,7 +15,7 @@ import { placeRecovered, type RecoveredOfRecord, type StoredRecovered } from "./
 import { dictionaryTables, lineagesOf, servedBy, type DictionaryTables } from "./served.js";
 import { readSourceRecord, type SourceRecordFields } from "./sourceRecord.js";
 import { correctionOf, correctionsByRecord, type CorrectionRow } from "./correctedClaim.js";
-import { sourceEdgeServed } from "./correctedEdge.js";
+import { correctedEdgeServed, sourceEdgeServed } from "./correctedEdge.js";
 import { agreeingQuery, essereAgreement } from "../italian/essereAgreement.js";
 import { prefixUpperBound } from "./keyRange.js";
 import { personOfItalianVerbForm } from "../italian/moods.js";
@@ -909,9 +909,8 @@ const lemmaLineArm = (edges: "form_of_edge" | "corrected_edge"): string => `SELE
                  ON lf.release_id IN (${servedBy("?2")})
                 AND lf.surface_key = e.target_word_key
                 AND lf.origin = 'headword'
-              WHERE e.record_id IN (SELECT value FROM json_each(?1)) AND e.release_id IN (${servedBy("?2")})${
-                edges === "form_of_edge" ? ` AND ${sourceEdgeServed("e")}` : ""
-              }`;
+              WHERE e.record_id IN (SELECT value FROM json_each(?1)) AND e.release_id IN (${servedBy("?2")})
+                AND ${edges === "form_of_edge" ? sourceEdgeServed("e") : correctedEdgeServed("e")}`;
 
 /** `LEMMA_LINE_SQL` on a master with corrected edges: each sense's corrected edge in place of its own (src/lookup/correctedEdge.ts). */
 export const CORRECTED_LEMMA_LINE_SQL: KeyedRead = keyedRead(`SELECT c.set_key AS set_key, c.record_id, r.pos_title, j.raw_json
@@ -1177,9 +1176,8 @@ const lemmaLinkArm = (edges: "form_of_edge" | "corrected_edge"): string => `SELE
         AND lf.surface_key = e.target_word_key
         AND lf.origin = 'headword'
        LEFT JOIN source_record t ON t.record_id = lf.record_id
-      WHERE e.record_id IN (SELECT value FROM json_each(?1)) AND e.release_id IN (${servedBy("?2")})${
-        edges === "form_of_edge" ? ` AND ${sourceEdgeServed("e")}` : ""
-      }`;
+      WHERE e.record_id IN (SELECT value FROM json_each(?1)) AND e.release_id IN (${servedBy("?2")})
+        AND ${edges === "form_of_edge" ? sourceEdgeServed("e") : correctedEdgeServed("e")}`;
 
 /**
  * `LEMMA_LINK_SQL` on a master with corrected edges: each sense's corrected
@@ -1276,7 +1274,7 @@ function incoming(edges: IncomingEdges, rows: { select: string; joins: string })
          ON e.release_id IN (${servedBy("?2")}) AND e.target_word_key = lf.surface_key
        JOIN source_record f ON f.record_id = e.record_id${rows.joins}
       WHERE lf.record_id IN (SELECT value FROM json_each(?1)) AND lf.origin = 'headword' AND lf.release_id IN (${servedBy("?2")})${
-        edges === "served form_of_edge" ? ` AND ${sourceEdgeServed("e")}` : ""
+        edges === "served form_of_edge" ? ` AND ${sourceEdgeServed("e")}` : edges === "corrected_edge" ? ` AND ${correctedEdgeServed("e")}` : ""
       }`;
 }
 

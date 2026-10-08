@@ -966,27 +966,34 @@ test("a curated correction stays on the record a change retires, and the apply r
   });
 });
 
-test("a corrected edge goes with the source edges of the record a change retires, and the apply reports it (#722)", async () => {
+test("a corrected edge stays on the record a change retires, no lookup lists that record as a form through it, and the apply reports it (#722)", async () => {
   await withDesk(async ({ db, later }) => {
     const [{ record_id: casaId }] = db.prepare(`SELECT record_id FROM source_record WHERE release_id = '${MASTER}' AND line_no = 1`).all() as { record_id: number }[];
-    // A synthetic entry on the master's `casa`, to test the mechanism; no ruling says casa is a form.
+    // A synthetic entry on the master's `casa`, to test the mechanism; no ruling says casa is a form of cane.
     const casa: CuratedCorrection = {
       record: { releaseId: MASTER, lineNo: 1, lineSha256: createHash("sha256").update(CASA_JULY, "utf8").digest("hex"), word: "casa", pos: "noun" },
-      edge: { sense: 0, gloss: { pointer: "/senses/0/glosses/0", text: "synthetic" }, target: "casale" },
+      edge: { sense: 0, gloss: { pointer: "/senses/0/glosses/0", text: "synthetic" }, target: "cane" },
       evidence: {
         form: { wiki: "it.wiktionary.org", title: "casa", revisionId: 1, shows: "synthetic" },
-        base: { wiki: "it.wiktionary.org", title: "casale", revisionId: 2, shows: "casa" },
+        base: { wiki: "it.wiktionary.org", title: "cane", revisionId: 2, shows: "casa" },
       },
     };
     execute(db, planCorrections(readerOf(db), [casa]).sql);
-    assert.deepEqual(db.prepare("SELECT record_id FROM corrected_edge").all().map((row) => ({ ...row })), [{ record_id: casaId }]);
+    const held = () => db.prepare("SELECT record_id, correction_id, evidence_url, base_evidence_url FROM corrected_edge").all().map((row) => ({ ...row }));
+    const before = held();
+    assert.deepEqual(before.map((row) => row.record_id), [casaId]);
+    const formsOfCane = async (): Promise<number[]> =>
+      readings(await ask(db, "cane")).flatMap((reading) => reading.inflections.map((link) => link.recordId));
+    assert.deepEqual(await formsOfCane(), [casaId]);
 
     const plan = await applied(db, later, [["changed", "casa"]]);
     const [change] = plan.changes;
     assert.deepEqual(plan.retiredCorrections, [{ correctionId: `${MASTER}:1/senses/0`, recordId: casaId, replacedBy: change.recordId, changeId: change.change.id }]);
-    assert.equal(plan.counts.deleted.corrected_edge, 1);
-    // No lookup lists the retired record as a form any more, and a later run reports the entry instead of writing it.
-    assert.deepEqual(db.prepare("SELECT record_id FROM corrected_edge").all(), []);
+    assert.doesNotMatch(plan.sql, /corrected_edge/);
+    // The row and its evidence stay beside the retired record (ADR 0025, ADR 0027), and no lookup lists that record as a form through it.
+    assert.deepEqual(held(), before);
+    assert.deepEqual(await formsOfCane(), []);
+    // A later run reports the entry instead of writing it.
     const again = planCorrections(readerOf(db), [casa]);
     assert.equal(again.sql, "");
     assert.deepEqual(again.edges.map((entry) => entry.state), ["retired"]);
