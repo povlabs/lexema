@@ -190,7 +190,7 @@ The apply is one SQL file, run once
   A row already right stays in the release that wrote it.
 
 Nothing else is written. No record is deleted, and no row of `raw_page`,
-`recovered_*`, `claim_review` or `corrected_claim` is touched.
+`recovered_*`, `claim_review`, `corrected_claim` or `corrected_form` is touched.
 
 ## Rows written by hand follow the record that replaced theirs
 
@@ -219,9 +219,10 @@ lookup asks that again of the record that replaced it, by the seed's own rule
 The rules live in [src/lookup/recovered.ts](../src/lookup/recovered.ts). A
 record never replaced reads its rows as the seed stored them.
 
-A curated correction (`corrected_claim`, [#420](https://github.com/povlabs/lexema/issues/420))
-is the one row written beside a record that does not follow it. It sets a gender
-or number the source stated wrongly on that line, checked against a cited
+A curated correction (`corrected_claim`, [#420](https://github.com/povlabs/lexema/issues/420);
+`corrected_form`, [#723](https://github.com/povlabs/lexema/issues/723))
+is the one row written beside a record that does not follow it. It sets a gender,
+number or table cell the source stated wrongly on that line, checked against a cited
 revision, and the later record may state it differently, rightly or not. So it
 stays on the retired record, a lookup of the replacing record reads that
 record's own claims, and the apply names each such correction in its output,

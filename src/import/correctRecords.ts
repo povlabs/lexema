@@ -1,10 +1,12 @@
-// The one-off update that writes the curated corrections (#420, #450) into a
-// master seeded before them, or before an entry was added: each record entry
-// keyed to the master's release gets the `corrected_claim` rows a seed now
-// writes for it (src/import/correctedLayer.ts), and each definition entry the
+// The one-off update that writes the curated corrections (#420, #450, #723)
+// into a master seeded before them, or before an entry was added: each record
+// entry keyed to the master's release gets the `corrected_claim` or
+// `corrected_form` rows a seed now writes for it
+// (src/import/correctedLayer.ts), and each definition entry the
 // `corrected_definition` row (src/import/correctedDefinitions.ts). Nothing else
 // is touched, the record's line in `source_record_json`, its own
-// `grammar_claim` rows and the entry's own `entry_definition` rows least of all.
+// `grammar_claim` and `lookup_form` rows and the entry's own `entry_definition`
+// rows least of all.
 //
 // The SQL is one file, run as one transaction, like a hide
 // (src/import/hideRecords.ts). It holds no DDL: it writes into the tables
@@ -23,10 +25,13 @@ import {
   correctionId,
   definitionCorrections,
   definitionMismatch,
-  recordCorrections,
+  isCellCorrection,
+  lineCorrections,
+  type CellCorrection,
   type CuratedCorrection,
   type DefinitionCorrection,
   type DefinitionMismatch,
+  type LineCorrection,
   type RecordCorrection,
 } from "../italian/curatedCorrections.js";
 import { PAGE_ENTRY_TABLES } from "../lookup/served.js";
@@ -34,18 +39,22 @@ import { CORRECTION_TABLES, PAGE_ENTRY_CORRECTION_TABLES } from "../update/maste
 import { readMasterRelease, select, upgradeNeededFor, type MasterReader } from "../update/master.js";
 import { PlanCounts } from "../update/planCounts.js";
 import { correctedDefinitionValues } from "./correctedDefinitions.js";
-import { correctedClaimValues } from "./correctedLayer.js";
+import { correctedClaimValues, correctedFormValues } from "./correctedLayer.js";
 import { COLUMNS, literal, tupleOf } from "./seedSql.js";
 
-/** What a run does with one record entry of the list. */
+/** What a run does with one record entry of the list: a gender or number correction, or cells of a table. */
 export type PlannedCorrection =
-  | { state: "write"; correction: RecordCorrection; recordId: number }
-  | { state: "already"; correction: RecordCorrection; recordId: number }
+  | { state: "write"; correction: LineCorrection; recordId: number }
+  | { state: "already"; correction: LineCorrection; recordId: number }
   /** A later release's change replaced the record: reported, never carried over. */
-  | { state: "retired"; correction: RecordCorrection; recordId: number; replacedBy: { recordId: number; changeId: string } }
-  | { state: "not-in-master"; correction: RecordCorrection; why: "no-record-at-line" | "line-digest-differs" }
+  | { state: "retired"; correction: LineCorrection; recordId: number; replacedBy: { recordId: number; changeId: string } }
+  | { state: "not-in-master"; correction: LineCorrection; why: "no-record-at-line" | "line-digest-differs" }
   /** Keyed to a release this master was not seeded from. */
-  | { state: "other-release"; correction: RecordCorrection };
+  | { state: "other-release"; correction: LineCorrection };
+
+type Write = Extract<PlannedCorrection, { state: "write" }>;
+const isClaimWrite = (entry: Write): entry is Write & { correction: RecordCorrection } => !isCellCorrection(entry.correction);
+const isFormWrite = (entry: Write): entry is Write & { correction: CellCorrection } => isCellCorrection(entry.correction);
 
 /** What a run does with one definition entry of the list. */
 export type PlannedDefinitionCorrection =
@@ -68,15 +77,27 @@ export interface CorrectionPlan {
 
 const json = (values: readonly unknown[]): string => literal(JSON.stringify(values));
 
-/** A record's correction rows as one comparable string, in dimension order. */
+/** A record's correction rows as one comparable string, in dimension or cell order. */
 const rowKey = (rows: readonly (readonly unknown[])[]): string =>
   JSON.stringify([...rows].map((row) => row.map(String)).sort((a, b) => (a[0] < b[0] ? -1 : 1)));
+
+/** The table an entry writes to. */
+const tableOf = (correction: LineCorrection): "corrected_claim" | "corrected_form" => (isCellCorrection(correction) ? "corrected_form" : "corrected_claim");
+
+/** The rows an entry writes, after its record id and release. */
+const rowsOf = (correction: LineCorrection): unknown[][] =>
+  isCellCorrection(correction) ? correctedFormValues(correction) : correctedClaimValues(correction);
+
+/** The rows the master holds in each of the record-keyed correction tables, by record. */
+type HeldRows = Record<"corrected_claim" | "corrected_form", Map<number, unknown[][]>>;
+
+const heldOf = (held: HeldRows, correction: LineCorrection, recordId: number): unknown[][] => held[tableOf(correction)].get(recordId) ?? [];
 
 /** Which of `names` the master has. */
 const tablesIn = (reader: MasterReader, names: readonly string[]): Set<string> =>
   new Set(select<{ name: string }>(reader, `SELECT name FROM sqlite_schema WHERE type = 'table' AND name IN (SELECT value FROM json_each(${json(names)}))`).map((row) => row.name));
 
-/** What the upgrade creates for the corrections to write into: the record facts, their cache revision, and the definition corrections. */
+/** What the upgrade creates for the corrections to write into: the record facts and cells, their cache revision, and the definition corrections. */
 const CORRECTION_UPGRADE: readonly string[] = [...CORRECTION_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES];
 
 /** The upgrade names the corrections write into that the master lacks: run `update:upgrade` before the plan's SQL while any is listed. */
@@ -89,11 +110,13 @@ export const missingForCorrections = (reader: MasterReader): string[] => upgrade
  */
 export function planCorrections(reader: MasterReader, corrections: readonly CuratedCorrection[]): CorrectionPlan {
   const master = readMasterRelease(reader);
-  const tables = tablesIn(reader, ["corrected_claim", "corrected_definition", ...PAGE_ENTRY_TABLES]);
-  const entries = planRecords(reader, master, recordCorrections(corrections), tables);
+  const tables = tablesIn(reader, ["corrected_claim", "corrected_form", "corrected_definition", ...PAGE_ENTRY_TABLES]);
+  const entries = planRecords(reader, master, lineCorrections(corrections), tables);
   const definitions = planDefinitions(reader, master.releaseId, definitionCorrections(corrections), tables);
 
   const writes = entries.flatMap((entry) => (entry.state === "write" ? [entry] : []));
+  const claimWrites = writes.filter(isClaimWrite);
+  const formWrites = writes.filter(isFormWrite);
   const definitionWrites = definitions.flatMap((entry) => (entry.state === "write" ? [entry] : []));
   if (writes.length + definitionWrites.length === 0) return { masterReleaseId: master.releaseId, entries, definitions, sql: "", counts: PlanCounts.NONE };
   const written = [...writes, ...definitionWrites].map((entry) => correctionId(entry.correction));
@@ -102,17 +125,21 @@ export function planCorrections(reader: MasterReader, corrections: readonly Cura
     `INSERT INTO correction_version (singleton, revision) VALUES (1, 1)
        ON CONFLICT(singleton) DO UPDATE SET revision = revision + 1;`,
   ];
-  const claimTuples = writes.flatMap((entry) =>
+  const claimTuples = claimWrites.flatMap((entry) =>
     correctedClaimValues(entry.correction).map((values) => tupleOf("corrected_claim", [entry.recordId, master.releaseId, ...values])),
+  );
+  const formTuples = formWrites.flatMap((entry) =>
+    correctedFormValues(entry.correction).map((values) => tupleOf("corrected_form", [entry.recordId, master.releaseId, ...values])),
   );
   const definitionTuples = definitionWrites.map((entry) =>
     tupleOf("corrected_definition", [entry.entryId, entry.correction.replaces.index, ...correctedDefinitionValues(entry.correction)]),
   );
-  if (writes.length > 0) {
+  // An entry's rows are replaced whole, so a fact or cell the list no longer sets goes with the rest.
+  for (const [table, tableWrites, tuples] of [["corrected_claim", claimWrites, claimTuples], ["corrected_form", formWrites, formTuples]] as const) {
+    if (tableWrites.length === 0) continue;
     sql.push(
-      // An entry's rows are replaced whole, so a fact the list no longer sets goes with the rest.
-      `DELETE FROM corrected_claim WHERE record_id IN (SELECT value FROM json_each(${json(writes.map((entry) => entry.recordId))}));`,
-      `INSERT INTO corrected_claim (${COLUMNS.corrected_claim}) VALUES\n  ${claimTuples.join(",\n  ")};`,
+      `DELETE FROM ${table} WHERE record_id IN (SELECT value FROM json_each(${json(tableWrites.map((entry) => entry.recordId))}));`,
+      `INSERT INTO ${table} (${COLUMNS[table]}) VALUES\n  ${tuples.join(",\n  ")};`,
     );
   }
   if (definitionWrites.length > 0) {
@@ -123,15 +150,18 @@ export function planCorrections(reader: MasterReader, corrections: readonly Cura
   }
   // Each written record changes in place: its rows already held go with the DELETE, and the INSERT writes them anew.
   // A definition entry changes no record, so it counts in rows only: the row it replaces, if held, and the row it writes.
-  const heldClaimRows = tables.has("corrected_claim") && writes.length > 0 ? heldClaims(reader, writes.map((entry) => entry.recordId)) : new Map<number, unknown[][]>();
+  // A record that both kinds write changes once.
+  const held = heldRows(reader, tables, writes.map((entry) => entry.recordId));
   const heldDefinitionRows = tables.has("corrected_definition") && definitionWrites.length > 0
     ? heldDefinitions(reader, definitionWrites.map((entry) => entry.entryId))
     : new Map<string, string>();
+  const heldCount = (tableWrites: readonly Write[]): number => tableWrites.reduce((rows, entry) => rows + heldOf(held, entry.correction, entry.recordId).length, 0);
   const counts = new PlanCounts(
-    { added: 0, changed: writes.length, removed: 0 },
-    { corrected_claim: claimTuples.length, corrected_definition: definitionTuples.length, correction_version: 1 },
+    { added: 0, changed: new Set(writes.map((entry) => entry.recordId)).size, removed: 0 },
+    { corrected_claim: claimTuples.length, corrected_form: formTuples.length, corrected_definition: definitionTuples.length, correction_version: 1 },
     {
-      corrected_claim: writes.reduce((rows, entry) => rows + (heldClaimRows.get(entry.recordId)?.length ?? 0), 0),
+      corrected_claim: heldCount(claimWrites),
+      corrected_form: heldCount(formWrites),
       corrected_definition: definitionWrites.filter((entry) => heldDefinitionRows.has(`${entry.entryId}:${entry.correction.replaces.index}`)).length,
     },
   );
@@ -141,7 +171,7 @@ export function planCorrections(reader: MasterReader, corrections: readonly Cura
 function planRecords(
   reader: MasterReader,
   master: ReturnType<typeof readMasterRelease>,
-  corrections: readonly RecordCorrection[],
+  corrections: readonly LineCorrection[],
   tables: ReadonlySet<string>,
 ): PlannedCorrection[] {
   const release = literal(master.releaseId);
@@ -166,7 +196,7 @@ function planRecords(
       : []
     ).map((row) => [row.replaced_record_id, { recordId: row.record_id, changeId: row.change_id }]),
   );
-  const held = tables.has("corrected_claim") ? heldClaims(reader, ids) : new Map<number, unknown[][]>();
+  const held = heldRows(reader, tables, ids);
 
   return corrections.map((correction): PlannedCorrection => {
     if (correction.record.releaseId !== master.releaseId) return { state: "other-release", correction };
@@ -175,20 +205,32 @@ function planRecords(
     if (record.line_sha256 !== correction.record.lineSha256) return { state: "not-in-master", correction, why: "line-digest-differs" };
     const replacedBy = replaced.get(record.record_id);
     if (replacedBy !== undefined) return { state: "retired", correction, recordId: record.record_id, replacedBy };
-    const same = rowKey(held.get(record.record_id) ?? []) === rowKey(correctedClaimValues(correction));
+    const same = rowKey(heldOf(held, correction, record.record_id)) === rowKey(rowsOf(correction));
     return { state: same ? "already" : "write", correction, recordId: record.record_id };
   });
 }
 
-function heldClaims(reader: MasterReader, ids: readonly number[]): Map<number, unknown[][]> {
-  const held = new Map<number, unknown[][]>();
-  for (const row of select<{ record_id: number; dimension: string; value: string; correction_id: string; evidence_url: string }>(
-    reader,
-    `SELECT record_id, dimension, value, correction_id, evidence_url FROM corrected_claim WHERE record_id IN (SELECT value FROM json_each(${json(ids)}))`,
-  )) {
-    held.set(row.record_id, [...(held.get(row.record_id) ?? []), [row.dimension, row.value, row.correction_id, row.evidence_url]]);
-  }
-  return held;
+/** The columns of each record-keyed correction table after its record id and release, in `COLUMNS` order. */
+const HELD_COLUMNS = {
+  corrected_claim: ["dimension", "value", "correction_id", "evidence_url"],
+  corrected_form: ["form_index", "surface", "correction_id", "evidence_url"],
+} as const;
+
+/** The rows `ids` hold in each record-keyed correction table the master has; a table it lacks holds none. */
+function heldRows(reader: MasterReader, tables: ReadonlySet<string>, ids: readonly number[]): HeldRows {
+  const read = (table: keyof HeldRows): Map<number, unknown[][]> => {
+    const held = new Map<number, unknown[][]>();
+    if (!tables.has(table) || ids.length === 0) return held;
+    const columns = HELD_COLUMNS[table];
+    for (const row of select<Record<string, unknown> & { record_id: number }>(
+      reader,
+      `SELECT record_id, ${columns.join(", ")} FROM ${table} WHERE record_id IN (SELECT value FROM json_each(${json(ids)}))`,
+    )) {
+      held.set(row.record_id, [...(held.get(row.record_id) ?? []), columns.map((column) => row[column])]);
+    }
+    return held;
+  };
+  return { corrected_claim: read("corrected_claim"), corrected_form: read("corrected_form") };
 }
 
 interface HeldEntry {
@@ -256,11 +298,11 @@ function planDefinitions(
 export function unwritten(reader: MasterReader, plan: CorrectionPlan): string[] {
   const writes = plan.entries.flatMap((entry) => (entry.state === "write" ? [entry] : []));
   const definitionWrites = plan.definitions.flatMap((entry) => (entry.state === "write" ? [entry] : []));
-  const held = writes.length === 0 ? new Map<number, unknown[][]>() : heldClaims(reader, writes.map((entry) => entry.recordId));
+  const held = heldRows(reader, new Set<string>(["corrected_claim", "corrected_form"]), writes.map((entry) => entry.recordId));
   const heldDefinition = definitionWrites.length === 0 ? new Map<string, string>() : heldDefinitions(reader, definitionWrites.map((entry) => entry.entryId));
   return [
     ...writes
-      .filter((entry) => rowKey(held.get(entry.recordId) ?? []) !== rowKey(correctedClaimValues(entry.correction)))
+      .filter((entry) => rowKey(heldOf(held, entry.correction, entry.recordId)) !== rowKey(rowsOf(entry.correction)))
       .map((entry) => correctionId(entry.correction)),
     ...definitionWrites
       .filter((entry) => heldDefinition.get(`${entry.entryId}:${entry.correction.replaces.index}`) !== JSON.stringify(correctedDefinitionValues(entry.correction)))

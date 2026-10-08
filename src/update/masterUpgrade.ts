@@ -48,8 +48,8 @@ export const PAGE_ENTRY_CORRECTION_TABLES = ["corrected_definition"] as const;
  */
 export const PAGE_ENTRY_FACT_TABLES = [PAGE_ENTRY_FACT_TABLE] as const;
 
-/** The tables `correct:records` writes a record's curated facts to (#420), after its cache revision. */
-export const CORRECTION_TABLES = ["correction_version", "corrected_claim"] as const;
+/** The tables `correct:records` writes a record's curated facts (#420) and table cells (#723) to, after its cache revision. */
+export const CORRECTION_TABLES = ["correction_version", "corrected_claim", "corrected_form"] as const;
 
 /** The tables `hide:records` writes a hidden record to (#382), after its cache revision. */
 export const HIDE_TABLES = ["hide_version", "hidden_record"] as const;

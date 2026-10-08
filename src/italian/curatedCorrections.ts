@@ -57,6 +57,32 @@
 // reads its wording in place of the page's (src/lookup/pageEntry.ts). An entry
 // recovered from another revision, or no longer recovered at all, does not get
 // it: the seed and the run report it instead (ADR 0025).
+//
+// A third kind sets cells of a verb's conjugation table (ADR 0030, #723).
+// `assorbire`'s 21 plural essere cells read `siamo assorbito, assorti,
+// assorti`: a singular participle and a repeated word. The source took that
+// text from the it.wiktionary conjugation page, whose template renders it, so
+// no page shows the right cell. Huey ruled on 2026-10-08 that the fix uses the
+// regular essere spelling all the same, citing that page (ADR 0030's
+// 2026-10-08 amendment). Such a correction names its record like a gender or
+// number correction, and each cell by its place in `forms[]` and the text the
+// line holds there. The seed writes a `corrected_form` row per cell
+// (src/import/correctedLayer.ts), `pnpm run correct:records` writes them into
+// a master seeded before it, and a lookup reads each cell in place of the
+// source's spelling (`formsOf` in src/lookup/lookup.ts).
+//
+// A third kind sets cells of a verb's conjugation table (ADR 0030, #723).
+// `assorbire`'s plural essere cells read `siamo assorbito, assorti, assorti`:
+// a singular participle and a repeated word. The source has that text from
+// the it.wiktionary conjugation page, whose template renders it, so no page
+// shows the right cell. Huey ruled on 2026-10-08 that the fix may use the
+// regular essere spelling all the same, in all 21 such cells, citing that page
+// (ADR 0030's 2026-10-08 amendment). Such a correction names its record like
+// a record's gender or number, and each cell by its place in `forms[]` and
+// the text the line holds there. The seed writes one `corrected_form` row per
+// cell (src/import/correctedLayer.ts), `pnpm run correct:records` writes them
+// into a master seeded before it, and a lookup reads the cell in place of the
+// source's spelling (`formsOf` in src/lookup/lookup.ts).
 
 import { PLURAL_GLOSS_EVIDENCE } from "./pluralGlossEvidence.js";
 import { pluralGlossCorrections } from "./pluralGlossNumber.js";
@@ -112,6 +138,28 @@ export interface RecordCorrection {
   /** At least one revision; a correction without evidence is not a correction. */
   evidence: readonly [Evidence, ...Evidence[]];
   entry?: never;
+  cells?: never;
+}
+
+/** One cell of a verb's table, set right: the `forms[]` entry at `index`, whose `form` the line spells `replaces`. */
+export interface CorrectedCell {
+  /** Its place in the record's `forms[]`: the cell at `/forms/<index>/form`. */
+  index: number;
+  /** What the record's line holds there, verbatim: the wrong spelling. */
+  replaces: string;
+  /** The cell as it reads once corrected. */
+  surface: string;
+}
+
+/** Cells of a record's conjugation table, set right (ADR 0030, #723). */
+export interface CellCorrection {
+  record: CorrectedRecord;
+  /** At least one cell, each at its own place. */
+  cells: readonly [CorrectedCell, ...CorrectedCell[]];
+  /** At least one revision; a correction without evidence is not a correction. */
+  evidence: readonly [Evidence, ...Evidence[]];
+  facts?: never;
+  entry?: never;
 }
 
 /** The page-only entry (ADR 0024) a definition correction is keyed to: the dump's revision of its page. */
@@ -142,17 +190,33 @@ export interface DefinitionCorrection {
   /** At least one revision; a correction without evidence is not a correction. */
   evidence: readonly [Evidence, ...Evidence[]];
   record?: never;
+  facts?: never;
+  cells?: never;
 }
 
-/** One entry of the curated list: a record's gender or number, or a page-only entry's definition. */
-export type CuratedCorrection = RecordCorrection | DefinitionCorrection;
+/** One entry of the curated list: a record's gender or number, cells of its table, or a page-only entry's definition. */
+export type CuratedCorrection = RecordCorrection | CellCorrection | DefinitionCorrection;
+
+/** An entry keyed to one archive line: a record's gender or number, or cells of its table. */
+export type LineCorrection = RecordCorrection | CellCorrection;
 
 export const isDefinitionCorrection = (correction: CuratedCorrection): correction is DefinitionCorrection =>
   correction.entry !== undefined;
 
-/** The entries of `corrections` that correct a record. */
+export const isCellCorrection = (correction: CuratedCorrection): correction is CellCorrection =>
+  correction.cells !== undefined;
+
+/** The entries of `corrections` that correct a record's gender or number. */
 export const recordCorrections = (corrections: readonly CuratedCorrection[]): RecordCorrection[] =>
-  corrections.filter((correction): correction is RecordCorrection => !isDefinitionCorrection(correction));
+  corrections.filter((correction): correction is RecordCorrection => correction.facts !== undefined);
+
+/** The entries of `corrections` that correct cells of a record's table. */
+export const cellCorrections = (corrections: readonly CuratedCorrection[]): CellCorrection[] =>
+  corrections.filter(isCellCorrection);
+
+/** The entries of `corrections` keyed to an archive line, in list order. */
+export const lineCorrections = (corrections: readonly CuratedCorrection[]): LineCorrection[] =>
+  corrections.filter((correction): correction is LineCorrection => !isDefinitionCorrection(correction));
 
 /** The entries of `corrections` that correct a page-only entry's definition. */
 export const definitionCorrections = (corrections: readonly CuratedCorrection[]): DefinitionCorrection[] =>
@@ -187,13 +251,14 @@ export function definitionMismatch(correction: DefinitionCorrection, entry: Page
 
 /**
  * A correction's id, stored on each of its rows: a record's release and
- * archive line, `it-0c432803:449969`, or a definition's page revision and
- * place, `page:3906191:0`.
+ * archive line, `it-0c432803:449969`; the same and `:cells` for cells of its
+ * table, `it-0c432803:113784:cells`, so one record may carry both kinds; or a
+ * definition's page revision and place, `page:3906191:0`.
  */
 export const correctionId = (correction: CuratedCorrection): string =>
   isDefinitionCorrection(correction)
     ? `page:${correction.entry.revisionId}:${correction.replaces.index}`
-    : `${correction.record.releaseId}:${correction.record.lineNo}`;
+    : `${correction.record.releaseId}:${correction.record.lineNo}${isCellCorrection(correction) ? ":cells" : ""}`;
 
 /** A permanent link to the revision, which stays as it was whatever the page says later. */
 export const evidenceUrl = (evidence: Evidence): string =>
@@ -221,6 +286,18 @@ const tag = (index: number, text: string): OverriddenText => ({ pointer: `/tags/
 const firstGloss = (text: string): OverriddenText => ({ pointer: "/senses/0/glosses/0", text });
 /** A real plural whose record is tagged singular at `/tags/<index>` (#449). */
 const plural = (index: number): CorrectedFacts => ({ number: { overrides: tag(index, "singular"), value: "plural" } });
+
+/**
+ * A plural essere cell of `assorbire` (#723). The line spells it `<auxiliary>
+ * assorbito, assorti, assorti`, and it reads `<auxiliary> assorbiti, assorti`:
+ * the plural participle first, as in every other plural essere cell, and the
+ * second spelling once. `it-essere-agreement/v1` then shows its feminine too.
+ */
+const assorbireCell = (index: number, auxiliary: string): CorrectedCell => ({
+  index,
+  replaces: `${auxiliary} assorbito, assorti, assorti`,
+  surface: `${auxiliary} assorbiti, assorti`,
+});
 
 /** The entries written by hand. Add an entry only with its evidence, and only on a ruling. */
 export const HAND_CORRECTIONS: readonly CuratedCorrection[] = [
@@ -405,6 +482,35 @@ export const HAND_CORRECTIONS: readonly CuratedCorrection[] = [
     evidence: [
       { wiki: "en.wiktionary.org", title: "tremare", revisionId: 88487832, shows: "# {{lb|it|intransitive}} to [[tremble]], [[shake]], [[shiver]], [[shudder]]" },
       { wiki: "it.wiktionary.org", title: "tremare", revisionId: 4002473, shows: "{{Trad1|fare movimenti avanti e indietro in rapida successione}}; ''(per freddo, febbre)'' [[rabbrividire]]" },
+    ],
+  },
+  // Huey's rulings on #723, 2026-10-08: the regular essere spelling in all 21
+  // plural essere cells, though no page shows it, citing the Wiktionary page
+  // the cells came from, which carries the same error (ADR 0030's amendment).
+  {
+    record: { releaseId: IT, lineNo: 113784, lineSha256: "1f057ca7b26bb6ecb67d929a3ad485cfb02a517b037ca9c048ec1fbc1e985ee9", word: "assorbire", pos: "verb" },
+    cells: [
+      // indicativo: passato prossimo, trapassato prossimo, trapassato remoto, futuro anteriore
+      assorbireCell(36, "siamo"), assorbireCell(38, "siete"), assorbireCell(40, "sono"),
+      assorbireCell(48, "eravamo"), assorbireCell(50, "eravate"), assorbireCell(52, "erano"),
+      assorbireCell(60, "fummo"), assorbireCell(62, "foste"), assorbireCell(64, "furono"),
+      assorbireCell(72, "saremo"), assorbireCell(74, "sarete"), assorbireCell(76, "saranno"),
+      // condizionale passato
+      assorbireCell(90, "saremmo"), assorbireCell(92, "sareste"), assorbireCell(94, "sarebbero"),
+      // congiuntivo: passato, trapassato
+      assorbireCell(114, "siamo"), assorbireCell(116, "siate"), assorbireCell(118, "siano"),
+      assorbireCell(126, "fossimo"), assorbireCell(128, "foste"), assorbireCell(130, "fossero"),
+    ],
+    evidence: [
+      {
+        wiki: "it.wiktionary.org",
+        title: "Appendice:Coniugazioni/Italiano/assorbire",
+        revisionId: 2506943,
+        // The page the source read the table from. Its template renders `siamo
+        // assorbito, assorti, assorti` in every plural essere cell: the page
+        // carries the error this entry corrects.
+        shows: "{{It-conj|assorb|ire|essere o avere |pp2 = assorto}}",
+      },
     ],
   },
 ];

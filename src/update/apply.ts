@@ -18,7 +18,7 @@
 //   feeds, and each change under its id.
 //
 // It never deletes a record, never touches a table written by hand beside the
-// records (raw_page, recovered_*, claim_review, corrected_claim), and never applies a lost
+// records (raw_page, recovered_*, claim_review, corrected_claim, corrected_form), and never applies a lost
 // word: removing a record is not ruled.
 //
 // The file holds no DDL and changes no schema (#509): it writes into the
@@ -450,12 +450,14 @@ function correctionsOn(reader: MasterReader, planned: readonly PlannedChange[]):
     planned.flatMap(({ change, recordId }) => (change.kind === "changed" ? [[change.master.recordId, { recordId, changeId: change.id }] as const] : [])),
   );
   if (replacing.size === 0) return [];
-  // A master seeded before #420 holds none until `correct:records` writes some.
-  if (select<{ name: string }>(reader, "SELECT name FROM sqlite_schema WHERE type = 'table' AND name = 'corrected_claim'").length === 0) return [];
+  // A master seeded before #420 (gender and number) or #723 (table cells) holds none of that kind until `correct:records` writes some.
+  const tables = select<{ name: string }>(reader, "SELECT name FROM sqlite_schema WHERE type = 'table' AND name IN ('corrected_claim', 'corrected_form') ORDER BY name").map((row) => row.name);
+  if (tables.length === 0) return [];
+  const records = json([...replacing.keys()]);
   return select<{ record_id: number; correction_id: string }>(
     reader,
-    `SELECT DISTINCT record_id, correction_id FROM corrected_claim
-      WHERE record_id IN (SELECT value FROM json_each(${json([...replacing.keys()])})) ORDER BY record_id`,
+    `SELECT DISTINCT record_id, correction_id FROM (${tables.map((table) => `SELECT record_id, correction_id FROM ${table}`).join(" UNION ALL ")})
+      WHERE record_id IN (SELECT value FROM json_each(${records})) ORDER BY record_id, correction_id`,
   ).map((row) => {
     const by = replacing.get(row.record_id) as { recordId: number; changeId: ChangeId };
     return { correctionId: row.correction_id, recordId: row.record_id, replacedBy: by.recordId, changeId: by.changeId };

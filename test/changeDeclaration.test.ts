@@ -196,6 +196,11 @@ test("every declaration already in dictionary-changes parses as before, with no 
       );
       continue;
     }
+    // assorbire's corrected table cells (#723) name the verb.
+    if (name === "2026-10-08-correct-assorbire-cells.json") {
+      assert.deepEqual(parseDeclaration(path, text).lookups?.map((item) => item.word), ["assorbire"]);
+      continue;
+    }
     for (const parsed of [parseDeclaration(path, text), parseDraft(path, text)]) {
       assert.deepEqual(Object.keys(parsed).sort(), ["command", "expected", "file", "inputs"], path);
     }

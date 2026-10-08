@@ -47,6 +47,7 @@ import type {
   Review,
   Sense,
   SourceForm,
+  CorrectedSurface,
   SourceRef,
   SourceText,
   StatedClaim,
@@ -197,7 +198,7 @@ export async function exists({ db, releaseId, query }: LookupOptions): Promise<E
     first?.record_word ??
     (await pages.candidates(key))[0]?.word ??
     (await phraseHits(db, releaseId, key))?.hits[0].record_word ??
-    (await agreementHits(db, releaseId, key, tables.corrections))?.hits[0].record_word;
+    (await agreementHits(db, releaseId, key, tables))?.hits[0].record_word;
   return word === undefined
     ? { outcome: "absent", query: prepared.query, release: prepared.release }
     : { outcome: "present", query: prepared.query, release: prepared.release, word };
@@ -238,11 +239,11 @@ export async function lookup({ db, releaseId, query }: LookupOptions): Promise<L
   if (prepared.outcome === "rejected") return prepared;
   const { release, query: queryInfo, probed: hits } = prepared;
   const { key } = queryInfo;
-  // A master seeded before #420 has no `corrected_claim` until
-  // `pnpm run update:upgrade` creates it, and a read of a table that is not
-  // there would fail every statement batched with it (`fromD1`), so no
-  // correction is read where there is none.
-  const corrected = tables.corrections;
+  // A master seeded before #420 has no `corrected_claim`, nor one seeded
+  // before #723 a `corrected_form`, until `pnpm run update:upgrade` creates
+  // it, and a read of a table that is not there would fail every statement
+  // batched with it (`fromD1`), so no correction is read where there is none.
+  const corrected: Corrected = tables;
 
   const pageReadings = pages.readings(key);
   if (hits.length > 0) {
@@ -286,7 +287,7 @@ async function agreementHits(
   db: LookupDatabase,
   releaseId: string,
   key: string,
-  corrected: boolean,
+  corrected: Corrected,
 ): Promise<{ hits: [HitRow, ...HitRow[]]; route: FoundRoute; tables: ReadonlyMap<number, Promise<RecordTable>> } | undefined> {
   const query = agreeingQuery(key);
   if (query === undefined) return undefined;
@@ -342,7 +343,7 @@ async function found(
   release: ReleaseInfo,
   hits: readonly HitRow[],
   route: FoundRoute,
-  corrected: boolean,
+  corrected: Corrected,
   /** Record tables already read for these hits, so none is read again. */
   read: ReadonlyMap<number, Promise<RecordTable>> = new Map(),
 ): Promise<FoundResult> {
@@ -642,6 +643,9 @@ function releaseDump(row: {
   };
 }
 
+/** Which curated-correction tables the dictionary has, so a lookup reads none that is absent. */
+type Corrected = Pick<DictionaryTables, "corrections" | "cellCorrections">;
+
 /** A record's grammar and the forms it lists, which the grammar is keyed into. */
 interface RecordTable {
   grammar: Grammar;
@@ -689,12 +693,12 @@ async function readTable(
   db: LookupDatabase,
   recordId: number,
   ref: (pointer: string) => SourceRef,
-  corrected: boolean,
+  corrected: Corrected,
 ): Promise<RecordTable> {
   // A form's claims are the ones the grammar groups by index, so the grammar is
   // one read joined to the forms here, not read again per form. Neither read
   // needs the other's rows, so both are sent at once.
-  const [grammar, forms] = await Promise.all([readGrammar(db, recordId, ref, corrected), readFormRows(db, recordId)]);
+  const [grammar, forms] = await Promise.all([readGrammar(db, recordId, ref, corrected), readFormRows(db, recordId, corrected)]);
   return { grammar, forms: formsOf(forms, ref, grammar) };
 }
 
@@ -716,7 +720,7 @@ function startReadingReads(
   db: LookupDatabase,
   releaseId: string,
   first: HitRow,
-  corrected: boolean,
+  corrected: Corrected,
   record: Promise<RecordLine>,
 ): ReadingReads {
   return {
@@ -991,18 +995,43 @@ export const RECORD_FORM_SQL: KeyedRead = keyedRead(`SELECT record_id AS set_key
        FROM lookup_form
       WHERE record_id IN (SELECT value FROM json_each(?1)) AND origin = 'embedded-form'`);
 
-/** One of the record's own `forms[]` entries, as `RECORD_FORM_SQL` returns it. */
+/**
+ * `RECORD_FORM_SQL` with each entry's curated table cell (#723), where one
+ * sets it right, in the same statement: a cell is read for its own record
+ * alone and, like `CORRECTED_CLAIM_SQL`'s rows, never passed to a record that
+ * replaced it. Read only where the dictionary has `corrected_form`. Exported
+ * so a test can assert the plan.
+ */
+export const CORRECTED_RECORD_FORM_SQL: KeyedRead = keyedRead(`SELECT f.record_id AS set_key, f.form_index, f.surface, f.json_pointer, f.form_source,
+            c.surface AS corrected_surface, c.correction_id, c.evidence_url
+       FROM lookup_form f
+       LEFT JOIN corrected_form c ON c.record_id = f.record_id AND c.form_index = f.form_index
+      WHERE f.record_id IN (SELECT value FROM json_each(?1)) AND f.origin = 'embedded-form'`);
+
+/** One of the record's own `forms[]` entries, as `RECORD_FORM_SQL` or `CORRECTED_RECORD_FORM_SQL` returns it. */
 interface FormRow {
   form_index: number;
   surface: string;
   json_pointer: string;
   form_source: string | null;
+  /** The cell's corrected spelling and its correction; absent, or all null, where none sets it. */
+  corrected_surface?: string | null;
+  correction_id?: string | null;
+  evidence_url?: string | null;
 }
 
-const readFormRows = (db: LookupDatabase, recordId: number): Promise<FormRow[]> => readKeys<FormRow>(db, RECORD_FORM_SQL, [recordId]);
+const readFormRows = (db: LookupDatabase, recordId: number, corrected: Corrected): Promise<FormRow[]> =>
+  readKeys<FormRow>(db, corrected.cellCorrections ? CORRECTED_RECORD_FORM_SQL : RECORD_FORM_SQL, [recordId]);
+
+/** The spelling a curated correction sets a row's cell to, and the correction, when one does. */
+function correctedCellOf(row: FormRow): { surface: string; corrected: CorrectedSurface } | undefined {
+  if (row.corrected_surface == null || row.correction_id == null || row.evidence_url == null) return undefined;
+  return { surface: row.corrected_surface, corrected: { replaces: row.surface, correction: { id: row.correction_id, evidenceUrl: row.evidence_url } } };
+}
 
 /**
- * Every form the record lists, in the order the source wrote them.
+ * Every form the record lists, in the order the source wrote them, each cell a
+ * curated correction sets right spelled as it sets it.
  *
  * The rows are ordered here rather than in the SQL: `ORDER BY json_pointer`
  * puts `/forms/10` before `/forms/2`, and the grammar a form carries is already
@@ -1011,13 +1040,17 @@ const readFormRows = (db: LookupDatabase, recordId: number): Promise<FormRow[]> 
  */
 function formsOf(rows: readonly FormRow[], ref: (pointer: string) => SourceRef, grammar: Grammar): SourceForm[] {
   return rows
-    .map((row) => ({
-      index: row.form_index,
-      surface: row.surface,
-      ref: ref(row.json_pointer),
-      formSource: row.form_source,
-      claims: grammar.byForm.get(row.form_index) ?? [],
-    }))
+    .map((row): SourceForm => {
+      const form = {
+        index: row.form_index,
+        surface: row.surface,
+        ref: ref(row.json_pointer),
+        formSource: row.form_source,
+        claims: grammar.byForm.get(row.form_index) ?? [],
+      };
+      const cell = correctedCellOf(row);
+      return cell === undefined ? form : { ...form, ...cell };
+    })
     .sort((a, b) => a.index - b.index);
 }
 
@@ -1043,9 +1076,9 @@ async function readGrammar(
   db: LookupDatabase,
   recordId: number,
   ref: (pointer: string) => SourceRef,
-  corrected: boolean,
+  corrected: Corrected,
 ): Promise<Grammar> {
-  const corrections = handled(corrected ? readKeys<CorrectionRow>(db, CORRECTED_CLAIM_SQL, [recordId]) : Promise.resolve([]));
+  const corrections = handled(corrected.corrections ? readKeys<CorrectionRow>(db, CORRECTED_CLAIM_SQL, [recordId]) : Promise.resolve([]));
   const rows = await readKeys<{
     scope: "record" | "sense" | "form";
     scope_index: number | null;
@@ -1273,7 +1306,7 @@ async function readInflections(
   releaseId: string,
   recordId: number,
   word: string,
-  corrected: boolean,
+  corrected: Corrected,
 ): Promise<InflectionOf[]> {
   const rows = await readKeys<{
     record_id: number;
@@ -1331,7 +1364,7 @@ async function readInflections(
           line_no: number;
           line_sha256: string;
         }>(db, INFLECTION_GRAMMAR_SQL, [recordId], [releaseId]),
-    pluralGlosses.size === 0 || !corrected
+    pluralGlosses.size === 0 || !corrected.corrections
       ? Promise.resolve([])
       : readKeys<CorrectionRow>(db, INFLECTION_CORRECTION_SQL, [recordId], [releaseId]),
   ]);

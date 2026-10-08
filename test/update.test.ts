@@ -531,7 +531,7 @@ test("the upgrade brings a master seeded before #18 up to the schema and is safe
   for (const view of [...SERVING_VIEWS].reverse()) old.exec(`DROP VIEW ${view}`);
   for (const table of [...UPDATE_TABLES, ...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_FACT_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES, ...CORRECTION_TABLES, ...HIDE_TABLES].reverse()) old.exec(`DROP TABLE ${table}`);
   assert.deepEqual(missingUpgrade(readerOf(old)), [...UPGRADE_NAMES]);
-  assert.deepEqual(UPGRADE_NAMES.filter((name) => [...CORRECTION_TABLES, ...HIDE_TABLES].includes(name as never)), ["correction_version", "corrected_claim", "hide_version", "hidden_record"]);
+  assert.deepEqual(UPGRADE_NAMES.filter((name) => [...CORRECTION_TABLES, ...HIDE_TABLES].includes(name as never)), ["correction_version", "corrected_claim", "corrected_form", "hide_version", "hidden_record"]);
   const upgrade = masterUpgradeSql(await readFile(SCHEMA, "utf8"));
   const asFresh = (db: DatabaseSync) => schemaOf(db).replaceAll("CREATE TABLE IF NOT EXISTS", "CREATE TABLE").replaceAll("CREATE INDEX IF NOT EXISTS", "CREATE INDEX");
   old.exec(upgrade);

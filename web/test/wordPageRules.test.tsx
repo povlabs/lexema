@@ -35,6 +35,8 @@ import type { DatabaseSync } from "node:sqlite";
 import { gzipSync } from "node:zlib";
 import { renderToStaticMarkup } from "react-dom/server";
 import { seedSql } from "../../src/import/seedSql.js";
+import { CURATED_CORRECTIONS, cellCorrections } from "../../src/italian/curatedCorrections.js";
+import { atFixtureLines } from "../../test/correctionFixture.js";
 import { loadFixturePages } from "../../src/source/rawPage.js";
 import { compoundAuxiliary } from "../../src/italian/compoundAuxiliary.js";
 import { essereAgreement } from "../../src/italian/essereAgreement.js";
@@ -89,6 +91,8 @@ async function dictionary(): Promise<DatabaseSync> {
       releaseId: RELEASE,
       archiveR2Key: `releases/${RELEASE}.jsonl.gz`,
       license: "CC-BY-SA-4.0",
+      // The committed list, and its table cells keyed to the lines here, as a seed of the release writes them.
+      corrections: [...CURATED_CORRECTIONS, ...atFixtureLines(lines, RELEASE, cellCorrections(CURATED_CORRECTIONS))],
       rawPages: await loadFixturePages(join(REPO, "fixtures")),
       onRejection: (rejection) => {
         throw new Error(`fixture line rejected: ${JSON.stringify(rejection)}`);
@@ -771,7 +775,6 @@ const ADR_0030_CELLS: Rule = {
   row: "ADR 0030: a conjugation cell set by hand (Q10); a plural essere cell agrees with its subject.",
   home: ".decisions/0030-corrections-may-fix-edges-and-cells.md",
   words: ["assorbire"],
-  todo: "#723",
   check(p) {
     if (p.kind !== "word") return [];
     const problems: Problems = [];
@@ -790,6 +793,33 @@ const ADR_0030_CELLS: Rule = {
       }
     }
     return problems;
+  },
+  named: {
+    // The 21 plural essere cells read as Huey ruled (#723): the plural participle, then `assorti` once.
+    // Every other cell keeps the source's participles: `sono assorbito, assorto`, `abbiamo assorbito, assorto`.
+    assorbire: (p) => {
+      if (p.kind !== "word") return ["assorbire opens no word page"];
+      const problems: Problems = [];
+      let corrected = 0;
+      for (const { conjugation } of conjugationsOf(p.page)) {
+        for (const mood of conjugation.moods) {
+          for (const tense of mood.compound) {
+            tense.cells.forEach((cell, row) => {
+              for (const { surface } of cell.forms) {
+                const spellings = surface.split(", ");
+                if (new Set(spellings).size !== spellings.length) problems.push(`${mood.mood} ${tense.name} ${mood.persons[row]} repeats a spelling: "${surface}"`);
+                const plural = compoundAuxiliary(surface) === "essere" && ["noi", "voi", "loro"].includes(mood.persons[row]);
+                if (plural) corrected += 1;
+                const participles = spellings.map((spelling) => spelling.split(" ").at(-1)).join(", ");
+                const expected = plural ? "assorbiti, assorti" : "assorbito, assorto";
+                if (participles !== expected) problems.push(`${mood.mood} ${tense.name} ${mood.persons[row]} reads "${surface}", not ${expected}`);
+              }
+            });
+          }
+        }
+      }
+      return [...problems, ...assertEqual([corrected], [21])];
+    },
   },
 };
 
