@@ -19,6 +19,7 @@ import { headingGrammar, placesGrammar } from "@/lib/dictionary/genderGrid.ts";
 import { lemmaMatches, lemmaWordsOf, unlinkedLemmas, type LinksOf } from "@/lib/dictionary/lemmaLines.ts";
 import { ConjugationView, GridView, SuperlativeGrid, searchHref } from "./Forms";
 import {
+  entryName,
   readingAnchor,
   readingHeadingId,
   searchedIn,
@@ -541,8 +542,7 @@ function ReadingFormLines({ records }: { records: readonly RecordLines[] }) {
 }
 
 /** One part of a source reading, as the page model decided it (wordPage.ts). */
-function ReadingPartView({ reading, part }: { reading: Reading; part: LemmaPart | FormOfPart }) {
-  const owner = entryKey(reading);
+function ReadingPartView({ reading, owner, part }: { reading: Reading; owner: string; part: LemmaPart | FormOfPart }) {
   switch (part.kind) {
     case "definitions":
       return <Definitions reading={reading} text={part.text} />;
@@ -608,12 +608,12 @@ export function ReadingView({ entry }: { entry: PageReading | BareReading | Lone
   return (
     <article
       className={READING}
-      id={`reading-${entryKey(reading)}`}
-      aria-labelledby={`reading-heading-${entryKey(reading)}`}
+      id={readingAnchor(entry)}
+      aria-labelledby={readingHeadingId(entry)}
       data-record={reading.recordId}
       data-line={reading.ref.lineNo}
     >
-      <h2 className={READING_HEADING} id={`reading-heading-${entryKey(reading)}`}>
+      <h2 className={READING_HEADING} id={readingHeadingId(entry)}>
         {entry.kind !== "lone-bare" && (
           <>
             <span className={READING_NUMBER}>{entry.number}</span>
@@ -636,7 +636,7 @@ export function ReadingView({ entry }: { entry: PageReading | BareReading | Lone
         )}
       </h2>
       {parts.map((part) => (
-        <ReadingPartView key={part.kind} reading={reading} part={part} />
+        <ReadingPartView key={part.kind} reading={reading} owner={entryName(entry)} part={part} />
       ))}
     </article>
   );

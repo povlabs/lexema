@@ -19,10 +19,21 @@ const REFUSED = {
   "not https://": "http://it.wiktionary.org/w/index.php?title=casa&oldid=123",
 } as const;
 
-/** The two tables whose evidence link the CHECK guards, each with a row that fills every other column. */
+/** The tables whose evidence link the CHECK guards, each with a row that fills every other column. */
 const EVIDENCE_TABLES = {
   corrected_claim: (url: string) => [
     "INSERT INTO corrected_claim (record_id, release_id, dimension, value, correction_id, evidence_url) VALUES (1, 'it-a', 'gender', 'feminine', 'it-a:1', ?)",
+    url,
+  ],
+  // An edge cites two pages, and each link is held to the same CHECK.
+  corrected_edge: (url: string) => [
+    `INSERT INTO corrected_edge (record_id, release_id, sense_index, json_pointer, target_word, target_word_key, correction_id, evidence_url, base_evidence_url)
+       VALUES (1, 'it-a', 0, '/senses/0/glosses/0', 'casa', 'casa', 'it-a:1/senses/0', ?, '${VALID}')`,
+    url,
+  ],
+  corrected_edge_base: (url: string) => [
+    `INSERT INTO corrected_edge (record_id, release_id, sense_index, json_pointer, target_word, target_word_key, correction_id, evidence_url, base_evidence_url)
+       VALUES (1, 'it-a', 0, '/senses/0/glosses/0', 'casa', 'casa', 'it-a:1/senses/0', '${VALID}', ?)`,
     url,
   ],
   corrected_definition: (url: string) => [
@@ -63,7 +74,8 @@ for (const [table, row] of Object.entries(EVIDENCE_TABLES)) {
     const db = dictionary();
     const [sql, url] = row(VALID);
     db.prepare(sql).run(url);
-    assert.deepEqual(db.prepare(`SELECT evidence_url FROM ${table}`).all().map((r) => ({ ...r })), [{ evidence_url: VALID }]);
+    const into = /INSERT INTO (\w+)/.exec(sql)?.[1];
+    assert.deepEqual(db.prepare(`SELECT evidence_url FROM ${into}`).all().map((r) => ({ ...r })), [{ evidence_url: VALID }]);
   });
 
   for (const [why, refused] of Object.entries(REFUSED)) {

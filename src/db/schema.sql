@@ -743,6 +743,47 @@ CREATE TABLE corrected_form (
     REFERENCES source_record(record_id, release_id) ON DELETE CASCADE
 ) STRICT;
 
+-- A sense's `form_of` edge, set right beside the record (ADR 0030, #722):
+-- added where the sense declares none (`aerei`'s noun says "plurale di aereo"
+-- and names nothing), or in place of the edges it declares when they name the
+-- wrong word (`parti`'s senses about `parto` name `neonato` and `Parti`). The
+-- committed list names each by release, archive line, line digest and sense.
+-- Its evidence is two Wiktionary pages, each at the revision the archive was
+-- extracted from: the record's own, whose gloss names the target after "di"
+-- (`json_pointer`, `evidence_url`), and the target's, whose forms table lists
+-- the word (`base_evidence_url`). form_of_edge and source_record_json
+-- stay as imported; a lookup reads this row in place of the sense's own edges.
+-- A hidden record gets none (ADR 0023). A row stays on the record it was
+-- written for, as corrected_claim's: when a later release's change retires
+-- that record, or a hiding rule hides it after, the row and its evidence stay
+-- beside it (ADR 0025, ADR 0027), no lookup reads it (`correctedEdgeServed`,
+-- src/lookup/correctedEdge.ts), and the update that retires it reports it.
+CREATE TABLE corrected_edge (
+  record_id         INTEGER NOT NULL REFERENCES source_record(record_id) ON DELETE CASCADE,
+  release_id        TEXT    NOT NULL,
+  sense_index       INTEGER NOT NULL CHECK (sense_index >= 0),
+  -- The sense's gloss that names the target: '/senses/0/glosses/0'. The source
+  -- states no edge to point at, so the edge points at what it was read from.
+  json_pointer      TEXT    NOT NULL,
+  target_word       TEXT    NOT NULL, -- verbatim, as the gloss writes it
+  target_word_key   TEXT    NOT NULL, -- release's normalizer applied to target_word
+  -- The list entry it was written from: release, archive line and sense, `it-0c432803:77162/senses/1`.
+  correction_id     TEXT    NOT NULL,
+  -- The record's own page and the target's page, each as a permanent link to
+  -- its revision. Each CHECK is two GLOBs, as corrected_claim's (#489).
+  evidence_url      TEXT    NOT NULL CHECK (evidence_url GLOB 'https://*'
+                                            AND evidence_url GLOB '*.wiktionary.org/w/index.php?title=*&oldid=*'),
+  base_evidence_url TEXT    NOT NULL CHECK (base_evidence_url GLOB 'https://*'
+                                            AND base_evidence_url GLOB '*.wiktionary.org/w/index.php?title=*&oldid=*'),
+  PRIMARY KEY (record_id, sense_index),
+  FOREIGN KEY (record_id, release_id)
+    REFERENCES source_record(record_id, release_id) ON DELETE CASCADE
+) STRICT;
+
+-- "What corrected edge points at this word?", as form_of_edge_by_target.
+CREATE INDEX corrected_edge_by_target
+  ON corrected_edge (release_id, target_word_key);
+
 -- Live-correction cache revision, like hide_version: a nonempty
 -- `correct:records` transaction increments it, so card and suggestion
 -- addresses move with the corrected facts. Older masters acquire this table

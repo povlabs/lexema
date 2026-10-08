@@ -43,6 +43,22 @@
 // the update reports it instead (src/update/apply.ts). The page shows the
 // corrected fact as data and says nothing about the correction (ADR 0016).
 //
+// The list holds a sense's `form_of` edge too (ADR 0030, #722): `aerei`'s noun
+// says "plurale di aereo" and declares no edge, and `parti`'s two senses
+// about `parto` name `neonato` and `Parti`. Huey ruled on 2026-10-07 (#708,
+// questions 7 to 9) that a correction may add the missing edge, or fix the
+// wrong one, where the gloss names the word after "di" and that word's own
+// forms table lists the record's word. Such an entry cites the two Wiktionary
+// pages those facts come from, each at the revision the archive was extracted
+// from: the record's own page, which shows the gloss (`edge.gloss`), and the
+// word's page, whose table lists it (`evidence`; Huey's ruling of 2026-10-08,
+// https://github.com/povlabs/lexema/issues/722#issuecomment-6058471600). Rule
+// `it-form-of-gloss-edge/v1` (formOfGlossEdge.ts) makes the added edges from
+// its pinned scan (formOfGlossEdgeEvidence.ts); the two fixed ones are hand
+// entries. The seed writes each as a `corrected_edge` row, a hidden record
+// gets none, and a lookup reads it in place of the sense's own edges
+// (src/lookup/correctedEdge.ts).
+//
 // The list holds a second kind (#450): a definition of a page-only entry (ADR
 // 0024) that the Wiktionary page itself states wrongly. `grufolare`'s page
 // gives the sense of *grugnire*, and `tremare`'s first sense is a fragment
@@ -71,6 +87,8 @@
 // into a master seeded before it, and a lookup reads the cell in place of the
 // source's spelling (`formsOf` in src/lookup/lookup.ts).
 
+import { FORM_OF_GLOSS_EDGE_EVIDENCE } from "./formOfGlossEdgeEvidence.js";
+import { formOfGlossEdgeCorrections } from "./formOfGlossEdge.js";
 import { PLURAL_GLOSS_EVIDENCE } from "./pluralGlossEvidence.js";
 import { pluralGlossCorrections } from "./pluralGlossNumber.js";
 
@@ -125,6 +143,7 @@ export interface RecordCorrection {
   /** At least one revision; a correction without evidence is not a correction. */
   evidence: readonly [Evidence, ...Evidence[]];
   entry?: never;
+  edge?: never;
   cells?: never;
 }
 
@@ -147,6 +166,55 @@ export interface CellCorrection {
   evidence: readonly [Evidence, ...Evidence[]];
   facts?: never;
   entry?: never;
+  edge?: never;
+}
+
+/** An it.wiktionary page at one revision, and what it shows that settles the fact. */
+export interface ItWiktionaryEvidence extends Evidence {
+  wiki: "it.wiktionary.org";
+}
+
+/**
+ * The two Wiktionary pages an edge correction cites, each at the revision the
+ * archive was extracted from (dump `itwiktionary-20260701` for `it-0c432803`):
+ * the record's own entry and the target's entry. Huey ruled on 2026-10-08
+ * that an edge correction cites the Wiktionary pages it comes from, not lines
+ * of Lexema's archive
+ * (https://github.com/povlabs/lexema/issues/722#issuecomment-6058471600).
+ */
+export interface EdgeEvidence {
+  /** The record's own page: it shows the gloss that names the target after "di". */
+  form: ItWiktionaryEvidence;
+  /** The target's page: its forms table lists the record's word. */
+  base: ItWiktionaryEvidence;
+}
+
+/** The `form_of` edge a correction sets on one sense (ADR 0030). */
+export interface CorrectedEdge {
+  /** The sense's place in the record's `senses`. */
+  sense: number;
+  /** The sense's gloss that names the target after "di", verbatim: `/senses/1/glosses/0`. */
+  gloss: OverriddenText;
+  /** The edge the source states on the sense, verbatim, when the correction replaces it (question 9); absent when the sense has none. */
+  replaces?: OverriddenText;
+  /** The word the edge names: the gloss's word after "di". */
+  target: string;
+}
+
+/**
+ * A sense's `form_of` edge, added where the source states none or replacing
+ * one that names the wrong word (ADR 0030, #722). It cites two Wiktionary
+ * pages: the record's own, whose gloss names the target after "di"
+ * (`edge.gloss`), and the target's, whose forms table lists the word. ADR
+ * 0030 takes the two together as the evidence, and neither alone.
+ */
+export interface EdgeCorrection {
+  record: CorrectedRecord;
+  edge: CorrectedEdge;
+  evidence: EdgeEvidence;
+  facts?: never;
+  entry?: never;
+  cells?: never;
 }
 
 /** The page-only entry (ADR 0024) a definition correction is keyed to: the dump's revision of its page. */
@@ -178,13 +246,14 @@ export interface DefinitionCorrection {
   evidence: readonly [Evidence, ...Evidence[]];
   record?: never;
   facts?: never;
+  edge?: never;
   cells?: never;
 }
 
-/** One entry of the curated list: a record's gender or number, cells of its table, or a page-only entry's definition. */
-export type CuratedCorrection = RecordCorrection | CellCorrection | DefinitionCorrection;
+/** One entry of the curated list: a record's gender or number, cells of its table, a sense's `form_of` edge, or a page-only entry's definition. */
+export type CuratedCorrection = RecordCorrection | CellCorrection | EdgeCorrection | DefinitionCorrection;
 
-/** An entry keyed to one archive line: a record's gender or number, or cells of its table. */
+/** An entry keyed to one archive line as a whole: a record's gender or number, or cells of its table. */
 export type LineCorrection = RecordCorrection | CellCorrection;
 
 export const isDefinitionCorrection = (correction: CuratedCorrection): correction is DefinitionCorrection =>
@@ -192,6 +261,8 @@ export const isDefinitionCorrection = (correction: CuratedCorrection): correctio
 
 export const isCellCorrection = (correction: CuratedCorrection): correction is CellCorrection =>
   correction.cells !== undefined;
+
+export const isEdgeCorrection = (correction: CuratedCorrection): correction is EdgeCorrection => correction.edge !== undefined;
 
 /** The entries of `corrections` that correct a record's gender or number. */
 export const recordCorrections = (corrections: readonly CuratedCorrection[]): RecordCorrection[] =>
@@ -201,9 +272,12 @@ export const recordCorrections = (corrections: readonly CuratedCorrection[]): Re
 export const cellCorrections = (corrections: readonly CuratedCorrection[]): CellCorrection[] =>
   corrections.filter(isCellCorrection);
 
-/** The entries of `corrections` keyed to an archive line, in list order. */
+/** The entries of `corrections` keyed to an archive line as a whole, in list order. */
 export const lineCorrections = (corrections: readonly CuratedCorrection[]): LineCorrection[] =>
-  corrections.filter((correction): correction is LineCorrection => !isDefinitionCorrection(correction));
+  corrections.filter((correction): correction is LineCorrection => correction.facts !== undefined || correction.cells !== undefined);
+
+/** The entries of `corrections` that set a sense's `form_of` edge. */
+export const edgeCorrections = (corrections: readonly CuratedCorrection[]): EdgeCorrection[] => corrections.filter(isEdgeCorrection);
 
 /** The entries of `corrections` that correct a page-only entry's definition. */
 export const definitionCorrections = (corrections: readonly CuratedCorrection[]): DefinitionCorrection[] =>
@@ -239,13 +313,16 @@ export function definitionMismatch(correction: DefinitionCorrection, entry: Page
 /**
  * A correction's id, stored on each of its rows: a record's release and
  * archive line, `it-0c432803:449969`; the same and `:cells` for cells of its
- * table, `it-0c432803:113784:cells`, so one record may carry both kinds; or a
- * definition's page revision and place, `page:3906191:0`.
+ * table, `it-0c432803:113784:cells`, so one record may carry both kinds; for
+ * an edge, also its sense, `it-0c432803:77162/senses/1`; or a definition's
+ * page revision and place, `page:3906191:0`.
  */
 export const correctionId = (correction: CuratedCorrection): string =>
   isDefinitionCorrection(correction)
     ? `page:${correction.entry.revisionId}:${correction.replaces.index}`
-    : `${correction.record.releaseId}:${correction.record.lineNo}${isCellCorrection(correction) ? ":cells" : ""}`;
+    : isEdgeCorrection(correction)
+      ? `${correction.record.releaseId}:${correction.record.lineNo}/senses/${correction.edge.sense}`
+      : `${correction.record.releaseId}:${correction.record.lineNo}${isCellCorrection(correction) ? ":cells" : ""}`;
 
 /** A permanent link to the revision, which stays as it was whatever the page says later. */
 export const evidenceUrl = (evidence: Evidence): string =>
@@ -268,6 +345,16 @@ export function correctedFacts(correction: RecordCorrection): CorrectedFact[] {
 }
 
 const IT = "it-0c432803";
+
+const PARTI: CorrectedRecord = { releaseId: IT, lineNo: 77162, lineSha256: "82f272443a694ca4619ed61e5d9ef96aed36c4fa1204731e5cbe8405648dccd2", word: "parti", pos: "noun" };
+/** `parti`'s page at its revision in dump `itwiktionary-20260701`, which `it-0c432803` was extracted from (#701). */
+const PARTI_PAGE = { wiki: "it.wiktionary.org", title: "parti", revisionId: 3948893 } as const;
+/** `parto`'s page at its revision in the same dump: its forms table lists `parti`. */
+const PARTO_LISTS_PARTI: ItWiktionaryEvidence = { wiki: "it.wiktionary.org", title: "parto", revisionId: 3892725, shows: "parti" };
+/** `parti`'s page showing `gloss`, and `parto`'s page listing `parti`. */
+const partoEvidence = (gloss: string): EdgeEvidence => ({ form: { ...PARTI_PAGE, shows: gloss }, base: PARTO_LISTS_PARTI });
+const PARTO_BIRTH = "plurale di parto, nell'accezione di atto biologico di espulsione dal grembo materno di un neonato";
+const PARTO_PARTHIAN = "plurale di parto, nell'accezione di persona della popolazione dei Parti";
 
 const tag = (index: number, text: string): OverriddenText => ({ pointer: `/tags/${index}`, text });
 const firstGloss = (text: string): OverriddenText => ({ pointer: "/senses/0/glosses/0", text });
@@ -445,6 +532,28 @@ export const HAND_CORRECTIONS: readonly CuratedCorrection[] = [
       { wiki: "it.wiktionary.org", title: "scontente", revisionId: 3959957, shows: "{{-sost form-|it}} {{Pn}} ''f sing'' {{Tabs|scontento|scontenti|scontenta|scontente}} #femminile plurale di [[scontento]]" },
     ],
   },
+  // Huey's ruling on #708, question 9, 2026-10-07 (ADR 0030): `parti`'s two
+  // senses about `parto` name `neonato` and `Parti`, and parto's table lists parti.
+  {
+    record: PARTI,
+    edge: {
+      sense: 1,
+      gloss: { pointer: "/senses/1/glosses/0", text: PARTO_BIRTH },
+      replaces: { pointer: "/senses/1/form_of/0/word", text: "neonato" },
+      target: "parto",
+    },
+    evidence: partoEvidence(PARTO_BIRTH),
+  },
+  {
+    record: PARTI,
+    edge: {
+      sense: 2,
+      gloss: { pointer: "/senses/2/glosses/0", text: PARTO_PARTHIAN },
+      replaces: { pointer: "/senses/2/form_of/0/word", text: "Parti" },
+      target: "parto",
+    },
+    evidence: partoEvidence(PARTO_PARTHIAN),
+  },
   // Huey's rulings on #450, 2026-10-03: correct both, with wording the builder drafts and he approves.
   {
     entry: { wiki: "it.wiktionary.org", title: "grufolare", revisionId: 3906191, pos: "verb" },
@@ -505,9 +614,12 @@ export const HAND_CORRECTIONS: readonly CuratedCorrection[] = [
 /**
  * The committed list: the hand entries, then the corrections rule
  * `it-plural-gloss-number/v3` makes from its pinned evidence (#483, #515, #516), in archive
- * order. A record a hand entry names is never also corrected by the rule.
+ * order, then the edges rule `it-form-of-gloss-edge/v1` adds (#722), in
+ * archive order. A record a hand entry names is never also corrected by the
+ * first rule, and a sense a hand entry sets never by the second.
  */
 export const CURATED_CORRECTIONS: readonly CuratedCorrection[] = [
   ...HAND_CORRECTIONS,
   ...pluralGlossCorrections(PLURAL_GLOSS_EVIDENCE, recordCorrections(HAND_CORRECTIONS)),
+  ...formOfGlossEdgeCorrections(FORM_OF_GLOSS_EDGE_EVIDENCE, edgeCorrections(HAND_CORRECTIONS)),
 ];

@@ -16,11 +16,11 @@ const LOOKUP = new URL("../src/lookup/", import.meta.url);
 const sqlite = new DatabaseSync(":memory:");
 sqlite.exec(readFileSync(new URL("../src/db/schema.sql", import.meta.url), "utf8"));
 
-/** Every index on the two tables a served-release probe must not walk. */
+/** Every index on the tables a served-release probe must not walk: the two above, and `corrected_edge` (#722), read beside `form_of_edge`. */
 const guarded = new Set(
   (
     sqlite
-      .prepare(`SELECT name FROM sqlite_schema WHERE type = 'index' AND tbl_name IN ('lookup_form', 'form_of_edge')`)
+      .prepare(`SELECT name FROM sqlite_schema WHERE type = 'index' AND tbl_name IN ('lookup_form', 'form_of_edge', 'corrected_edge')`)
       .all() as { name: string }[]
   ).map((row) => row.name),
 );
@@ -57,6 +57,10 @@ test("no served-release lookup probes lookup_form or form_of_edge on the release
     "INFLECTION_CANDIDATE_SQL",
     "BATCH_SEARCH_SQL",
     "BATCH_LEMMA_LINK_SQL",
+    "CORRECTED_LEMMA_LINK_SQL",
+    "CORRECTED_INFLECTION_SQL",
+    "CORRECTED_BATCH_LEMMA_LINK_SQL",
+    "CORRECTED_DECLARED_LEMMA_SQL",
     "FORM_ENTRY_SQL",
     "PARTICIPLE_FORM_ENTRY_SQL",
   ]) {

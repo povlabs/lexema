@@ -10,7 +10,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { gzipSync } from "node:zlib";
-import { CURATED_CORRECTIONS, correctedFacts, evidenceUrl, HAND_CORRECTIONS, recordCorrections, type CuratedCorrection } from "../src/italian/curatedCorrections.js";
+import { CURATED_CORRECTIONS, correctedFacts, edgeCorrections, evidenceUrl, HAND_CORRECTIONS, recordCorrections, type CuratedCorrection } from "../src/italian/curatedCorrections.js";
+import { formOfGlossEdgeCorrections } from "../src/italian/formOfGlossEdge.js";
+import { FORM_OF_GLOSS_EDGE_EVIDENCE } from "../src/italian/formOfGlossEdgeEvidence.js";
 import { readPluralGloss } from "../src/italian/pluralGloss.js";
 import { PLURAL_GLOSS_EVIDENCE } from "../src/italian/pluralGlossEvidence.js";
 import { glossLemma, pluralGlossCorrections } from "../src/italian/pluralGlossNumber.js";
@@ -88,7 +90,8 @@ test("the hand entries correct the twelve cases Huey ruled wrong, and of the fou
 
 test("the committed list is the hand entries, then what the rule makes of its pinned evidence, and the two never name one record (#483)", () => {
   const made = pluralGlossCorrections(PLURAL_GLOSS_EVIDENCE, HAND);
-  assert.deepEqual(CURATED_CORRECTIONS, [...HAND_CORRECTIONS, ...made]);
+  const edges = formOfGlossEdgeCorrections(FORM_OF_GLOSS_EDGE_EVIDENCE, edgeCorrections(HAND_CORRECTIONS));
+  assert.deepEqual(CURATED_CORRECTIONS, [...HAND_CORRECTIONS, ...made, ...edges]);
   assert.equal(made.length, 232);
   const hand = new Set(HAND.map((correction) => `${correction.record.releaseId}:${correction.record.lineNo}`));
   for (const correction of made) {

@@ -280,8 +280,19 @@ and the text the line holds there
 ([ADR 0030](../.decisions/0030-corrections-may-fix-edges-and-cells.md),
 [#723](https://github.com/povlabs/lexema/issues/723)); the seed writes those
 as `corrected_form` rows, one per cell, and refuses an entry that misquotes its
-line. A database seeded before an entry gets it by a one-off update, with no
-reseed and no archive:
+line. The list also sets a
+sense's `form_of` edge where the source states none or names the wrong word
+([ADR 0030](../.decisions/0030-corrections-may-fix-edges-and-cells.md),
+[#722](https://github.com/povlabs/lexema/issues/722)): `aerei`'s noun sense
+gets an edge to `aereo`, and `parti`'s two lines about `parto` name it in
+place of `neonato` and `Parti`. Each cites two it.wiktionary pages, at the
+revisions in the dump the archive was extracted from: the record's own, whose
+gloss names the word after "di", and that word's, whose forms table lists the
+record's word. Rule `it-form-of-gloss-edge/v1` makes most of them
+([report](../reports/2026-10-08-form-of-gloss-edges.md)). The seed writes each
+as a `corrected_edge` row with both links, and a lookup reads it in place of
+the sense's own edges. A hidden record gets none. A database seeded
+before an entry gets it by a one-off update, with no reseed and no archive:
 
 ```sh
 pnpm run correct:records
@@ -292,10 +303,10 @@ It picks its database the way the seed does: the local D1 under `SEED_STATE`
 one SQL file under `.data/updates/` and runs it as one transaction: it writes
 each entry's rows, and increments the correction revision, so card and
 suggestion addresses move ([cache identity](DEPLOY.md#card-and-suggestion-cache-identity)).
-`source_record_json`, `grammar_claim` and `lookup_form` are not touched. The
-file holds no DDL: on a master without `corrected_claim`, `corrected_form`,
-`correction_version` or `corrected_definition` the command refuses to write
-and names
+`source_record_json`, `grammar_claim`, `lookup_form` and `form_of_edge` are not
+touched. The file holds no DDL: on a master without `corrected_claim`,
+`corrected_form`, `corrected_edge`, `correction_version` or
+`corrected_definition` the command refuses to write and names
 `pnpm run update:upgrade`, which creates them. It then reads the rows
 back and fails if one differs. It prints one line per entry: written, already
 written, or why not. An entry is not written when the master holds no record at

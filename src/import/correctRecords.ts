@@ -1,12 +1,13 @@
-// The one-off update that writes the curated corrections (#420, #450, #723)
-// into a master seeded before them, or before an entry was added: each record
-// entry keyed to the master's release gets the `corrected_claim` or
+// The one-off update that writes the curated corrections (#420, #450, #722,
+// #723) into a master seeded before them, or before an entry was added: each
+// record entry keyed to the master's release gets the `corrected_claim` or
 // `corrected_form` rows a seed now writes for it
-// (src/import/correctedLayer.ts), and each definition entry the
-// `corrected_definition` row (src/import/correctedDefinitions.ts). Nothing else
-// is touched, the record's line in `source_record_json`, its own
-// `grammar_claim` and `lookup_form` rows and the entry's own `entry_definition`
-// rows least of all.
+// (src/import/correctedLayer.ts), each edge entry its `corrected_edge` row,
+// and each definition entry the `corrected_definition` row
+// (src/import/correctedDefinitions.ts). Nothing else is touched, the record's
+// line in `source_record_json`, its own `grammar_claim`, `lookup_form` and
+// `form_of_edge` rows and the entry's own `entry_definition` rows least of
+// all. An edge entry of a hidden record is reported, not written (ADR 0023).
 //
 // The SQL is one file, run as one transaction, like a hide
 // (src/import/hideRecords.ts). It holds no DDL: it writes into the tables
@@ -25,21 +26,24 @@ import {
   correctionId,
   definitionCorrections,
   definitionMismatch,
+  edgeCorrections,
   isCellCorrection,
   lineCorrections,
   type CellCorrection,
   type CuratedCorrection,
   type DefinitionCorrection,
   type DefinitionMismatch,
+  type EdgeCorrection,
   type LineCorrection,
   type RecordCorrection,
 } from "../italian/curatedCorrections.js";
+import { boundedInserts } from "../update/apply.js";
 import { PAGE_ENTRY_TABLES } from "../lookup/served.js";
 import { CORRECTION_TABLES, PAGE_ENTRY_CORRECTION_TABLES } from "../update/masterUpgrade.js";
 import { readMasterRelease, select, upgradeNeededFor, type MasterReader } from "../update/master.js";
 import { PlanCounts } from "../update/planCounts.js";
 import { correctedDefinitionValues } from "./correctedDefinitions.js";
-import { correctedClaimValues, correctedFormValues } from "./correctedLayer.js";
+import { correctedClaimValues, correctedEdgeValues, correctedFormValues } from "./correctedLayer.js";
 import { COLUMNS, literal, tupleOf } from "./seedSql.js";
 
 /** What a run does with one record entry of the list: a gender or number correction, or cells of a table. */
@@ -56,6 +60,18 @@ type Write = Extract<PlannedCorrection, { state: "write" }>;
 const isClaimWrite = (entry: Write): entry is Write & { correction: RecordCorrection } => !isCellCorrection(entry.correction);
 const isFormWrite = (entry: Write): entry is Write & { correction: CellCorrection } => isCellCorrection(entry.correction);
 
+/** What a run does with one edge entry of the list. */
+export type PlannedEdgeCorrection =
+  | { state: "write"; correction: EdgeCorrection; recordId: number }
+  | { state: "already"; correction: EdgeCorrection; recordId: number }
+  /** A later release's change replaced the record: reported, never carried over. */
+  | { state: "retired"; correction: EdgeCorrection; recordId: number; replacedBy: { recordId: number; changeId: string } }
+  /** The record is hidden (ADR 0023): it declares no edge, and no correction gives it one. */
+  | { state: "hidden"; correction: EdgeCorrection; recordId: number }
+  | { state: "not-in-master"; correction: EdgeCorrection; why: "no-record-at-line" | "line-digest-differs" }
+  /** Keyed to a release this master was not seeded from. */
+  | { state: "other-release"; correction: EdgeCorrection };
+
 /** What a run does with one definition entry of the list. */
 export type PlannedDefinitionCorrection =
   | { state: "write"; correction: DefinitionCorrection; entryId: number }
@@ -67,6 +83,8 @@ export interface CorrectionPlan {
   masterReleaseId: string;
   /** Every record entry of the list, in list order. */
   entries: PlannedCorrection[];
+  /** Every edge entry of the list, in list order. */
+  edges: PlannedEdgeCorrection[];
   /** Every definition entry of the list, in list order. */
   definitions: PlannedDefinitionCorrection[];
   /** Empty when there is nothing to write. */
@@ -110,16 +128,23 @@ export const missingForCorrections = (reader: MasterReader): string[] => upgrade
  */
 export function planCorrections(reader: MasterReader, corrections: readonly CuratedCorrection[]): CorrectionPlan {
   const master = readMasterRelease(reader);
-  const tables = tablesIn(reader, ["corrected_claim", "corrected_form", "corrected_definition", ...PAGE_ENTRY_TABLES]);
-  const entries = planRecords(reader, master, lineCorrections(corrections), tables);
+  const tables = tablesIn(reader, ["corrected_claim", "corrected_form", "corrected_edge", "corrected_definition", "hidden_record", ...PAGE_ENTRY_TABLES]);
+  const records = lineCorrections(corrections);
+  const edgeEntries = edgeCorrections(corrections);
+  const keyed = recordsAt(reader, master, [...records, ...edgeEntries].filter((correction) => correction.record.releaseId === master.releaseId).map((correction) => correction.record.lineNo), tables);
+  const entries = planRecords(reader, master.releaseId, keyed, records, tables);
+  const edges = planEdges(reader, master.releaseId, keyed, edgeEntries, tables);
   const definitions = planDefinitions(reader, master.releaseId, definitionCorrections(corrections), tables);
 
   const writes = entries.flatMap((entry) => (entry.state === "write" ? [entry] : []));
   const claimWrites = writes.filter(isClaimWrite);
   const formWrites = writes.filter(isFormWrite);
+  const edgeWrites = edges.flatMap((entry) => (entry.state === "write" ? [entry] : []));
   const definitionWrites = definitions.flatMap((entry) => (entry.state === "write" ? [entry] : []));
-  if (writes.length + definitionWrites.length === 0) return { masterReleaseId: master.releaseId, entries, definitions, sql: "", counts: PlanCounts.NONE };
-  const written = [...writes, ...definitionWrites].map((entry) => correctionId(entry.correction));
+  if (writes.length + edgeWrites.length + definitionWrites.length === 0) {
+    return { masterReleaseId: master.releaseId, entries, edges, definitions, sql: "", counts: PlanCounts.NONE };
+  }
+  const written = [...writes, ...edgeWrites, ...definitionWrites].map((entry) => correctionId(entry.correction));
   const sql = [
     `-- Generated by src/import/correctRecords.ts: ${written.length} curated correction(s) of ${master.releaseId}: ${written.join(", ")}.`,
     `INSERT INTO correction_version (singleton, revision) VALUES (1, 1)
@@ -142,6 +167,14 @@ export function planCorrections(reader: MasterReader, corrections: readonly Cura
       `INSERT INTO ${table} (${COLUMNS[table]}) VALUES\n  ${tuples.join(",\n  ")};`,
     );
   }
+  const edgeTuples = edgeWrites.map((entry) => tupleOf("corrected_edge", [entry.recordId, master.releaseId, ...correctedEdgeValues(entry.correction)]));
+  if (edgeWrites.length > 0) {
+    sql.push(
+      // An edge entry replaces the row its sense holds, if any.
+      `DELETE FROM corrected_edge WHERE (record_id, sense_index) IN (SELECT json_extract(value, '$[0]'), json_extract(value, '$[1]') FROM json_each(${json(edgeWrites.map((entry) => [entry.recordId, entry.correction.edge.sense]))}));`,
+      ...boundedInserts("corrected_edge", edgeTuples),
+    );
+  }
   if (definitionWrites.length > 0) {
     sql.push(
       ...definitionWrites.map((entry) => `DELETE FROM corrected_definition WHERE entry_id = ${entry.entryId} AND definition_index = ${entry.correction.replaces.index};`),
@@ -149,40 +182,49 @@ export function planCorrections(reader: MasterReader, corrections: readonly Cura
     );
   }
   // Each written record changes in place: its rows already held go with the DELETE, and the INSERT writes them anew.
+  // A record that more than one kind writes (facts, cells, edges) changes once.
   // A definition entry changes no record, so it counts in rows only: the row it replaces, if held, and the row it writes.
-  // A record that both kinds write changes once.
   const held = heldRows(reader, tables, writes.map((entry) => entry.recordId));
+  const heldEdgeRows = tables.has("corrected_edge") && edgeWrites.length > 0 ? heldEdges(reader, edgeWrites.map((entry) => entry.recordId)) : new Map<string, string>();
   const heldDefinitionRows = tables.has("corrected_definition") && definitionWrites.length > 0
     ? heldDefinitions(reader, definitionWrites.map((entry) => entry.entryId))
     : new Map<string, string>();
   const heldCount = (tableWrites: readonly Write[]): number => tableWrites.reduce((rows, entry) => rows + heldOf(held, entry.correction, entry.recordId).length, 0);
   const counts = new PlanCounts(
-    { added: 0, changed: new Set(writes.map((entry) => entry.recordId)).size, removed: 0 },
-    { corrected_claim: claimTuples.length, corrected_form: formTuples.length, corrected_definition: definitionTuples.length, correction_version: 1 },
+    { added: 0, changed: new Set([...writes, ...edgeWrites].map((entry) => entry.recordId)).size, removed: 0 },
+    {
+      corrected_claim: claimTuples.length,
+      corrected_form: formTuples.length,
+      corrected_edge: edgeTuples.length,
+      corrected_definition: definitionTuples.length,
+      correction_version: 1,
+    },
     {
       corrected_claim: heldCount(claimWrites),
       corrected_form: heldCount(formWrites),
+      corrected_edge: edgeWrites.filter((entry) => heldEdgeRows.has(`${entry.recordId}:${entry.correction.edge.sense}`)).length,
       corrected_definition: definitionWrites.filter((entry) => heldDefinitionRows.has(`${entry.entryId}:${entry.correction.replaces.index}`)).length,
     },
   );
-  return { masterReleaseId: master.releaseId, entries, definitions, sql: `${sql.join("\n")}\n`, counts };
+  return { masterReleaseId: master.releaseId, entries, edges, definitions, sql: `${sql.join("\n")}\n`, counts };
 }
 
-function planRecords(
-  reader: MasterReader,
-  master: ReturnType<typeof readMasterRelease>,
-  corrections: readonly LineCorrection[],
-  tables: ReadonlySet<string>,
-): PlannedCorrection[] {
-  const release = literal(master.releaseId);
-  const keyed = corrections.filter((correction) => correction.record.releaseId === master.releaseId);
-  const lines = keyed.map((correction) => correction.record.lineNo);
+/** What the master holds at the archive lines the list keys to its release. */
+interface KeyedRecords {
+  /** The master release's record at each line, with its digest. */
+  atLine: Map<number, { record_id: number; line_no: number; line_sha256: string }>;
+  /** The records a later release's change replaced, and by what. */
+  replaced: Map<number, { recordId: number; changeId: string }>;
+  /** The hidden records among them (ADR 0023). */
+  hidden: Set<number>;
+}
 
+function recordsAt(reader: MasterReader, master: ReturnType<typeof readMasterRelease>, lines: readonly number[], tables: ReadonlySet<string>): KeyedRecords {
   const atLine = new Map(
     select<{ record_id: number; line_no: number; line_sha256: string }>(
       reader,
-      `SELECT record_id, line_no, line_sha256 FROM source_record WHERE release_id = ${release}
-          AND line_no IN (SELECT value FROM json_each(${json(lines)}))`,
+      `SELECT record_id, line_no, line_sha256 FROM source_record WHERE release_id = ${literal(master.releaseId)}
+          AND line_no IN (SELECT value FROM json_each(${json([...new Set(lines)])}))`,
     ).map((row) => [row.line_no, row]),
   );
   const ids = [...atLine.values()].map((row) => row.record_id);
@@ -196,17 +238,47 @@ function planRecords(
       : []
     ).map((row) => [row.replaced_record_id, { recordId: row.record_id, changeId: row.change_id }]),
   );
-  const held = heldRows(reader, tables, ids);
+  const hidden = new Set(
+    tables.has("hidden_record")
+      ? select<{ record_id: number }>(reader, `SELECT record_id FROM hidden_record WHERE record_id IN (SELECT value FROM json_each(${json(ids)}))`).map((row) => row.record_id)
+      : [],
+  );
+  return { atLine, replaced, hidden };
+}
 
+/** Where `correction`'s record stands in the master, before what it holds of the correction is read. */
+function standing(
+  correction: LineCorrection | EdgeCorrection,
+  releaseId: string,
+  keyed: KeyedRecords,
+):
+  | { state: "other-release" }
+  | { state: "not-in-master"; why: "no-record-at-line" | "line-digest-differs" }
+  | { state: "retired"; recordId: number; replacedBy: { recordId: number; changeId: string } }
+  | { state: "served"; recordId: number } {
+  if (correction.record.releaseId !== releaseId) return { state: "other-release" };
+  const record = keyed.atLine.get(correction.record.lineNo);
+  if (record === undefined) return { state: "not-in-master", why: "no-record-at-line" };
+  if (record.line_sha256 !== correction.record.lineSha256) return { state: "not-in-master", why: "line-digest-differs" };
+  const replacedBy = keyed.replaced.get(record.record_id);
+  if (replacedBy !== undefined) return { state: "retired", recordId: record.record_id, replacedBy };
+  return { state: "served", recordId: record.record_id };
+}
+
+function planRecords(
+  reader: MasterReader,
+  releaseId: string,
+  keyed: KeyedRecords,
+  corrections: readonly LineCorrection[],
+  tables: ReadonlySet<string>,
+): PlannedCorrection[] {
+  const ids = [...keyed.atLine.values()].map((row) => row.record_id);
+  const held = heldRows(reader, tables, ids);
   return corrections.map((correction): PlannedCorrection => {
-    if (correction.record.releaseId !== master.releaseId) return { state: "other-release", correction };
-    const record = atLine.get(correction.record.lineNo);
-    if (record === undefined) return { state: "not-in-master", correction, why: "no-record-at-line" };
-    if (record.line_sha256 !== correction.record.lineSha256) return { state: "not-in-master", correction, why: "line-digest-differs" };
-    const replacedBy = replaced.get(record.record_id);
-    if (replacedBy !== undefined) return { state: "retired", correction, recordId: record.record_id, replacedBy };
-    const same = rowKey(heldOf(held, correction, record.record_id)) === rowKey(rowsOf(correction));
-    return { state: same ? "already" : "write", correction, recordId: record.record_id };
+    const stands = standing(correction, releaseId, keyed);
+    if (stands.state !== "served") return { ...stands, correction };
+    const same = rowKey(heldOf(held, correction, stands.recordId)) === rowKey(rowsOf(correction));
+    return { state: same ? "already" : "write", correction, recordId: stands.recordId };
   });
 }
 
@@ -231,6 +303,47 @@ function heldRows(reader: MasterReader, tables: ReadonlySet<string>, ids: readon
     return held;
   };
   return { corrected_claim: read("corrected_claim"), corrected_form: read("corrected_form") };
+}
+
+function planEdges(
+  reader: MasterReader,
+  releaseId: string,
+  keyed: KeyedRecords,
+  corrections: readonly EdgeCorrection[],
+  tables: ReadonlySet<string>,
+): PlannedEdgeCorrection[] {
+  const ids = [...keyed.atLine.values()].map((row) => row.record_id);
+  const held = tables.has("corrected_edge") && corrections.length > 0 ? heldEdges(reader, ids) : new Map<string, string>();
+  return corrections.map((correction): PlannedEdgeCorrection => {
+    const stands = standing(correction, releaseId, keyed);
+    if (stands.state !== "served") return { ...stands, correction };
+    if (keyed.hidden.has(stands.recordId)) return { state: "hidden", correction, recordId: stands.recordId };
+    const same = held.get(`${stands.recordId}:${correction.edge.sense}`) === JSON.stringify(correctedEdgeValues(correction));
+    return { state: same ? "already" : "write", correction, recordId: stands.recordId };
+  });
+}
+
+/** The `corrected_edge` rows the master holds on `ids`, by record and sense, as comparable strings. */
+function heldEdges(reader: MasterReader, ids: readonly number[]): Map<string, string> {
+  return new Map(
+    select<{
+      record_id: number;
+      sense_index: number;
+      json_pointer: string;
+      target_word: string;
+      target_word_key: string;
+      correction_id: string;
+      evidence_url: string;
+      base_evidence_url: string;
+    }>(
+      reader,
+      `SELECT record_id, sense_index, json_pointer, target_word, target_word_key, correction_id, evidence_url, base_evidence_url
+         FROM corrected_edge WHERE record_id IN (SELECT value FROM json_each(${json([...new Set(ids)])}))`,
+    ).map((row) => [
+      `${row.record_id}:${row.sense_index}`,
+      JSON.stringify([row.sense_index, row.json_pointer, row.target_word, row.target_word_key, row.correction_id, row.evidence_url, row.base_evidence_url]),
+    ]),
+  );
 }
 
 interface HeldEntry {
@@ -297,12 +410,17 @@ function planDefinitions(
 /** Entries the plan writes whose rows the master does not read back exactly. */
 export function unwritten(reader: MasterReader, plan: CorrectionPlan): string[] {
   const writes = plan.entries.flatMap((entry) => (entry.state === "write" ? [entry] : []));
+  const edgeWrites = plan.edges.flatMap((entry) => (entry.state === "write" ? [entry] : []));
   const definitionWrites = plan.definitions.flatMap((entry) => (entry.state === "write" ? [entry] : []));
   const held = heldRows(reader, new Set<string>(["corrected_claim", "corrected_form"]), writes.map((entry) => entry.recordId));
+  const heldEdge = edgeWrites.length === 0 ? new Map<string, string>() : heldEdges(reader, edgeWrites.map((entry) => entry.recordId));
   const heldDefinition = definitionWrites.length === 0 ? new Map<string, string>() : heldDefinitions(reader, definitionWrites.map((entry) => entry.entryId));
   return [
     ...writes
       .filter((entry) => rowKey(heldOf(held, entry.correction, entry.recordId)) !== rowKey(rowsOf(entry.correction)))
+      .map((entry) => correctionId(entry.correction)),
+    ...edgeWrites
+      .filter((entry) => heldEdge.get(`${entry.recordId}:${entry.correction.edge.sense}`) !== JSON.stringify(correctedEdgeValues(entry.correction)))
       .map((entry) => correctionId(entry.correction)),
     ...definitionWrites
       .filter((entry) => heldDefinition.get(`${entry.entryId}:${entry.correction.replaces.index}`) !== JSON.stringify(correctedDefinitionValues(entry.correction)))
@@ -310,11 +428,13 @@ export function unwritten(reader: MasterReader, plan: CorrectionPlan): string[] 
   ];
 }
 
-/** One line per record entry, for the run's report. */
-export function describeEntry(entry: PlannedCorrection): string {
+/** One line per record or edge entry, for the run's report. */
+export function describeEntry(entry: PlannedCorrection | PlannedEdgeCorrection): string {
   const { word, lineNo, releaseId } = entry.correction.record;
   const head = `  ${correctionId(entry.correction)} ${word}`;
   switch (entry.state) {
+    case "hidden":
+      return `${head} (record ${entry.recordId}): not written; the record is hidden, and a hidden record declares no edge`;
     case "write":
       return `${head} (record ${entry.recordId}): written`;
     case "already":

@@ -18,6 +18,7 @@
 import type { DictionaryRead, LookupDatabase } from "./database.js";
 import { queryInfoOf, rejectionOf, servableRelease } from "./lookup.js";
 import { phraseMatchesOf } from "./phrase.js";
+import { correctedEdgeServed, sourceEdgeServed } from "./correctedEdge.js";
 import { dictionaryTables, servedBy, type DictionaryTables } from "./served.js";
 import { lemmasOfPartOfSpeech, type QueryInfo, type RejectedResult, type ReleaseInfo } from "./types.js";
 
@@ -79,52 +80,80 @@ export const BATCH_SEARCH_SQL: DictionaryRead = `${BATCH_ARCHIVE_SEARCH_SQL}
  * it dangles. This one names archive records alone, for a dictionary without
  * the page-entry tables. Exported so a test can assert the plan.
  */
-export const BATCH_ARCHIVE_LEMMA_LINK_SQL: DictionaryRead = `SELECT e.record_id, e.edge_id,
-            t.record_id   AS candidate_record_id,
-            NULL          AS candidate_entry_id,
-            NULL          AS candidate_revision_id,
-            NULL          AS candidate_page_line,
-            t.release_id  AS candidate_release_id,
-            t.line_no     AS candidate_line_no,
-            t.word        AS candidate_word,
-            t.pos         AS candidate_pos,
-            t.pos_title   AS candidate_pos_title
-       FROM form_of_edge e
-       LEFT JOIN lookup_form lf
-         ON lf.release_id IN (${servedBy("?2")})
-        AND lf.surface_key = e.target_word_key
-        AND lf.origin = 'headword'
-       LEFT JOIN source_record t ON t.record_id = lf.record_id
-      WHERE e.record_id IN (SELECT value FROM json_each(?1)) AND e.release_id IN (${servedBy("?2")})
+export const BATCH_ARCHIVE_LEMMA_LINK_SQL: DictionaryRead = `${batchLinks(false, "form_of_edge")}
       ORDER BY e.record_id, e.edge_id, t.line_no`;
 
 /**
  * `BATCH_ARCHIVE_LEMMA_LINK_SQL`, with the page-only entries a dangling target
  * names, in `entry_id` order as `PAGE_ENTRY_SQL` (src/lookup/pageEntry.ts) reads them.
  */
-export const BATCH_LEMMA_LINK_SQL: DictionaryRead = `SELECT e.record_id, e.edge_id,
-            t.record_id   AS candidate_record_id,
-            p.entry_id AS candidate_entry_id,
+export const BATCH_LEMMA_LINK_SQL: DictionaryRead = `${batchLinks(true, "form_of_edge")}
+      ORDER BY e.record_id, e.edge_id, t.line_no, p.entry_id`;
+
+/**
+ * `BATCH_ARCHIVE_LEMMA_LINK_SQL` on a master with corrected edges: a sense's
+ * corrected edge in place of its own, in sense order (src/lookup/correctedEdge.ts).
+ */
+export const CORRECTED_BATCH_ARCHIVE_LEMMA_LINK_SQL: DictionaryRead = `${batchLinks(false, "served form_of_edge")}
+     UNION ALL
+     ${batchLinks(false, "corrected_edge")}
+      ORDER BY record_id, sense_index, edge_id, candidate_line_no`;
+
+/** `BATCH_LEMMA_LINK_SQL` on a master with corrected edges, as above. Exported so a test can assert the plan. */
+export const CORRECTED_BATCH_LEMMA_LINK_SQL: DictionaryRead = `${batchLinks(true, "served form_of_edge")}
+     UNION ALL
+     ${batchLinks(true, "corrected_edge")}
+      ORDER BY record_id, sense_index, edge_id, candidate_line_no, candidate_entry_id`;
+
+/**
+ * One read of the batch's links, without its order: every edge of `edges` the
+ * records at `?1` declare, each with every headword record its target names
+ * and, with `pageEntries`, every page-only entry a dangling target names. A
+ * corrected edge has no `edge_id`; it is the only edge of its sense, so
+ * `-1 - sense_index` names it apart from the record's source edges.
+ */
+function batchLinks(pageEntries: boolean, edges: "form_of_edge" | "served form_of_edge" | "corrected_edge"): DictionaryRead {
+  const pages = pageEntries
+    ? {
+        entry: `p.entry_id AS candidate_entry_id,
             page.revision_id AS candidate_revision_id,
             p.page_line   AS candidate_page_line,
             COALESCE(t.release_id, p.release_id) AS candidate_release_id,
             t.line_no     AS candidate_line_no,
             COALESCE(t.word, p.word) AS candidate_word,
             COALESCE(t.pos, p.pos) AS candidate_pos,
-            COALESCE(t.pos_title, p.pos_title) AS candidate_pos_title
-       FROM form_of_edge e
-       LEFT JOIN lookup_form lf
-         ON lf.release_id IN (${servedBy("?2")})
-        AND lf.surface_key = e.target_word_key
-        AND lf.origin = 'headword'
-       LEFT JOIN source_record t ON t.record_id = lf.record_id
+            COALESCE(t.pos_title, p.pos_title) AS candidate_pos_title`,
+        joins: `
        LEFT JOIN recovered_entry p ON p.word_key = e.target_word_key
         AND p.release_id IN (${servedBy("?2")})
         AND NOT EXISTS (SELECT 1 FROM lookup_form present WHERE present.release_id IN (${servedBy("?2")})
                         AND present.surface_key = p.word_key AND present.origin = 'headword')
-       LEFT JOIN raw_page page ON page.page_id = p.page_id
-      WHERE e.record_id IN (SELECT value FROM json_each(?1)) AND e.release_id IN (${servedBy("?2")})
-      ORDER BY e.record_id, e.edge_id, t.line_no, p.entry_id`;
+       LEFT JOIN raw_page page ON page.page_id = p.page_id`,
+      }
+    : {
+        entry: `NULL          AS candidate_entry_id,
+            NULL          AS candidate_revision_id,
+            NULL          AS candidate_page_line,
+            t.release_id  AS candidate_release_id,
+            t.line_no     AS candidate_line_no,
+            t.word        AS candidate_word,
+            t.pos         AS candidate_pos,
+            t.pos_title   AS candidate_pos_title`,
+        joins: "",
+      };
+  return `SELECT e.record_id AS record_id, ${edges === "corrected_edge" ? "-1 - e.sense_index" : "e.edge_id"} AS edge_id, e.sense_index AS sense_index,
+            t.record_id   AS candidate_record_id,
+            ${pages.entry}
+       FROM ${edges === "corrected_edge" ? "corrected_edge" : "form_of_edge"} e
+       LEFT JOIN lookup_form lf
+         ON lf.release_id IN (${servedBy("?2")})
+        AND lf.surface_key = e.target_word_key
+        AND lf.origin = 'headword'
+       LEFT JOIN source_record t ON t.record_id = lf.record_id${pages.joins}
+      WHERE e.record_id IN (SELECT value FROM json_each(?1)) AND e.release_id IN (${servedBy("?2")})${
+        edges === "served form_of_edge" ? ` AND ${sourceEdgeServed("e")}` : edges === "corrected_edge" ? ` AND ${correctedEdgeServed("e")}` : ""
+      }`;
+}
 
 interface HitRow {
   surface_key: string;
@@ -179,8 +208,8 @@ interface BatchReads {
 
 const readsFor = (tables: DictionaryTables): BatchReads =>
   tables.pageEntries
-    ? { search: BATCH_SEARCH_SQL, links: BATCH_LEMMA_LINK_SQL }
-    : { search: BATCH_ARCHIVE_SEARCH_SQL, links: BATCH_ARCHIVE_LEMMA_LINK_SQL };
+    ? { search: BATCH_SEARCH_SQL, links: tables.edgeCorrections ? CORRECTED_BATCH_LEMMA_LINK_SQL : BATCH_LEMMA_LINK_SQL }
+    : { search: BATCH_ARCHIVE_SEARCH_SQL, links: tables.edgeCorrections ? CORRECTED_BATCH_ARCHIVE_LEMMA_LINK_SQL : BATCH_ARCHIVE_LEMMA_LINK_SQL };
 
 /** Every key's matched records, by key and then by record, in one read. */
 async function search(db: LookupDatabase, reads: BatchReads, releaseId: string, keys: readonly string[]): Promise<Map<string, Map<string, Match>>> {
@@ -198,12 +227,14 @@ async function search(db: LookupDatabase, reads: BatchReads, releaseId: string, 
 async function linksOf(db: LookupDatabase, reads: BatchReads, releaseId: string, recordIds: readonly number[]): Promise<Map<number, LightLink[]>> {
   const byRecord = new Map<number, LightLink[]>();
   if (recordIds.length === 0) return byRecord;
-  const byEdge = new Map<number, LightLink>();
+  // A corrected edge's id is its record's own (`batchLinks`), so a link is keyed by both.
+  const byEdge = new Map<string, LightLink>();
   for (const row of await db.all<LinkRow>(reads.links, [JSON.stringify(recordIds), releaseId])) {
-    let link = byEdge.get(row.edge_id);
+    const edge = `${row.record_id}:${row.edge_id}`;
+    let link = byEdge.get(edge);
     if (link === undefined) {
       link = row.candidate_record_id === null && row.candidate_entry_id === null ? { kind: "dangling" } : { kind: "candidates", candidates: [] };
-      byEdge.set(row.edge_id, link);
+      byEdge.set(edge, link);
       byRecord.set(row.record_id, [...(byRecord.get(row.record_id) ?? []), link]);
     }
     if (link.kind === "candidates" && (row.candidate_record_id !== null || row.candidate_entry_id !== null)) {

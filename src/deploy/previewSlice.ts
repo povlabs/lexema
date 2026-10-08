@@ -25,6 +25,7 @@ import { createHash } from "node:crypto";
 import { DatabaseSync } from "node:sqlite";
 import { literal } from "../import/seedSql.js";
 import { normalizeItalianExact } from "../italian/normalize.js";
+import { correctedEdgeServed } from "../lookup/correctedEdge.js";
 import { bareKey, deletionKeys, foldKey } from "../lookup/nearby.js";
 import { select, type MasterReader } from "../update/master.js";
 
@@ -118,12 +119,18 @@ function recordsFor(reader: MasterReader, keys: readonly string[], tables: Reado
     reader,
     `SELECT DISTINCT record_id FROM lookup_form WHERE release_id IN (${releasesIn}) AND surface_key IN (SELECT value FROM json_each(${keyList}))`,
   ).map(({ record_id }) => record_id);
-  const naming = select<{ record_id: number }>(
-    reader,
-    `SELECT DISTINCT record_id FROM form_of_edge WHERE release_id IN (${releasesIn}) AND target_word_key IN (SELECT value FROM json_each(${keyList}))`,
-  ).map(({ record_id }) => record_id);
+  // A corrected edge (#722) names a word as a source edge does, while its record is served.
+  const edgeTables = ["form_of_edge", ...(tables.has("corrected_edge") ? ["corrected_edge"] : [])];
+  const naming = edgeTables.flatMap((table) =>
+    select<{ record_id: number }>(
+      reader,
+      `SELECT DISTINCT e.record_id FROM ${table} e WHERE e.release_id IN (${releasesIn}) AND e.target_word_key IN (SELECT value FROM json_each(${keyList}))${
+        table === "corrected_edge" ? ` AND ${correctedEdgeServed("e")}` : ""
+      }`,
+    ).map(({ record_id }) => record_id),
+  );
   const targets = [
-    ...new Set(rowsWhere(reader, "form_of_edge", inList("record_id"), spelling).map((row) => String(row.target_word_key))),
+    ...new Set(edgeTables.flatMap((table) => rowsWhere(reader, table, inList("record_id"), spelling).map((row) => String(row.target_word_key)))),
   ].sort();
   const lemmas = chunks(targets).flatMap((chunk) =>
     select<{ record_id: number }>(
@@ -165,8 +172,13 @@ function rowsToCopy(reader: MasterReader, keys: readonly string[]): Map<string, 
 
   // A whole record's every row; a listed record's only the rows its listing reads.
   for (const table of ["source_record_json", "lookup_form", "corrected_form", "claim_review", "recovered_definition", "hidden_record"]) byRecord(table);
-  for (const table of ["source_record", "form_of_edge", "corrected_claim"]) byRecord(table, "1 = 1");
-  byRecord("sense", "sense_index IN (SELECT e.sense_index FROM form_of_edge e WHERE e.record_id = sense.record_id)");
+  for (const table of ["source_record", "form_of_edge", "corrected_claim", "corrected_edge"]) byRecord(table, "1 = 1");
+  byRecord(
+    "sense",
+    `sense_index IN (SELECT e.sense_index FROM form_of_edge e WHERE e.record_id = sense.record_id)${
+      tables.has("corrected_edge") ? " OR sense_index IN (SELECT c.sense_index FROM corrected_edge c WHERE c.record_id = sense.record_id)" : ""
+    }`,
+  );
   byRecord("grammar_claim", "scope = 'record' AND status = 'stated' AND dimension IN ('gender', 'number')");
   read("applied_change", () => rowsWhere(reader, "applied_change", inList("record_id"), whole));
   const wholeIds = new Set(whole);
