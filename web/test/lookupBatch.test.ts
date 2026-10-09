@@ -34,10 +34,11 @@ import {
   RECORD_SOURCE_LINE_SQL,
 } from "../../src/lookup/lookup.js";
 import { ENTRY_AGREEMENT_FACT_SQL } from "../../src/lookup/pageFacts.js";
+import { HAND_KEPT_HEADS_SQL } from "../../src/lookup/handKept.js";
 import { OPTIONAL_TABLES_SQL } from "../../src/lookup/served.js";
-import { entryKey, type LemmaTarget } from "../../src/lookup/types.js";
+import { entryKey, publicEntryId, type LemmaTarget } from "../../src/lookup/types.js";
 import { loadFixturePages, rawPageSource, readSavedPage } from "../../src/source/rawPage.js";
-import { candidatesOf } from "@/worker/api/lookupAnswer.ts";
+import { candidatesOf, idOf } from "@/worker/api/lookupAnswer.ts";
 import { atFixtureLines } from "../../test/correctionFixture.js";
 
 const REPO = fileURLToPath(new URL("../..", import.meta.url));
@@ -195,9 +196,12 @@ test("a batch reads the release once and runs the same few statements for one wo
       // A schema.sql seed has `corrected_edge`, so the links read the corrected edges beside the source's (#722).
       assert.equal(asked.filter((sql) => sql === CORRECTED_BATCH_LEMMA_LINK_SQL).length, 1, asked.join("\n---\n"));
       assert.equal(asked.filter((sql) => sql === OPTIONAL_TABLES_SQL).length, 1, asked.join("\n---\n"));
+      // A schema.sql seed has `hand_kept_definition`, read beside the search for every word at once (#776).
+      assert.equal(asked.filter((sql) => sql === HAND_KEPT_HEADS_SQL).length, 1, asked.join("\n---\n"));
       // The release and the optional tables (one D1 call), the search and the
-      // lemma links: a single word nothing spells is never read word by word.
-      assert.equal(asked.length, 4, asked.join("\n---\n"));
+      // hand-kept readings, and the lemma links: a single word nothing spells
+      // is never read word by word.
+      assert.equal(asked.length, 5, asked.join("\n---\n"));
     }
   }
 });
@@ -424,8 +428,8 @@ test("a batch with agreement-route words runs the same statements for a few word
   }
   // The same statements, whatever order the concurrent reads went out in.
   assert.deepEqual([...many.asked].sort(), [...one.asked].sort());
-  // The release and the optional tables, the search, the links, the words, the participles, the headwords, the agreement.
-  assert.equal(one.asked.length, 8, one.asked.join("\n---\n"));
+  // The release and the optional tables, the search, the hand-kept readings, the links, the words, the participles, the headwords, the agreement.
+  assert.equal(one.asked.length, 9, one.asked.join("\n---\n"));
 });
 
 test("the batch's agreement read stays on indexes rather than scanning (#756)", () => {
@@ -593,4 +597,104 @@ test("the batch's article reads stay on indexes rather than scanning (#766)", ()
   }
   const facts = plan(ENTRY_AGREEMENT_FACT_SQL, keys);
   assert.ok(facts.some((step) => /^SEARCH f USING (PRIMARY KEY|INDEX sqlite_autoindex_entry_fact_1) \(entry_id=\?\)/.test(step)), facts.join("\n"));
+});
+
+/** Whether a statement names `hand_kept_definition` at all. */
+const namesHandKept = (sql: string): boolean => sql.includes("hand_kept_definition");
+
+/**
+ * `fixtures/hand-kept-readings/archive-lines.jsonl`: release it-0c432803's
+ * line 963 `si` (a noun) and lines 113594 and 113595 `come` (an adverb, a
+ * preposition), seeded with the hand-kept readings (ADR 0031, #745): `si`'s
+ * pronoun and `come`'s conjunction.
+ */
+const HAND_KEPT_LINES = (await readFile(join(REPO, "fixtures/hand-kept-readings/archive-lines.jsonl"), "utf8")).trimEnd().split("\n");
+
+/** Each candidate of a word as `/v1/lookup/batch` names it: its public id, part of speech and identity. */
+const named = (answer: BatchAnswer): string[] =>
+  answer.outcome === "found"
+    ? answer.candidates.map((candidate) => {
+        const identity = candidate.recordId !== undefined ? "record" : candidate.entryId !== undefined ? "page" : `kept-${candidate.handKeptId}`;
+        return `${publicEntryId(candidate)} ${candidate.pos} ${identity}`;
+      })
+    : ["not found"];
+
+/** The same, through a full lookup and `candidatesOf`, the id as `/v1/lookup` names it. */
+async function namedByLookup(word: string, on: { db: LookupDatabase; releaseId: string }): Promise<string[]> {
+  const result = await lookup({ ...on, query: word });
+  if (result.outcome !== "found") return ["not found"];
+  const readLemma = async (target: LemmaTarget) => {
+    const lemma = await lookup({ ...on, query: target.word });
+    return lemma.outcome === "found" ? lemma.readings.find((reading) => entryKey(reading) === entryKey(target)) : undefined;
+  };
+  return (await candidatesOf(result, readLemma)).map(({ reading }) => {
+    const identity = reading.recordId !== undefined ? "record" : reading.entryId !== undefined ? "page" : `kept-${reading.handKeptId}`;
+    return `${idOf(reading)} ${reading.pos} ${identity}`;
+  });
+}
+
+/** Part of speech and identity, without the id. */
+const shapes = (candidates: readonly string[]): string[] => candidates.map((candidate) => candidate.split(" ").slice(1).join(" "));
+
+const HAND_KEPT_WORDS = ["si", "come", "Come", "il si", "la come", "qqqqqq"];
+
+test("the batch answers a word with its hand-kept readings after the source's, with the ids the single lookup gives them (#776)", async () => {
+  const releaseId = "it-batch-hand-kept";
+  const seeded = await seededWith(HAND_KEPT_LINES, releaseId, []);
+  try {
+    const on = { db: fromNodeSqlite(seeded), releaseId };
+    const { answers } = await lookupBatch({ ...on, queries: HAND_KEPT_WORDS });
+    for (const [at, word] of HAND_KEPT_WORDS.entries()) assert.deepEqual(named(answers[at]), await namedByLookup(word, on), word);
+
+    // The shapes the criteria name, so the comparison above is not vacuous.
+    assert.deepEqual(shapes(named(answers[0])), ["noun record", "pron kept-si:pron"]);
+    assert.deepEqual(shapes(named(answers[1])), ["adv record", "prep record", "conj kept-come:conj"]);
+    // A hand-kept reading's id names the revision it cites and its section line there.
+    assert.equal(named(answers[0])[1].split(" ")[0], `${releaseId}:page:93469502:952`);
+  } finally {
+    seeded.close();
+  }
+});
+
+test("the batch finds a word only hand-kept readings spell, as the single lookup does (#776)", async () => {
+  // Without archive line 963, nothing of the source spells `si`.
+  const releaseId = "it-batch-hand-kept-only";
+  const seeded = await seededWith(HAND_KEPT_LINES.filter((line) => !line.startsWith('{"word": "si"')), releaseId, []);
+  try {
+    const on = { db: fromNodeSqlite(seeded), releaseId };
+    assert.deepEqual(await routesOf(["si"], on.db, releaseId), ["surface"]);
+    const { answers } = await lookupBatch({ ...on, queries: HAND_KEPT_WORDS });
+    for (const [at, word] of HAND_KEPT_WORDS.entries()) assert.deepEqual(named(answers[at]), await namedByLookup(word, on), word);
+    assert.deepEqual(named(answers[0]), [`${releaseId}:page:93469502:952 pron kept-si:pron`]);
+  } finally {
+    seeded.close();
+  }
+});
+
+test("a dictionary without hand_kept_definition is sent no statement naming it, and the batch keeps its answers (#776)", async () => {
+  const releaseId = "it-batch-hand-kept-before";
+  // A master seeded before #745, and one with the table but no reading in it.
+  const before = await seededWith(HAND_KEPT_LINES, releaseId, []);
+  before.exec("DROP INDEX hand_kept_definition_by_key; DROP TABLE hand_kept_definition;");
+  const empty = await seededWith(HAND_KEPT_LINES, releaseId, []);
+  empty.exec("DELETE FROM hand_kept_definition");
+  try {
+    const asked = recording(fromNodeSqlite(before));
+    const { answers } = await lookupBatch({ db: asked.db, releaseId, queries: HAND_KEPT_WORDS });
+    // The optional-tables read names every table it looks for; no other statement names this one.
+    assert.ok(!asked.asked.filter((sql) => sql !== OPTIONAL_TABLES_SQL).some(namesHandKept), asked.asked.join("\n---\n"));
+    const on = { db: fromNodeSqlite(before), releaseId };
+    for (const [at, word] of HAND_KEPT_WORDS.entries()) assert.deepEqual(named(answers[at]), await namedByLookup(word, on), word);
+    assert.deepEqual(answers.map(named), (await lookupBatch({ db: fromNodeSqlite(empty), releaseId, queries: HAND_KEPT_WORDS })).answers.map(named));
+    assert.deepEqual(shapes(named(answers[0])), ["noun record"]);
+  } finally {
+    before.close();
+    empty.close();
+  }
+});
+
+test("the batch's hand-kept read stays on its index rather than scanning (#776)", () => {
+  const steps = (sqlite.prepare(`EXPLAIN QUERY PLAN ${HAND_KEPT_HEADS_SQL}`).all(JSON.stringify(["si", "come"])) as { detail: string }[]).map((row) => row.detail);
+  assert.ok(!steps.some((step) => /SCAN hand_kept_definition\b/.test(step)), steps.join("\n"));
+  assert.ok(steps.some((step) => /^SEARCH hand_kept_definition USING INDEX hand_kept_definition_by_key \(word_key=\?\)/.test(step)), steps.join("\n"));
 });
