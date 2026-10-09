@@ -2,8 +2,8 @@ import type { DictionaryRead, LookupDatabase, SqlValue } from "./database.js";
 import { readingPartOfSpeech } from "./articles.js";
 import { servedBy, type DictionaryTables } from "./served.js";
 import { normalizeItalianExact } from "../italian/normalize.js";
-import { NO_ENTRY_FACTS, readEntryFacts, type EntryFacts } from "./pageFacts.js";
-import { type LemmaCandidate, type Reading, type RecoveredDefinition, type PageEntryRef, type RecoveredRef, type RecoveredRoute } from "./types.js";
+import { NO_ENTRY_FACTS, readAgreementFacts, readEntryFacts, type EntryFacts } from "./pageFacts.js";
+import { type LemmaCandidate, type Reading, type ReadingPartOfSpeech, type RecoveredDefinition, type PageEntryRef, type RecoveredRef, type RecoveredRoute } from "./types.js";
 
 const queryAll = <T>(db: LookupDatabase, sql: DictionaryRead, ...params: SqlValue[]): Promise<T[]> => db.all<T>(sql, params);
 
@@ -93,6 +93,29 @@ const textOf = (row: DefinitionRow): Pick<RecoveredDefinition, "text" | "correct
   row.corrected_text === null
     ? { text: row.text, correction: null }
     : { text: row.corrected_text, correction: { id: row.correction_id as string, evidenceUrl: row.evidence_url as string, replaces: row.text } };
+
+/**
+ * Each page-only entry's part of speech, with its articles where it is a
+ * noun, as `pageEntryReadings` gives the entry's reading one: off its word
+ * and the gender, number, forms and IPA its facts give. One statement for any
+ * number of nouns; none when none is a noun or the dictionary has no
+ * `entry_fact`, where no entry has a fact. A batch orders a word typed with
+ * its article by it (rule `it-article-query/v1`, src/lookup/batch.ts).
+ */
+export async function entryPartsOfSpeech(
+  db: LookupDatabase,
+  entries: readonly { entryId: number; pos: string; word: string }[],
+  tables: Pick<DictionaryTables, "pageFacts">,
+): Promise<Map<number, ReadingPartOfSpeech>> {
+  const nouns = tables.pageFacts ? [...new Set(entries.filter((entry) => entry.pos === "noun").map((entry) => entry.entryId))] : [];
+  const facts = await readAgreementFacts(db, nouns);
+  return new Map(
+    entries.map(({ entryId, pos, word }) => {
+      const { claims, forms, pronunciations } = facts.get(entryId) ?? { claims: [], forms: [], pronunciations: [] };
+      return [entryId, readingPartOfSpeech(pos, word, claims, forms, pronunciations)];
+    }),
+  );
+}
 
 async function pageEntryCandidates(db: LookupDatabase, releaseId: string, word: string): Promise<LemmaCandidate[]> {
   const rows = await queryAll<EntryRow>(db, PAGE_ENTRY_SQL, releaseId, normalizeItalianExact(word));

@@ -8,7 +8,7 @@
 
 import { FORM_TAG_DIMENSION, isFormTag, RELATED_KINDS, type RelatedKind } from "../italian/pageFacts.js";
 import { normalizeItalianExact } from "../italian/normalize.js";
-import type { DictionaryRead, LookupDatabase } from "./database.js";
+import { keyedRead, readKeys, type DictionaryRead, type KeyedRead, type LookupDatabase } from "./database.js";
 import { readExpressions } from "./expressions.js";
 import { servedBy } from "./served.js";
 import type {
@@ -67,6 +67,74 @@ export const NO_ENTRY_FACTS: EntryFacts = {
   lemmaLinks: [],
 };
 
+/** The facts of the given kinds, in the order the rule read them. */
+const factsOfKind =
+  (rows: readonly FactRow[]) =>
+  <K extends FactRow["kind"]>(...kinds: K[]): (FactRow & { kind: K })[] =>
+    rows.filter((row): row is FactRow & { kind: K } => (kinds as string[]).includes(row.kind));
+
+const tagsOf = (row: FactRow): string[] => JSON.parse(row.tags) as string[];
+
+/** The fact kinds a reading's articles are derived from (src/lookup/articles.ts). */
+const AGREEMENT_KINDS = ["gender", "number", "form", "pronunciation"] as const;
+
+/** What an entry's facts say that its articles are derived from: its gender and number, its forms and its IPA. */
+export interface AgreementFacts {
+  claims: StatedClaim[];
+  forms: SourceForm[];
+  pronunciations: Pronunciation[];
+}
+
+/** An entry's `AgreementFacts`, from its facts in the order the rule read them; facts of other kinds are passed over. */
+function agreementFactsOf(rows: readonly FactRow[], at: (line: number) => RecoveredRef): AgreementFacts {
+  const of = factsOfKind(rows);
+  return {
+    claims: of("gender", "number").map((row): StatedClaim => ({
+      status: "stated", dimension: row.kind, value: row.value, sourceText: row.source_text as string, ref: at(row.page_line),
+    })),
+    forms: of("form").map((row, index): SourceForm => ({
+      index,
+      surface: row.value,
+      ref: at(row.page_line),
+      formSource: null,
+      claims: tagsOf(row).filter(isFormTag).map((tag): GrammarClaim => ({
+        status: "stated", dimension: FORM_TAG_DIMENSION[tag], value: tag, sourceText: tag, ref: at(row.page_line),
+      })),
+    })),
+    pronunciations: of("pronunciation").map((row): Pronunciation => ({ ipa: row.value, note: null, ref: at(row.page_line) })),
+  };
+}
+
+/**
+ * `ENTRY_FACT_SQL` for many entries in one read, of `AGREEMENT_KINDS` alone,
+ * each fact with its entry's page revision, which a ref on it names. Exported
+ * so a test can assert the plan.
+ */
+export const ENTRY_AGREEMENT_FACT_SQL: KeyedRead = keyedRead(`SELECT f.entry_id AS set_key, f.kind, f.page_line, f.value, f.source_text, f.meaning, f.tags, f.definition_index,
+            p.wiki, p.title, p.revision_id
+  FROM entry_fact f
+  JOIN recovered_entry e ON e.entry_id = f.entry_id
+  JOIN raw_page p ON p.page_id = e.page_id
+ WHERE f.entry_id IN (SELECT value FROM json_each(?1)) AND f.kind IN (${AGREEMENT_KINDS.map((kind) => `'${kind}'`).join(", ")})
+ ORDER BY f.entry_id, f.fact_index`);
+
+/** Each entry's `AgreementFacts`, in one statement however many entries; none for none. An entry with no fact gets none. */
+export async function readAgreementFacts(db: LookupDatabase, entryIds: readonly number[]): Promise<Map<number, AgreementFacts>> {
+  const rows = await readKeys<FactRow & { set_key: number; wiki: string; title: string; revision_id: number }>(db, ENTRY_AGREEMENT_FACT_SQL, entryIds);
+  return new Map(
+    entryIds.map((entryId) => {
+      const own = rows.filter((row) => row.set_key === entryId);
+      const [page] = own;
+      // A ref is made only for a fact, so there is a row to name the page.
+      const at = (line: number): RecoveredRef => {
+        if (page === undefined) throw new Error(`entry ${entryId} has no fact to name its page`);
+        return { wiki: page.wiki, title: page.title, revisionId: page.revision_id, line };
+      };
+      return [entryId, agreementFactsOf(own, at)];
+    }),
+  );
+}
+
 /**
  * Read one entry's facts. `at` makes the ref of a page line of the entry's
  * revision; `pageCandidates` names the page-only entries a word is, for a
@@ -81,22 +149,8 @@ export async function readEntryFacts(
 ): Promise<EntryFacts> {
   const rows = await db.all<FactRow>(ENTRY_FACT_SQL, [entryId]);
   if (rows.length === 0) return NO_ENTRY_FACTS;
-  const of = <K extends FactRow["kind"]>(...kinds: K[]): (FactRow & { kind: K })[] =>
-    rows.filter((row): row is FactRow & { kind: K } => (kinds as string[]).includes(row.kind));
-  const tagsOf = (row: FactRow): string[] => JSON.parse(row.tags) as string[];
-
-  const claims = of("gender", "number").map((row): StatedClaim => ({
-    status: "stated", dimension: row.kind, value: row.value, sourceText: row.source_text as string, ref: at(row.page_line),
-  }));
-  const forms = of("form").map((row, index): SourceForm => ({
-    index,
-    surface: row.value,
-    ref: at(row.page_line),
-    formSource: null,
-    claims: tagsOf(row).filter(isFormTag).map((tag): GrammarClaim => ({
-      status: "stated", dimension: FORM_TAG_DIMENSION[tag], value: tag, sourceText: tag, ref: at(row.page_line),
-    })),
-  }));
+  const of = factsOfKind(rows);
+  const { claims, forms, pronunciations } = agreementFactsOf(rows, at);
 
   const related = (kind: RelatedKind): RelatedWord[] => {
     const byWord = new Map<string, RelatedWord>();
@@ -118,7 +172,7 @@ export async function readEntryFacts(
     claims,
     forms,
     wordFacts: {
-      pronunciations: of("pronunciation").map((row): Pronunciation => ({ ipa: row.value, note: null, ref: at(row.page_line) })),
+      pronunciations,
       hyphenations: [],
       etymologies: of("etymology").map((row): WordText => ({ text: row.value, ref: at(row.page_line) })),
       synonyms,
