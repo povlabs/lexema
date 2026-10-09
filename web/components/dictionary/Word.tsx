@@ -17,6 +17,7 @@ import { ReportDialog } from "./ReportDialog";
 import { reportReadings, type ReportReading } from "@/lib/dictionary/report.ts";
 import { sourcePageUrl } from "@/lib/dictionary/sourcePage.ts";
 import { WordList } from "./WordList";
+import { PRONUNCIATION_LABEL, READINGS_NAV, SECTION_LABEL, SOURCE_LABEL, sourceLinkName } from "@/lib/dictionary/wordPageText.ts";
 import {
   entryTitle,
   expressionRows,
@@ -51,7 +52,7 @@ function Pronunciation({ facts }: { facts: WordFacts }) {
   const { pronunciations } = facts;
   if (pronunciations.length === 0) return null;
   return (
-    <p className={PRONUNCIATION} aria-label="Pronunciation">
+    <p className={PRONUNCIATION} aria-label={PRONUNCIATION_LABEL} lang="it">
       {pronunciations.map((sound, i) => (
         <span key={factRefKey(sound.ref)}>
           {i > 0 && " · "}
@@ -71,7 +72,7 @@ function JumpLinks({ page }: { page: WordPage }) {
   const entries = numberedEntries(page.readings);
   if (entries === undefined || !showsJumpLinks(page)) return null;
   return (
-    <nav aria-label="Readings">
+    <nav aria-label={READINGS_NAV} lang="it">
       <ul className={JUMP_LINKS}>
         {entries.map((entry) => (
           <li key={readingAnchor(entry)}>
@@ -103,17 +104,17 @@ function WordFactsView({
     <div className={WORD_FACTS}>
       {facts.etymologies.length > 0 && (
         <section className={WORD_BLOCK} aria-labelledby="etymology">
-          <h2 className={BLOCK_LABEL} id="etymology">
-            Etymology
+          <h2 className={BLOCK_LABEL} id="etymology" lang="it">
+            {SECTION_LABEL.etymology}
           </h2>
           {facts.etymologies.map((etymology) => (
             <OneLine key={factRefKey(etymology.ref)} text={etymology.text} lang="it" />
           ))}
         </section>
       )}
-      <WordList id="synonyms" label="Synonyms" items={lists.synonyms} />
-      <WordList id="antonyms" label="Antonyms" items={lists.antonyms} />
-      <WordList id="derived" label="Derived words" items={lists.derived} />
+      <WordList id="synonyms" label={SECTION_LABEL.synonyms} items={lists.synonyms} />
+      <WordList id="antonyms" label={SECTION_LABEL.antonyms} items={lists.antonyms} />
+      <WordList id="derived" label={SECTION_LABEL.derived} items={lists.derived} />
       {expressions !== undefined && <Expressions id="expressions-0" expressions={expressionRows(expressions)} />}
     </div>
   );
@@ -129,17 +130,17 @@ export interface FooterFacts {
   readings: readonly { number: ReportReading["number"]; reading: EntryIdentity & { posTitle: string } }[];
 }
 
-/** One *Source*, to the Wiktionary page of the page's word, then *Report a mistake* (ADR 0009, amended on #281). */
+/** One *Source*, to the Wiktionary page of the page's word, then *Segnala un errore* (ADR 0009, amended on #281). */
 export function SourceLine({ page, siteKey }: { page: FooterFacts; siteKey: string | undefined }) {
   return (
-    <footer className={SOURCE_LINE}>
+    <footer className={SOURCE_LINE} lang="it">
       <a
         className={SOURCE_LINK}
         href={sourcePageUrl(page.sourceWord)}
         {...NEW_TAB}
-        aria-label={`Wiktionary page for ${page.sourceWord}, the source of this page (opens in a new tab)`}
+        aria-label={sourceLinkName(page.sourceWord)}
       >
-        Source
+        {SOURCE_LABEL}
         <ExternalIcon className={ICON} />
       </a>
       <span aria-hidden="true">·</span>

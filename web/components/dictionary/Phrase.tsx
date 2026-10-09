@@ -5,7 +5,7 @@
 // the lemma replaced by the expression, linked, unnumbered, as a word page's
 // form lines read (rule 4 of #695, P11, built by #700). Then *Definitions*,
 // the expression's own meanings, as its entry shows them. Closed, each
-// expression's first meaning shows, then `+ more`, the one expand control
+// expression's first meaning shows, then `+ altro`, the one expand control
 // every reading has; open, the other meanings show under the first. An
 // expression no form line names shows its meanings as a reading of its own
 // record. Nothing else of either word shows: no forms, no pronunciation. Then
@@ -17,6 +17,7 @@ import { searchHref } from "./Forms";
 import { More, MoreBlock } from "./More";
 import { Block, DefinitionContent, definitionKey, FormLines, leadHoldsMore } from "./Reading";
 import { SourceLine } from "./Word";
+import { SECTION_LABEL } from "@/lib/dictionary/wordPageText.ts";
 import {
   DEFINITION,
   DEFINITION_BODY,
@@ -55,7 +56,7 @@ function FormLine({ definition }: { definition: PhraseDefinition }) {
   );
 }
 
-/** Whether `+ more` has anything to open: a folded meaning, or a shown one's second example. */
+/** Whether `+ altro` has anything to open: a folded meaning, or a shown one's second example. */
 const holdsMore = (meanings: readonly PhraseMeaning[]): boolean =>
   meanings.some((meaning) => meaning.folded || leadHoldsMore(meaning.item));
 
@@ -89,7 +90,7 @@ function Meanings({ owner, meanings }: { owner: string; meanings: readonly Phras
   if (meanings.length === 0) return null;
   const list = `definition-list-${owner}`;
   return (
-    <Block id={`definitions-${owner}`} label="Definitions">
+    <Block id={`definitions-${owner}`} label={SECTION_LABEL.definitions}>
       <MoreBlock kind="definitions">
         <ol className={DEFINITIONS} id={list}>
           {meanings.map((meaning, i) => (

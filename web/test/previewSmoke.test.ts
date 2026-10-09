@@ -53,7 +53,7 @@ const notFound = (word: string): Page => ({
   status: 200,
   robotsTag: "noindex",
   contentType: "text/html; charset=utf-8",
-  body: `<title>No entry for "${word}" — Lexema</title><h1>No entry for “<span lang="it">${word}</span>”</h1>`,
+  body: `<title>No entry for "${word}" — Lexema</title><h1 lang="it">Nessuna voce per “${word}”</h1>`,
 });
 /**
  * A found word's page as the Preview of PR #328 sent it on 2026-10-01, before
@@ -374,10 +374,10 @@ const NON_FINITE = (slots: readonly string[]) =>
 const GRID_ROW = (cells: readonly string[]) =>
   `<div role="row" class="contents"><span class="pt-1" role="rowheader" lang="it">femminile</span>${cells.map((cell) => `<div class="min-w-0" role="cell">${cell}</div>`).join("")}</div>`;
 const GRID = (rows: readonly string[]) =>
-  `<div class="grid" role="table" aria-label="Forms of presina" data-grid=""><div role="row" class="contents"><span role="columnheader"></span><span role="columnheader" lang="it">singolare</span><span role="columnheader" lang="it">plurale</span></div>${rows.join("")}</div>`;
+  `<div class="grid" role="table" aria-label="Forme di presina" data-grid=""><div role="row" class="contents"><span role="columnheader"></span><span role="columnheader" lang="it">singolare</span><span role="columnheader" lang="it">plurale</span></div>${rows.join("")}</div>`;
 const SPELLING = `<div class="[&amp;+&amp;]:mt-2"><p class="m-0 font-mono" lang="it"><span data-headword="">presina</span></p></div>`;
 const LEMMA_FORMS = (word: string) =>
-  `<section class="mt-[1.125rem]" aria-labelledby="lemma-forms-x-${word}"><h3 class="m-0" id="lemma-forms-x-${word}">Forms of<span class="ml-1" lang="it">${word}</span></h3></section>`;
+  `<section class="mt-[1.125rem]" aria-labelledby="lemma-forms-x-${word}"><h3 class="m-0" id="lemma-forms-x-${word}">Forme di<span class="ml-1" lang="it">${word}</span></h3></section>`;
 const BLOCK = (verb: string, n: number, inside: string) =>
   `<article class="scroll-mt-6" id="reading-voce-verbale-${verb}" aria-labelledby="reading-heading-voce-verbale-${verb}" data-verb-form="${verb}">${HEADING(`voce-verbale-${verb}`, NUMBER(n))}${inside}</article>`;
 
@@ -397,7 +397,7 @@ async function andavanoProblem(page: Page): Promise<string> {
 
 test("a page that keeps the word-page law passes: a numbered block, a non-finite line and a grid row with a form", async () => {
   const github = new FakeGitHub(pr269());
-  const page = andavanoWith(BLOCK("andare", 1, `${LEMMA_FORMS("andare")}${NON_FINITE([FORM, DASH, DASH])}<div aria-label="Moods of andare"></div>${GRID([GRID_ROW([SPELLING, DASH])])}`));
+  const page = andavanoWith(BLOCK("andare", 1, `${LEMMA_FORMS("andare")}${NON_FINITE([FORM, DASH, DASH])}<div aria-label="Modi di andare"></div>${GRID([GRID_ROW([SPELLING, DASH])])}`));
   await smoke(github, { ...UP, [wordUrl("andavano")]: page });
   assert.equal(github.checks[0].conclusion, "success", github.checks[0].summary);
 });
@@ -427,10 +427,10 @@ test("a reading or block heading with no number fails the check, naming the word
 test("the same base word's table or block drawn twice fails the check, naming the word and the base word (#700)", async () => {
   assert.equal(
     await andavanoProblem(andavanoWith(`${BLOCK("andare", 1, LEMMA_FORMS("andare"))}${BLOCK("salire", 2, LEMMA_FORMS("andare"))}`)),
-    `"andavano" draws andare's Forms of 2 times`,
+    `"andavano" draws andare's Forme di 2 times`,
   );
   assert.equal(
-    await andavanoProblem(andavanoWith(BLOCK("andare", 1, '<div aria-label="Moods of andare"></div><div aria-label="Moods of andare"></div>'))),
+    await andavanoProblem(andavanoWith(BLOCK("andare", 1, '<div aria-label="Modi di andare"></div><div aria-label="Modi di andare"></div>'))),
     `"andavano" draws andare's conjugation 2 times`,
   );
   assert.equal(

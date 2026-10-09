@@ -73,12 +73,13 @@ import {
   SENSE_LABEL,
   SUB_ITEMS,
 } from "@/components/shared/styles.ts";
+import { FORM_OF_LEAD, FORMS_OF_LEAD, formsOf, SECTION_LABEL } from "@/lib/dictionary/wordPageText.ts";
 
 /** A block: a small grey label over its content. */
 export function Block({ id, label, children }: { id: string; label: ReactNode; children: ReactNode }) {
   return (
     <section className={BLOCK} aria-labelledby={id}>
-      <h3 className={BLOCK_LABEL} id={id}>
+      <h3 className={BLOCK_LABEL} id={id} lang="it">
         {label}
       </h3>
       {children}
@@ -178,7 +179,7 @@ function Example({ text, className = EXAMPLE }: { text: string; className?: stri
 /**
  * One definition: its labels, its text with each lemma linked, then its
  * examples. On the `lead`, the definition that shows closed, only its first
- * example shows until `+ more`; the others' examples fold with them. A
+ * example shows until `+ altro`; the others' examples fold with them. A
  * searched expression's page folds its meanings the same way (Phrase.tsx).
  */
 export function DefinitionContent({ item, reading, lead }: { item: DefinitionItem; reading: LinksOf; lead: boolean }) {
@@ -192,7 +193,7 @@ export function DefinitionContent({ item, reading, lead }: { item: DefinitionIte
   );
 }
 
-/** Whether the lead definition holds anything back for `+ more`: a second example, or a nested item's. */
+/** Whether the lead definition holds anything back for `+ altro`: a second example, or a nested item's. */
 export const leadHoldsMore = (item: DefinitionItem): boolean =>
   item.examples.length > 1 || nestedExamples(nestedItemsOf(item));
 
@@ -215,14 +216,14 @@ interface DefinitionRun {
 
 /**
  * A *Definitions* block. Closed, the first definition and its own first
- * example, or none: an example stays under its own definition. Then `+ more`,
+ * example, or none: an example stays under its own definition. Then `+ altro`,
  * when anything else is there. Open, every definition with every example in
- * order, then those of senses not shown as definitions, then `less`
+ * order, then those of senses not shown as definitions, then `meno`
  * (design-system-manifest.md § "Layout", one expand control). Everything is in
  * the document whether it is open or not. A form's block whose records have
  * several parts of speech gives one run per part of speech, each numbered from
  * 1 under its label; the first label shows closed, the others with their runs,
- * and the runs share the one `+ more` (Huey's ruling of 2026-10-07 on #727).
+ * and the runs share the one `+ altro` (Huey's ruling of 2026-10-07 on #727).
  * `owner` names the ids.
  */
 function DefinitionList({ owner, runs }: { owner: string; runs: readonly [DefinitionRun, ...DefinitionRun[]] }) {
@@ -231,7 +232,7 @@ function DefinitionList({ owner, runs }: { owner: string; runs: readonly [Defini
     runs.length > 1 || runs[0].definitions.length > 1 || leadHoldsMore(lead.item) || runs.some((run) => run.looseExamples.length > 0);
   const listId = (i: number): string => (i === 0 ? `definition-list-${owner}` : `definition-list-${owner}-${i + 1}`);
   return (
-    <Block id={`definitions-${owner}`} label="Definitions">
+    <Block id={`definitions-${owner}`} label={SECTION_LABEL.definitions}>
       <MoreBlock kind="definitions">
         {runs.map((run, r) => (
           <Fragment key={listId(r)}>
@@ -270,7 +271,7 @@ function DefinitionList({ owner, runs }: { owner: string; runs: readonly [Defini
 function Definitions({ reading, text }: { reading: Reading; text: OwnText }) {
   if (text.kind === "examples") {
     return (
-      <Block id={`examples-${entryKey(reading)}`} label="Examples">
+      <Block id={`examples-${entryKey(reading)}`} label={SECTION_LABEL.examples}>
         {text.looseExamples.map((example, i) => (
           <Example key={i} text={example} />
         ))}
@@ -345,8 +346,8 @@ function LemmaLineList({ words }: { words: readonly string[] }) {
   return (
     <>
       {words.map((word) => (
-        <p key={word} className={FORM_OF_LINE}>
-          Form of{" "}
+        <p key={word} className={FORM_OF_LINE} lang="it">
+          {FORM_OF_LEAD}{" "}
           <a className={GLOSS_LINK} href={searchHref(word)} lang="it">
             {word}
           </a>
@@ -360,12 +361,12 @@ function LemmaLineList({ words }: { words: readonly string[] }) {
 /** A reading's own *Forms*, in the shape they have. */
 function OwnFormsView({ owner, forms }: { owner: Reading; forms: OwnForms }) {
   return (
-    <Block id={`forms-${entryKey(owner)}`} label="Forms">
+    <Block id={`forms-${entryKey(owner)}`} label={SECTION_LABEL.forms}>
       {forms.kind === "conjugation" ? (
         <ConjugationView conjugation={forms.conjugation} searchedPointers={forms.searchedPointers} word={owner.word} />
       ) : (
         <>
-          {forms.agreement.grid !== undefined && <GridView grid={forms.agreement.grid} label={`Forms of ${owner.word}`} />}
+          {forms.agreement.grid !== undefined && <GridView grid={forms.agreement.grid} label={formsOf(owner.word)} />}
           {forms.agreement.superlative !== undefined && <SuperlativeGrid grid={forms.agreement.superlative} />}
         </>
       )}
@@ -379,7 +380,7 @@ function LemmaConjugation({ table }: { table: ConjugationTable }) {
 }
 
 /**
- * *Forms of andare*, the lemma's whole conjugation opened where the searched
+ * *Forme di andare*, the lemma's whole conjugation opened where the searched
  * form sits, or with nothing marked when it does not list it (#666); or *Forms
  * of bello*, the lemma's grid with nothing marked (#626).
  */
@@ -394,7 +395,7 @@ function LemmaForms({ owner, tables }: { owner: string; tables: readonly LemmaTa
             id={`lemma-forms-${owner}-${entryKey(lemma)}`}
             label={
               <>
-                Forms of
+                {FORMS_OF_LEAD}
                 <span className={BLOCK_LABEL_WORD} lang="it">
                   {lemma.word}
                 </span>
@@ -405,7 +406,7 @@ function LemmaForms({ owner, tables }: { owner: string; tables: readonly LemmaTa
               <LemmaConjugation table={table} />
             ) : (
               <>
-                {table.agreement.grid !== undefined && <GridView grid={table.agreement.grid} label={`Forms of ${lemma.word}`} />}
+                {table.agreement.grid !== undefined && <GridView grid={table.agreement.grid} label={formsOf(lemma.word)} />}
                 {table.agreement.superlative !== undefined && <SuperlativeGrid grid={table.agreement.superlative} />}
               </>
             )}
@@ -435,7 +436,7 @@ const formLineKey = (line: FormLine): string =>
  * One verb the searched form belongs to, as frames 17 and 37 draw it (#636,
  * #686): `1 · Voce verbale · salire`, its form-of lines right under it, the
  * source's and those built by rule (#627) read alike, all shown; then
- * *Definitions*, the verb's own, with the one expand control; then *Forms of
+ * *Definitions*, the verb's own, with the one expand control; then *Forme di
  * salire*, opened where the searched cell is. Nothing marks a line as Lexema's
  * (ADR 0016). The verb's table is the block's only *Forms*: a form record's own
  * `forms[]` never shows here (#666).
@@ -485,7 +486,7 @@ export function VerbFormBlockView({ block }: { block: VerbFormBlock }) {
  * A noun or adjective form no record of its own describes (#700, rule 4 of
  * #695): read as a form record's block, `1 · Aggettivo, forma flessa ·
  * femminile, singolare`, its lines built by rule from the cells of its base
- * word's grid, then the base word's *Definitions* and *Forms of gravido*.
+ * word's grid, then the base word's *Definitions* and *Forme di gravido*.
  * Nothing marks a line as Lexema's (ADR 0016).
  */
 export function GridFormBlockView({ block }: { block: GridFormBlock }) {
@@ -558,14 +559,14 @@ function ReadingPartView({ reading, owner, part }: { reading: Reading; owner: st
       return <LemmaForms owner={owner} tables={part.tables} />;
     case "etymology":
       return (
-        <Block id={`etymology-${owner}`} label="Etymology">
+        <Block id={`etymology-${owner}`} label={SECTION_LABEL.etymology}>
           {part.etymologies.map((etymology) => (
             <OneLine key={factRefKey(etymology.ref)} text={etymology.text} lang="it" />
           ))}
         </Block>
       );
     case "synonyms":
-      return <WordList id={`synonyms-${owner}`} label="Synonyms" items={part.items} level="h3" />;
+      return <WordList id={`synonyms-${owner}`} label={SECTION_LABEL.synonyms} items={part.items} level="h3" />;
   }
 }
 

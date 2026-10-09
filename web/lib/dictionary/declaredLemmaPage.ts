@@ -5,7 +5,7 @@
 // 2026-10-03, on #453).
 //
 // A reading whose forms take no cell is left out, and a lemma with no reading
-// left has no page: the search shows "No entry" as it would have.
+// left has no page: the search shows "Nessuna voce" as it would have.
 //
 // The one *Source* link opens the Wiktionary page of the first form the first
 // reading's table shows that a source record declares, in the order the table

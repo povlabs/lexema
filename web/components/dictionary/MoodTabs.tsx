@@ -30,7 +30,7 @@ export function MoodTabs({
   return (
     <MoodsMore open={compoundOpen}>
       <Tabs.Root className={TABS} defaultValue={open}>
-        <Tabs.List className={TAB_LIST} aria-label={label}>
+        <Tabs.List className={TAB_LIST} aria-label={label} lang="it">
           {panels.map(({ mood }) => (
             <Tabs.Tab key={mood} className={TAB} value={mood} lang="it">
               {mood}

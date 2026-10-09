@@ -123,7 +123,7 @@ Each record's form lines sit right under its heading, unnumbered, as a word
 page's form lines do (Huey's rule 4 of 2026-10-06 on
 [#695](https://github.com/povlabs/lexema/issues/695#issuecomment-6024404411),
 built by [#700](https://github.com/povlabs/lexema/issues/700)). Under them,
-*Definitions* holds the meanings of the expressions they name, each the first
+*Definizioni* holds the meanings of the expressions they name, each the first
 time the page names it
 ([Huey's ruling](https://github.com/povlabs/lexema/issues/214#issuecomment-5909303467)).
 The meanings are the found result's own readings, the headword's records, read by the
@@ -137,8 +137,8 @@ reading of its own after the searched words' records. Only a headword with
 neither shows as a bare link.
 
 Closed, a reading shows every form line and each expression's first meaning,
-then the `+ more` every reading has; the other meanings are folded under the
-first until it opens. The one *Source* links the page of the first headword shown, never the
+then the `+ altro` every reading has; the other meanings are folded under the
+first until it opens. The one *Fonte* links the page of the first headword shown, never the
 searched words': `vado via` links to *andare via*'s page
 ([Huey's hand check](https://github.com/povlabs/lexema/issues/214#issuecomment-5910100974)).
 Each form line keeps its record's provenance pointer, which reaches `vado`'s
@@ -496,7 +496,7 @@ completes nothing (`vado f`) costs one lemma read and its range probes, and
 reads nothing back. `test/phrase.test.ts` asserts those counts and each read's
 query plan.
 
-**Every offer is searchable.** Every phrase the field or "Did you mean"
+**Every offer is searchable.** Every phrase the field or "Forse cercavi"
 offers (see "When nothing is found") is read back before it
 is offered, by the same reading a search runs, and keeps only the headwords
 that search finds. A completion is built from the typed words and a
@@ -613,10 +613,10 @@ the word list per request. Expressions are not ranked: they keep step 4's order.
 
 | Answer | Case | Page |
 |---|---|---|
-| `{ kind: "accent", best, others, phrases }` | the same letters with an accent or a final apostrophe | "Did you mean città?", then other words that begin with the query, then the expressions |
-| `{ kind: "typo", best, others, phrases }` | one edit away | "Did you mean mangiare?", then other close spellings, then the expressions |
-| `{ kind: "phrase", best, others }` | the query corrected to read as an expression | "Did you mean vado via?", then other expressions |
-| `{ kind: "prefix", words }` | words that begin with it | the words that fit on one line, then `+ more` |
+| `{ kind: "accent", best, others, phrases }` | the same letters with an accent or a final apostrophe | "Forse cercavi città?", then other words that begin with the query, then the expressions |
+| `{ kind: "typo", best, others, phrases }` | one edit away | "Forse cercavi mangiare?", then other close spellings, then the expressions |
+| `{ kind: "phrase", best, others }` | the query corrected to read as an expression | "Forse cercavi vado via?", then other expressions |
+| `{ kind: "prefix", words }` | words that begin with it | the words that fit on one line, then `+ altro` |
 | `{ kind: "none" }` | nothing | how to search instead |
 
 ## Not covered here

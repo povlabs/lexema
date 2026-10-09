@@ -23,6 +23,7 @@ import {
 import { GENDER_LABEL, NUMBER_LABEL, NUMBERS, type Grid, type GridCell } from "@/lib/dictionary/genderGrid.ts";
 import { More, MoodMoreBlock, MorePanel } from "./More";
 import { MoodTabs } from "./MoodTabs";
+import { moodsOf } from "@/lib/dictionary/wordPageText.ts";
 import {
   CELL_SEPARATOR,
   TENSE_SET,
@@ -351,10 +352,10 @@ function TenseTables({
 }
 
 /**
- * One mood's tables. The compound tenses wait behind the one `+ more` after the
+ * One mood's tables. The compound tenses wait behind the one `+ altro` after the
  * simple tenses, open when the search hit one in any mood; every mood's control
  * opens and closes them on every tab (`MoodsMore`, #683). Open, each set is named —
- * *Tempi semplici*, *Tempi composti* (board f9vHId) — and `less` ends them;
+ * *Tempi semplici*, *Tempi composti* (board f9vHId) — and `meno` ends them;
  * closed, the simple tenses need no name.
  */
 function MoodPanelView({ table, searched }: { table: MoodTable<TableForm>; searched: (form: TableForm) => boolean }) {
@@ -400,7 +401,7 @@ export function ConjugationView({
       <NonFiniteLine items={conjugation.nonFinite} searched={searched} />
       {conjugation.openMood !== undefined && (
         <MoodTabs
-          label={`Moods of ${word}`}
+          label={moodsOf(word)}
           open={conjugation.openMood}
           compoundOpen={conjugation.compoundSearched}
           panels={conjugation.moods.map((table) => ({

@@ -54,8 +54,8 @@ export type ReportSubject = { kind: "mistake"; readings: readonly ReportReading[
 
 /** The box's link and title, the same words for both, as the page names what it reports. */
 export const REPORT_SUBJECT_LABEL: Readonly<Record<ReportSubject["kind"], string>> = {
-  mistake: "Report a mistake",
-  missing: "Report a missing word",
+  mistake: "Segnala un errore",
+  missing: "Segnala una parola mancante",
 };
 
 /**
@@ -63,8 +63,8 @@ export const REPORT_SUBJECT_LABEL: Readonly<Record<ReportSubject["kind"], string
  * query is the report (Huey's ruling on #441, 2026-10-03).
  */
 export const REPORT_DETAILS_HINT: Readonly<Record<ReportSubject["kind"], string>> = {
-  mistake: "What should it say instead?",
-  missing: "Anything to add? (optional)",
+  mistake: "Cosa dovrebbe dire invece?",
+  missing: "Qualcosa da aggiungere? (facoltativo)",
 };
 
 /**
@@ -72,7 +72,7 @@ export const REPORT_DETAILS_HINT: Readonly<Record<ReportSubject["kind"], string>
  * it names: one of a word page's choices, or `missing`, which names no reading.
  */
 export type ReportTarget =
-  | { choice: ReportChoice; /** The reading the reader picked; absent for none or "Not sure". */ recordId: number | undefined }
+  | { choice: ReportChoice; /** The reading the reader picked; absent for none or "Non so". */ recordId: number | undefined }
   | { choice: "missing"; recordId: undefined };
 
 /**
@@ -98,12 +98,43 @@ export function reportReadings(readings: readonly { number: ReportReading["numbe
 
 /** What each choice is called in the box. */
 export const REPORT_CHOICE_LABEL: Readonly<Record<ReportChoice, string>> = {
-  meaning: "A meaning",
-  example: "An example",
-  form: "A form",
-  synonym: "A synonym",
-  other: "Something else",
+  meaning: "Un significato",
+  example: "Un esempio",
+  form: "Una forma",
+  synonym: "Un sinonimo",
+  other: "Altro",
 };
+
+/**
+ * The box's other words, in Italian as the whole word page is (Huey's ruling
+ * of 2026-10-09 on #789).
+ */
+export const REPORT_BOX = {
+  close: "Chiudi",
+  subjectLead: "su",
+  choiceQuestion: "Cosa c’è di sbagliato?",
+  readingQuestion: "Quale sezione?",
+  optional: "facoltativo",
+  unsure: "Non so",
+  details: "Dettagli",
+  honeypot: "Sito web",
+  retry: "Riprova",
+  noAccount: "Nessun account richiesto.",
+  cancel: "Annulla",
+  send: "Invia segnalazione",
+  sentTitle: "Segnalazione inviata",
+  /** The thanks around the word: `Grazie. La tua segnalazione su casa è stata inviata.` */
+  sentBefore: "Grazie. La tua segnalazione su",
+  sentAfter: "è stata inviata.",
+} as const;
+
+/** What the box says when a send did not go through. */
+export const SEND_TROUBLE = {
+  limited: "Troppe segnalazioni da parte tua nell’ultima ora. Riprova più tardi.",
+  challenge: "La verifica che tu sia una persona non è riuscita. Riprova.",
+  expired: "Questa finestra è aperta da troppo tempo. Chiudila e riaprila.",
+  failed: "Non è stato possibile inviare la segnalazione. Riprova tra un momento.",
+} as const;
 
 /** Whether a report must carry details: every one but a missing word, whose query says it all. */
 export const needsDetails = (target: ReportTarget): boolean => target.choice !== "missing";
@@ -427,15 +458,15 @@ export async function verifyTurnstile(secret: string, token: string | undefined,
 /** Why the box could not get its opening token: opened too often, or anything else. */
 export type OpeningTrouble = "open-limited" | "open-failed";
 
-/** What the box says when it could not open, above a Try again button. */
+/** What the box says when it could not open, above a *Riprova* button. */
 export const OPENING_TROUBLE: Readonly<Record<OpeningTrouble, string>> = {
-  "open-limited": "You have opened this box too often in the last minute. Wait a moment, then try again.",
-  "open-failed": "The box could not get ready to send. Try again in a moment.",
+  "open-limited": "Hai aperto questa finestra troppe volte nell’ultimo minuto. Aspetta un momento, poi riprova.",
+  "open-failed": "La finestra non è riuscita a prepararsi per l’invio. Riprova tra un momento.",
 };
 
 /**
  * Ask the server for this opening's token (`POST /report/open`). The box calls
- * it when it opens and again from its Try again button, so a failed opening is
+ * it when it opens and again from its *Riprova* button, so a failed opening is
  * never final. A 429 is the opening limit, told apart from the hourly report
  * limit.
  */

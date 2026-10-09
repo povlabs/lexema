@@ -27,7 +27,7 @@ import type { DeclaredLemmaPage } from "./declaredLemmaPage.ts";
  * offers the first; an empty list offers nothing.
  *
  * A word found by the exact lookup also carries the records of the lemmas its
- * noun and adjective forms name, read so the page can draw *Forms of bello*
+ * noun and adjective forms name, read so the page can draw *Forme di bello*
  * under `bella` (#626, `gridLemmaWords` in wordPage.ts). Empty when it has none.
  *
  * The failure is a value rather than a thrown error so the page has to render

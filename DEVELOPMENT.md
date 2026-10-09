@@ -332,7 +332,7 @@ Stripe step that failed. Both write to the `APP_DB` in `SEED_STATE`, as
 
 ### Review a reader's report
 
-A report sent from a word page's *Report a mistake* box waits in
+A report sent from a word page's *Segnala un errore* box waits in
 `reader_report` until a person looks
 ([#12](https://github.com/povlabs/lexema/issues/12),
 [src/readerReport/](./src/readerReport)):

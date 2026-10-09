@@ -1,11 +1,12 @@
 // A word found whose query a headword also writes with an accent or a final
 // apostrophe (board 32, #478): one line under the search bar, above the
-// result, "Did you mean città?". The first ranked headword is offered, as a
+// result, "Forse cercavi città?". The first ranked headword is offered, as a
 // link to its own search; the page says nothing about why.
 
 import type { ReactNode } from "react";
 import { searchHref } from "./Forms";
 import { WRITTEN_OFFER_LEAD, WRITTEN_OFFER_LINK } from "@/components/shared/styles.ts";
+import { DID_YOU_MEAN } from "@/lib/dictionary/wordPageText.ts";
 
 /**
  * The result, with the line above it when there is a word to offer. With none,
@@ -17,8 +18,8 @@ export function WrittenOffer({ written, children }: { written: readonly string[]
   if (word === undefined) return children;
   return (
     <>
-      <p className={WRITTEN_OFFER_LEAD}>
-        Did you mean{" "}
+      <p className={WRITTEN_OFFER_LEAD} lang="it">
+        {DID_YOU_MEAN}{" "}
         <a className={WRITTEN_OFFER_LINK} href={searchHref(word)} lang="it">
           {word}
         </a>

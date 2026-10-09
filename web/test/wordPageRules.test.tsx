@@ -155,7 +155,7 @@ const headingsOf = (html: string): string[] =>
   [...html.matchAll(/<h2 class="[^"]*" id="reading-heading-[^"]+">(.*?)<\/h2>/g)].map((match) => textOf(match[1]));
 
 /** Whether the page lists its readings under the headword. */
-const hasJumpList = (html: string): boolean => html.includes('aria-label="Readings"');
+const hasJumpList = (html: string): boolean => html.includes('aria-label="Sezioni"');
 
 /** The jump links' texts: `1Sostantivo`. */
 const jumpLinksOf = (html: string): string[] => [...html.matchAll(/<a class="([^"]*)" href="#[^"]+">(.*?)<\/a>/g)].filter((match) => match[1] === JUMP_LINK).map((match) => textOf(match[2]));
@@ -510,7 +510,7 @@ const S4_MERGED_BLOCK: Rule = {
           : labels.map((label) => `${entry.baseWord}'s block of one part of speech labels a group ${label}`)),
         ...(parts.length > 1 && meanings.length > 0 && labels.length === 0 ? [`${entry.baseWord}'s meanings carry no label`] : []),
         ...duplicates(meanings).map((meaning) => `"${meaning}" shows twice in ${entry.baseWord}'s block`),
-        ...(occurrencesIn(definitionsSectionOf(article), "+ more</span>") > 1 ? [`${entry.baseWord}'s Definitions have more than one + more`] : []),
+        ...(occurrencesIn(definitionsSectionOf(article), "+ altro</span>") > 1 ? [`${entry.baseWord}'s Definitions have more than one + altro`] : []),
       ];
     });
   },
@@ -521,12 +521,12 @@ const S4_MERGED_BLOCK: Rule = {
       ...assertEqual([JSON.stringify(modelBlock(p))], [JSON.stringify({ heading: ["Aggettivo", "Sostantivo"], groups: ["Aggettivo bello 6", "Sostantivo bello 2, bello 1"] })]),
       ...assertEqual(headingsOf(p.html), ["1·Aggettivo·Sostantivo·femminile, singolare"]),
       ...assertEqual(groupLabelsOf(p.html), ["Aggettivo", "Sostantivo"]),
-      ...inOrder(p.html, ["femminile singolare di bello", "femminile di bello", "Aggettivo", "che desta impressione di piacere e gradimento", "Sostantivo", "individuo di particolare fascino", "Forms of"]),
+      ...inOrder(p.html, ["femminile singolare di bello", "femminile di bello", "Aggettivo", "che desta impressione di piacere e gradimento", "Sostantivo", "individuo di particolare fascino", "Forme di"]),
     ],
     costruttrici: (p) => [
       ...assertEqual([JSON.stringify(modelBlock(p))], [JSON.stringify({ heading: ["Aggettivo", "Sostantivo"], groups: ["Aggettivo costruttore 1", "Sostantivo costruttore 1"] })]),
       ...assertEqual(headingsOf(p.html), ["1·Aggettivo·Sostantivo·femminile, singolare"]),
-      ...inOrder(p.html, ["plurale di costruttrice", "Aggettivo", "che costruisce", "Sostantivo", "chi costruisce", "Forms of"]),
+      ...inOrder(p.html, ["plurale di costruttrice", "Aggettivo", "che costruisce", "Sostantivo", "chi costruisce", "Forme di"]),
     ],
     grandi: (p) => assertEqual(groupLabelsOf(p.html), ["Aggettivo", "Sostantivo"]),
     // One record, or two of one part of speech: the source's own heading, and no label.
@@ -570,7 +570,7 @@ const S4_NO_OWN_FORMS: Rule = {
       return [
         ...(partKindsOf(entry).includes("own-forms") ? [`${entry.reading.word}'s form-of reading shows its own Forms`] : []),
         ...own.map(() => `${entry.reading.word}'s form-of reading shows a table of ${entry.reading.word}`),
-        ...(articleOf(p.html, entry).includes(`Forms of ${entry.reading.word}<`) ? [`the page draws Forms of ${entry.reading.word}`] : []),
+        ...(articleOf(p.html, entry).includes(`Forme di ${entry.reading.word}<`) ? [`the page draws Forme di ${entry.reading.word}`] : []),
       ];
     });
   },
@@ -586,8 +586,8 @@ const S4_NO_ETYMOLOGY: Rule = {
       const kinds = partKindsOf(entry);
       const article = articleOf(p.html, entry);
       return [
-        ...(kinds.includes("etymology") || article.includes(">Etymology<") ? [`the block about ${baseWordOf(entry)} has an Etymology`] : []),
-        ...(kinds.includes("synonyms") || article.includes(">Synonyms<") ? [`the block about ${baseWordOf(entry)} has Synonyms`] : []),
+        ...(kinds.includes("etymology") || article.includes(">Etimologia<") ? [`the block about ${baseWordOf(entry)} has an Etymology`] : []),
+        ...(kinds.includes("synonyms") || article.includes(">Sinonimi<") ? [`the block about ${baseWordOf(entry)} has Synonyms`] : []),
       ];
     });
   },
@@ -610,7 +610,7 @@ const S4_BASE_TABLE: Rule = {
     // block keeps smentito's meaning and draws no Forms of smentito.
     smentita: (p) => [
       ...(textOf(p.html).includes("participio passato di smentire, smentirsi") ? [] : ["smentita's block drops smentito's meaning"]),
-      ...(/Forms of<span[^>]*>smentito</.test(p.html) ? ["smentita draws Forms of smentito"] : []),
+      ...(/Forme di<span[^>]*>smentito</.test(p.html) ? ["smentita draws Forme di smentito"] : []),
     ],
   },
 };
@@ -663,7 +663,7 @@ const S4_ADJECTIVE_AND_VERB: Rule = {
       const [only] = p.page.readings;
       if (p.page.readings.length !== 1 || only.kind !== "verb-form") return [`${JSON.stringify(headingsOf(p.html))}, expected one Voce verbale block`];
       const text = textOf(articleOf(p.html, only));
-      const at = ["participio passato plurale femminile di presiedere", "femminile plurale di presiedere", "Forms of"].map((part) => text.indexOf(part));
+      const at = ["participio passato plurale femminile di presiedere", "femminile plurale di presiedere", "Forme di"].map((part) => text.indexOf(part));
       return [
         ...assertEqual(headingsOf(p.html), ["1·Voce verbale·presiedere"]),
         ...assertEqual(only.lines.map((line) => (line.kind === "source" ? line.reading.posTitle : line.kind)), ["Voce verbale", "Aggettivo, forma flessa"]),
@@ -735,9 +735,9 @@ const S6_EXPRESSION_LINES: Rule = {
       if (entry.text.kind !== "form") continue;
       for (const line of entry.text.forms) if (!expressions.has(line.phrase)) problems.push(`a line names ${line.phrase}, which the search did not find`);
     }
-    if (/Forms of|>Forms</.test(p.html)) problems.push("the expression page draws a Forms table");
+    if (/Forme di|>Forme</.test(p.html)) problems.push("the expression page draws a Forms table");
     for (const article of p.html.split("<article ").slice(1)) {
-      const definitions = article.indexOf(">Definitions<");
+      const definitions = article.indexOf(">Definizioni<");
       const firstLine = article.indexOf(`class="${FORM_LINES}"`);
       if (definitions !== -1 && firstLine > definitions) problems.push("a form line comes after the Definitions");
     }

@@ -24,7 +24,7 @@
 //   reading, no Forms row of dashes only, no reading heading without its
 //   number, and no base word's table or block drawn twice. The Preview reads
 //   the shared production dictionary (ADR 0018), so this checks real data. A
-//   word in `NOT_FOUND_SMOKE_WORDS` must answer "No entry" instead, with no
+//   word in `NOT_FOUND_SMOKE_WORDS` must answer "Nessuna voce" instead, with no
 //   reading. The word requests are spaced to stay under the Preview's search
 //   limit (`SEARCHES_PER_MINUTE`), and a 429 is asked again;
 // - the developer site answers its landing page, `/`, with a 200;
@@ -133,10 +133,10 @@ const NON_FINITE = /<dl\b[^>]*>([\s\S]*?)<\/dl>/g;
 const SLOT = /<dd\b[^>]*>([\s\S]*?)<\/dd>/g;
 /** A grid's cell; a row's cells follow its `role="row"` up to the next row. */
 const GRID_CELL = /<div\b[^>]*\brole="cell"[^>]*>([\s\S]*?)<\/div>(?=<div\b[^>]*\brole="cell"|<\/div>)/g;
-/** The tables and blocks one base word may draw only once (rule 1 of #695): a lemma's *Forms of*, a conjugation, a block. */
+/** The tables and blocks one base word may draw only once (rule 1 of #695): a lemma's *Forme di*, a conjugation, a block. */
 const ONCE_PER_WORD: readonly { what: string; pattern: RegExp }[] = [
-  { what: "Forms of", pattern: /\bid="lemma-forms-[^"]*"[^>]*>Forms of<span\b[^>]*>([^<]+)<\/span>/g },
-  { what: "conjugation", pattern: /\baria-label="Moods of ([^"]+)"/g },
+  { what: "Forme di", pattern: /\bid="lemma-forms-[^"]*"[^>]*>Forme di<span\b[^>]*>([^<]+)<\/span>/g },
+  { what: "conjugation", pattern: /\baria-label="Modi di ([^"]+)"/g },
   { what: "Voce verbale block", pattern: /<article\b[^>]*\bdata-verb-form="([^"]+)"/g },
   { what: "form block", pattern: /<article\b[^>]*\bdata-grid-form="([^"]+)"/g },
 ];
@@ -179,7 +179,7 @@ function headProblems(body: string, word: string): readonly string[] {
 }
 
 /** A page that says the dictionary has no entry for what was searched (NotFound.tsx). */
-const NO_ENTRY = /No entry for “<span lang="it">/;
+const NO_ENTRY = /Nessuna voce per “/;
 
 /** One request the smoke makes, and what its answer must be. */
 export class SmokeProbe {

@@ -1,13 +1,13 @@
 "use client";
 
 // The one expand control on a result (design-system-manifest.md § "Layout"):
-// a small accent `+ more` right after what shows, and, once open, `less` at the
+// a small accent `+ altro` right after what shows, and, once open, `meno` at the
 // very end of everything. No count.
 //
 // Base UI's Collapsible supplies the behaviour (ADR 0010): the control is its
 // trigger, a button that Enter and Space toggle and that says whether it is
 // open. The block around what it reveals is the collapsible's root, which
-// carries `data-open` while open; the parts that wait for `+ more` are hidden by
+// carries `data-open` while open; the parts that wait for `+ altro` are hidden by
 // class until then, so the whole content is in the HTML the server sends. The
 // control sits after all of them, so closed, with the rest hidden, it follows
 // the last thing that shows; open, it follows the last thing of all.
@@ -28,6 +28,7 @@ import {
   type MoreBlockKind,
   type MorePlace,
 } from "@/components/shared/styles.ts";
+import { MORE } from "@/lib/dictionary/wordPageText.ts";
 
 /** The block the control opens. `open` starts it open, as when the search hit something it reveals. */
 export function MoreBlock({ kind, open, children }: { kind: Exclude<MoreBlockKind, "mood">; open?: boolean; children: ReactNode }) {
@@ -47,7 +48,7 @@ const MoodsOpen = createContext<SharedOpen | undefined>(undefined);
 
 /**
  * One open state for a conjugation's compound tenses, shared by every mood
- * tab: `+ more` on one tab opens them on all, and `less` on any closes them on
+ * tab: `+ altro` on one tab opens them on all, and `meno` on any closes them on
  * all (#683). `open` starts it open, as when the search hit a compound form.
  */
 export function MoodsMore({ open, children }: { open: boolean; children: ReactNode }) {
@@ -67,7 +68,7 @@ export function MoodMoreBlock({ children }: { children: ReactNode }) {
   );
 }
 
-/** A mood's compound tenses, which wait for `+ more` as one run: Base UI's panel, in the HTML while closed. */
+/** A mood's compound tenses, which wait for `+ altro` as one run: Base UI's panel, in the HTML while closed. */
 export function MorePanel({ children }: { children: ReactNode }) {
   return (
     <Collapsible.Panel className={COMPOUND_TABLES} keepMounted>
@@ -83,9 +84,9 @@ export function MorePanel({ children }: { children: ReactNode }) {
 export function More({ place, controls }: { place: MorePlace; controls?: string }) {
   return (
     <div className={MORE_PLACE[place]}>
-      <Collapsible.Trigger className={MORE_TRIGGER} aria-controls={controls}>
-        <span className={MORE_CLOSED}>+ more</span>
-        <span className={MORE_OPEN}>less</span>
+      <Collapsible.Trigger className={MORE_TRIGGER} aria-controls={controls} lang="it">
+        <span className={MORE_CLOSED}>{MORE.closed}</span>
+        <span className={MORE_OPEN}>{MORE.open}</span>
       </Collapsible.Trigger>
     </div>
   );

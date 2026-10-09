@@ -7,9 +7,9 @@
 //
 // The interactive parts are client components on Base UI (ADR 0010): the
 // search form, whose suggestion list answers keystrokes (`SearchField.tsx`),
-// the mood tabs over a conjugation (`MoodTabs.tsx`), and the one `+ more`
+// the mood tabs over a conjugation (`MoodTabs.tsx`), and the one `+ altro`
 // (`More.tsx`). The form is still a plain GET form, every state is decided by
-// the URL, and every mood's table and everything `+ more` reveals is in the
+// the URL, and every mood's table and everything `+ altro` reveals is in the
 // HTML the server sends.
 
 import type { ReactNode } from "react";
@@ -119,7 +119,7 @@ export function Limited({ raw }: { raw: string }) {
  *
  * The page has one `h1` in every state: the headword when a word was found
  * (the search as typed when it was an expression, Phrase.tsx),
- * `No entry for "<query>"` when none was (NotFound.tsx), and otherwise a
+ * `Nessuna voce per "<query>"` when none was (NotFound.tsx), and otherwise a
  * heading a screen reader can land on, visually hidden because the message
  * under it says the same thing.
  */

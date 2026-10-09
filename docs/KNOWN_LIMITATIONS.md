@@ -27,6 +27,6 @@ measured on release `it-0c432803`.
   belong to more than one word, every one of them is shown.
 - **Accents matter.** `citta` is not `città`. A search without its accent finds
   nothing, and offers the accented word instead.
-- **Every word links to its source.** The *Source* link at the end of a page
-  opens that word's page on the Italian Wiktionary. *Report a mistake*, beside
+- **Every word links to its source.** The *Fonte* link at the end of a page
+  opens that word's page on the Italian Wiktionary. *Segnala un errore*, beside
   it, sends a note that a person reads.
