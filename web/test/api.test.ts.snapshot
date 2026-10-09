@@ -262,6 +262,138 @@ exports[`bello's whole /lookup answer is the one the snapshot holds (#385) 1`] =
           "has_entry": false
         }
       ],
+      "translations": [
+        {
+          "lang": "zh",
+          "word": "好看",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "zh",
+          "word": "漂亮",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "fr",
+          "word": "beau",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "fr",
+          "word": "bel",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "fr",
+          "word": "belle",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "en",
+          "word": "beautiful",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "la",
+          "word": "pulcher",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "la",
+          "word": "formōsus",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "la",
+          "word": "bellus",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "la",
+          "word": "nitĭdus",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "la",
+          "word": "venustus",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "nl",
+          "word": "mooi",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "nl",
+          "word": "knap",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "fa",
+          "word": "قشنگ",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "pl",
+          "word": "piękny",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "pt",
+          "word": "belo",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "ru",
+          "word": "красивый",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "scn",
+          "word": "bellu",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "scn",
+          "word": "beddu",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "es",
+          "word": "bello",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "sv",
+          "word": "snygg",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "sv",
+          "word": "vacker",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "de",
+          "word": "schön",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "tr",
+          "word": "güzel",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "hu",
+          "word": "szép",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "en",
+          "word": "beauty",
+          "sense": "(arte)"
+        }
+      ],
       "attribution": {
         "licence": "CC BY-SA 4.0",
         "licence_url": "https://creativecommons.org/licenses/by-sa/4.0/",
@@ -482,6 +614,138 @@ exports[`bello's whole /lookup answer is the one the snapshot holds (#385) 1`] =
           "has_entry": false
         }
       ],
+      "translations": [
+        {
+          "lang": "zh",
+          "word": "好看",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "zh",
+          "word": "漂亮",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "fr",
+          "word": "beau",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "fr",
+          "word": "bel",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "fr",
+          "word": "belle",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "en",
+          "word": "beautiful",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "la",
+          "word": "pulcher",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "la",
+          "word": "formōsus",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "la",
+          "word": "bellus",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "la",
+          "word": "nitĭdus",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "la",
+          "word": "venustus",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "nl",
+          "word": "mooi",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "nl",
+          "word": "knap",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "fa",
+          "word": "قشنگ",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "pl",
+          "word": "piękny",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "pt",
+          "word": "belo",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "ru",
+          "word": "красивый",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "scn",
+          "word": "bellu",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "scn",
+          "word": "beddu",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "es",
+          "word": "bello",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "sv",
+          "word": "snygg",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "sv",
+          "word": "vacker",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "de",
+          "word": "schön",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "tr",
+          "word": "güzel",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "hu",
+          "word": "szép",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "en",
+          "word": "beauty",
+          "sense": "(arte)"
+        }
+      ],
       "attribution": {
         "licence": "CC BY-SA 4.0",
         "licence_url": "https://creativecommons.org/licenses/by-sa/4.0/",
@@ -696,6 +960,138 @@ exports[`bello's whole /lookup answer is the one the snapshot holds (#385) 1`] =
           "has_entry": false
         }
       ],
+      "translations": [
+        {
+          "lang": "zh",
+          "word": "好看",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "zh",
+          "word": "漂亮",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "fr",
+          "word": "beau",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "fr",
+          "word": "bel",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "fr",
+          "word": "belle",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "en",
+          "word": "beautiful",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "la",
+          "word": "pulcher",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "la",
+          "word": "formōsus",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "la",
+          "word": "bellus",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "la",
+          "word": "nitĭdus",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "la",
+          "word": "venustus",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "nl",
+          "word": "mooi",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "nl",
+          "word": "knap",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "fa",
+          "word": "قشنگ",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "pl",
+          "word": "piękny",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "pt",
+          "word": "belo",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "ru",
+          "word": "красивый",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "scn",
+          "word": "bellu",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "scn",
+          "word": "beddu",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "es",
+          "word": "bello",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "sv",
+          "word": "snygg",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "sv",
+          "word": "vacker",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "de",
+          "word": "schön",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "tr",
+          "word": "güzel",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "hu",
+          "word": "szép",
+          "sense": "di aspetto gradevole"
+        },
+        {
+          "lang": "en",
+          "word": "beauty",
+          "sense": "(arte)"
+        }
+      ],
       "attribution": {
         "licence": "CC BY-SA 4.0",
         "licence_url": "https://creativecommons.org/licenses/by-sa/4.0/",
@@ -780,6 +1176,7 @@ exports[`bello's whole /lookup answer is the one the snapshot holds (#385) 1`] =
       "antonyms": [],
       "derived": [],
       "expressions": [],
+      "translations": [],
       "attribution": {
         "licence": "CC BY-SA 4.0",
         "licence_url": "https://creativecommons.org/licenses/by-sa/4.0/",
@@ -985,6 +1382,7 @@ exports[`bello's whole /lookup answer is the one the snapshot holds (#385) 1`] =
           "has_entry": false
         }
       ],
+      "translations": [],
       "attribution": {
         "licence": "CC BY-SA 4.0",
         "licence_url": "https://creativecommons.org/licenses/by-sa/4.0/",
@@ -1128,6 +1526,7 @@ exports[`bello's whole /lookup answer is the one the snapshot holds (#385) 1`] =
       ],
       "derived": [],
       "expressions": [],
+      "translations": [],
       "attribution": {
         "licence": "CC BY-SA 4.0",
         "licence_url": "https://creativecommons.org/licenses/by-sa/4.0/",
@@ -1208,6 +1607,7 @@ exports[`bello's whole /lookup answer is the one the snapshot holds (#385) 1`] =
       "antonyms": [],
       "derived": [],
       "expressions": [],
+      "translations": [],
       "attribution": {
         "licence": "CC BY-SA 4.0",
         "licence_url": "https://creativecommons.org/licenses/by-sa/4.0/",
@@ -1288,6 +1688,7 @@ exports[`bello's whole /lookup answer is the one the snapshot holds (#385) 1`] =
       "antonyms": [],
       "derived": [],
       "expressions": [],
+      "translations": [],
       "attribution": {
         "licence": "CC BY-SA 4.0",
         "licence_url": "https://creativecommons.org/licenses/by-sa/4.0/",
@@ -1368,6 +1769,7 @@ exports[`bello's whole /lookup answer is the one the snapshot holds (#385) 1`] =
       "antonyms": [],
       "derived": [],
       "expressions": [],
+      "translations": [],
       "attribution": {
         "licence": "CC BY-SA 4.0",
         "licence_url": "https://creativecommons.org/licenses/by-sa/4.0/",
@@ -1515,6 +1917,7 @@ exports[`bello's whole /lookup answer is the one the snapshot holds (#385) 1`] =
           "has_entry": false
         }
       ],
+      "translations": [],
       "attribution": {
         "licence": "CC BY-SA 4.0",
         "licence_url": "https://creativecommons.org/licenses/by-sa/4.0/",

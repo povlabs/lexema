@@ -17,6 +17,7 @@ function reading(recordId: number, word: string, isAboutQuery: boolean, lemmaLin
     ...readingPartOfSpeech("adj", word, []),
     posTitle: lemmaLinks.length > 0 ? "Aggettivo, forma flessa" : "Aggettivo",
     wordFacts: { pronunciations: [], hyphenations: [], etymologies: [], synonyms: [], synonymList: [], antonyms: [], derived: [], expressions: [] },
+    translations: [],
     isAboutQuery,
     evidence: [],
     senses: [],

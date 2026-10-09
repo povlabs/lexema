@@ -17,12 +17,13 @@
 // names it, a form-of reading answered with its lemmas of its own part of
 // speech (`lemmasOfPartOfSpeech`), each record once.
 
-import type { DictionaryRead, LookupDatabase } from "./database.js";
+import { keyedRead, readKeys, type DictionaryRead, type KeyedRead, type LookupDatabase } from "./database.js";
 import { queryInfoOf, rejectionOf, servableRelease } from "./lookup.js";
 import { phraseMatchesOf } from "./phrase.js";
 import { correctedEdgeServed, sourceEdgeServed } from "./correctedEdge.js";
 import { dictionaryTables, servedBy, type DictionaryTables } from "./served.js";
-import { lemmasOfPartOfSpeech, type QueryInfo, type RejectedResult, type ReleaseInfo } from "./types.js";
+import { readTranslations } from "./sourceRecord.js";
+import { lemmasOfPartOfSpeech, type QueryInfo, type RejectedResult, type ReleaseInfo, type Translation } from "./types.js";
 
 /** One record a word is answered with: where it is in its release, its headword and its part of speech. */
 export type CandidateRecord = ({ recordId: number; entryId?: never; lineNo: number } | { entryId: number; revisionId: number; pageLine: number; recordId?: never; lineNo?: never }) & {
@@ -394,4 +395,39 @@ export async function lookupBatch({
     return first === undefined ? { outcome: "not-found", query } : { outcome: "found", query, candidates: [first, ...rest] };
   });
   return { release, answers };
+}
+
+/**
+ * The lines of archive records, with the coordinates a translation's pointer
+ * needs. Read only when a batch asks for translations (#739): one statement
+ * for every candidate of every word.
+ */
+export const BATCH_TRANSLATION_LINE_SQL: KeyedRead = keyedRead(`SELECT r.record_id AS set_key, r.release_id, r.line_no, r.line_sha256, j.raw_json
+       FROM source_record r
+       JOIN source_record_json j ON j.record_id = r.record_id
+      WHERE r.record_id IN (SELECT value FROM json_each(?1))`);
+
+/**
+ * Each candidate's own `translations[]`, by record, read off its archive line
+ * as a full lookup reads a reading's. A page-only entry has no line, so it has
+ * none and is not asked about.
+ */
+export async function translationsOf(db: LookupDatabase, candidates: readonly CandidateRecord[]): Promise<Map<number, Translation[]>> {
+  const recordIds = candidates.flatMap((candidate) => (candidate.recordId === undefined ? [] : [candidate.recordId]));
+  const rows = await readKeys<{ set_key: number; release_id: string; line_no: number; line_sha256: string; raw_json: string }>(
+    db,
+    BATCH_TRANSLATION_LINE_SQL,
+    recordIds,
+  );
+  return new Map(
+    rows.map((row) => [
+      row.set_key,
+      readTranslations(JSON.parse(row.raw_json), (jsonPointer) => ({
+        releaseId: row.release_id,
+        lineNo: row.line_no,
+        jsonPointer,
+        lineSha256: row.line_sha256,
+      })),
+    ]),
+  );
 }

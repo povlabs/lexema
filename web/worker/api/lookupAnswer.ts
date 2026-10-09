@@ -35,6 +35,7 @@ import type {
   RecoveredDefinition,
   SearchedSpellings,
   SourceForm,
+  Translation,
 } from "@lexema/lookup/types.ts";
 import { conjugationOf, slotOf, type Conjugation } from "@/lib/dictionary/conjugation.ts";
 import { definitionsOf, senseLabels, type DefinitionItem } from "@/lib/dictionary/definitions.ts";
@@ -54,6 +55,7 @@ import {
   fits,
   narrows,
   type AgreementNarrowing,
+  type Languages,
   type LookupFilters,
   type Section,
   type VerbNarrowing,
@@ -291,6 +293,25 @@ export interface SectionsJson {
   antonyms: string[];
   derived: string[];
   expressions: ExpressionJson[];
+  translations: TranslationJson[];
+}
+
+/**
+ * One of the record's own `translations[]` (#739): `lang` is the source's
+ * `lang_code`, `word` the translation, and `sense` the source's label for the
+ * meaning, verbatim, or null when it gives none.
+ */
+export interface TranslationJson {
+  lang: string;
+  word: string;
+  sense: string | null;
+}
+
+/** A record's translations as JSON, in source order, kept to `languages` when it is given. */
+export function translationsJson(translations: readonly Translation[], languages: Languages | undefined): TranslationJson[] {
+  return translations
+    .filter((translation) => languages === undefined || languages.keeps(translation.langCode))
+    .map((translation) => ({ lang: translation.langCode, word: translation.word, sense: translation.sense }));
 }
 
 /**
@@ -318,6 +339,7 @@ export const SECTION_KEY: Record<Section, keyof SectionsJson> = {
   derived: "derived",
   pronunciation: "pronunciations",
   expressions: "expressions",
+  translations: "translations",
 };
 
 /** A result with only the sections `fields` names, and its definitions capped at `limit_definitions`. */
@@ -397,6 +419,7 @@ export function resultJson(candidate: Candidate, filters: LookupFilters): Result
       meaning: expressionMeaning(expression),
       has_entry: expression.hasEntry,
     })),
+    translations: translationsJson(reading.translations, filters.languages),
     attribution: attributionOf(reading.word),
   };
   return shaped(result, filters);

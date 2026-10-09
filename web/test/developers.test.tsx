@@ -252,7 +252,7 @@ test("the docs name every endpoint of the call map with the calls it counts, eve
   }
   // The filters #148 names for /lookup, each a parameter row of its topic.
   const lookup = textOf(renderToStaticMarkup(<DeveloperDocs page={{ kind: "endpoint", endpoint: "lookup" }} signUp="open" origins={ORIGIN} />));
-  for (const filter of ["pos", "match", "fields", "limit_definitions", "mood", "tense", "person", "gender", "number"]) {
+  for (const filter of ["pos", "match", "fields", "limit_definitions", "lang", "mood", "tense", "person", "gender", "number"]) {
     assert.match(lookup, new RegExp(` ${filter} (string|integer) `), filter);
   }
   for (const error of ERRORS) assert.ok(text.includes(` ${error.status} ${error.code} `), error.code);

@@ -4,8 +4,9 @@
 // matches nothing.
 //
 // `pos` and `match` choose candidates. The rest shape each candidate that is
-// kept: `fields` and `limit_definitions` choose what a result carries, and the
-// grammar filters narrow its `forms`. No filter re-ranks.
+// kept: `fields` and `limit_definitions` choose what a result carries, the
+// grammar filters narrow its `forms`, and `lang` its `translations`. No filter
+// re-ranks.
 //
 // Grammar values are ADR 0015's Italian labels, as the answer itself writes
 // them, or an English code for the same thing. A code can stand for more than
@@ -67,8 +68,37 @@ export const SECTIONS = [
   "derived",
   "pronunciation",
   "expressions",
+  "translations",
 ] as const;
 export type Section = (typeof SECTIONS)[number];
+
+/**
+ * What a `lang` code must look like: letters, digits and hyphens, at most 20
+ * characters. The codes are the source's own and open — release it-0c432803
+ * carries 460, among them `zh-min-nan`, `Pfl` and `-fr-` — so the shape
+ * refuses only what no code could be, and a code no record carries is a
+ * filter that keeps nothing.
+ */
+export const LANGUAGE_CODE = /^[A-Za-z0-9-]{1,20}$/;
+
+/**
+ * The languages `lang` keeps a result's translations to, each a code as the
+ * source writes it, matched exactly. One value the reader made, never empty.
+ */
+export class Languages {
+  private constructor(private readonly codes: ReadonlySet<string>) {}
+
+  /** The codes of a `lang` value, comma-separated, or the first one that is malformed. */
+  static read(value: string): Languages | { malformed: string } {
+    const codes = value.split(",");
+    const malformed = codes.find((code) => !LANGUAGE_CODE.test(code));
+    return malformed === undefined ? new Languages(new Set(codes)) : { malformed };
+  }
+
+  keeps(langCode: string): boolean {
+    return this.codes.has(langCode);
+  }
+}
 
 /**
  * A grammar vocabulary: each Italian label, and the English codes that name
@@ -164,6 +194,8 @@ export interface LookupFilters extends GrammarNarrowing {
   fields: ReadonlySet<Section> | undefined;
   /** At most this many definitions per result, a positive integer. */
   limitDefinitions: number | undefined;
+  /** The languages each result's translations are kept to; every language when absent. */
+  languages: Languages | undefined;
 }
 
 /** No filter: the whole answer, as `/lookup` gives it with no parameter but `q`. */
@@ -172,6 +204,7 @@ export const UNFILTERED: LookupFilters = {
   match: "any",
   fields: undefined,
   limitDefinitions: undefined,
+  languages: undefined,
   verb: {},
   agreement: {},
 };
@@ -241,6 +274,17 @@ function limitDefinitions(params: URLSearchParams): number | undefined {
   });
 }
 
+function languages(params: URLSearchParams): Languages | undefined {
+  const value = single(params, "lang");
+  if (value === undefined) return undefined;
+  const read = Languages.read(value);
+  if (read instanceof Languages) return read;
+  throw new Refused({
+    parameter: "lang",
+    message: `lang must be language codes, comma-separated, each letters, digits and hyphens, at most 20 characters; got "${read.malformed}".`,
+  });
+}
+
 function partOfSpeech(params: URLSearchParams): PartOfSpeech | undefined {
   const pos = single(params, "pos");
   return pos === undefined ? undefined : oneOf("pos", pos, PARTS_OF_SPEECH, POS_ALIASES);
@@ -287,11 +331,35 @@ export function readLookupFilters(params: URLSearchParams): FilterReading {
       match: match === undefined ? "any" : oneOf("match", match, MATCHES),
       fields: fields(params),
       limitDefinitions: limitDefinitions(params),
+      languages: languages(params),
       ...grammarNarrowing(params),
     };
   });
   return read.ok ? { ok: true, filters: read.value } : read;
 }
+
+/**
+ * What `/lookup/batch` adds to its light answer: translations when `fields`
+ * names them, kept to `lang`'s languages. A batch carries no other section,
+ * and `lang` without translations would filter nothing, so neither is a value
+ * this can hold.
+ */
+export type BatchSections = { translations: false } | { translations: true; languages: Languages | undefined };
+
+/** `fields` and `lang` as `/lookup/batch` reads them from its query string. */
+export const readBatchSections = (params: URLSearchParams): ParameterReading<BatchSections> =>
+  reading((): BatchSections => {
+    const named = fields(params);
+    const other = named === undefined ? undefined : [...named].find((section) => section !== "translations");
+    if (other !== undefined) {
+      throw new Refused({ parameter: "fields", message: `lookup/batch returns only "translations"; got "${other}".` });
+    }
+    const kept = languages(params);
+    if (named === undefined && kept !== undefined) {
+      throw new Refused({ parameter: "lang", message: "lang filters translations, which lookup/batch returns only with fields=translations." });
+    }
+    return named === undefined ? { translations: false } : { translations: true, languages: kept };
+  });
 
 /** `pos` as `/lookup` reads it, for an endpoint that takes it alone (`/random`). */
 export const readPartOfSpeech = (params: URLSearchParams): ParameterReading<PartOfSpeech | undefined> =>

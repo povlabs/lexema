@@ -136,7 +136,7 @@ async function pageEntryReadings(
     return {
       entryId: row.entry_id, ref: refOf(row), word: row.word,
       ...readingPartOfSpeech(row.pos, row.word, claims, forms, wordFacts.pronunciations), posTitle: row.pos_title,
-      isAboutQuery: true, evidence: [], senses: [], recovered, forms, wordFacts,
+      isAboutQuery: true, evidence: [], senses: [], recovered, forms, wordFacts, translations: [],
       grammar: { record: claims, byForm: new Map(forms.map((form) => [form.index, form.claims])), bySense: new Map() },
       lemmaLinks, inflections: [], reviews: [],
     };
