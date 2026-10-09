@@ -8,7 +8,9 @@
 // 110 statements a word, where Cloudflare allows a request 1,000
 // (reports/2026-10-01-batch-d1-statements.md). Here every step is one
 // statement for all the words: the release, the search, the lemma links, and
-// for words nothing spells, the multi-word reading (src/lookup/phrase.ts).
+// for words nothing spells, the multi-word reading (src/lookup/phrase.ts). The
+// search reads a curated table cell's corrected spelling beside the source's
+// where the master keys it (#748), as `lookup()` does.
 //
 // The answer is the full lookup's, made the same way: records grouped and put
 // in source order, a lemma the query also matched folded into the reading that
@@ -44,6 +46,18 @@ export interface BatchLookup {
 }
 
 /**
+ * The auxiliary rule `SEARCH_SQL` (src/lookup/lookup.ts) applies: a `forms[]`
+ * entry the source tags `auxiliary` names the verb a record conjugates with,
+ * and spells nothing.
+ */
+const NOT_AUXILIARY = `NOT EXISTS (
+              SELECT 1 FROM grammar_claim g
+               WHERE g.record_id = lf.record_id
+                 AND g.scope = 'form' AND g.scope_index = lf.form_index
+                 AND g.status = 'stated'
+                 AND g.dimension = 'form-role' AND g.value = 'auxiliary')`;
+
+/**
  * `SEARCH_SQL` (src/lookup/lookup.ts) for many keys in one read, one row per
  * key and record: the same rows, the auxiliary rule included, with only what a
  * candidate carries and whether any of the record's hits is its headword. The
@@ -56,12 +70,7 @@ export const BATCH_ARCHIVE_SEARCH_SQL: DictionaryRead = `SELECT lf.surface_key, 
        FROM lookup_form lf
        JOIN source_record r ON r.record_id = lf.record_id
       WHERE lf.release_id IN (${servedBy("?1")}) AND lf.surface_key IN (SELECT value FROM json_each(?2))
-        AND NOT EXISTS (
-              SELECT 1 FROM grammar_claim g
-               WHERE g.record_id = lf.record_id
-                 AND g.scope = 'form' AND g.scope_index = lf.form_index
-                 AND g.status = 'stated'
-                 AND g.dimension = 'form-role' AND g.value = 'auxiliary')
+        AND ${NOT_AUXILIARY}
       GROUP BY lf.surface_key, r.record_id`;
 
 /** `BATCH_ARCHIVE_SEARCH_SQL`, and the page-only entries each key heads. */
@@ -72,6 +81,35 @@ export const BATCH_SEARCH_SQL: DictionaryRead = `${BATCH_ARCHIVE_SEARCH_SQL}
       WHERE e.release_id IN (${servedBy("?1")}) AND e.word_key IN (SELECT value FROM json_each(?2))
         AND NOT EXISTS (SELECT 1 FROM lookup_form lf WHERE lf.release_id IN (${servedBy("?1")})
                         AND lf.surface_key = e.word_key AND lf.origin = 'headword')`;
+
+/**
+ * `CORRECTED_CELL_SEARCH_SQL` (src/lookup/lookup.ts) for many keys, as a
+ * batch row (#748): each curated table cell whose corrected spelling is a key,
+ * on the record it was written for, under the same auxiliary rule. A cell is a
+ * spelling in the record's table, never its headword. `lookup_form` keeps the
+ * source's spelling, so the arm it is read beside still finds that one.
+ */
+const CORRECTED_CELL_ARM = `SELECT c.surface_key, r.record_id, NULL, NULL, NULL, r.release_id, r.line_no, r.word, r.pos, r.pos_title, 0
+       FROM corrected_form c
+       JOIN lookup_form lf ON lf.record_id = c.record_id AND lf.form_index = c.form_index
+       JOIN source_record r ON r.record_id = c.record_id
+      WHERE c.release_id IN (${servedBy("?1")}) AND c.surface_key IN (SELECT value FROM json_each(?2))
+        AND ${NOT_AUXILIARY}
+      GROUP BY c.surface_key, r.record_id`;
+
+/**
+ * `BATCH_ARCHIVE_SEARCH_SQL` on a master that keys its corrected cells
+ * (`DictionaryTables.cellSearch`), with each cell its corrected spelling
+ * names, in the same statement. Exported so a test can assert the plan.
+ */
+export const CORRECTED_CELL_BATCH_ARCHIVE_SEARCH_SQL: DictionaryRead = `${BATCH_ARCHIVE_SEARCH_SQL}
+      UNION ALL
+     ${CORRECTED_CELL_ARM}`;
+
+/** `BATCH_SEARCH_SQL` on a master that keys its corrected cells, as above. Exported so a test can assert the plan. */
+export const CORRECTED_CELL_BATCH_SEARCH_SQL: DictionaryRead = `${BATCH_SEARCH_SQL}
+      UNION ALL
+     ${CORRECTED_CELL_ARM}`;
 
 /**
  * `LEMMA_LINK_SQL` (src/lookup/lookup.ts) for many records in one read, with
@@ -206,10 +244,18 @@ interface BatchReads {
   links: DictionaryRead;
 }
 
+// A master without `corrected_form_by_key` never reads `corrected_form` here,
+// as `lookup()` does not search it there.
 const readsFor = (tables: DictionaryTables): BatchReads =>
   tables.pageEntries
-    ? { search: BATCH_SEARCH_SQL, links: tables.edgeCorrections ? CORRECTED_BATCH_LEMMA_LINK_SQL : BATCH_LEMMA_LINK_SQL }
-    : { search: BATCH_ARCHIVE_SEARCH_SQL, links: tables.edgeCorrections ? CORRECTED_BATCH_ARCHIVE_LEMMA_LINK_SQL : BATCH_ARCHIVE_LEMMA_LINK_SQL };
+    ? {
+        search: tables.cellSearch ? CORRECTED_CELL_BATCH_SEARCH_SQL : BATCH_SEARCH_SQL,
+        links: tables.edgeCorrections ? CORRECTED_BATCH_LEMMA_LINK_SQL : BATCH_LEMMA_LINK_SQL,
+      }
+    : {
+        search: tables.cellSearch ? CORRECTED_CELL_BATCH_ARCHIVE_SEARCH_SQL : BATCH_ARCHIVE_SEARCH_SQL,
+        links: tables.edgeCorrections ? CORRECTED_BATCH_ARCHIVE_LEMMA_LINK_SQL : BATCH_ARCHIVE_LEMMA_LINK_SQL,
+      };
 
 /** Every key's matched records, by key and then by record, in one read. */
 async function search(db: LookupDatabase, reads: BatchReads, releaseId: string, keys: readonly string[]): Promise<Map<string, Map<string, Match>>> {
@@ -217,7 +263,10 @@ async function search(db: LookupDatabase, reads: BatchReads, releaseId: string, 
   if (keys.length === 0) return byKey;
   for (const row of await db.all<HitRow>(reads.search, [releaseId, JSON.stringify(keys)])) {
     const matches = byKey.get(row.surface_key) ?? new Map<string, Match>();
-    matches.set(candidateKey(recordOf(row)), { record: recordOf(row), about: row.is_about === 1 });
+    const record = recordOf(row);
+    // A record a key heads and also spells in a corrected cell comes twice; it is about the key.
+    const about = row.is_about === 1 || matches.get(candidateKey(record))?.about === true;
+    matches.set(candidateKey(record), { record, about });
     byKey.set(row.surface_key, matches);
   }
   return byKey;
