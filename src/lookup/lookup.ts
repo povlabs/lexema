@@ -845,6 +845,7 @@ async function buildReading(
     word: first.record_word,
     posTitle: record.posTitle,
     wordFacts: { ...fields.wordFacts, expressions },
+    translations: fields.translations,
     isAboutQuery: isAbout(group),
     evidence: evidenceOf(group),
     senses: sensesOf(senseRows, first.record_word, ref, fields, recovered.underSense),

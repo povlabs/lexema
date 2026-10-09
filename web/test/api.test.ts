@@ -629,6 +629,76 @@ test("every result carries its record's expressions as the page lists them, and 
   assert.deepEqual(Object.keys(only).sort(), ["attribution", "expressions", "id", "match", "pos", "pos_title", "word"]);
 });
 
+// `casa` is archive line 1 of it-0c432803: 110 translations, three English
+// and three Spanish among them, at /translations/30, 45, 74, 88, 106 and 109.
+const CASA_EN = [
+  { lang: "en", word: "house", sense: "edificio destinato all'abitazione" },
+  { lang: "en", word: "home", sense: "domicilio" },
+  { lang: "en", word: "house", sense: "(astrologia) ognuna delle dodici suddivisioni del cielo" },
+];
+const CASA_EN_ES = [
+  { lang: "en", word: "house", sense: "edificio destinato all'abitazione" },
+  { lang: "es", word: "casa", sense: "edificio destinato all'abitazione" },
+  { lang: "en", word: "home", sense: "domicilio" },
+  { lang: "es", word: "hogar", sense: "domicilio" },
+  { lang: "en", word: "house", sense: "(astrologia) ognuna delle dodici suddivisioni del cielo" },
+  { lang: "es", word: "casa", sense: "(astrologia) ognuna delle dodici suddivisioni del cielo" },
+];
+
+test("fields=translations returns each result's own translations as { lang, word, sense }, and an empty list for a record with none (#739)", async () => {
+  const [casa] = (await lookupBody("q=casa&fields=translations")).results;
+  assert.deepEqual(Object.keys(casa).sort(), ["attribution", "id", "match", "pos", "pos_title", "translations", "word"]);
+  assert.equal(casa.translations.length, 110);
+  assert.deepEqual(casa.translations[0], { lang: "af", word: "huis", sense: "edificio destinato all'abitazione" });
+  for (const item of casa.translations) assert.deepEqual(Object.keys(item), ["lang", "word", "sense"]);
+  // Unfiltered, every result carries them too.
+  const [full] = (await lookupBody("q=casa")).results;
+  assert.deepEqual(full.translations, casa.translations);
+  // sbucciapatate's record lists none.
+  const [none] = (await lookupBody("q=sbucciapatate&fields=translations")).results;
+  assert.equal(none.word, "sbucciapatate");
+  assert.deepEqual(none.translations, []);
+});
+
+test("lang keeps only those languages' translations, a code no record carries keeps none, and a malformed lang is a 400 naming it (#739)", async () => {
+  assert.deepEqual((await lookupBody("q=casa&fields=translations&lang=en")).results[0].translations, CASA_EN);
+  assert.deepEqual((await lookupBody("q=casa&fields=translations&lang=en,es")).results[0].translations, CASA_EN_ES);
+  // Well-formed, and casa lists no Klingon: kept to nothing, not refused.
+  assert.deepEqual((await lookupBody("q=casa&fields=translations&lang=tlh")).results[0].translations, []);
+  // The source's own odd codes are well-formed: one is asked for as written.
+  assert.deepEqual((await lookupBody("q=casa&fields=translations&lang=zh-min-nan")).results[0].translations, []);
+  // lang narrows translations and nothing else.
+  const [narrowed] = (await lookupBody("q=casa&lang=en")).results;
+  const [full] = (await lookupBody("q=casa")).results;
+  assert.deepEqual(narrowed.translations, CASA_EN);
+  assert.deepEqual({ ...narrowed, translations: [] }, { ...full, translations: [] });
+  for (const malformed of ["e n", "en,,es", "en,", "en_US", "en;es", "a".repeat(21)]) {
+    await assertRefused(`q=casa&fields=translations&lang=${encodeURIComponent(malformed)}`, "lang");
+  }
+  await assertRefused("q=casa&lang=", "lang");
+  await assertRefused("q=casa&lang=en&lang=es", "lang");
+});
+
+test("POST /lookup/batch?fields=translations adds each candidate's translations, kept to lang; without fields it stays light (#739)", async () => {
+  const body = await okBody("lookup/batch?fields=translations&lang=en", JSON.stringify({ q: ["casa", "sbucciapatate", "qqqqqq"] }));
+  assert.deepEqual(
+    body.results.map(({ query, found, translations }: Json) => ({ query, found, translations })),
+    [
+      { query: "casa", found: true, translations: CASA_EN },
+      { query: "sbucciapatate", found: true, translations: [] },
+      { query: "qqqqqq", found: false, translations: undefined },
+    ],
+  );
+  const all = await okBody("lookup/batch?fields=translations", JSON.stringify({ q: ["casa"] }));
+  assert.equal(all.results[0].translations.length, 110);
+  const light = await okBody("lookup/batch", JSON.stringify({ q: ["casa"] }));
+  assert.equal("translations" in light.results[0], false);
+  // A batch carries no other section, and lang alone would filter nothing.
+  await assertBadRequest("lookup/batch?fields=definitions", "invalid_parameter", JSON.stringify({ q: ["casa"] }));
+  await assertBadRequest("lookup/batch?lang=en", "invalid_parameter", JSON.stringify({ q: ["casa"] }));
+  await assertBadRequest("lookup/batch?fields=translations&lang=e%20n", "invalid_parameter", JSON.stringify({ q: ["casa"] }));
+});
+
 // The lookup's reads may change order and grouping (#385); the answer they
 // build may not. Regenerate only for a change that means to alter it:
 // `--test-update-snapshots` on this file.

@@ -10,8 +10,9 @@
 // (ADR 0019). What the tables already hold
 // (senses, glosses, forms, grammar) is not re-read here: this module owns only
 // the pronunciation, the hyphenation, the etymologies, the three related-word
-// lists and each sense's examples, which is the data half of #20, and the
-// `proverbs[]` items a page lists as *Expressions* (#213).
+// lists and each sense's examples, which is the data half of #20, the
+// `proverbs[]` items a page lists as *Expressions* (#213), and the
+// `translations[]` the API serves (#739).
 //
 // The line is untrusted JSON as far as the type system knows, so every field is
 // checked for the shape it must have and skipped when it does not have it. A
@@ -27,6 +28,7 @@ import type {
   SynonymEntry,
   SourceRef,
   SourceText,
+  Translation,
   WordFacts,
 } from "./types.js";
 
@@ -38,6 +40,8 @@ export interface SourceRecordFields {
   expressionItems: ExpressionItem[];
   /** Each sense's examples, keyed by the sense's index in `senses[]`. */
   examplesBySense: Map<number, SourceText[]>;
+  /** `translations[]`, one per entry with a word and a language code, in source order. */
+  translations: Translation[];
 }
 
 type Json = unknown;
@@ -69,7 +73,7 @@ export function readSourceRecord(
 /** `readSourceRecord` over a line already parsed. */
 export function readSourceFields(parsed: Json, ref: (pointer: string) => SourceRef): SourceRecordFields {
   if (!isObject(parsed)) {
-    return { wordFacts: emptyWordFacts(), expressionItems: [], examplesBySense: new Map() };
+    return { wordFacts: emptyWordFacts(), expressionItems: [], examplesBySense: new Map(), translations: [] };
   }
 
   return {
@@ -87,6 +91,7 @@ export function readSourceFields(parsed: Json, ref: (pointer: string) => SourceR
     },
     expressionItems: expressionItems(parsed, ref),
     examplesBySense: examples(parsed, ref),
+    translations: readTranslations(parsed, ref),
   };
 }
 
@@ -173,6 +178,29 @@ function expressionItems(record: Record<string, Json>, ref: (pointer: string) =>
     if (phrase === undefined) return [];
     return [{ phrase, meaning: nonEmptyString(item.sense) ? item.sense : null, ref: ref(`/proverbs/${i}`) }];
   });
+}
+
+/**
+ * Every `translations[]` entry with a non-empty `word` and `lang_code`, in
+ * source order, each field verbatim. An entry missing either says nothing a
+ * caller can use, so it gives no item, as the other readers skip theirs. The
+ * `sense` label stays a label: nothing here matches it to a sense.
+ *
+ * Exported for `/lookup/batch`, which reads a line for its translations alone.
+ */
+export function readTranslations(parsed: Json, ref: (pointer: string) => SourceRef): Translation[] {
+  if (!isObject(parsed)) return [];
+  return arrayAt(parsed, "translations").flatMap((entry, i) =>
+    isObject(entry) && nonEmptyString(entry.word) && nonEmptyString(entry.lang_code)
+      ? [{
+          langCode: entry.lang_code,
+          langName: nonEmptyString(entry.lang) ? entry.lang : null,
+          word: entry.word,
+          sense: nonEmptyString(entry.sense) ? entry.sense : null,
+          ref: ref(`/translations/${i}`),
+        }]
+      : [],
+  );
 }
 
 /** `senses[i].examples[j].text`, by sense index, in source order. */

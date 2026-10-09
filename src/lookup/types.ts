@@ -251,6 +251,25 @@ export interface Expression {
   refs: [FactRef, ...FactRef[]];
 }
 
+/**
+ * One `translations[]` entry of a record (#739), as the source wrote it. The
+ * source copies a page's whole translation table onto every record of that
+ * page, so this is the record's list, not one meaning's: `sense` is the
+ * source's own label for the meaning, a text and never a sense index.
+ */
+export interface Translation {
+  /** The source's `lang_code`, never empty: `en`, `zh-min-nan`. */
+  langCode: string;
+  /** The source's `lang`, the language's Italian name: `inglese`. Null when the entry gives none. */
+  langName: string | null;
+  /** The translated word, never empty. */
+  word: string;
+  /** The source's `sense` label, verbatim: `automobile`. Null when the entry gives none. */
+  sense: string | null;
+  /** The entry: `/translations/3`. */
+  ref: SourceRef;
+}
+
 /** A text the source wrote about the word, verbatim, and where it was read. */
 export interface WordText {
   text: string;
@@ -709,6 +728,12 @@ type ReadingFacts = EntryIdentity & {
   posTitle: string;
   /** The headword-level fields this record's archive line carries. */
   wordFacts: WordFacts;
+  /**
+   * This record's own `translations[]`, in source order (#739). Never a
+   * lemma's: a form-of record that lists none has none. A page-only entry has
+   * no archive line, so none.
+   */
+  translations: Translation[];
 
   /**
    * True when at least one piece of evidence is a headword hit — that is, when

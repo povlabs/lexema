@@ -15,7 +15,7 @@
 // handler admits them, and then answered, found (200) or not (404).
 
 import type { Endpoint } from "@lexema/api/calls.ts";
-import { lookupBatch } from "@lexema/lookup/batch.ts";
+import { lookupBatch, translationsOf, type CandidateRecord } from "@lexema/lookup/batch.ts";
 import type { LookupDatabase } from "@lexema/lookup/database.ts";
 import { exists, lookup, MAX_QUERY_LENGTH, rejectionOf } from "@lexema/lookup/lookup.ts";
 import { findNearby } from "@lexema/lookup/nearby.ts";
@@ -32,10 +32,12 @@ import {
   lemmaJson,
   notFoundJson,
   suggestionsOf,
+  translationsJson,
   type AttributionJson,
   type LemmaReader,
+  type TranslationJson,
 } from "./lookupAnswer.ts";
-import { fits, readGrammarNarrowing, readLookupFilters, readPartOfSpeech } from "./lookupFilters.ts";
+import { fits, readBatchSections, readGrammarNarrowing, readLookupFilters, readPartOfSpeech } from "./lookupFilters.ts";
 
 /** What a query parameter the lookup refuses is told: the parameter, and why. */
 function queryRefusal(parameter: string, rejection: RejectedQuery): Reading {
@@ -237,10 +239,11 @@ const randomRoute: Route = async (_request, url) => {
 /**
  * One word of a batch, light: a candidate's lemma and part of speech, or that
  * the word was not found. A word with several candidates has one entry per
- * candidate, in the lookup's order, so none is dropped.
+ * candidate, in the lookup's order, so none is dropped. A candidate carries
+ * its record's translations only when `fields=translations` asks (#739).
  */
 export type LightJson =
-  | { query: string; found: true; id: string; lemma: string; pos: string; pos_title: string; attribution: AttributionJson }
+  | { query: string; found: true; id: string; lemma: string; pos: string; pos_title: string; translations?: TranslationJson[]; attribution: AttributionJson }
   | { query: string; found: false; lemma: null; pos: null; pos_title: null };
 
 /**
@@ -264,7 +267,9 @@ function batchWords(body: unknown, most: number): { ok: true; words: string[] } 
 }
 
 /** `POST /lookup/batch`: up to the key's calls a minute in words, each a light result, charged per word sent. */
-const batchRoute: Route = async (request, _url, { batchWords: most }) => {
+const batchRoute: Route = async (request, url, { batchWords: most }) => {
+  const sections = readBatchSections(url.searchParams);
+  if (!sections.ok) return refused("invalid_parameter", sections.refusal.message);
   let body: unknown;
   try {
     body = await request.json();
@@ -275,6 +280,14 @@ const batchRoute: Route = async (request, _url, { batchWords: most }) => {
   if (!sent.ok) return refused("invalid_body", sent.message);
   return read({ endpoint: "lookup/batch", words: sent.words.length }, async ({ db, releaseId }) => {
     const { answers } = await lookupBatch({ db, releaseId, queries: sent.words });
+    const asked = sections.value;
+    const translations = asked.translations
+      ? await translationsOf(db, answers.flatMap((answer) => (answer.outcome === "found" ? answer.candidates : [])))
+      : undefined;
+    const translationsOn = (candidate: CandidateRecord): { translations?: TranslationJson[] } =>
+      translations === undefined || !asked.translations
+        ? {}
+        : { translations: translationsJson(candidate.recordId === undefined ? [] : (translations.get(candidate.recordId) ?? []), asked.languages) };
     const results = answers.flatMap((answer, at): LightJson[] => {
       const word = sent.words[at];
       if (answer.outcome === "rejected") throw unreadable(`q[${at}]`, word);
@@ -286,6 +299,7 @@ const batchRoute: Route = async (request, _url, { batchWords: most }) => {
         lemma: candidate.word,
         pos: candidate.pos,
         pos_title: candidate.posTitle,
+        ...translationsOn(candidate),
         attribution: attributionOf(candidate.word),
       }));
     });

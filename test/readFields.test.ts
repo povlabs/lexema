@@ -74,7 +74,7 @@ const LEMMA = {
   antonyms: [{ word: "strada" }],
   derived: [{ word: "casetta" }],
   proverbs: [{ word: "casa dolce casa", sense: "si sta bene a casa" }],
-  translations: [{ lang_code: "en", word: "house", sense: "edificio" }],
+  translations: [{ lang_code: "en", lang: "inglese", word: "house", sense: "edificio", tags: ["countable"] }],
   categories: ["Sostantivi italiani"],
   head_templates: [{ name: "it-noun" }],
 };
@@ -155,7 +155,7 @@ test("a change to any read field changes a record's content, and a change to any
   for (const path of readFieldPaths()) {
     assert.notEqual(contentSha256(JSON.stringify(changedAt(EVERY_FIELD, path))), before, path);
   }
-  for (const path of ["etymology_links", "categories", "head_templates", "senses[].links", "senses[].senseid", "senses[].examples[].ref", "forms[].head_nr", "sounds[].audio", "synonyms[].sense", "translations[].word", "senses[].form_of[].extra"]) {
+  for (const path of ["etymology_links", "categories", "head_templates", "senses[].links", "senses[].senseid", "senses[].examples[].ref", "forms[].head_nr", "sounds[].audio", "synonyms[].sense", "translations[].tags", "senses[].form_of[].extra"]) {
     assert.equal(contentSha256(JSON.stringify(changedAt(EVERY_FIELD, path))), before, path);
   }
   // A field added to the record, as the September build added `etymology_links`.

@@ -104,6 +104,14 @@ const VERB_GRAMMAR: readonly Parameter[] = [
   { name: "person", type: "string", required: false, description: "Only a verb's forms of this person." },
 ];
 
+/** `lang`, on `/lookup` and `/lookup/batch` alike. */
+const LANG: Parameter = {
+  name: "lang",
+  type: "string",
+  required: false,
+  description: "A comma list of the source's language codes, such as `en,es`: only those languages' translations. Every language when absent.",
+};
+
 const AGREEMENT_GRAMMAR: readonly Parameter[] = [
   { name: "gender", type: "string", required: false, description: "Only the grid's row of this gender." },
   { name: "number", type: "string", required: false, description: "Only the grid's column of this number." },
@@ -160,6 +168,68 @@ const ANDARE_EXPRESSIONS = [
   { phrase: "andare per il sottile", meaning: "operare con accuratezza o sensibilità", has_entry: false },
   { phrase: "andare sotto", meaning: "avere più uscite che entrate", has_entry: false },
   { phrase: "non andare per il sottile", meaning: "comportarsi in modo privo di tatto", has_entry: false },
+];
+
+/**
+ * `andare`'s translations, which the source lists on both its records, in its
+ * order. The noun's list is the verb's, labelled "(verbo) ...": the source
+ * copies a page's table onto every record of it.
+ */
+const ANDARE_TRANSLATIONS = [
+  { lang: "sq", word: "ecën", sense: "(verbo) muoversi da un luogo verso un altro luogo" },
+  { lang: "sq", word: "shkoj", sense: "(verbo) muoversi da un luogo verso un altro luogo" },
+  { lang: "bn", word: "যাওয়া", sense: "(verbo) muoversi da un luogo verso un altro luogo" },
+  { lang: "bn", word: "যেতে", sense: "(verbo) muoversi da un luogo verso un altro luogo" },
+  { lang: "br", word: "mont", sense: "(verbo) muoversi da un luogo verso un altro luogo" },
+  { lang: "ca", word: "anar", sense: "(verbo) muoversi da un luogo verso un altro luogo" },
+  { lang: "cs", word: "jít", sense: "(verbo) muoversi da un luogo verso un altro luogo" },
+  { lang: "cic", word: "aiya", sense: "(verbo) muoversi da un luogo verso un altro luogo" },
+  { lang: "hr", word: "ići", sense: "(verbo) muoversi da un luogo verso un altro luogo" },
+  { lang: "eo", word: "iri", sense: "(verbo) muoversi da un luogo verso un altro luogo" },
+  { lang: "fi", word: "mennä", sense: "(verbo) muoversi da un luogo verso un altro luogo" },
+  { lang: "fr", word: "aller", sense: "(verbo) muoversi da un luogo verso un altro luogo" },
+  { lang: "en", word: "go", sense: "(verbo) muoversi da un luogo verso un altro luogo" },
+  { lang: "scn", word: "jiri", sense: "(verbo) muoversi da un luogo verso un altro luogo" },
+  { lang: "scn", word: "iri", sense: "(verbo) muoversi da un luogo verso un altro luogo" },
+  { lang: "scn", word: "giri", sense: "(verbo) muoversi da un luogo verso un altro luogo" },
+  { lang: "la", word: "eō", sense: "(verbo) muoversi da un luogo verso un altro luogo" },
+  { lang: "la", word: "īre", sense: "(verbo) muoversi da un luogo verso un altro luogo" },
+  { lang: "la", word: "vādō", sense: "(verbo) muoversi da un luogo verso un altro luogo" },
+  { lang: "la", word: "vādĕre", sense: "(verbo) muoversi da un luogo verso un altro luogo" },
+  { lang: "nap", word: "ghì", sense: "(verbo) muoversi da un luogo verso un altro luogo" },
+  { lang: "nap", word: "jì", sense: "(verbo) muoversi da un luogo verso un altro luogo" },
+  { lang: "nl", word: "gaan", sense: "(verbo) muoversi da un luogo verso un altro luogo" },
+  { lang: "fa", word: "رفتن", sense: "(verbo) muoversi da un luogo verso un altro luogo" },
+  { lang: "pl", word: "iść", sense: "(verbo) muoversi da un luogo verso un altro luogo" },
+  { lang: "pt", word: "ir", sense: "(verbo) muoversi da un luogo verso un altro luogo" },
+  { lang: "pt", word: "andar", sense: "(verbo) muoversi da un luogo verso un altro luogo" },
+  { lang: "ru", word: "ходи́ть", sense: "(verbo) muoversi da un luogo verso un altro luogo" },
+  { lang: "ru", word: "идти́", sense: "(verbo) muoversi da un luogo verso un altro luogo" },
+  { lang: "ru", word: "е́здить", sense: "(verbo) muoversi da un luogo verso un altro luogo" },
+  { lang: "ru", word: "е́хать", sense: "(verbo) muoversi da un luogo verso un altro luogo" },
+  { lang: "es", word: "ir", sense: "(verbo) muoversi da un luogo verso un altro luogo" },
+  { lang: "es", word: "andar", sense: "(verbo) muoversi da un luogo verso un altro luogo" },
+  { lang: "sv", word: "fara", sense: "(verbo) muoversi da un luogo verso un altro luogo" },
+  { lang: "sv", word: "åka", sense: "(verbo) muoversi da un luogo verso un altro luogo" },
+  { lang: "de", word: "gehen", sense: "(verbo) muoversi da un luogo verso un altro luogo" },
+  { lang: "de", word: "fahren", sense: "(verbo) muoversi da un luogo verso un altro luogo" },
+  { lang: "de", word: "fliegen", sense: "(verbo) muoversi da un luogo verso un altro luogo" },
+  { lang: "tr", word: "gitmek", sense: "(verbo) muoversi da un luogo verso un altro luogo" },
+  { lang: "hu", word: "megy", sense: "(verbo) muoversi da un luogo verso un altro luogo" },
+  { lang: "vec", word: "nar", sense: "(verbo) muoversi da un luogo verso un altro luogo" },
+  { lang: "vec", word: "ndar", sense: "(verbo) muoversi da un luogo verso un altro luogo" },
+  { lang: "en", word: "depart", sense: "(verbo) partire" },
+  { lang: "en", word: "part", sense: "(verbo) partire" },
+  { lang: "en", word: "go", sense: "(verbo) partire" },
+  { lang: "en", word: "leave", sense: "(verbo) partire" },
+  { lang: "la", word: "eō", sense: "(verbo) partire" },
+  { lang: "la", word: "īre", sense: "(verbo) partire" },
+  { lang: "la", word: "vādō", sense: "(verbo) partire" },
+  { lang: "la", word: "vādĕre", sense: "(verbo) partire" },
+  { lang: "nl", word: "weggaan", sense: "(verbo) partire" },
+  { lang: "nl", word: "vertrekken", sense: "(verbo) partire" },
+  { lang: "bn", word: "যাওয়া", sense: "(sostantivo) incedere, modo di incedere" },
+  { lang: "bn", word: "যাওয়া", sense: "(sostantivo) passaggio del tempo" },
 ];
 
 /** `/lookup` unfiltered: every candidate for `andare`, with every section. */
@@ -230,6 +300,7 @@ export const LOOKUP_EXAMPLE: Example = {
         ],
         derived: ["andato", "riandare", "andarsene"],
         expressions: ANDARE_EXPRESSIONS,
+        translations: ANDARE_TRANSLATIONS,
         attribution: ATTRIBUTION("andare"),
       },
       {
@@ -426,6 +497,7 @@ export const LOOKUP_EXAMPLE: Example = {
         ],
         derived: ["andato", "riandare", "andarsene"],
         expressions: ANDARE_EXPRESSIONS,
+        translations: ANDARE_TRANSLATIONS,
         attribution: ATTRIBUTION("andare"),
       },
     ],
@@ -480,6 +552,35 @@ export const LOOKUP_FILTERED_EXAMPLE: Example = {
   },
 };
 
+/** `/lookup` with `casa`'s translations alone, kept to English and Spanish. */
+export const LOOKUP_TRANSLATIONS_EXAMPLE: Example = {
+  path: "lookup?q=casa&fields=translations&lang=en,es",
+  status: 200,
+  label: "translations",
+  response: {
+    query: "casa",
+    release_id: RELEASE,
+    results: [
+      {
+        id: `${RELEASE}:1`,
+        word: "casa",
+        pos: "noun",
+        pos_title: "Sostantivo",
+        match: { surface: "casa", via: "headword", grammar: [{ gender: "femminile", number: "singolare" }] },
+        translations: [
+          { lang: "en", word: "house", sense: "edificio destinato all'abitazione" },
+          { lang: "es", word: "casa", sense: "edificio destinato all'abitazione" },
+          { lang: "en", word: "home", sense: "domicilio" },
+          { lang: "es", word: "hogar", sense: "domicilio" },
+          { lang: "en", word: "house", sense: "(astrologia) ognuna delle dodici suddivisioni del cielo" },
+          { lang: "es", word: "casa", sense: "(astrologia) ognuna delle dodici suddivisioni del cielo" },
+        ],
+        attribution: ATTRIBUTION("casa"),
+      },
+    ],
+  },
+};
+
 /** The not-found answer of `/lookup`, which is a result, not an error. */
 export const NOT_FOUND_EXAMPLE: Example = {
   path: "lookup?q=citta",
@@ -512,6 +613,7 @@ export const ENDPOINT_REFERENCE: Readonly<Record<Endpoint, EndpointReference>> =
         continued: "fields",
       },
       { name: "limit_definitions", type: "integer", required: false, description: "At most this many definitions per result." },
+      LANG,
       ...VERB_GRAMMAR,
       ...AGREEMENT_GRAMMAR,
     ],
@@ -519,7 +621,7 @@ export const ENDPOINT_REFERENCE: Readonly<Record<Endpoint, EndpointReference>> =
       { status: "200", description: "The word is in the release. results holds every candidate the filters keep." },
       { status: "404", description: "The word is not in the release. results is empty and suggestions lists close spellings, as `/nearby` does: the query corrected so that it spells a multi-word headword is kind `phrase` (`vadoo via` offers `vado via`)." },
     ],
-    examples: [LOOKUP_EXAMPLE, LOOKUP_FILTERED_EXAMPLE, NOT_FOUND_EXAMPLE],
+    examples: [LOOKUP_EXAMPLE, LOOKUP_FILTERED_EXAMPLE, LOOKUP_TRANSLATIONS_EXAMPLE, NOT_FOUND_EXAMPLE],
   },
   lemmatize: {
     method: "GET",
@@ -652,7 +754,7 @@ export const ENDPOINT_REFERENCE: Readonly<Record<Endpoint, EndpointReference>> =
     method: "POST",
     title: "Look up many words",
     tagline: "Many words at once",
-    summary: "Up to as many words at once as the key may make calls in a minute, each answered light: one entry per candidate with its lemma and part of speech, or one `found: false` entry for a word not in the release.",
+    summary: "Up to as many words at once as the key may make calls in a minute, each answered light: one entry per candidate with its lemma and part of speech, or one `found: false` entry for a word not in the release. With `fields=translations` in the query string, each candidate also carries its `translations`, as `/lookup` returns them.",
     parameters: [
       {
         name: "q",
@@ -660,6 +762,13 @@ export const ENDPOINT_REFERENCE: Readonly<Record<Endpoint, EndpointReference>> =
         required: true,
         description: `In the JSON body, \`{"q": [...]}\`: from 1 word up to the key's calls a minute, each 1 to ${MAX_QUERY_LENGTH} characters. Each word is a call, toward the minute as toward the month.`,
       },
+      {
+        name: "fields",
+        type: "string",
+        required: false,
+        description: "In the query string, `translations`, the one section a batch adds. Light when absent.",
+      },
+      { ...LANG, description: `In the query string, with \`fields=translations\`. ${LANG.description}` },
     ],
     answers: [{ status: "200", description: "`results` holds the entries, word by word in the order sent." }],
     examples: [{
@@ -695,6 +804,31 @@ export const ENDPOINT_REFERENCE: Readonly<Record<Endpoint, EndpointReference>> =
             pos: "verb",
             pos_title: "Verbo",
             attribution: ATTRIBUTION("salire"),
+          },
+          { query: "mangare", found: false, lemma: null, pos: null, pos_title: null },
+        ],
+      },
+    }, {
+      path: "lookup/batch?fields=translations&lang=en",
+      body: { q: ["casa", "mangare"] },
+      status: 200,
+      label: "translations",
+      response: {
+        release_id: RELEASE,
+        results: [
+          {
+            query: "casa",
+            found: true,
+            id: `${RELEASE}:1`,
+            lemma: "casa",
+            pos: "noun",
+            pos_title: "Sostantivo",
+            translations: [
+              { lang: "en", word: "house", sense: "edificio destinato all'abitazione" },
+              { lang: "en", word: "home", sense: "domicilio" },
+              { lang: "en", word: "house", sense: "(astrologia) ognuna delle dodici suddivisioni del cielo" },
+            ],
+            attribution: ATTRIBUTION("casa"),
           },
           { query: "mangare", found: false, lemma: null, pos: null, pos_title: null },
         ],
@@ -735,6 +869,7 @@ export const FIELDS_TEXT = [
     (section) => `\`${section}\` returns \`${SECTION_KEY[section]}\`.`,
   ),
   "`expressions` lists the phrases the source gives with the record's word, one each, in the page's order: each is `{ phrase, meaning, has_entry }`, where `meaning` joins the source's meanings for the phrase with `; ` and is `null` when it gives none, and `has_entry` is `true` when the phrase is an Italian headword of its own.",
+  "`translations` lists the record's translations into other languages, in the source's order: each is `{ lang, word, sense }`, where `lang` is the source's language code, such as `en`, and `sense` is the source's own label for the meaning translated, as written, or `null` when it gives none. The source lists a word's translations on each of its readings, so two readings of one word can carry the same list; `sense` says which meaning an item translates, and no item is matched to a definition. A record whose source lists none has an empty list. `lang` keeps only the languages it names.",
   "The rest of a result is always returned.",
 ].join(" ");
 

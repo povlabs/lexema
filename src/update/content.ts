@@ -51,7 +51,7 @@ export const READ_FIELDS = {
   antonyms: { each: { word: "whole" } },
   derived: { each: { word: "whole" } },
   proverbs: { each: { word: "whole", sense: "whole" } },
-  translations: { each: { lang_code: "whole" } },
+  translations: { each: { lang_code: "whole", lang: "whole", word: "whole", sense: "whole" } },
 } as const satisfies ReadFields;
 
 const isObject = (value: unknown): value is Record<string, unknown> =>
