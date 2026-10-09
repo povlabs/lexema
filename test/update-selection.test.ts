@@ -6,7 +6,7 @@ import test from "node:test";
 import { readFile } from "node:fs/promises";
 import { italianRecordOf } from "../src/import/importRelease.js";
 import type { QualityRecord } from "../src/italian/recordQuality.js";
-import { selectChanged, selectNew, type ChangedCandidate, type TargetStatus } from "../src/update/selection.js";
+import { selectChanged, selectNew, selectTranslations, type ChangedCandidate, type TargetStatus } from "../src/update/selection.js";
 import { idsInFile } from "../src/update/updateCli.js";
 
 // Synthetic senses isolate comparison boundaries, not archive payloads.
@@ -224,6 +224,12 @@ test("a hidden record or a non-Italian later record is left alone", () => {
   const fix: [Sense[], Sense[]] = [[{ glosses: [FURNITURE] }], [{ glosses: ["edificio"] }]];
   assert.deepEqual(changed(...fix, { beforeHidden: true }), { take: false, reason: "master-hidden" });
   assert.deepEqual(changed(...fix, { italian: false }), { take: false, reason: "not-italian" });
+});
+
+test("changed translations under the same senses are taken, unless ours is hidden or the later record is not Italian (#781)", () => {
+  assert.deepEqual(selectTranslations({ beforeHidden: false, italian: true }), { take: true, reason: "replaces-translations" });
+  assert.deepEqual(selectTranslations({ beforeHidden: true, italian: true }), { take: false, reason: "master-hidden" });
+  assert.deepEqual(selectTranslations({ beforeHidden: false, italian: false }), { take: false, reason: "not-italian" });
 });
 
 test("an ids file holds one id per line, with comments and blank lines ignored", () => {

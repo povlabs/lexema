@@ -30,13 +30,29 @@ Accuracy investigation follows a user report, not routine per-word review.
 
 ## Selection and source ordering
 
-`feed-selection/v5` reads a sense as real the way the word page does. For
+`feed-selection/v6` reads a sense as real the way the word page does. For
 changed definitions it permits replacements of earlier-applied records and
 requires neither old gloss-key containment nor increasing sense counts.
 `fills-gloss` and `adds-sense` remain descriptive reasons; rewritten definitions
 use `replaces-definitions`, and reduced real definitions use
 `removes-definitions`. Formatting-only, unchanged-gloss and duplicate-gloss
-additions still stay skipped, as do non-definition changes.
+additions still stay skipped, as do non-definition changes other than
+translations.
+
+v6 differs from v5 in one take reason, `replaces-translations`
+([#781](https://github.com/povlabs/lexema/issues/781)). The API serves a
+record's translations from its stored line, so a later record whose senses are
+the same and whose translations differ is taken, and the API serves its
+translations. Taking it brings its whole later line, so its other changed read
+fields come too. A hidden record of ours skips it as `master-hidden`, and the
+language rule as `not-italian`, as for any changed record. Two cases stay
+skipped: a senses-same record whose differing fields do not include
+`translations` (only `sounds`, `synonyms` or `etymology_texts`, say), counted as
+"senses and translations the same"; and a record whose senses changed and that
+the rule skips, such as `glosses-same`, even when its translations changed too.
+An `update:auto` plan prints what it takes per reason, and how many
+`replaces-translations` records differ only in translations
+([the pull request plan check](DEPLOY.md#the-pull-request-plan-check)).
 
 v4 differs from v3 in one skip, `blank-replaces-definition`
 ([#442](https://github.com/povlabs/lexema/issues/442)). A later record with

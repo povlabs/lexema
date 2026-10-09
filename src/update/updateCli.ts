@@ -15,7 +15,7 @@
 //   pnpm run update:apply <archive> <change id> [<change id> ...] [--out <dir>]
 //   pnpm run update:apply <archive> --ids <file> [--out <dir>]
 //
-// `update:select` sorts the diff's changes by feed-selection/v5
+// `update:select` sorts the diff's changes by feed-selection/v6
 // (src/update/selection.ts) and writes the ids it takes to a file that
 // `update:apply --ids` reads.
 //
@@ -40,7 +40,7 @@ import { seedTargetFrom, webWrangler, type SeedTarget, type Wrangler } from "../
 import { ApplyRefused, checkApplied, chooseChanges, missingForApply, planApply, type ApplyPlan } from "./apply.js";
 import { diffAgainstMaster, reportMarkdown, reportOf } from "./diff.js";
 import { planUpgrade, readMasterRelease, rebuildsOf, upgradeFirst, upgradeShortfall, type MasterReader } from "./master.js";
-import { automaticPlan } from "./automatic.js";
+import { automaticUpdate } from "./automatic.js";
 import { PlanCounts } from "./planCounts.js";
 import { planOnlyAnswer, planOnlyFlag, planOnlyRun } from "./planOnly.js";
 import { selectChanges, selectionIds, selectionMarkdown, withFeedDump } from "./select.js";
@@ -178,11 +178,12 @@ async function automaticCommand(target: SeedTarget, args: readonly string[]): Pr
   if (read.positional.length !== 1 || read.pages === undefined || read.ids !== undefined) return usageError("update:auto takes one archive, --pages and no change ids", USAGE);
   const reader = masterReaderOf(target);
   const found = await diffAgainstMaster(reader, resolve(read.positional[0]));
-  const plan = await withFeedDump(found.feed, read.pages, LANGUAGES, (pages) => automaticPlan(reader, found, pages, { appliedAt: new Date().toISOString() }));
+  const { taken, apply: plan } = await withFeedDump(found.feed, read.pages, LANGUAGES, (pages) => automaticUpdate(reader, found, pages, { appliedAt: new Date().toISOString() }));
   if (planOnly) {
     const counts = plan?.counts ?? PlanCounts.NONE;
     return planOnlyAnswer(planOnlyRun("update:auto", counts, reader), plan?.sql ?? "", read.out, `auto-${found.master.releaseId}-${found.feed.releaseId}`, {
       feedRelease: found.feed.releaseId,
+      taken,
     });
   }
   if (plan === null) return { out: `${found.feed.releaseId}: no eligible changes; nothing written`, status: 0 };

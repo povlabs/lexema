@@ -100,6 +100,18 @@ test("a declaration whose counts match expected passes, and nothing else is plan
   assert.match(report.markdown, /against `lexema-dictionary`\. Nothing was written\./);
 });
 
+test("an update:auto plan says what its selection took, by reason, and how many differ only in translations (#781)", async () => {
+  const taken = { "new-word": 0, "fills-gloss": 0, "adds-sense": 0, "replaces-definitions": 0, "removes-definitions": 0, "replaces-translations": 2 };
+  const stub: PullRequestPlanner = { plan: async (change) => ({ ...answerOf(change), taken: { taken, translationsOnly: 1 } }) };
+  const report = pullRequestPlanReport(await planPullRequest(drafts({ "dictionary-changes/auto.json": AUTO }), stub), "lexema-dictionary");
+  assert.equal(report.green, true);
+  assert.match(report.markdown, /The selection takes these records, by reason:/);
+  assert.match(report.markdown, /\| `replaces-translations` \| 2 \|/);
+  assert.match(report.markdown, /\| of `replaces-translations`, translations only \| 1 \|/);
+  // Another command's plan has no selection, and says nothing of one.
+  assert.doesNotMatch(pullRequestPlanReport(await planPullRequest(drafts({ "dictionary-changes/fix.json": correction(COUNTS) }), planner()), "lexema-dictionary").markdown, /The selection takes/);
+});
+
 test("a count that differs is red, names each difference and prints the declaration with the plan's counts", async () => {
   const declared = { records: { added: 0, changed: 1, removed: 0 }, written: { corrected_claim: 3 } };
   const outcomes = await planPullRequest(drafts({ "dictionary-changes/fix.json": correction(declared) }), planner());

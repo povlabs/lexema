@@ -25,6 +25,7 @@ import {
   passes,
   type PlanCheck,
 } from "../update/declaration.js";
+import type { TakenCounts } from "../update/automatic.js";
 import type { PlanCounts } from "../update/planCounts.js";
 import type { PlanOnlyAnswer } from "./dictionaryDeploy.js";
 import type { Git } from "./pending.js";
@@ -97,6 +98,17 @@ const lookupLines = ({ lookups }: DeclarationDraft): string[] =>
   lookups === undefined ? [] : ["", "After writing it, the deploy looks up:", ...lookups.map((lookup) => `- ${lookupLine(lookup)}`)];
 
 
+/** What an `update:auto` plan's selection took, per take reason (src/update/selection.ts). */
+const takenLines = ({ taken, translationsOnly }: TakenCounts): string[] => [
+  "",
+  "The selection takes these records, by reason:",
+  "",
+  "| Reason | Records |",
+  "|---|---:|",
+  ...Object.entries(taken).map(([reason, count]) => `| \`${reason}\` | ${count} |`),
+  `| of \`replaces-translations\`, translations only | ${translationsOnly} |`,
+];
+
 const fenced = (json: string): string[] => ["```json", json.trimEnd(), "```"];
 
 function outcomeLines(outcome: DeclarationOutcome): string[] {
@@ -118,13 +130,14 @@ function outcomeLines(outcome: DeclarationOutcome): string[] {
         answer.rebuilds.length === 0
           ? []
           : ["", "The plan rebuilds these tables, dropping each and copying its rows back:", "", "| Table | Rows |", "|---|---|", ...answer.rebuilds.map(({ table, rows }) => `| \`${table}\` | ${rows} |`)];
+      const taken = answer.taken === undefined ? [] : takenLines(answer.taken);
       const listing =
         answer.listing === undefined || answer.listing.length === 0
           ? []
           : ["", "<details><summary>What the plan writes</summary>", "", "```text", ...answer.listing, "```", "", "</details>"];
       const counts = ["", "Put this in the file, with `expected` set to the plan's counts:", "", ...fenced(declarationWith(outcome.declaration, answer.counts))];
-      if (check === null) return [heading, "", "It has no `expected` yet.", ...counts, ...breaches, ...rebuilds, ...listing];
-      if (check.differences.length === 0) return [heading, "", "The plan's counts match `expected`.", ...breaches, ...rebuilds, ...listing];
+      if (check === null) return [heading, "", "It has no `expected` yet.", ...counts, ...breaches, ...rebuilds, ...taken, ...listing];
+      if (check.differences.length === 0) return [heading, "", "The plan's counts match `expected`.", ...breaches, ...rebuilds, ...taken, ...listing];
       return [
         heading,
         "",
@@ -133,6 +146,7 @@ function outcomeLines(outcome: DeclarationOutcome): string[] {
         ...counts,
         ...breaches,
         ...rebuilds,
+        ...taken,
         ...listing,
       ];
     }

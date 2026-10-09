@@ -903,7 +903,8 @@ test("update:auto's plan-only run returns its counts and leaves a local D1 byte-
     const plan = await automaticPlan(reader, found, pages, { appliedAt: "2026-10-01T12:00:00Z", catalog: fixtureCatalog(found) });
     assert.ok(plan);
     const run = planOnlyRun("update:auto", plan.counts, reader);
-    assert.deepEqual(run.counts.records, { added: 2, changed: 2, removed: 0 });
+    // The changed three: two sense fixes, and bello's translations under the same senses (#781).
+    assert.deepEqual(run.counts.records, { added: 2, changed: 3, removed: 0 });
     assert.equal(run.dictionaryRecords, MASTER_LINES.length);
     assert.equal(d1.sha256(), before);
     assert.ok(d1.calls.every((call) => call[0] === "--json"), "every call reads");

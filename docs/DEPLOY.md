@@ -894,6 +894,9 @@ running.
    - an `update:upgrade` that rebuilds tables
      ([the deploy's step 3](#the-dictionary-deploy)): a table naming each
      table it drops and copies back, with its rows;
+   - an `update:auto`: a table of the records its selection takes per take
+     reason, and how many `replaces-translations` records differ only in
+     translations ([UPDATES](UPDATES.md#selection-and-source-ordering));
    - any declaration after the first: red. Its counts depend on what the
      earlier ones write, and this run writes nothing. Put it in its own pull
      request once the earlier ones are deployed.

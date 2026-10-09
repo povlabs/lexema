@@ -30,6 +30,10 @@ const MASTER_LINES = [
   record({ word: "grumo", senses: [{ glosses: ["ammasso"] }] }),
   record({ word: "deprimente", pos: "adj", senses: [{ glosses: ["che deprime"] }, { glosses: ["che provoca debolezza"] }] }),
   record({ word: "vela", senses: [{ glosses: ["telo che spinge una barca"] }] }),
+  record({ word: "gatto", senses: [{ glosses: ["felino domestico"] }], translations: [{ lang_code: "en", lang: "Inglese", word: "cat", sense: "felino" }] }),
+  record({ word: "parlare", pos: "verb", pos_title: "Verbo", senses: [{ glosses: ["esprimersi a voce"] }], sounds: [{ ipa: "parˈlare" }], translations: [{ lang_code: "en", lang: "Inglese", word: "talk" }] }),
+  record({ word: "lingua", senses: [{ glosses: ["organo della bocca"] }], sounds: [{ ipa: "ˈlinɡwa" }] }),
+  record({ word: "inglese", pos: "adj", senses: [{ glosses: ["dell'Inghilterra"] }], translations: [{ lang_code: "en", lang: "Inglese", word: "English" }] }),
 ];
 
 const LATER_LINES = [
@@ -51,6 +55,13 @@ const LATER_LINES = [
   record({ word: "skirmish", senses: [{ glosses: ["scaramuccia"] }] }),
   // New, the placeholder only.
   record({ word: "zufolo", senses: [{ glosses: ["definizione mancante; se vuoi, aggiungila tu"] }] }),
+  // Senses the same, translations changed: only them, or them and another field (#781).
+  record({ word: "gatto", senses: [{ glosses: ["felino domestico"] }], translations: [{ lang_code: "en", lang: "Inglese", word: "cat", sense: "felino" }, { lang_code: "fr", lang: "Francese", word: "chat" }] }),
+  record({ word: "parlare", pos: "verb", pos_title: "Verbo", senses: [{ glosses: ["esprimersi a voce"] }], sounds: [{ ipa: "parˈla:re" }], translations: [{ lang_code: "en", lang: "Inglese", word: "speak" }] }),
+  // Senses and translations the same, a pronunciation changed: still skipped.
+  record({ word: "lingua", senses: [{ glosses: ["organo della bocca"] }], sounds: [{ ipa: "ˈliŋɡwa" }] }),
+  // Translations changed on a record of ours hidden as another language: not taken.
+  record({ word: "inglese", pos: "adj", senses: [{ glosses: ["dell'Inghilterra"] }], translations: [{ lang_code: "en", lang: "Inglese", word: "English" }, { lang_code: "de", lang: "Tedesco", word: "Englisch" }] }),
 ];
 
 const page = (title: string, wikitext: string): RawPage => ({ wiki: RAW_PAGE_WIKI, title, revisionId: 1, timestamp: "2026-09-01T00:00:00Z", wikitext });
@@ -70,6 +81,8 @@ test("every change lands in one bucket, and the taken ids are ones the apply acc
     await writeFile(master, gzipSync(Buffer.from(`${MASTER_LINES.join("\n")}\n`, "utf8")));
     const { parts } = await seedSql({ input: master, outputDir: join(dir, "sql"), schema: "src/db/schema.sql", releaseId: "it-master", license: "CC-BY-SA-4.0", onRejection: () => {} });
     for (const part of parts) db.exec(await readFile(part, "utf8"));
+    db.exec(`INSERT INTO hidden_record (record_id, release_id, page_id, rule, because, language, page_line, lemma_line)
+      SELECT record_id, 'it-master', NULL, 'form-of-foreign-lemma/v1', 'lemma-lists-form', 'en', NULL, 1 FROM source_record WHERE word = 'inglese'`);
     const later = join(dir, "later.jsonl.gz");
     await writeFile(later, gzipSync(Buffer.from(`${LATER_LINES.join("\n")}\n`, "utf8")));
 
@@ -92,23 +105,38 @@ test("every change lands in one bucket, and the taken ids are ones the apply acc
       skirmish: "not-italian",
       zufolo: "no-real-gloss",
       vela: "blank-replaces-definition",
+      gatto: "replaces-translations",
+      parlare: "replaces-translations",
+      inglese: "master-hidden",
     });
-    assert.deepEqual(selection.taken.map((entry) => entry.word), ["antifurti", "antifurto", "cane", "casa", "deprimente", "grumo"]);
+    assert.deepEqual(selection.taken.map((entry) => entry.word), ["antifurti", "antifurto", "cane", "casa", "deprimente", "grumo", "gatto", "parlare"]);
     assert.deepEqual(selection.lost.map((entry) => entry.word), ["sala"]);
     assert.equal(selection.counts.taken["new-word"], 2);
     assert.equal(selection.counts.taken["replaces-definitions"], 1);
+    assert.equal(selection.counts.taken["replaces-translations"], 2);
     assert.equal(selection.counts.skipped["blank-replaces-definition"], 1);
+    assert.equal(selection.counts.skipped["master-hidden"], 1);
+    // Only gatto differs in translations alone; parlare's pronunciation differs too.
+    assert.equal(selection.counts.translationsOnly, 1);
+    // The senses-same bucket holds only the record whose translations are the same.
+    assert.equal(selection.counts.sensesTheSame, 1);
+    assert.deepEqual(selection.sensesTheSame.map((entry) => [entry.word, entry.fields]), [["lingua", ["sounds"]]]);
 
     // The ids file reads back to the taken ids, and the apply chooses every one of them.
     const ids = idsInFile(selectionIds(selection));
     assert.deepEqual(ids, selection.taken.map((entry) => entry.id));
-    assert.equal(chooseChanges(found, ids).length, 6);
+    assert.equal(chooseChanges(found, ids).length, 8);
     assert.ok(ids.includes(selection.taken.find((entry) => entry.word === "deprimente")!.id));
+    assert.ok(ids.includes(selection.taken.find((entry) => entry.word === "gatto")!.id));
 
     const markdown = selectionMarkdown(selection);
     assert.match(markdown, /\| Applied \| new-word \| 2 \|/);
     assert.match(markdown, /### fills-gloss \(1\)/);
-    assert.match(markdown, /Rule `feed-selection\/v5`/);
+    assert.match(markdown, /Rule `feed-selection\/v6`/);
+    assert.match(markdown, /### replaces-translations \(2\)/);
+    assert.match(markdown, /\| Applied \| of replaces-translations, translations only \| 1 \|/);
+    assert.match(markdown, /### Senses and translations the same \(1\)/);
+    assert.match(markdown, /\| lingua \| noun \| sounds \|/);
     assert.match(markdown, /### blank-replaces-definition \(1\)/);
     assert.match(markdown, /### adds-sense \(2\)/);
     assert.match(markdown, /### replaces-definitions \(1\)/);
