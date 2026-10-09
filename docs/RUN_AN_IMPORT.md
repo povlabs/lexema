@@ -330,8 +330,8 @@ each entry's rows, and increments the correction revision, so card and
 suggestion addresses move ([cache identity](DEPLOY.md#card-and-suggestion-cache-identity)).
 `source_record_json`, `grammar_claim`, `lookup_form` and `form_of_edge` are not
 touched. The file holds no DDL: on a master without `corrected_claim`,
-`corrected_form`, `corrected_edge`, `correction_version` or
-`corrected_definition`, or with a `corrected_form` from before its
+`corrected_form`, `corrected_edge`, `correction_version`,
+`corrected_definition` or `hand_kept_definition`, or with a `corrected_form` from before its
 `surface_key`, the command refuses to write and names
 `pnpm run update:upgrade`, which creates them and keys the cells. It then reads the rows
 back and fails if one differs. It prints one line per entry: written, already
@@ -355,6 +355,19 @@ definition at its place is the line and text it quotes. Otherwise the run
 prints why not: the master holds no entry of that title, its entry was read
 from another revision, or the definition differs. The plan's counts name its
 `corrected_definition` rows; a definition entry changes no record.
+
+The same run also writes the hand-kept readings: whole readings the source
+lacks, `si` as a pronoun and `come` as a conjunction, each citing the
+en.wiktionary revision that shows it
+([ADR 0031](../.decisions/0031-hand-kept-readings-fill-source-gaps.md),
+[#745](https://github.com/povlabs/lexema/issues/745)). The committed list is
+[`src/italian/handKeptReadings.ts`](../src/italian/handKeptReadings.ts). Each
+reading is one `hand_kept_definition` row per definition, created with its
+table when the master lacks it, and keys to no record: no source row is
+touched. A reading the master does not hold exactly is written whole, in place
+of its held rows, and the run prints `kept:<word>:<pos>` with written or
+already written. The plan's counts name its `hand_kept_definition` rows; a
+reading changes no record.
 
 On the shared `lexema-dictionary`, the dictionary deploy workflow runs the
 command after a merged change declaration names it

@@ -1,0 +1,1228 @@
+{{also|comé|comê|Côme|com'è}}
+==English==
+{{swp}}
+
+===Pronunciation===
+* {{IPA|en|/kʌm/|[kʰʌm]|~|[kʰɐm]|a=RP}}, {{enPR|kŭm}}
+** {{audio|en|En-uk-to come.ogg|a=RP}}
+* {{IPA|en|/kʌm/|[kʰʌm]|a=GA}}, {{enPR|kŭm}}
+** {{audio|en|en-us-come.ogg|a=GA}}
+* {{IPA|en|[kəm]|[km̩]|[km]}} {{q|rapid speech, as in [[c'mon]]}}
+* {{IPA|en|/kʊm/|a=Northern England,Dublin,Cork}}
+* {{homophones|en|cum}}
+* {{rhymes|en|ʌm|s=1}}
+
+===Etymology 1===
+{{etymon|en|id=approach|:inh|enm:comen|tree=1}}
+From {{inh|en|enm|comen}}, {{m|enm|cumen}}, from {{inh|en|ang|cuman}}, from {{inh|en|gmw-pro|*kweman}}, from {{inh|en|gem-pro|*kwemaną|t=to come}}, from {{inh|en|ine-pro|*gʷémt|t=to step; to arrive}}, from {{m|ine-pro|*gʷem-|t=to come, step}}.
+{{col-top|2|cog}}
+Cognate from Proto-Germanic with {{cog|sco|cum|t=to come}}, {{cog|yol|come}}, {{m|yol|coome}}, {{m|yol|cum|t=to come}}, {{cog|frr|kaame}}, {{m|frr|kame}}, {{m|frr|keem}}, {{m|frr|kem}}, {{m|frr|kum}}, {{m|frr|kååme}}, {{m|frr|käme|t=to come}}, {{cog|stq|kume}}, {{m|stq|kuume|t=to come}}, {{cog|fy|komme|t=to come}}, {{cog|gsw|cha}}, {{m|gsw|cheemen}}, {{m|gsw|cheme}}, {{m|gsw|cho}}, {{m|gsw|chomu}}, {{m|gsw|chéeme|t=to come}}, {{cog|bar|ckeman}}, {{m|bar|kemma}}, {{m|bar|kemman}}, {{m|bar|khemen}}, {{m|bar|kumma}}, {{m|bar|kumman}}, {{m|bar|kèmmin|t=to come}}, {{cog|gmw-cfr|komme}}, {{m|gmw-cfr|kunn}}, {{m|gmw-cfr|kumme|t=to come}}, {{cog|cim|ken}}, {{m|cim|khemmen}}, {{m|cim|khèmman|t=to come}}, {{cog|nl|komen}}, {{m|nl|kommen|t=to come}}, {{cog|nds-nl|kåmen|t=to come}}, {{cog|de,lb|kommen|t=to come}}, {{cog|nds|kamen}}, {{m|nds|kuemen|t=to come}}, {{cog|mhn|kemmen|t=to come}}, {{cog|yi|קימען }}, {{m|yi|קומען|t=to come}}, {{cog|da,nb|komme|t=to come}}, {{cog|ovd|kumå|t=to come}}, {{cog|fo,is|koma|t=to come; to arrive}}, {{cog|gmq-jmk|kuma|t=to come}}, {{cog|nn|koma}}, {{m|nn|komma}}, {{m|nn|komme}}, {{m|nn|kåmmå}}, {{m|nn|kåmå|t=to come}}, {{cog|sv|komma|t=to come}}, {{cog|gme-cgo|kommen|t=to come}}, {{cog|got|𐌵𐌹𐌼𐌰𐌽|t=to come}}.
+
+Cognate from Proto-Indo-European with {{cog|la|venio|t=to come; to approach}}, {{cog|el|βήμα|t=pace, step}}, {{cog|sq|ngah}}, {{m|sq|ngaj|t=to hasten, run}}, {{cog|lv|dzimt|t=to be born}}, {{cog|lt|gimti|t=to be born}}, {{cog|hy|եկ|t=the act of coming, arrival; income}}, {{cog|ae|𐬔𐬀𐬨|t=to come, go}}, {{cog|kmr|gav|t=step}}, {{cog|fa|گام|tr=gâm|t=step}}, {{cog|xto|kum-|t=to come}}, {{cog|txb|käm-|t=to come}}, {{cog|sa|गम्|t=to come, go, move}}.
+{{col-bottom}}
+
+====Alternative forms====
+* {{alter|en|coom||pronunciation spelling}}
+
+====Verb====
+{{en-verb|come<,,came:~[dialectal],~:came[dialectal]:~n>}}
+
+# {{lb|en|intransitive}} To [[move]] [[near]]er to the point of [[perspective]].
+#: {{ux|en|She’ll be '''coming''' round the mountain when she '''comes''' the wrong way {{...}}}}
+#* {{RQ:Shakespeare Merry Wives|act=II|scene=i|passage=Look, who '''comes''' yonder?}}
+#* {{RQ:Tennyson Idylls|page=253|passage=Yet think not that I '''come''' to urge thy crimes, / I did not '''come''' to curse thee, Guinevere, {{...}}}}
+## To move toward the speaker.
+##: {{ux|en|I called the dog, but she wouldn't '''come'''.}}
+##: {{ux|en|Stop dawdling and '''come''' here!}}
+##: {{ux|en|'''Come''' one, '''come''' all. Step right up!}} 
+## To move toward the listener.
+##: {{ux|en|Hold on, I'll '''come''' in a second.}}
+##: {{ux|en|You should ask the doctor to '''come''' to your house.}}
+## To move toward the object that is the [[w:Focus (linguistics)|focus]] of the sentence.
+##: {{ux|en|No-one can find Bertie Wooster when his aunts '''come''' to visit.}}
+##: {{ux|en|Hundreds of thousands of people '''come''' to Disneyland every year.}}
+## {{lb|en|in subordinate clauses and gerunds}} To move toward the [[w:Agent (grammar)|agent]] or subject of the main clause.
+##: {{ux|en|King Cnut couldn't stop the tide '''coming'''.}}
+##: {{ux|en|He threw the boomerang, which '''came''' right back to him.}}
+## To move toward an unstated agent.
+##: {{ux|en|The butler should '''come''' when called.}}
+# {{lb|en|intransitive}} To [[arrive]].
+#* {{RQ:Pepys Diary|volume=VI|date=13 June 1667|page=364|passage=Late at night '''comes''' Mr. Hudson, the cooper, my neighbour, and tells me that he '''come''' from Chatham this evening at five o'clock, and saw this afternoon "The Royal James," "Oake," and "London," burnt by the enemy with their fire-ships: {{...}}|footer=This passage uses the [[historical present]] [[tense]].}}
+#* {{RQ:Churchill Celebrity|chapter=5|passage=Then '''came''' a maid with hand-bag and shawls, and after her a tall young lady. She stood for a moment holding her skirt above the grimy steps,{{...}}, and the light of the reflector fell full upon her.}}
+#* {{quote-book|en|date=11 January 2013|origyear=1997|author=David Bell; Gill Valentine|publisher=Routledge|title=Consuming Geographies: We Are Where We Eat|isbn=9781442432949|page=140|url=https://books.google.co.nz/books?id=cM70Uhk0r88C|passage=So I'd have ate{{sic}} when me Dad had ate, sort of thing, I think, you know when he '''come''' home from work, I'd have waited for him, I wouldn't have said I wanted mine at four o'clock{{...}}}}
+# {{lb|en|intransitive}} To [[appear]]; to [[manifest]] itself; to cause a reaction by manifesting.
+#: {{ux|en|The pain in his leg '''comes''' and goes.}}
+#: {{ux|en|The news '''came''' as a shock.}}
+#*{{quote-text|en|title=Diary|author={{w|Lou Sullivan}}|date=4 Jan 1965|text=Kathy and I had a teen-age girl to girl talk, about boys, John, and understanding Mom. I was gonna tell her about Phil but I held my mouth till tears '''came'''.}}
+# {{lb|en|with an infinitive}} To [[begin]] (to have an opinion or feeling).
+#: {{ux|en|We '''came''' to believe that he was not so innocent after all.}}
+#: {{ux|en|She '''came''' to think of that country as her home.}}
+#* {{RQ:Churchill Celebrity|chapter=3|passage=Now all this was very fine, but not at all in keeping with the Celebrity's character as I had '''come''' to conceive it. The idea that adulation ever cloyed on him was ludicrous in itself. In fact I thought the whole story fishy, and '''came''' very near to saying so.}}
+# {{lb|en|with an infinitive}} To [[do]] something [[by chance]] or [[unintentionally]].
+#: {{ux|en|Could you tell me how the document '''came''' to be discovered?}}
+# {{lb|en|intransitive}} To take a position relative to something else in a [[sequence]].
+#: {{ux|en|Which letter '''comes''' before Y?&nbsp;&nbsp; Winter '''comes''' after autumn.}}
+# {{senseid|en|orgasm}}{{lb|en|intransitive|often vulgar|slang}} To achieve [[orgasm]]; to [[cum #Verb|cum]]; to [[ejaculate]].
+#: {{ux|en|She '''came''' after a few minutes.}}
+#: {{ux|en|'''Come''' in me!}}
+#* {{RQ:Hollinghurst Line|chapter=2|passage=Nick was more and more seriously absorbed, but then just before he '''came''' he had a brief vision of himself, as if the trees and bushes had rolled away and all the lights of London shone in on him: little Nick Guest from Barwick, Don and Dot Guest's boy, fucking a stranger in a Notting Hill garden at night.}}
+#* {{quote-book|en|year=2008|author=w:Philip Roth|title={{w|Indignation (novel)|Indignation}}|passage= The sheer unimaginableness of '''coming''' into her mouth — of '''coming''' into anything other than the air or a tissue or a dirty sock — was an allurement too stupendous for a novice to forswear.}}
+# {{lb|en|intransitive|of milk}} To become [[butter]] by being [[churned]].
+#* {{RQ:Butler Hudibras|year=1905|passage=when butter does refuse to '''come'''}}
+# {{lb|en|copulative|figuratively}} To [[approach]] or [[reach]] a state of being or accomplishment.
+#: {{ux|en|They '''came''' very close to leaving on time.&nbsp;&nbsp; His test scores '''came''' close to perfect.}}
+#: {{ux|en|One of the screws '''came''' loose, and the skateboard fell apart.}}
+# {{lb|en|figuratively|with ''to''}} To take a particular [[approach]] or [[point of view]] in regard to something.
+#: {{ux|en|He '''came''' to SF literature a confirmed technophile, and nothing made him happier than to read a manuscript thick with imaginary gizmos and whatzits.}}
+# {{senseid|en|become}} {{lb|en|copulative|[[Appendix:Glossary#fossil_word|fossil word]]}} To [[become]], to [[turn out]] to be {{q|often in set phrases and certain collocations}}.
+#: {{par|en|become|get<id:become>|go<id:become>|turn<id:become>|fall<id:become>|grow<id:become>|wax<id:become>}}
+#: {{ux|en|[[come true|'''come''' true]]}}
+#: {{ux|en|[[come about|'''come''' about]]}}
+#: {{ux|en|[[come clean|'''come''' clean]]}}
+#: {{ux|en|[[come alive|'''come''' alive]]}}
+#: {{ux|en|'''come''' open}}
+#: {{ux|en|'''come''' loose}}
+#: {{ux|en|'''come''' undone}}
+#* {{RQ:Shakespeare Love's Labour's Lost|act=V|scene=ii|passage=How '''come''' you thus estranged?}}
+#* {{quote-book|en|year=1910|passage=He saw a gnarled old woman vigorously scrubbing a very dirty boy, who squirmed under the rough usage and screwed up his eyes and mouth to keep out the soap.  "Drat the boy," cried the old lady, wrathfully.  "Stand still, do!  Will he ever '''come''' clean?"|url=https://www.google.com/books/edition/The_Poster/tWOq9AcelioC?hl=en&gbpv=1&pg=PT7&printsec=frontcover|title=The Poster|section=Notable Poster Illustrations|page=17|publisher=Poster Advertising Association}}
+# {{lb|en|intransitive}} To be supplied, or made available; to exist.
+#: {{ux|en|He's as tough as they '''come'''.}}
+#: {{ux|en|Our milkshakes '''come''' in vanilla, strawberry and chocolate flavours.}}
+#: {{ux|en|A new sports car doesn't '''come''' cheap.}}
+# {{lb|en|slang}} To carry through; to succeed in.
+#: {{ux|en|You can't '''come''' any tricks here.}}
+# {{lb|en|intransitive}} To [[happen]].
+#: {{syn|en|come about|occur|take place}}
+#: {{ux|en|This kind of accident '''comes''' when you are careless.}}
+#* {{quote-journal|en|date=2014-06-14|volume=411|issue=8891|magazine=w:The Economist
+|title=[http://www.economist.com/news/science-and-technology/21604091-it-possible-sniff-out-problems-sewer-pipes-they-happen-its-gas It's a gas]
+|passage=But out of sight is out of mind. And that{{...}}means that many old sewers have been neglected and are in dire need of repair. If that repair does not '''come''' in time, the result is noxious and potentially hazardous.}}
+# {{lb|en|intransitive|with ''from'' or sometimes ''of''}} To have as an [[origin]], [[originate]].
+## To have a certain [[social]] [[background]].
+##* {{quote-book|en|year=2011|author=Kate Gramich|title=Kate Roberts|publisher=University of Wales Press|isbn=9780708323380|chapter=3|page={{gbooks|vE2uBwAAQBAJ|46|came}}
+|passage=While Kate Roberts '''came''' from a poor background and, later in life, in the post-Second World War period suffered from severe money shortages, in the early 1930s, she and her husband must have counted themselves relatively well off, particularly in comparison with their neighbours in Tonypandy.}}
+## To be or have been a resident or native.
+##: {{ux|en|Where did you '''come''' from?}}
+## To have been brought up by or employed by.
+##: {{ux|en|She '''comes''' from a good family.}}
+##: {{ux|en|He '''comes''' from a disreputable legal firm.}}
+## To [[begin]] (at a certain location); to [[radiate]] or [[stem]] (from).
+##: {{ux|en|The river '''comes''' from Bear Lake.}}
+##: {{ux|en|Where does this road '''come''' from?}}
+# {{lb|en|intransitive|of ''grain''}} To [[germinate]].
+# {{lb|en|transitive|informal}} To [[pretend]] to be; to behave in the manner of; to assume the [[role]] of.
+#: {{ux|en|Don’t '''come''' the innocent victim. We all know who’s to blame here.}}
+#* {{RQ:Dickens Oliver Twist|passage=“Hush! hush! Mr. Sikes,” said the Jew, trembling; “don’t speak so loud!” / “None of your mistering,” replied the ruffian; “you always mean mischief when you '''come''' that. You know my name: out with it! I shan’t disgrace it when the time comes.”}}
+#* {{quote-book|en|year=1950|author=Norman Lindsay|authorlink=Norman Lindsay|title={{w|Dust or Polish?}}|publisher=Angus and Robertson|location=Sydney|page=157|passage=Ponds drew a chair to the table and seated himself and poured Mrs Dibble a gin, saying solemnly, "Now then, Mrs Dibble, what's it all about?" "I'm upholding my rights agen that woman that's been '''coming''' the high and mighty over me like I ain't got the right to say a word in me own business."}}
+
+=====Usage notes=====
+* In its general sense, ''come'' specifically marks motion {{l|en|towards}} the [[w:Deixis|deictic]] centre, (whether explicitly stated or not). Its counterpart, usually referring to motion away from or not involving the deictic centre, is {{m|en|go}}. For example, the sentence "Come to the tree" implies contextually that the speaker is already at the tree — "Go to the tree" often implies that the speaker is elsewhere. Either the speaker or the listener can be the deictic centre — the sentences "I will go to you" and "I will come to you" are both valid, depending on the exact nuances of the context. When there is no clear speaker or listener, the deictic centre is usually the focus of the sentence or the topic of the piece of writing. "Millions of people '''came''' to America from Europe" would be used in an article about America, but "Millions of people '''went''' to America from Europe" would be used in an article about Europe.
+
+* When used with adverbs of location, ''come'' is usually paired with {{m|en|here}} or {{m|en|hither}}. In interrogatives, ''come'' usually indicates a question about source — "Where are you coming from?" — while ''go'' indicates a question about destination — "Where are you going?" or "Where are you going to?"
+
+* A few old texts use {{m|en|comen}} as the past participle. Also, in some dialects, like rural Scots and rural Midlands dialects, the form {{m|en|comen}} is still occasionally in use, so phrases like the following can still be encountered there — ''Sa thoo bist comen heyr to nim min 'orse frae mee, then?'' {{IPAchar|[sä ðuː bɪst cʊmn̩ hiər tə nɪm miːn ɔːrs frə miː {{!}} d̪ɛn]}} (so you have come here to steal my horse from me, then?).
+
+* Formerly the verb {{m|en|be}} was used as the auxiliary instead of {{m|en|have}}, for example, ''Where is he that is born King of the Jews? for we have seen his star in the east, and '''are''' come to worship him.''
+
+* The collocations {{m|en|come with}} and {{m|en|come along}} mean {{m|en|accompany}}, used as "Do you want to come with me?" and "Do you want to come along?" In the Midwestern American dialect, "come with" can occur without a following object, as in "Do you want to come with?" In this dialect, "with" can also be used in this way with some other verbs, such as "take with". Examples of this may be found in plays by Chicagoan {{w|David Mamet}}, such as ''{{w|American Buffalo}}.''<ref>[http://positiveanymore.blogspot.com/2006/04/chicago-dialect.html Chicago Dialect]</ref> This objectless use is not permissible in other dialects.
+
+* The meaning in the sense of ''to ejaculate'' or ''orgasm'' is often considered vulgar slang. Many style guides and editors recommend the spelling ''come'' for verb uses while strictly allowing the spelling {{m|en|cum}} for the noun. Both spellings are sometimes found in either the noun or verb sense, however. Others prefer to distinguish in formality, using ''come'' for any formal usage and ''cum'' only in slang, erotic or pornographic contexts.<ref>[http://www.glossophilia.org/?p=4925 Glossophilia]</ref>
+
+=====Conjugation=====
+{{en-conj|old=1|stem=com|past=came|past_ptc=come|past2=come|past2_qual=note1|past_old=comed|past_2sg_old2=camedst|past_2sg_old3={{ded|comed}}, [[comedst]]|past_ptc2=came|past_ptc2_qual=note1|past_ptc3=comen|past_ptc3_qual=note1|past_ptc_old=comed|note1=Dialectal.}}
+
+=====Antonyms=====
+* {{l|en|leave}}, {{l|en|go}}, {{l|en|depart}}, {{l|en|exit}}, {{l|en|withdraw}}, {{l|en|retreat}}, {{l|en|flee}}
+
+=====Derived terms=====
+{{col4|en|carry-go-bring-come
+|a bad penny always comes back
+|aftercome
+|after Saturday comes Sunday
+|again-coming
+|all good things come to an end
+|all good things must come to an end
+|all is fish that comes to the net
+|all's fish that comes to the net
+|all things come to those who wait
+|a long time in coming
+|ancome
+|appetite comes with eating
+|as they come
+|backward in coming forward
+|bad comes to worse|come back from|come come
+|bad comes to worst
+|bad things come in threes
+|become|coming right up
+|big things come in small packages
+|blow to kingdom come
+|burn that bridge when one comes to it
+|can I come in
+|Christmas come early
+|Christmas comes but once a year
+|Christmas is coming
+|come about|come down upon
+|come a cropper
+|come across|uncome
+|come across with
+|come after| when two Fridays come together
+|come again
+|come a gutser
+|come alive
+|come-all-ye
+|come-all-you|come on in
+|come aloft
+|come-along
+|come along
+|come a long way
+|come-and-cuddle-me
+|come-and-I'll-kiss-you
+|come and go
+|come apart
+|come-around
+|come around
+|come as no surprise
+|come at
+|come-at-able
+|come at a cost
+|come at me
+|come away
+|come away empty
+|come back
+|come back from the dead
+|come back to bite
+|come back to haunt
+|come back to one's senses
+|come before
+|come between
+|come by
+|Come By Chance
+|come calling
+|come clean
+|come correct
+|come-down
+|comedown
+|come down
+|come down cats and dogs
+|come down in stair rods
+|come down in the last shower
+|come down on
+|come down the line
+|come down the pike
+|come down the road
+|come down to
+|come down to earth
+|come down to us
+|come down with
+|come down with one's dust
+|come down with the dust
+|come 'ead
+|come 'ed
+|come ed
+|come first
+|come for
+|come forth
+|come forward
+|come from
+|come from a Cracker Jack box
+|come from a good place
+|come from behind
+|come from below
+|come from the right place
+|come full circle
+|come get some
+|come good
+|come hand
+|come head
+|come hell or high water
+|come-here
+|come here to me
+|come high
+|come hither
+|come-hither
+|come-hithery
+|come home
+|come home by weeping cross
+|come home to roost
+|come in
+|come in for
+|come in from the cold
+|come in handy
+|come in hot
+|come into
+|come into being
+|come into effect
+|come into force
+|come into one's own
+|come into play
+|come into the world
+|come in use
+|come in useful
+|come it
+|come it strong
+|come knocking
+|comeling
+|come low
+|come naturally
+|come of
+|come of age
+|come off
+|come-off
+|come off it
+|come off second best
+|come-on
+|come on
+|come on down
+|come one's way
+|come online
+|come on over
+|come on strong
+|come onto
+|come on to
+|come out
+|come-outer
+|come-outerism
+|come out in
+|come out in the wash
+|come-outism
+|come out of one's shell
+|come out of the broom closet
+|come out of the closet
+|come out of the woodwork
+|come out on top
+|come out smelling like a rose
+|come out smelling of roses
+|come out swinging
+|come out with
+|come over
+|come-over
+|come-o'-will
+|come rain or shine
+|come rain or snow
+|come right
+|come round
+|come running
+|come short
+|come the acid
+|come the old acid
+|come the old soldier
+|come the raw prawn
+|come thick and fast
+|come through
+|come to
+|come to a boil
+|come to a close
+|come to a head
+|come to anchor
+|come to an end
+|come to a stand
+|come to a sticky end
+|come to a stop
+|come to bat
+|come to be
+|come to bed
+|come-to-bed
+|come to blows
+|come to find out
+|come to fruition
+|come together
+|come to grief
+|come to grips
+|come to grips with
+|come to hand
+|come to Jesus
+|come-to-Jesus
+|come to life
+|come to light
+|come to mention it
+|come to mind
+|come to naught
+|come to nothing
+|come to nought
+|come to oneself
+|come to one's hand
+|come to one's senses
+|come to order
+|come to papa
+|come to pass
+|come to power
+|come to rest
+|come to someone's aid
+|come to someone's rescue
+|come to terms
+|come to terms with
+|come to that
+|come to the party
+|come to the scratch
+|come to think of it
+|come to time
+|come true
+|come under
+|come undone
+|come unhinged
+|come unstuck
+|come up
+|come up against
+|come up and bite
+|come up from behind
+|come upon
+|come upon the parish
+|come upon the town
+|come-uppance
+|come up roses
+|come up short
+|come up smelling like a rose
+|come up smelling of roses
+|come up snake eyes
+|come up to
+|come up trumps
+|come up with
+|come up with snake eyes
+|come up with the goods
+|come up with the rations
+|come what may
+|come with
+|come with it
+|come with the territory
+|come with the turf
+|come Yorkshire over
+|coming and going
+|coming from you
+|coming into force
+|coming of age
+|coming-of-age
+|coming out of someone's ears
+|coming-out party
+|coming through
+|coming together
+|cross a bridge before one comes to it
+|cross that bridge when one comes to it
+|cut and come again
+|cut-and-come-again
+|Daniel come to judgement
+|death-come-quickly
+|downcome
+|do you come here often
+|dream come true
+|first-come-first-served
+|first come first served
+|forecome
+|forthcome
+|get what's coming to one
+|go back to where you came from
+|good things come in small packages
+|good things come in threes
+|good things come to those who wait
+|have another thing coming
+|have another think coming
+|have another thought coming
+|hold come what may
+|how came you so
+|how come
+|how's come
+|I come in peace
+|if the mountain won't come to Muhammad
+|income
+|intercome
+|Johnny-come-lately
+|Jonny-come-lately
+|long in coming
+|March comes in like a lion and goes out like a lamb
+|marry come up
+|miscome
+|misfortunes never come alone
+|misfortunes never come singly
+|newcome
+|non-coming
+|not know whether one is coming or going
+|off-come
+|offcome
+|oncome
+|oncoming
+|one of these odd-come-shortlies
+|one's ship comes in
+|on the come
+|outcome
+|overcome|I did Nazi that coming
+|pride comes before a fall
+|pride comes before the fall
+|proverbs come in pairs
+|proverbs often come in pairs
+|proverbs should come in pairs
+|put two and two together and come up with five
+|seven come eleven
+|take something as it comes
+|thanks for coming
+|thanks for coming to my TED Talk
+|the bad penny always comes back
+|the British are coming
+|the call is coming from inside the house
+|the chickens come home to roost
+|the freaks come out at night
+|the handbags come out
+|there's more where that came from
+|the shape of things to come
+|the time has come
+|the wheels came off
+|the wheels came off the bus
+|the wheels came off the wagon
+|think all one's Christmases have come at once
+|this is where I came in
+|this is where we came in
+|till the cow come home
+|till the cows come home
+|'til the cows come home
+|time to come
+|tocome
+|to-come
+|to come
+|Tommy come tickle me
+|tomorrow never comes
+|un-come-at-able
+|undercome
+|until Kingdom come
+|until the cows come
+|until the cows come home
+|up and coming
+|upcome
+|upcoming
+|we come in peace
+|welcome
+|what comes around goes around
+|what goes around comes around
+|what goes round comes round
+|what goes up must come down
+|what go round come round
+|what's bred in the bone will come out in the flesh
+|when it comes to
+|when push comes to shove
+|when the time comes
+|when two Sundays come together
+|where I come from
+|where someone is coming from
+|why come
+|world to come
+|worse comes to worse
+|worse comes to worst
+|worst comes to worst
+}}
+
+=====Related terms=====
+<!--merge into the derived terms list if you like-->
+* [[c'mere]]
+* [[c'min]]
+* [[c'mon]]
+
+=====Descendants=====
+* {{desc|crp-slb|комъ}}
+
+=====Translations=====
+{{multitrans|data=
+{{trans-top|to move nearer}}
+* Abkhaz: {{tt|ab|аара}}
+* Afrikaans: {{tt+|af|kom}}
+* Akan: {{t|ak|bra}}
+* Akkadian: {{t|akk|alākum}}
+* Albanian: {{tt+|sq|vij}}
+* Altai:
+*: Southern Altai: {{tt|alt|келер}}
+* Arabic: {{tt+|ar|جَاءَ}}, {{tt+|ar|أَتَى}}
+*: Egyptian Arabic: {{tt|arz|جا|tr=gā}}, {{tt|arz|جه|tr=geh}}
+*: Hijazi Arabic: {{tt|acw|جا|tr=jā}}
+*: Moroccan Arabic: {{t|ary|جا|tr=jā}}
+*: North Levantine Arabic: {{tt|apc|إجا|tr=ʔijā}}
+*: South Levantine Arabic: {{tt|ajp|إجا|tr=ʔijā}}, {{tt|apc|أجا|tr=ʔajā}}
+*: Tunisian Arabic: {{tt|aeb|جاء|tr=jāʔ}}
+* Armenian: {{tt+|hy|գալ}}
+* Aromanian: {{tt|rup|vin}}, {{tt|rup|yin}}
+* Assamese: {{tt|as|আহ}}
+*: Early Assamese: {{tt|inc-oas|আস্}}, {{tt|inc-oas|আ}}
+* Asturian: {{tt+|ast|venir}}
+* Avestan: {{tt|ae|𐬘𐬀𐬨𐬀𐬌𐬙𐬌}}
+* Azerbaijani: {{tt+|az|gəlmək}}
+* Bakhtiari: {{tt|bqi|اودن|tr=aweðen}}
+* Balinese: {{t|ban|teka}}
+* Bangi: {{t|bni|ya}}
+* Basque: {{tt|eu|etorri}}
+* Belarusian: {{tt|be|прыбыва́ць|impf}}, {{tt|be|прыбы́ць|pf}}; {{qualifier|on foot}} {{tt|be|прыхо́дзіць|impf}}, {{tt|be|прыйсці́|pf}}; {{qualifier|by vehicle}} {{tt|be|прыязджа́ць|impf}}, {{tt|be|прые́хаць|pf}}
+* Bengali: {{tt+|bn|আসা}}
+* Bhojpuri: {{t|bho|आइल}}
+* Boloki: {{t|bkt|ya}}
+* Borôro: {{t|bor|aregodu}}
+* Brahui: {{tt|brh|barr}}
+* Broome Pearling Lugger Pidgin: {{t|bpl|ratang}}
+* Bulgarian: {{tt+|bg|и́двам|impf}}, {{tt|bg|до́йда|pf}}
+* Burmese: {{tt+|my|လာ}}
+* Catalan: {{tt+|ca|venir}}
+* Chagatai: {{tt|chg|کلادو|tr=kelādū}}
+* Chechen: {{t|ce|лела}}
+* Chinese:
+*: Cantonese: {{tt+|yue|嚟|tr=lei4; lai4}}
+*: Dungan: {{tt|dng|лэ}}
+*: Eastern Min: {{tt|cdo|來|tr=lì}}
+*: Mandarin: {{tt+|cmn|來|tr=lái}}
+*: Wu: {{tt|wuu|來}}
+* Circassian:
+*: East Circassian: {{t+|kbd|къэкӏуэн}}
+*: West Circassian: {{t|ady|къэкӏон}}
+* Comorian:
+*: Maore Comorian: {{tt|swb|ja|alt=uja}}
+* Crimean Tatar: {{tt|crh|kelmek}}
+* Czech: {{tt+|cs|přicházet|impf}}, {{tt+|cs|přijít|pf}}; {{tt+|cs|přijíždět|impf}}, {{tt+|cs|přijet|pf}} {{qualifier|by transport}}
+* Dalmatian: {{tt|dlm|vener}}
+* Danish: {{tt+|da|komme}}
+* Dolgan: {{tt|dlg|кэл|tr=kel}}
+* Dutch: {{tt+|nl|komen}}
+* Egyptian: {{t-egy|jj|h=ii-i-D54}}, {{t-egy|jwj|h=D54-w}}
+* Elfdalian: {{t|ovd|kumå}}
+* Esperanto: {{tt+|eo|veni}}
+* Estonian: {{tt+|et|tulema}}
+* Faroese: {{tt+|fo|koma}}
+* Fataluku: {{t|ddg|ma'u}}
+* Finnish: {{tt+|fi|tulla}}
+* French: {{tt+|fr|venir}}
+* Frisian:
+*: North Frisian: {{qualifier|Mooring}} {{tt|frr|kaame}}, {{qualifier|Föhr-Amrum}} {{tt|frr|kem}}, {{tt|frr|kum}} {{qualifier|Sylt}}
+*: West Frisian: {{tt+|fy|komme}}
+* Friulian: {{tt|fur|vignî}}
+* Galician: {{tt+|gl|vir}}
+* Georgian: {{tt|ka|მისვლა}}, {{tt|ka|ჩამოსვლა}}
+* German: {{tt+|de|kommen}}
+*: Alemannic German: {{tt|gsw|choo}}
+*: Bavarian: {{tt|bar|kemma}}
+* Gothic: {{t|got| 𐌵𐌹𐌼𐌰𐌽 }}
+* Greek: {{tt+|el|έρχομαι}}, {{t+|el|πλησιάζω}}, {{t+|el|ζυγώνω}}, {{t+|el|προσεγγίζω}}
+*: Ancient Greek: {{tt|grc|ἀφικνέομαι}}, {{tt|grc|ἔρχομαι}}, {{tt|grc|ἱκνέομαι}}, {{tt|grc|ἱκάνω}}, {{tt|grc|ἵκω}}, {{tt|grc|ἥκω}} {{qualifier|have come}}, {{tt|grc|ἕπομαι}} {{qualifier|+ dative of person}}
+* Guarani:
+*: Paraguayan Guarani: {{t-check|gug|ju}}
+* Guianese Creole: {{t|gcr|vini}}
+* Haitian Creole: {{tt|ht|vini}}
+* Hausa: {{t+|ha|zo}}
+* Hebrew: {{tt+|he|בָּא|tr=ba}}
+* Hindi: {{tt+|hi|आना}}
+* Hmong:
+*: White Hmong: {{t|mww|los}}
+* Hungarian: {{tt+|hu|jön}}
+* Hunsrik: {{tt|hrx|komme}}
+* Icelandic: {{tt+|is|koma}}
+* Ido: {{tt+|io|venar}}
+* Indonesian: {{tt+|id|datang}}, {{tt+|id|datang|alt=mendatangi}}, {{tt+|id|datang|alt=mendatang}}, {{tt+|id|datang|alt=mendatangkan}}
+* Interlingua: {{tt+|ia|venir}}
+* Irish: {{tt|ga|tar}}
+*: Old Irish: {{tt|sga|do·icc}}, {{tt|sga|do·tét}}
+* Istriot: {{tt|ist|vignì}}
+* Italian: {{tt+|it|venire}}
+* Jamaican Creole: {{t|jam|come}}
+* Japanese: {{tt+|ja|来る|tr=くる, kuru}}, {{tt+|ja|いらっしゃる|tr=irassharu}} {{qualifier|honorific}}, {{tt+|ja|おいでになる|tr=o-ide ni naru}} {{qualifier|honorific}}, {{tt+|ja|参る|tr=まいる, mairu}} {{qualifier|humble}}
+* Javanese: {{t+|jv|teka}}
+*: Old Javanese: {{t|kaw|tĕka}}
+* Jeju: {{t|jje|오다}}
+* Kaitag: {{t|xdq|цяна́}}, {{t|xdq|цаба́хьара}}, {{t|xdq|цянара}}
+* Kamta: {{tt|rkt|aṣ}}
+* Kannada: {{t+|kn|ಬರು}}
+* Karakhanid: {{tt|xqa|کَلْماكْ|tr=kelmēk}}
+* Kashmiri: {{t|ks|یُن}}
+* Kazakh: {{tt+|kk|келу}}
+* Khakas: {{tt|kjh|килерге}}
+* Khmer: {{tt+|km|មក}}
+* Kikuyu: {{t|ki|ũka}}
+* Korean: {{tt+|ko|오다}}
+* Kumyk: {{tt|kum|гелмек}}
+* Kurdish:
+*: Central Kurdish: {{tt+|ckb|ھاتن}}
+*: Northern Kurdish: {{tt+|kmr|hatin}}
+* Kyrgyz: {{tt+|ky|келүү}}
+* Lao: {{tt|lo|ມາ}}
+* Latin: {{tt+|la|venio}}, {{tt+|la|progredior}}
+* Latvian: {{tt+|lv|nākt}}
+* Lingala: {{t|ln|ya}}
+* Lithuanian: {{tt+|lt|ateiti}}
+* Lombard: {{t+|lmo|vegnì}}
+* Lü: {{tt|khb|ᦙᦱ}}
+* Lushootseed: {{tt|lut|ʔəƛ̕}}
+* Lutuv: {{t|clt|vaw}}
+* Luxembourgish: {{t+|lb|kommen}}
+* Macedonian: {{tt|mk|доаѓа|impf}}, {{tt|mk|дојде|pf}}
+* Makasae: {{t|mkz|ma'u}}
+* Malay: {{tt+|ms|datang}}, {{tt+|ms|mari}}
+* Maltese: {{tt|mt|ġie}}
+* Manchu: {{t|mnc|ᠵᡳᠮᠪᡳ}}
+* Mandar: {{t|mdr|pole}}
+* Mansaka: {{t|msk|datung}}
+* Manx: {{tt|gv|tar}}
+* Mauritian Creole: {{t|mfe|vini}}
+* Middle English: {{t|enm|comen}}
+* Minangkabau: {{t+|min|datang}}
+* Mòcheno: {{tt|mhn|kemmen}}
+* Mongolian:
+*: Cyrillic: {{tt+|mn|ирэх}}
+* Nahuatl:
+*: Classical Nahuatl: {{tt|nci|huītz}}
+* Nanai: {{t|gld|ди-}}
+* Neapolitan: {{tt|nap|venì}}
+* Nepali: {{tt+|ne|आउनु}}
+* Norman: {{tt|nrf|v'nîn}}
+* Norwegian:
+*: Bokmål: {{tt+|nb|komme}}
+*: Nynorsk: {{tt|nn|koma}}
+* Occitan: {{tt+|oc|venir}}, {{tt|oc|vir}}
+* Odia: {{t|or|ଆସିବା}}
+* Ohlone:
+*: Northern Ohlone: {{tt|cst|ká̄nak 'íwqisin}}
+* Old English: {{tt|ang|cuman}}
+* Old Nubian: {{t|onw|ⲕⲓⲣ}}
+* Old Prussian: {{t|prg|perēitwei}}
+* Old Saxon: {{tt|osx|kuman}}
+* Old Turkic: {{tt|otk|𐰚𐰠|tr=kel-}}
+* Ossetian: {{t|os|ӕрцӕуын}}
+* Papiamentu: {{t|pap|bini}}
+* Pashto: {{tt+|ps|راتلل|tr=rātlᶕl}}
+* Pennsylvania German: {{tt|pdc|kumme}}
+* Persian:
+*: Dari: {{tt+|prs|آمَدَن}}
+*: Iranian Persian: {{tt+|fa-ira|آمَدَن}}
+* Phoenician: {{tt|phn|𐤁𐤀}}
+* Pipil: {{tt|ppl|witz}}, {{tt|ppl|huitz}}
+* Polish: {{qualifier|on foot}} {{tt+|pl|przychodzić|impf}}, {{tt+|pl|przyjść|pf}}; {{qualifier|by vehicle}} {{tt+|pl|przyjeżdżać|impf}}, {{tt+|pl|przyjechać|pf}}
+* Portuguese: {{tt+|pt|vir}}
+* Punic: {{tt|xpu|𐤁𐤀}}
+* Punjabi: {{t+|pa|ਆਉਣਾ|tr=āuṇā}}, {{t|pa|آوݨا}}
+* Quechua: {{tt+|qu|hamuy}}, {{tt|qu|hamui}}, {{tt|qu|şamui}}, {{tt|qu|jamuy}}
+* Rohingya: {{tt|rhg|ai}}
+* Romanian: {{tt+|ro|veni|alt=a veni}}
+* Romansh: {{tt|rm|vegnir}}, {{tt|rm|vagnir}}, {{tt|rm|neir}}, {{tt|rm|gnir}}
+* Russian: {{tt+|ru|приходи́ть|impf}}, {{tt+|ru|прийти́|pf}}; {{tt+|ru|приезжа́ть|impf}}, {{tt+|ru|прие́хать|pf}} {{qualifier|by transport}}
+* Sanskrit: {{tt|sa|गमति}}, {{t|sa|आगच्छति}}
+* Sardinian: {{tt|sc|bènnere}}, {{tt|sc|benni}}, {{tt|sc|bènniri}}, {{tt|sc|vènnere}}
+* Savosavo: {{t|svs|ba}}
+* Scots: {{tt|sco|cum}}
+* Scottish Gaelic: {{tt|gd|thig}}
+* Serbo-Croatian:
+*: Cyrillic: {{tt|sh|до̑ћи|pf}}
+*: Latin: {{tt|sh|dȏći|pf}}
+* Shan: {{t-needed|shn}}
+* Sicilian: {{tt+|scn|vèniri}}
+* Sinhalese: {{tt+|si|එනවා}}
+* Slovak: {{tt|sk|prichádzať|impf}}, {{tt|sk|prísť|pf}}
+* Slovene: {{tt+|sl|priti|pf}}
+* Somali: {{t|so|imasho}}
+* Sorbian:
+*: Lower Sorbian: {{tt|dsb|pśiś|impf|pf}}, {{tt|dsb|póraś|impf|alt=se póraś}}
+*: Upper Sorbian: {{t+|hsb|přińć|impf}}
+* Spanish: {{tt+|es|venir}}
+* Sundanese: {{tt|su|sumping}}
+* Swahili: {{tt|sw|kuja}}
+* Swedish: {{tt+|sv|komma}}
+* Sylheti: {{tt|syl|ꠀꠃꠣ}}
+* Tagalog: {{tt|tl|pumunta}}, {{tt|tl|magpunta}}
+* Tajik: {{tt+|tg|омадан}}
+* Talysh: {{t|tly|ome}}
+* Tamil: {{tt+|ta|வா}}
+* Tatar: {{tt+|tt|килергә}}
+* Telugu: {{t+|te|వచ్చు}}
+* Tetum: {{t|tet|mai}}
+* Thai: {{tt+|th|มา}}
+*: Northern Thai: {{tt|nod|ᨾᩣ|tr=ma}}
+* Tibetan: {{tt|bo|ཡོང}}, {{tt|bo|ཕེབས}} {{qualifier|honorific}}
+* Tocharian A: {{tt|xto|kum-}}, {{tt|xto|käm-}}
+* Tocharian B: {{tt|txb|käm-}}
+* Tooro: {{t|ttj|ija|alt=-ija}}
+* Turkish: {{tt+|tr|gelmek}}
+*: Ottoman Turkish: {{tt|ota|گلمك|tr=gelmek}}
+* Turkmen: {{tt+|tk|gelmek}}
+* Tuvan: {{tt|tyv|келир}}
+* Tyap: {{tt+|kcg|bai}}
+* Ukrainian: {{tt+|uk|прихо́дити|impf}}, {{tt+|uk|прийти́|pf}}; {{tt|uk|приїжджа́ти|impf}}, {{tt|uk|приї́хати|pf}}, {{tt|uk|приїзди́ти|impf}} {{qualifier|by transport}}
+* Urdu: {{tt+|ur|آنا}}
+* Uyghur: {{tt|ug|كەلمەك}}
+* Uzbek: {{tt+|uz|kelmoq}}
+* Venetan: {{tt+|vec|vegner}}
+* Vietnamese: {{tt+|vi|lại}}, {{tt+|vi|đến}}
+* Walloon: {{tt+|wa|vni}}, {{tt+|wa|vini}}
+* Welsh: {{tt+|cy|dod}}
+* Yakut: {{tt|sah|кэл}}
+* Yámana: {{tt|yag|akata}}
+* Yiddish: {{tt|yi|קומען}}
+* Yoruba: {{t|yo|wá}}, {{t|yo|bọ̀}}
+* Yucatec Maya: {{tt|yua|taal}}
+* Yurok: {{tt|yur|nes}}, {{tt|yur|neskwechook'}}
+* Zazaki: {{tt|zza|amaene}}, {{tt|zza|amayen}}, {{t+|zza|ameyene}}
+* Zealandic: {{tt|zea|komme}}
+* Zhuang: {{tt|za|daeuj}}
+* Zulu: {{tt|zu|za|alt=-za}}
+{{trans-bottom}}
+
+{{trans-top|to arrive, to appear}}
+* Arabic: {{tt+|ar|قَدِمَ}}, {{t+|ar|وَصَلَ}}
+*: Egyptian Arabic: {{t|arz|وصل|tr=wiṣil}}
+*: Gulf Arabic: {{t|afb|وصل|tr=wiṣal}}
+*: Hijazi Arabic: {{t|acw|وصل|tr=wiṣil}}, {{t|acw|جا|tr=jā}}
+*: Moroccan Arabic: {{t|ary|وصل|tr=wṣal}}, {{t|ary|جا|tr=jā}}
+*: North Levantine Arabic: {{t|apc|وصل|tr=wuṣil, wuṣul}}
+*: South Levantine Arabic: {{t|ajp|وصل|tr=wiṣil}}
+*: Tunisian Arabic: {{tt|aeb|وصل|tr=wuṣil}}
+* Bulgarian: {{tt+|bg|дости́гам|impf}}, {{tt|bg|дости́гна|pf}}, {{tt+|bg|присти́гам|impf}}, {{tt|bg|присти́гна|pf}}, {{tt+|bg|явявам|impf|alt=явя́вам се}}, {{tt|bg|явя|pf|alt=явя́ се}}
+* Chinese:
+*: Cantonese: {{tt|yue|到|tr=dou3}}
+*: Mandarin: {{tt+|cmn|到|tr=dào}}
+* Czech: {{tt+|cs|přijít}}
+* Danish: {{tt|da|ankomme}}, {{tt+|da|komme}}
+* Finnish: {{tt+|fi|saapua}}, {{tt+|fi|tulla}}
+* French: {{tt+|fr|arriver}}
+* Galician: {{tt+|gl|vir}}
+* German: {{tt+|de|kommen}}, {{tt+|de|ankommen}}
+* Greek: {{t+|el|εμφανίζω}}, {{t+|el|εμφανίζομαι}}, {{t+|el|καταφτάνω}}, {{t+|el|αναφαίνομαι}}
+*: Ancient Greek: {{tt|grc|ἱκάνω}}
+* Hungarian: {{tt+|hu|megjön}}, {{tt+|hu|jön}}
+* Irish: {{tt|ga|tar}}
+* Italian: {{t+|it|arrivare}}, {{t+|it|apparire}}, {{t+|it|manifestarsi}}
+* Jamaican Creole: {{t|jam|come}}, {{t|jam|reach}}, {{t|jam|touch een}}
+* Japanese: {{tt+|ja|着く|tr=つく, tsuku}}, {{t+|ja|到着|tr=とうちゃくする, tōchaku suru|alt=到着する}}
+* Kashmiri: {{t|ks|یُن}}
+* Korean: {{tt+|ko|도착하다}}, {{tt+|ko|이르다}}
+* Macedonian: {{tt|mk|доаѓа}}, {{tt|mk|пристига}}
+* Middle English: {{t|enm|comen}}, {{t|enm|lenden}}
+* Mòcheno: {{tt|mhn|kemmen}}
+* Norwegian:
+*: Bokmål: {{tt|nb|ankomme}}, {{tt+|nb|komme}}
+* Palauan: {{t|pau|mei}}
+* Persian:
+*: Dari: {{tt+|prs|رَسِیدَن}}
+*: Iranian Persian: {{tt+|fa-ira|رَسیدَن}}
+* Portuguese: {{tt+|pt|chegar}}
+* Quechua: {{tt|qu|jamuy}}
+* Russian: {{tt+|ru|прибыва́ть|impf}}, {{tt+|ru|прибы́ть|pf}}
+* Scots: {{tt|sco|kyth}}
+* Scottish Gaelic: {{tt|gd|thig}}
+* Serbo-Croatian: {{tt|sh|doći}}
+* Sorbian:
+*: Lower Sorbian: {{tt|dsb|pśiś}}, {{tt|dsb|póraś|impf|alt=se póraś}}
+* Spanish: {{t+|es|conllevar}} {{q|with... comes}}
+* Tamil: {{t+|ta|வா}}
+* Telugu: {{t+|te|వచ్చు}}
+* Turkish: {{tt+|tr|olmak}}, {{tt+|tr|gelmek}}
+* Ukrainian: {{qualifier|on foot}} {{t|uk|дохо́дити|impf}}, {{t|uk|дійти́|pf}}; {{qualifier|by vehicle}} {{t|uk|доїжджа́ти|impf}}, {{t|uk|дої́хати|pf}}
+* Zulu: {{tt|zu|fika|alt=-fika}}
+{{trans-bottom}}
+
+{{trans-top|to begin to have an opinion or feeling}}
+* Chinese:
+*: Mandarin: {{tt+|cmn|起來|tr=qǐlai}}
+* Hungarian: {{tt+|hu|meg-}}
+* Middle English: {{t|enm|lenden}}
+{{trans-bottom}}
+
+{{trans-top|to do something by chance, without intending to do it}}
+{{trans-bottom}}
+
+{{trans-top|to have a relative position in a sequence}}
+* Czech: {{tt+|cs|předejít}}
+* Dutch: {{tt+|nl|komen}}
+* Finnish: {{tt+|fi|tulla}}, {{tt+|fi|olla}}
+* French: {{tt+|fr|venir}}
+* Hungarian: {{tt+|hu|jön}}
+* Japanese: {{tt+|ja|来る|tr=くる, kuru}}
+* Turkish: {{tt+|tr|gelmek}}
+{{trans-bottom}}
+
+{{trans-top|to orgasm}}
+* Bulgarian: {{tt+|bg|свъ́ршвам|impf}}
+* Catalan: {{tt+|ca|escórrer-se}}
+* Chinese:
+*: Mandarin: {{tt+|cmn|射|tr=shè}}, {{tt+|cmn|射精|tr=shèjīng}}, {{qualifier|slang}} {{tt+|cmn|出水|tr=chūshuǐ}}
+* Czech: {{tt+|cs|udělat}} se
+* Danish: {{tt+|da|komme}}, {{tt|da|ejakulere}}
+* Dutch: {{tt+|nl|klaarkomen}}
+* Esperanto: {{tt+|eo|ĉuri}}
+* Finnish: {{tt+|fi|tulla}}, {{tt|fi|[[saada]] [[orgasmi]]}}, {{tt+|fi|laueta}}
+* French: {{tt+|fr|jouir}}, {{tt+|fr|venir}}
+* German: {{tt+|de|kommen}}
+* Greek: {{tt+|el|χύνω}} {{qualifier|slang}}
+* Hebrew: {{tt+|he|גָּמַר|tr=gamár}} {{qualifier|slang}}, {{tt+|he|שָׁפַך|tr=shafákh}} {{qualifier|slang|"ejaculate"}}
+* Hungarian: {{tt+|hu|elélvez}}, {{tt+|hu|elmegy}}
+* Icelandic: {{tt|is|fá það}}
+* Interlingua: {{t+|ia|venir}}
+* Italian: {{tt+|it|venire}}, {{tt|it|venirsene}}, {{t+|it|eiaculare}}
+* Jamaican Creole: {{t|jam|bruk}}
+* Japanese: {{tt+|ja|いく|tr=iku}}, {{tt|ja|イく|tr=iku}}
+* Korean: {{tt+|ko|가다}} {{qualifier|slang}}
+* Latin: {{t|la|patrō}}
+* Macedonian: {{tt|mk|свршува|impf}}
+* Norwegian:
+*: Bokmål: {{tt+|nb|komme}}
+* Polish: {{tt+|pl|dochodzić|impf}}, {{tt+|pl|dojść|pf}}
+* Portuguese: {{tt+|pt|gozar}}, {{t+|pt|vir}}-se
+* Russian: {{tt+|ru|конча́ть|impf}}, {{tt+|ru|ко́нчить|pf}}, {{tt+|ru|спусти́ть|pf}} {{qualifier|colloquial}}, {{tt+|ru|эякули́ровать}} {{qualifier|medical}}, {{tt+|ru|изверга́ть|impf}} {{qualifier|formal}}
+* Serbo-Croatian: {{tt+|sh|svršiti}} {{qualifier|colloquial}}
+* Spanish: {{tt+|es|correrse}}, {{tt+|es|venirse}}, {{tt+|es|acabar}}
+* Thai: {{tt|th|ถึงจุดสุดยอด|tr=tʉ̌ng jùt sùt yɔ̂ɔt}}, {{tt+|th|เสร็จ}}
+* Vietnamese: {{t+|vi|xuất}}, {{t+|vi|ra}}
+* Zazaki: {{tt|zza|yen}}
+{{trans-bottom}}
+
+{{trans-top|to become}}
+* Bulgarian: {{tt+|bg|случвам|impf|alt=слу́чвам се}}, {{tt+|bg|случа|pf|alt=слу́ча се}}, {{tt+|bg|ста́вам|impf}}, {{tt|bg|ста́на|pf}}
+* Finnish: {{tt+|fi|tulla}}
+* French: {{tt+|fr|devenir}}
+* Greek: {{t+|el|γίνομαι}}, {{t|el|υλοποιούμαι}}
+*: Ancient Greek: {{t|grc|γίγνομαι}}, {{t|grc|φύομαι}}, 
+* Hungarian: {{tt+|hu|válik}}
+* Japanese: {{tt+|ja|成る|tr=なる, naru}}
+* Macedonian: {{tt|mk|станува}}
+* Russian: {{tt+|ru|станови́ться|impf}}, {{tt+|ru|стать|pf}}
+* Vietnamese: {{tt+|vi|thành}}, {{tt+|vi|trở nên}}, {{tt+|vi|trở thành}}
+* Zazaki: {{tt|zza|bıyen}}
+* Zulu: {{tt|zu|ba|alt=-ba}}
+{{trans-bottom}}
+
+{{trans-top|to turn out to be}}
+* Finnish: {{tt+|fi|tulla}}
+* French: {{tt+|fr|avérer|alt=s’avérer}}, {{tt+|fr|révéler|alt=se révéler}}
+* Hungarian: {{tt+|hu|bizonyul}}
+* Japanese: {{tt+|ja|成る|tr=なる, naru}}
+* Russian: {{tt+|ru|ока́зываться|impf}}, {{tt+|ru|оказа́ться|pf}}
+{{trans-bottom}}
+
+{{checktrans-top}}
+* Woiwurrung: {{t-check|wyi|wandeat}}, {{t-check|wyi|womin}}
+{{trans-bottom}}
+
+}}<!-- close {{multitrans}} -->
+
+=====See also=====
+* {{l|en|cam'st}}
+* {{l|en|kingdom come}}
+
+====Noun====
+{{en-noun|-}}
+
+# {{lb|en|obsolete}} [[coming|Coming]], [[arrival]]; [[approach]].
+#* {{quote-text|en|year=1869|author=RD Blackmoore|title=Lorna Doone|section=II
+|passage=“If we count three before the '''come''' of thee, thwacked thou art, and must go to the women.”}}
+# {{lb|en|vulgar|slang}} [[semen|Semen]].
+#: {{usex|en|When a man uses a condom during sex, he takes all of his '''come''' with him, preventing her from getting pregnant.}}
+# {{lb|en|vulgar|slang}} Female [[ejaculatory]] [[discharge]].
+
+=====Usage notes=====
+* The meaning of ''semen or female ejaculatory discharge'' is considered vulgar slang. Many style guides and editors recommend the spelling ''come'' for verb uses while strictly allowing the spelling {{m|en|cum}} for the noun. Both spellings are sometimes found in either the noun or verb sense, however. Others prefer to distinguish in formality, using ''come'' for any formal usage and ''cum'' only in slang, erotic or pornographic contexts.<ref>[http://www.glossophilia.org/?p=4925 Glossophilia]</ref>
+
+=====Derived terms=====
+*{{l|en| precome|}}
+* {{l|en|cum}}
+
+====Preposition====
+{{en-head|prep}}
+
+# {{non-gloss|Used to indicate a point in time at or after which a stated event or situation occurs.}}
+#: {{ux|en|Leave it to settle for about three months and, '''come''' Christmas time, you'll have a delicious concoction to offer your guests.}}
+#: {{ux|en|'''Come''' retirement, their Social Security may turn out to be a lot less than they counted on.}}
+#: {{ux|en|'''Come''' summer, we would all head off to the coast.}}
+#* {{quote-book|en|year=1932|year_published=1965|author=w:Delos W. Lovelace|title=[[w:King Kong (1933 film)|King Kong]]|page=14|passage="And a long sea voyage that starts at six o'clock '''come''' morning."}}
+#* {{quote-journal|en|date=November 10 2012|author=Amy Lawrence|title=Fulham's Mark Schwarzer saves late penalty in dramatic draw at Arsenal|newspaper=The Guardian|url=http://www.guardian.co.uk/football/2012/nov/10/arsenal-fulham-premier-league|passage='''Come''' the final whistle, Mikel Arteta lay flabbergasted on the turf.}}
+#* {{quote-web|en|url=https://www.hellomagazine.com/celebrities/20221005153414/celine-dion-rare-social-media-post-exciting-music-news/|text=She announced in April that '''come''' 10 February 2023, her songs would be featured in a romantic comedy titled ''It's All Coming Back To Me'' {{...}}|title=Celine Dion ushers in holiday season with exciting music news|author=Beatriz Colon|date=2022-10-05|work=Hello! Magazine}}
+
+=====Usage notes=====
+* {{m|en|came#Preposition|Came}} is sometimes used instead when the events occurred in the past.
+
+=====Derived terms=====
+*{{l|en|odd-come-short}}
+
+====Interjection====
+{{en-intj}}
+
+# {{senseid|en|interjection}} {{lb|en|dated|or|formal}} {{n-g|An [[exclamation]] to express [[annoyance]].}}
+#: {{ux|en|'''Come, come'''! Stop crying.}}
+#: {{ux|en|'''Come''' now! Things could be worse.}}
+#* {{RQ:Bramah Bravo of London|passage="'''Come''', that will do," interrupted Joolby with an impatient growl; {{...}}}}
+# {{lb|en|dated|or|formal}} {{n-g|An [[exclamation]] to express [[encouragement]], or to precede a request.}}
+#: {{ux|en|'''Come, come'''! You can do it.}}
+#: {{ux|en|'''Come''' now! It won't bite you.}}
+#* {{RQ:Shakespeare Winter's Tale|act=II|scene=i|passage=Her. What wisdome stirs amongst you? '''Come''' Sir, now<br>I am for you againe: 'Pray you sit by vs,<br>And tell's a Tale.}}
+#* {{RQ:Tennyson In Memoriam|XVIII|30|'''Come''' then, pure hands, and bear the head<br>⁠That sleeps or wears the mask of sleep,<br>⁠And '''come''', whatever loves to weep,<br>And hear the ritual of the dead.}}
+#* {{RQ:Ferguson Zollenstein|I
+|passage=“I'm through with all pawn-games,” I laughed. “'''Come''', let us have a game of lansquenet. Either I will take a farewell fall out of you or you will have your sevenfold revenge”.}}
+
+===Etymology 2===
+See {{m|en|comma}}.
+
+====Noun====
+{{en-noun}}
+
+# {{senseid|en|typography}} {{label|en|typography|obsolete}} {{alternative form of|en|comma}} ''in its [[medieval]] [[use]] as a [[middot]]'' ⟨[[·]]⟩ ''[[serving]] as a [[form]] of [[colon]].''
+#* {{quote-book|en|year=1824|author=J. Johnson|title=Typographia|passage=There be five manner of points and divisions most used among cunning men; the which if they be well used, make the sentence very light and easy to be understood, both to the reader and hearer: and they be these, [[virgil]],—[[come]],—[[parenthesis]],—[[plain point]],—[[interrogative]].}}
+#* {{quote-book|en|year=1842|author=F. Francillon|pageurl=https://books.google.co.jp/books?id=MGj0VSJkwdIC&pg=PA9|page=9|title=An Essay on Punctuation|url=https://books.google.co.jp/books?id=MGj0VSJkwdIC&printsec=frontcover
+|passage=Whoever introduced the several points, it seems that a ''[[full-point]]'', a point called ''[[come]]'', answering to our [[colon-point]], a point called ''[[virgil]]'' answering to our [[comma-point]], the ''[[parenthesis-point]]s'' and ''[[interrogative-point]]'', were used at the close of the fourteenth, or beginning of the fifteenth<!--sic--> century.}}
+
+===References===
+{{reflist}}
+
+===See also===
+* {{l|en|come stà}} {{i|etymologically unrelated}}
+
+===Anagrams===
+* {{anagrams|en|a=cemo|ECMO|MECO|meco-}}
+
+{{cln|en|strong verbs|irregular past participles|irregular verbs|raising verbs|verb forms using redundant wikisyntax}}
+{{C|en|Bodily fluids|Punctuation marks|Sex}}
+
+==Asturian==
+
+===Pronunciation===
+{{ast-pr}}
+
+===Verb===
+{{head|ast|verb form}}
+
+# {{inflection of|ast|comer||3|s|pres|ind}}
+
+===Adverb===
+{{ast-adv}}
+
+# {{alt form|ast|como}}
+
+===Conjunction===
+{{head|ast|conjunction}}
+
+# {{alt form|ast|como}}
+
+==Chavacano==
+
+===Etymology===
+{{inh+|cbk|es|comer||to eat}}.
+
+===Pronunciation===
+* {{cbk-IPA|komé}}
+* {{hyph|cbk|co|me}}
+
+===Verb===
+{{cbk-verb|comé}}
+
+# to [[eat]]
+
+==Galician==
+
+===Verb===
+{{head|gl|verb form}}
+
+# {{gl-verb form of|comer}}
+
+==Hawaiian Creole==
+
+===Etymology 1===
+{{der+|hwc|en|come}}.
+
+====Verb====
+{{head|hwc|verb}}
+
+# [[come#Verb|come]]
+#* {{quote-book|hwc|author=Lee A. Tonouchi|title=Da Word|year=2001|text= I guess I can jus wait fo' my faddah '''come''' get me by da back gate.|url=https://archive.org/details/daword00leet/page/23/mode/1up?q=come}}
+
+===Etymology 2===
+{{der+|hwc|en|become}}.
+
+====Verb====
+{{head|hwc|verb}}
+
+# [[become#Verb|become]]
+#* {{quote-book|hwc|author=Lee A. Tonouchi|title=Da Word|year=2001|text=Ever since dey wen cut down da mango tree da house always '''come''' hot now.|url=https://archive.org/details/daword00leet/page/26/mode/1up?q=come}}
+
+==Italian==
+
+===Alternative forms===
+* {{alt|it|com'||apocopic|sometimes before a vowel}}
+* {{alt|it|com|con||apocopic|obsolete}}
+* {{alt|it|comed||archaic|before vowels}}
+
+===Etymology===
+{{ety|it|:inh|la-lat:quōmodo et}}
+{{inh+|it|la-lat|quōmodo et}}.
+
+===Pronunciation===
+{{it-pr|cóme,#cóme*<pre:{{q|how}}>|cóme*<audio:It-come.ogg><pre:{{q|like}}>}}
+
+===Adverb===
+{{it-adv}}
+
+# [[how]]
+#: {{uxi|it|'''Come''' stai?|'''How''' are you? (informal)}}
+#: {{uxi|it|'''Come''' sta?|'''How''' are you? (formal)}}
+# [[as]], [[like]]
+#: {{uxi|it|blu '''come''' il mare|as blue '''as''' the sea}}
+# [[such as]]
+
+====Derived terms====
+* {{l|it|come mai}}
+* {{l|it|come no}}
+* {{l|it|come se}}
+
+===Conjunction===
+{{head|it|conjunction}}
+
+# [[as soon as]]
+#: {{uxi|it|'''come''' arrivò…|'''as soon as''' he arrived…}}
+
+====Derived terms====
+* {{l|it|come non detto}}
+
+===Further reading===
+* {{R:it:Treccani}}
+* {{R:it:DiPI}}
+
+===Anagrams===
+* {{anagrams|it|a=cemo|meco}}
+
+{{cln|it|interrogative adverbs}}
+
+==Latin==
+
+===Pronunciation===
+* {{la-IPA|cōme}}
+
+===Adjective===
+{{head|la|adjective form|head=cōme}}
+
+# {{inflection of|la|cōmis||nom//acc//voc|n|s}}
+
+===References===
+* {{R:la:L&S}}
+
+==Middle English==
+
+===Etymology 1===
+From {{inh|enm|ang|cyme}}, from {{inh|enm|gmw-pro|*kumi}}, from {{inh|enm|gem-pro|*kumiz}}. 
+
+The predominance of {{IPAchar|/u/|/oː/}} is due to the influence of the related verb {{m|enm|comen}}.
+
+====Alternative forms====
+* {{alter|enm|cume|coom|coome}}
+* {{alter|enm|kime|keome||early}}
+
+====Pronunciation====
+* {{IPA|enm|/ˈkum(ə)/|/ˈkoːm(ə)/}}
+
+====Noun====
+{{enm-noun}}
+
+# [[arrival]], [[coming]]
+
+=====Descendants=====
+* {{desc|en|come}} {{q|obsolete}}
+* {{desc|sco|come}}
+
+====References====
+* {{R:MED Online|cǒme, cọ̄me|n.(1)|MED8512}}
+
+===Etymology 2===
+From {{inh|enm|ang|cuma}}, from {{m|ang|cuman||to come}}.
+
+====Pronunciation====
+* {{IPA|enm|/ˈkum(ə)/}}
+
+====Noun====
+{{enm-noun}}
+
+# [[guest]], [[stranger]]
+
+====References====
+* {{R:MED Online|cǒme|n.(2)|MED8513}}
+
+===Etymology 3===
+
+====Noun====
+{{head|enm|noun|var=1}}
+
+# {{alt form|enm|coumb}}
+
+===Etymology 4===
+
+====Noun====
+{{head|enm|noun|var=1}}
+
+# {{alt form|enm|comb}}
+
+==Old English==
+
+===Pronunciation===
+* {{ang-IPA|cōme}}
+* {{rhymes|ang|oː.me|s=2}}
+
+===Verb===
+{{head|ang|verb form|head=cōme}}
+
+# {{alternative spelling of|ang|cwōme}}
+
+==Old French==
+
+===Etymology 1===
+{{inh+|fro|la-lat|quōmodo et}}.
+
+====Alternative forms====
+* {{alt|fro|comme|conme}}
+* {{alt|fro|con|cum}}
+
+====Adverb====
+{{head|fro|adverb}}
+
+# [[how]]
+# [[as]], [[like]]
+#* {{quote-book|fro|passage=Ausi '''conme''' unicorne sui|title=Ausi conme unicorne sui|year=12th or 13th century|author=Thibaut de Champagne|translation=I am just like a unicorn.}}
+
+=====Derived terms=====
+* {{l|fro|coment}}
+
+=====Descendants=====
+* {{desctree|frm|comme}}
+* {{desc|nrf|comme|coumme}}
+
+====References====
+* {{R:fro:DEAF|come1}}
+
+===Etymology 2===
+From {{inh|fro|la|coma}}.
+
+====Noun====
+{{fro-noun|f}}
+
+# head of hair, mane
+
+=====Descendants=====
+* {{desc|frm|come}}
+
+====References====
+* {{R:FEW|2|935|cŏma}}
+
+==Portuguese==
+
+===Pronunciation===
+{{pt-IPA|[om:ô*m]}}
+* {{audio|pt|LL-Q5146 (por)-Santamarcanda-come.wav|a=<<Portugal>> (<<Porto>>)}}
+* {{hyphenation|pt|co|me}}
+
+===Verb===
+{{head|pt|verb form}}
+
+# {{pt-verb form of|comer}}
+
+==Spanish==
+
+===Pronunciation===
+{{es-pr}}
+
+===Verb===
+{{head|es|verb form}}
+
+# {{es-verb form of|comer}}
+
+==Yola==
+
+===Verb===
+{{head|yol|verb}}
+
+# {{alt form|yol|coome}}
+#* '''1867''', “GLOSSARY OF THE DIALECT OF FORTH AND BARGY“, page 41:
+#*: {{quote|yol|'''Come''' adh o' mee gazb.|'''Come''' out of my breath.}}
+#* {{quote-book|yol|year=1867|chapter=A YOLA ZONG|number=14|page=90|title=SONGS, ETC. IN THE DIALECT OF FORTH AND BARGY|passage='''Come''' w' ouse, gosp Learry, theezil an Melchere;|translation='''Come''' with us, gossip Larry, yourself and Miles;}}
+#* {{quote-book|yol|year=1867|chapter=CASTEALE CUDDE'S LAMENTATION|page=102|number=1|title=SONGS, ETC. IN THE DIALECT OF FORTH AND BARGY|passage=Ye nyporès aul, '''come''' hark to mee,|translation=Ye neighbours all, '''come''' hark to me,}}
+
+===References===
+* {{R:Poole 1867|page=41, &c.}}

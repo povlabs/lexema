@@ -1,0 +1,13 @@
+{
+  "command": "correct:records",
+  "inputs": {},
+  "lookups": [
+    { "word": "si", "gloss": "pronome riflessivo di terza persona" },
+    { "word": "come", "gloss": "non appena" }
+  ],
+  "expected": {
+    "records": { "added": 0, "changed": 0, "removed": 0 },
+    "written": { "hand_kept_definition": 5, "correction_version": 1 },
+    "deleted": {}
+  }
+}

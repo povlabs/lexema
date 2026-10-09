@@ -1,7 +1,7 @@
 ---
 id: 0008
 title: Generated explanations ship in Italian and English, labelled and reportable
-status: accepted
+status: amended-in-part by [0031](0031-hand-kept-readings-fill-source-gaps.md)
 date: 2026-09-21
 tags: [product, content]
 ---

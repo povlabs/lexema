@@ -1,0 +1,3068 @@
+{{also|Appendix:Variations of "si"}}
+{{minitoc}}
+==Translingual==
+
+===Etymology===
+{{clip|mul|en:'''Si'''nhalese}}, from {{der|mul|si|සිංහල}}, itself borrowed from {{der|mul|sa|सिंहल}}.
+
+===Symbol===
+{{mul-symbol}}
+
+# {{ISO 639|1}}
+
+===See also===
+* {{langcat}}
+
+==English==
+{{rfquote|en}}
+
+===Alternative forms===
+* {{alter|en|ti}}
+
+===Etymology===
+From {{inh|en|enm|si||seventh degree or note of Guido of Arezzo's hexachordal scales}}, {{der|en|it|si}} in the solmization of Guido of Arezzo, from the initials of {{der|en|la|Sāncte Iohannēs|t=Saint John (the Baptist)}} in the lyrics of the scale-ascending hymn ''{{w|Ut queant laxis}}'' by Paulus Deacon; thus, also an {{init|en|Sāncte Iohannēs|nocap=1}}.
+
+===Pronunciation===
+* {{IPA|en|/siː/}}
+* {{audio|en|LL-Q1860 (eng)-Persent101-si.wav|a=US}}
+* {{rhymes|en|iː|s=1}}
+* {{homophones|en|C|cee|sea|see}}
+
+===Noun===
+{{en-noun}}
+
+# {{lb|en|music}} A syllable used in [[solfège]] to represent the seventh note of a [[major scale]].
+
+====Translations====
+{{trans-top|seventh note of a major scale}}
+* Arabic: {{t|ar|سِي|m}}
+* Basque: {{t+|eu|si}}
+* Catalan: {{t+|ca|si|m}}
+* Finnish: {{t+|fi|ti}}, {{t+|fi|si}}
+* French: {{t+|fr|si|m}}
+* Hungarian: {{t+|hu|ti|id=solfege-7}}
+* Indonesian: {{t+|id|si}}
+* Italian: {{t+|it|si|m}}
+* Japanese: {{t+|ja|シ|tr=shi}}
+* Korean: {{t+|ko|시}}
+* Macedonian: {{t|mk|си}}
+* Polish: {{t+|pl|si}}
+* Portuguese: {{t+|pt|si|m}}
+* Russian: {{t+|ru|си|n}}
+* Spanish: {{t+|es|si}}
+* Vietnamese: {{t+|vi|si}}
+{{trans-bottom}}
+
+===See also===
+*[[si liao]]
+
+===Anagrams===
+* {{anagrams|en|a=is|'is|I's|IS|Is|i's|is|is-|is.}}
+
+{{catlangname|en|2-letter words}}
+
+==Akan==
+
+===Verb===
+{{ak-head|verb|fut=bɛsi}}
+
+# to [[descend]]
+# to [[happen]]
+## {{lb|ak|prospective}} to be [[impending]]
+# {{lb|ak|usually with [[past tense]] or [[perfect]] [[aspect]]}} to [[end]]
+#: {{uxa|ak|Sini no '''nsiiɛ'''.|The movie '''hasn't ended yet'''.}}
+
+====Derived terms====
+{{col|ak
+|si aboɔ
+|si fam
+|si kwan
+|si so<t:to be in one's prime>
+|si nneɛma
+}}
+
+{{cln|ak|inherent complement verbs}}
+
+==Albanian==
+
+===Etymology===
+Varying reconstructions. Orel descends it from {{inh|sq|sqj-pro|*tšei}},<ref>{{R:sq:Orel:1998|page=395}}</ref> Matzinger from {{inh|sq|sqj-pro|*čī}}.<ref>{{R:sq:Schumacher-Matzinger|page=225}}</ref> Ultimately from instrumental {{der|sq|ine-pro|*kʷíh₁|*kʷí-h₁}}. Compare {{cog|la|qui||how, why}}, {{cog|ang|hwy|hwȳ}}, {{m|ang|hwi|hwī|why}}. An interrogative and relative pronoun, especially in connection with a preposition.
+
+===Pronunciation===
+* {{IPA|sq|[si]}}
+* {{audio|sq|LL-Q8748 (sqi)-Arianit-si.wav}}
+
+===Adverb===
+{{sq-adv}}
+
+# [[how]]; in what way; in what state
+#: {{uxa|sq|'''Si''' janë shokët e tu?|How are your friends?|inline=1}}
+# [[like]], [[as]]
+#: {{uxa|sq|'''Si''' e dini, nuk kemi filluar ende.|As you know, we've not yet begun.}}
+
+====Derived terms====
+{{col3|sq|disi|sido|sidoqoftë|cili|cila|sivjet|sesi}}
+
+===See also===
+* {{l|sq|qysh}}
+
+===References===
+{{reflist}}
+
+===Further reading===
+* {{R:sq:FMGSH:2026}}
+
+==Alemannic German==
+
+===Etymology 1===
+From {{inh|gsw|goh|siu}}, from {{inh|gsw|gem-pro|*iz|*sī}}. Cognate with {{cog|de|sie||she; it}}, {{cog|got|𐍃𐌹}}, {{cog|ang|seo|sēo}}.
+
+====Pronoun====
+{{head|gsw|pronouns|g=f|cat2=personal pronouns}}
+
+# [[she]]
+# [[it]] (for referents of the feminine grammatical gender)
+
+=====Declension=====
+{{gsw-personal pronouns}}
+
+===Etymology 2===
+From {{inh|gsw|goh|sie|g=m-p}}, {{m|goh|sio|g=f-p}}, {{m|goh|siu|g=n-p}}. Cognate with {{cog|de|sie}}, {{cog|nl|zij}}.
+
+====Pronoun====
+{{head|gsw|pronouns|g=p}}
+
+# [[they]]
+
+=====Declension=====
+{{gsw-personal pronouns}}
+
+===Etymology 3===
+From {{inh|gsw|gmh|sein}}, {{m|gmh|sin|sīn}}, from {{inh|gsw|goh|sin|sīn}}, from {{inh|gsw|gem-pro|*sīnaz}}. Cognate with {{cog|de|sein}}, {{cog|nl|zijn}}, {{cog|fy|syn}}, {{cog|is|sinn}}.
+
+====Alternative forms====
+* {{alter|gsw|siin}}
+
+====Determiner====
+{{head|gsw|determiners|cat2=possessive determiners}}
+
+# [[his]]
+
+=====Declension=====
+Inflected forms include:
+{| class="wikitable"
+! rowspan="2" |  !! colspan="3" | Singular !! rowspan="2" | Plural
+|-
+! masculine !! feminine !! neuter
+|-
+! Nominative<br /> Accusative
+| {{l|gsw|si}} || {{l|gsw|sini}} || {{l|gsw|si}} || {{l|gsw|sini}}
+|-
+! Genitive
+| {{l|gsw|sines}} & {{l|gsw|si's}} || <!-- {{l|gsw|siner}} ? --> || {{l|gsw|sines}} || <!-- {{l|gsw|siner}} ? -->
+|-
+! Dative
+| {{l|gsw|si'm}} & {{l|gsw|sim}} || {{l|gsw|siner}} || {{l|gsw|si'm}} & {{l|gsw|sim}} || {{l|gsw|sine}}
+|}
+
+===Etymology 4===
+From {{inh|gsw|gmh|sin|sīn}}, from {{inh|gsw|goh|sin|sīn}}. Cognate with {{cog|de|sein}}, {{cog|nl|zijn}}, {{cog|nds|sien}}.
+
+====Alternative forms====
+* {{alter|gsw|sii|siin|sinh|ŝchi}}
+
+====Verb====
+{{head|gsw|verbs}}
+
+# {{lb|gsw|Gressoney}} to [[be]]
+
+====References====
+* {{R:Patuzzi}}
+
+==Asturian==
+
+===Etymology===
+From {{inh|ast|la|si}}.
+
+===Conjunction===
+{{head|ast|conjunctions}}
+
+# [[if]]
+
+==Bahnar==
+
+===Etymology===
+From {{inh|bdq|mkh-ban-pro|*ciː}}, from {{inh|bdq|mkh-pro|*ciiʔ||louse}}; cognate with {{cog|vi|chí}}, {{m|vi|chấy}}.
+
+===Pronunciation===
+* {{IPA|bdq|/siː/}}
+
+===Noun===
+{{head|bdq|nouns}}
+
+# [[louse]]
+
+==Bambara==
+
+===Noun===
+{{head|bm|nouns}}
+
+# [[shea]].
+
+====Descendants====
+* {{desc|en|shea|bor=1}}
+
+==Bavarian==
+
+===Etymology===
+Cognate with {{cog|de|sich}}.
+
+===Pronunciation===
+* {{IPA|bar|/si(ː)/|q2=stressed|[siː]|q3=unstressed|[sɪ]|[se]}}
+* {{rhymes|bar|iː}}
+
+===Pronoun===
+{{head|bar|pronouns|cat2=personal pronouns}}
+
+# [[himself]], [[herself]], [[themselves]] {{q|accusative}}
+
+===See also===
+{{bar-personal pronouns}}
+
+==Belizean Creole==
+
+===Etymology===
+From {{der|bzj|en|see}}.
+
+===Verb===
+{{head|bzj|verbs}}
+
+# to [[see]]
+
+===References===
+* {{R:bzj:Dikshineri|315–316}}
+
+==Catalan==
+
+===Pronunciation===
+* {{ca-IPA}}
+* {{audio|ca|LL-Q7026 (cat)-Unjoanqualsevol-si.wav|a=Catalonia}}
+* {{homophones|ca|sí}}
+* {{rhymes|ca|i|s=1}}
+
+===Etymology 1===
+From {{inh|ca|roa-oca|si}}, from {{inh|ca|la|si||if}}.
+
+====Conjunction====
+{{head|ca|conjunctions}}
+
+# [[if]]
+
+====See also====
+* {{l|ca|si bé}}
+* {{l|ca|si de cas}}
+* {{l|ca|si doncs no}}
+* {{l|ca|si més no}}
+* {{l|ca|si no}}
+* {{l|ca|si per cas}}
+* {{l|ca|si et plau}}
+* {{l|ca|si us plau}}
+
+===Etymology 2===
+From {{der|ca|la|sancte|'''S'''ancte}} {{m|la|Iohannes|'''I'''ohannes|Saint John}} in the [[w:Ut queant laxis|hymn for St. John the Baptist]].
+
+====Noun====
+{{ca-noun|m}}
+
+# {{lb|ca|music}} {{l|en|si}} {{gloss|seventh note of a diatonic scale}}
+
+===Etymology 3===
+From {{inh|ca|roa-oca|si}}~{{m|roa-oca|sin}}, from {{inh|ca|la|sinus|sĭnus}}.
+
+====Noun====
+{{ca-noun|m|#ns}}
+
+# [[cavity]], [[depression]]
+# {{lb|ca|anatomy}} [[sinus]]
+# {{lb|ca|figuratively}} [[uterus]]
+# front portion of the [[breast]]
+# {{lb|ca|figuratively}} [[heart]]
+# [[estuary]], [[bay]]
+
+=====See also=====
+* {{l|ca|si d'Abraham|g=m}}
+
+===Etymology 4===
+From {{inh|ca|la|sibi|sĭbī}}.
+
+====Pronoun====
+{{ca-ppron}}
+
+# [[himself]], [[herself]], [[itself]]
+# [[oneself]]
+# [[themselves]]
+# [[each other]]
+
+=====Usage notes=====
+* {{m|ca||Si}} is the stressed (or "strong", or "tonic") form of the reflexive pronoun {{m|ca|es}}. As such, it is used after prepositions.
+
+=====Declension=====
+{{ca-personal pronouns}}
+
+=====See also=====
+* {{l|ca|de si mateix}}
+* {{l|ca|en si}}
+* {{l|ca|entre si}}
+* {{l|ca|fora de si}}
+* {{l|ca|per a si}}
+* {{l|ca|per si mateix}}
+* {{l|ca|tornar en si}}
+
+====See also====
+* {{l|ca|sí}}
+
+==Central Bikol==
+
+===Etymology===
+Compare {{cog|ch|si}}, {{cog|id|si}}, {{cog|ms|si}}, and {{cog|tl|si}}.
+
+===Pronunciation===
+* {{bcl-IPA}}
+* {{hyph|bcl|si}}
+
+===Article===
+{{bcl-head|article|b=+}}
+
+# {{n-g|direct marker placed before names or terms of address of people}}
+#: {{uxa|bcl|Nagdalagan '''si''' Juan.|Juan ran.}}
+#: {{uxa|bcl|Dinara ninda '''si''' Tatay sa ospital.|They brought Father to the hospital.}}
+# {{n-g|direct marker placed before an adjective used to refer to a person with those distinct characteristics}}
+#: {{uxa|bcl|Yaon na '''si''' Taba.|Fatso is here.|inline=1}}
+# {{lb|bcl|Naga}} {{n-g|direct marker placed before common nouns}}
+#: {{syn|bcl|su}}
+#: {{uxa|bcl|Kinua ko na '''si''' pakete.|I already got the package}}
+
+====See also====
+{{col3|bcl|sina|an}}
+
+==Central Franconian==
+
+===Alternative forms===
+* {{alt|gmw-cfr|sei|sein||Moselle Franconian}}
+
+===Etymology===
+From {{inh|gmw-cfr|gmh|sīn}}.
+
+===Pronunciation===
+* {{IPA|gmw-cfr|/ziː/|/zi/}}
+* {{homophones|gmw-cfr|sie}}
+
+===Determiner===
+{{head|gmw-cfr|determiners|masculine|senge|or|singe|feminine and plural|seng|or|sing}}
+
+# {{lb|gmw-cfr|Ripuarian}} [[his]], [[its]] {{gloss|third-person masculine and neuter possessive}}
+#: {{uxa|gmw-cfr|Wo hät e dann '''si''' Jlas henjestallt?|Where did he put '''his''' glass?}}
+
+====Usage notes====
+* The form {{m|gmw-cfr||seng/sing}} is used for the neuter when strongly stressed: {{m|gmw-cfr||Dat es ''sing'' Jlas!|That's ''his'' glass!}} Contrariwise, the form {{m|gmw-cfr||si}} may be used for the masculine and feminine when unstressed, chiefly with words for relatives: {{m|gmw-cfr||si Papp}} (“his father”, but less common than {{m|gmw-cfr||senge Papp}}).
+
+==Chamorro==
+
+===Etymology===
+Compare {{cog|bcl|si}}, {{cog|id|si}}, and {{cog|ms|si}}.
+
+===Preposition===
+{{head|ch|prepositions}}
+
+# {{n-g|Subject marker for personal names}}
+
+==Chavacano==
+
+===Etymology 1===
+{{inh+|cbk|es|sí}}.
+
+====Pronunciation====
+* {{cbk-IPA|si}}
+* {{cbk-IPA|sí}}
+* {{rhymes|cbk|si|i|s=1}}
+
+====Particle====
+{{head|cbk|particle}}
+
+# [[yes]]
+
+===Etymology 2===
+{{inh+|cbk|es|si||if}}.
+
+====Conjunction====
+{{head|cbk|conjunction}}
+
+# [[if]]
+
+===Etymology 3===
+Borrowed from various Philippine languages, notably [[Tagalog]], [[Cebuano]], [[Hiligaynon]], and others.
+
+====Article====
+{{cbk-head|article}}
+
+# {{n-g|direct marker placed before names or terms of address of people}}
+
+==Cimbrian==
+
+===Alternative forms===
+* {{alter|cim|zi||Sette Comuni}}
+
+===Etymology===
+From {{inh|cim|gmh|si|si(e)}}, from {{inh|cim|goh|siu}}, from {{inh|cim|gmw-pro|*sī}}, from {{inh|cim|gem-pro|*sī}}, nominative singular feminine of {{m|gem-pro|*iz}}. Cognate with {{cog|de|sie}}.
+
+===Pronoun===
+{{head|cim|pronouns|cat2=personal pronouns}}
+
+# {{lb|cim|Luserna}} [[she]], [[it]]
+
+====Inflection====
+{{cim-personal pronouns/Luserna}}
+
+===References===
+* {{R:CLM}}
+
+==Cornish==
+
+===Etymology 1===
+{{rfe|kw}}
+
+====Noun====
+{{kw-noun|m|r}}
+
+# [[hiss]], [[buzz]]
+
+=====Derived terms=====
+* {{l|kw|edhen si||hummingbird}}
+
+===Etymology 2===
+{{rfe|kw}}
+
+====Verb====
+{{head|kw|v}}
+
+# {{lb|kw|transitive}} to [[fancy]]
+
+=====Derived terms=====
+* {{l|kw|sians||notion, whim}}
+
+==Czech==
+
+===Etymology===
+{{ety|cs|:inh|sla-pro:*si|text=+|tree=1}}
+
+===Pronunciation===
+* {{cs-IPA}}
+* {{audio|cs|Cs-si.ogg}}
+* {{audio|cs|LL-Q9056 (ces)-Ghost4Man-si.wav}}
+
+===Pronoun===
+{{head|cs|pronoun forms|reflexive}}
+
+# {{infl of|cs|sebe||clitic|dat}}:
+#: to [[oneself]]
+#: to [[myself]]
+#: to [[yourself]]
+#:: {{uxa|cs|Posluž '''si'''.|Serve yourself.}}
+#: to [[himself]]
+#: to [[herself]]
+#: to [[itself]]
+#: to [[ourselves]]
+#: to [[yourselves]]
+#: to [[themselves]]
+#: {{syn|cs|sobě<q:stressed>}}
+
+===Further reading===
+* {{R:cs:PSJC}}
+* {{R:cs:SSJC}}
+
+==Dalmatian==
+{{cardinalbox|dlm|5|6|7|cionco|siapto}}
+
+===Etymology===
+From {{inh|dlm|la|sex}}.
+
+===Numeral===
+{{head|dlm|numerals}}
+
+# [[six]]
+
+{{catlangname|dlm|cardinal numbers}}
+
+==Danish==
+{{wp|da:}}
+
+===Etymology===
+From {{inh|da|non|sía||to sieve, filter}}.
+
+===Pronunciation===
+* {{IPA|da|/siː/|[siːˀ]}}
+* {{rhymes|da|i}}
+* {{rhymes|da|iː}}
+
+===Noun===
+{{da-noun|en|er}}
+
+# [[sieve]]
+# [[strainer]]
+# [[colander]]
+
+====Inflection====
+{{da-noun-infl|en|er}}
+
+===Verb===
+{{da-verb|si|si|sier|siede|har|siet}}
+
+# [[sieve]]
+# [[strain]]
+# [[sift]]
+
+==Dutch==
+
+===Pronunciation===
+* {{IPA|nl|/si/}}
+* {{audio|nl|Nl-si.ogg}}
+* {{hyphenation|nl|si}}
+* {{rhymes|nl|i}}
+
+===Noun===
+{{nl-noun|f|-'s|+}}
+
+# musical note; [[ti]]
+
+===Anagrams===
+* {{l|nl|is}}
+
+==Esperanto==
+
+===Etymology===
+From {{der|eo|it|si}}, {{der|eo|fr|soi}}, {{der|eo|es|se}}, {{der|eo|la|se}}, plus the ''i'' of personal pronouns.
+
+===Pronunciation===
+{{eo-pr|a=Eo-si.ogg;LL-Q143 (epo)-Lepticed7-si.wav;LL-Q143 (epo)-Robin van der Vliet-si.wav}}
+
+===Pronoun===
+{{head|eo|pronouns|reflexive||accusative|sin|possessive|sia}}
+
+# [[himself]], [[herself]], [[itself]], [[themselves]], [[oneself]]
+
+====Usage notes====
+The reflexive pronoun ''si'' is only used to refer to the third person (In English: [[he]]/[[she]]/[[it]]/[[they]]) not the first or second person (In English: [[I]]/[[we]]/[[you]]). When the subject of a sentence is first or second person, the same pronoun is repeated (with the accusative ending {{m|eo|-n}} added if needed) instead of using ''si''. (E.g. "they wash '''themselves'''" is ''ili lavas '''sin''''', but "I wash '''myself'''" is ''mi lavas '''min''''', instead of *''mi lavas sin''.)
+
+===See also===
+{{eo-personal pronouns}}
+
+===Further reading===
+* {{R:eo:PIV 2020}}
+* {{R:eo:ReVo}}
+
+{{eo BRO|1}}
+
+==Ewe==
+
+===Verb===
+{{head|ee|verbs}}
+
+# to [[escape]]
+
+==Fala==
+
+===Etymology 1===
+{{ety|fax|:inh|roa-opt:se<ety:inh<la:si<alt:sī><t:if>>>|text=2|tree=1}}
+
+====Conjunction====
+{{head|fax|conjunctions}}
+
+# [[if]] {{gloss|used to introduce a condition or choice}}
+#* {{quote-book|fax|year=2000|author=Domingo Frades Gaspar|title=Vamus a falal: Notas pâ coñocel y platical en nosa fala|publisher=Editora regional da Extremadura|section=Theme I, Chapter 1: Lengua Española|passage=I '''si''' “a patria do homi é sua lengua”, cumu idía Albert Camus, o que está claru é que a lengua está mui por encima de fronteiras, serras, rius i maris, de situaciós pulíticas i sociu-económicas, de lazus religiosus e inclusu familiaris.|translation=And '''if''' “a man’s homeland is his language”, as Albert Camus said, what is clear is that language is above borders, mountain ranges, rivers and seas, above political and socio-economic situations, of religious and even family ties.}}
+
+===Etymology 2===
+
+====Pronoun====
+{{head|fax|pronouns}}
+
+# {{alt form|fax|se}}
+#* {{quote-book|fax|year=2000|author=Domingo Frades Gaspar|title=Vamus a falal: Notas pâ coñocel y platical en nosa fala|publisher=Editora regional da Extremadura|section=Theme I, Chapter 2: Númerus?|passage=As lenguas, idiomas, dialectus o falas tenin un-as funciós mui claras desde o principiu dos siglu i '''si''' hai contabilizaus en o mundu un-as 8.000 lenguas, ca un-a con sua importancia numérica relativa, a nossa fala é un tesoiru mais entre elas.|translation=The tongues, languages or regional variants have some very clear functions since the beginning of the centuries and some 8,000 languages have been accounted for in the world, each with its relative numerical importance, Fala is yet another treasure among them.}}
+
+==French==
+{{phrasebook|fr}}
+
+===Pronunciation===
+* {{fr-IPA}}
+** {{audio|fr|Fr-si.ogg}}
+** {{audio|fr|LL-Q150 (fra)-GrandCelinien-si.wav|a=<<France>> (<<Paris>>)}}
+** {{audio|fr|LL-Q150 (fra)-Lepticed7-si.wav|a=<<France>> (<<Toulouse>>)}}
+** {{audio|fr|LL-Q150 (fra)-LoquaxFR-si.wav|a=<<France>> (<<Vosges>>)}}
+** {{audio|fr|LL-Q150 (fra)-Mecanautes-si.wav|a=France}}
+** {{audio|fr|LL-Q150 (fra)-Opsylac-si.wav|a=<<France>> (<<Grenoble>>)}}
+** {{audio|fr|LL-Q150 (fra)-Penegal-si.wav|a=<<France>> (<<Vosges>>)}}
+** {{audio|fr|LL-Q150 (fra)-Poslovitch-si.wav|a=<<France>> (<<Vosges>>)}}
+** {{audio|fr|LL-Q150 (fra)-T. Le Berre-si.wav|a=<<France>> (<<Hérault>>)}}
+** {{audio|fr|LL-Q150 (fra)-WikiLucas00-si.wav|a=<<France>> (<<Lyon>>)}}
+** {{audio|fr|LL-Q150 (fra)-X-Javier-si.wav|a=<<France>> (<<Massy>>)}}
+** {{hmp|fr|ci|scie|scient|scies}}
+
+===Etymology 1===
+From {{inh|fr|fro|se}}, from {{inh|fr|la|si||if}}.
+
+====Conjunction====
+{{head|fr|conjunctions}}
+
+# {{sid|fr|if_whether}} [[if]], [[whether]]
+#: {{uxa|fr|Je me demande '''si''' elle sera seule.|t=I wonder '''if''' she'll be alone.}}
+#: {{uxa|fr|Je veux savoir '''si''' tu viendras ou non.|t=I want to know '''if''' you're coming or not.}}
+# {{sid|fr|if_assuming_that}} [[if]] {{gl|assuming that}}
+#: {{uxa|fr|'''Si''' j'avais ses pouvoirs, je créerais un monde où le mal n'existe pas.|'''If''' I had his power, I'd create a world where evil didn't exist.}}
+#: {{uxa|fr|'''Si''' tu n'avais pas appelé, je serais morte.|'''If''' you hadn't called, I'd be dead.}}
+# {{sid|fr|even_if}} [[even if]]
+# {{sid|fr|although}} [[although]], [[while]]
+
+=====Usage notes=====
+* This term is elided preceding {{m|fr|il}} or {{m|fr|ils}}, resulting in the contracted forms {{m|fr|s'il}} and {{m|fr|s'ils}}.
+
+=====Derived terms=====
+{{col4|fr
+|avec des si on mettrait Paris en bouteille
+|comme si
+|même si
+|si ce n'est
+|si et seulement si
+|si possible
+|si seulement
+|sinon
+}}
+
+=====Descendants=====
+* {{desc|ht|si}}
+* {{desc|mfe|si}}
+
+===Etymology 2===
+From {{inh|fr|fro|si}}, from {{inh|fr|la|sic||so, thus}}. {{doublet|fr|sic}}.
+
+====Interjection====
+{{fr-intj}}
+
+# {{sid|fr|contradicting_yes}} [[yes]] {{q|used to contradict a negative statement}}
+#: {{syn|fr|si fait<q:archaic>}}
+#: {{uxa|fr|Tu ne m’aimes pas, n’est-ce pas ? — '''Si''' !|t=You don’t like me, do you? — '''Yes, I do'''!}}
+#: {{uxa|fr|Moi, je n'ai rien fait ! — '''Si''' !|t=I didn't do anything! — '''Yes, you did'''!}}
+
+=====Usage notes=====
+* This usage is uncommon in {{w|Quebec French|Quebec}}, where most speakers instead use ''{{l|fr|oui|t=yes}}'' or, for greater emphasis, ''{{l|fr|ben}} oui'', ''{{l|fr|mais}} oui'' ("well yes"), etc.
+* Additionally, this usage is not employed at all in {{w|Louisiana French|Louisiana}} and has been entirely supplanted by the likes of ''{{l|fr|ouais|t=yeah}}'' and, less commonly, ''{{l|fr|oui|t=yes}}''.
+
+=====Descendants=====
+* {{desc|mfe|si}}
+
+====Adverb====
+{{fr-adv}}
+
+# {{sid|fr|intensifier}} [[so]], [[such]] {{gl|intensifier}}
+#: {{uxa|fr|J’étais '''si''' fatigué ces jours-ci que je n’avais pas le courage de vous écrire.|t=I was '''so''' tired those days that I didn't have the energy to write to you.}}
+#: {{uxa|fr|Cela n'aurait pas été une '''si''' bonne idée.|t=That wouldn't have been '''such''' a good idea.}}
+# {{sid|fr|however}} {{q|si + adjective/adverb + que ... }} [[however]] {{gl|to whatever extent or degree}}
+#: {{syn|fr|aussi|tout|quelque}}
+#: {{uxa|fr|'''Si''' bavard qu'il soit, il ne dit rien de stupide.|t='''However''' talkative he may be, he doesn't say anything stupid.}}
+#* {{quote-book|fr|year=2017|author=Luc Brisson|title=Platon|passage=Mais un législateur qui aurait un tant soit peu de worth, '''si''' infime soit elle, quand bien même il n'en irait pas comme l'argument vient de le démontrer, n'aurait-il pas commis en cette occasion, plus qu'en n'importe quelle autre circonstance où il aurait eu l'audace de mentir aux jeunes gens dans l'intérêt du bien, son plus utile mensonge, celui capable de faire que tous, non pas de force mais de leur plein gré, se conduisent de façon entièrement juste ?|translation=But a legislator who would have the slightest bit of valour, '''however''' tiny it may be, even if it were not as the argument has just demonstrated, would he not have committed on this occasion, more than in any other circumstance where he would have had the audacity to lie to young people in the interest of the good, his most useful lie, the one capable of making everyone, not by force but of their own accord, behave in an entirely just fashion?}}
+
+=====Usage notes=====
+* In the sense {{m|en|however}}, the verb is usually in the {{lg|subjunctive}}.
+* The {{m|fr|que}} is sometimes replaced by an inverted-subject construction with a subjunctive verbal element and {{l|en|nominal|id=POS}}, usually a [[personal pronoun]].
+*: {{uxa|inline=1|fr|si heureuse soit-elle|however happy she may be}}
+*: {{uxa|inline=1|fr|si faible paraisse-t-il|however weak he may seem}}
+
+===Etymology 3===
+
+====Noun====
+{{fr-noun|m|#}}
+
+# {{lb|fr|music}} {{l|en|si}}, the note 'B'
+
+=====Derived terms=====
+* {{l|fr|si majeur}}
+
+===Further reading===
+* {{R:fr:TLFi}}
+
+{{cln|fr|subordinating conjunctions}}
+
+==Friulian==
+
+===Etymology===
+From {{inh|fur|la|se}}.
+
+===Pronoun===
+{{head|fur|pronouns|third person}}
+
+# {{lb|fur|reflexive pronoun}} [[himself]], [[herself]]
+
+====Related terms====
+* {{l|fur|lui}}
+* {{l|fur|jê}}
+
+==Galician==
+[[File:Camilo_Díaz_Baliño_Estatuto_de_Galicia,_sí.jpg|thumb|"Statute of Galicia: [vote] yes", pro-Galician devolved government, 1936]]
+
+===Pronunciation===
+{{gl-pr}}
+* {{hyph|gl|si}}
+
+===Etymology 1===
+{{ety|gl|:inh|la:sic<alt:sīc>|text=+|tree=1}}
+
+====Interjection====
+{{head|gl|interjections}}
+
+# [[yes]]
+#: {{ant|gl|non}}
+
+===Etymology 2===
+From {{inh|gl|la|se|sē}}, [[Appendix:Glossary#ablative case|ablative]] and [[Appendix:Glossary#accusative case|accusative]] pronoun form.
+
+====Pronoun====
+{{gl-pron|acc=se|dat=se}}
+
+# [[himself]], [[herself]], [[itself]]
+# [[themselves]]
+
+=====Usage notes=====
+The pronoun {{m|gl||si}} is used exclusively as the object of a preposition; no nominative form exists.
+
+===Etymology 3===
+{{rfe|gl}}<!--kjust phonetic spelling right? of /si/-->
+
+====Noun====
+{{gl-noun|m}}
+
+# {{lb|gl|music}} {{l|en|si}} {{qualifier|musical note}}
+# {{lb|gl|music}} [[B]] (the musical note or key)
+
+=====See also=====
+{{list:musical solfège notes/gl}}
+
+==Gothic==
+
+===Romanization===
+{{got-rom}}
+
+# {{romanization of|got|𐍃𐌹}}
+
+==Guinea-Bissau Creole==
+
+===Etymology===
+From {{inh|pov|pt|se}}. Cognate with {{cog|kea|si}}.
+
+===Conjunction===
+{{head|pov|conjunctions}}
+
+# [[if]]
+
+==Haitian Creole==
+
+===Pronunciation===
+* {{IPA|ht|/si/}}
+
+===Etymology 1===
+From {{inh|ht|fr|si|t=if}}.
+
+====Conjunction====
+{{head|ht|conjunctions}}
+
+# [[if]]
+
+===Etymology 2===
+From {{inh|ht|fr|scie|t=saw}}.
+
+====Noun====
+{{head|ht|noun}}
+
+# [[saw]] {{gl|tool for cutting}}
+
+===Etymology 3===
+From {{inh|ht|fr|sûr|t=sure}}.
+
+====Adjective====
+{{head|ht|adjective}}
+
+# [[sure]]
+# [[trustworthy]], [[reliable]]
+
+=====Related terms=====
+{{col|ht|siman}}
+
+===Etymology 4===
+From {{inh|ht|fr|sur|t=sour}}.
+
+====Adjective====
+{{head|ht|adjective}}
+
+# [[sour]]
+
+===References===
+* {{R:ht:Targète|page=178-179}}
+
+{{C|ht|Tools}}
+
+==Hanunoo==
+
+===Etymology===
+From {{inh|hnn|map-pro|*si}}.
+
+===Pronunciation===
+{{hnn-pr}}
+
+===Article===
+{{hnn-head|article|b=+}}
+
+# {{n-g|a form preposed to personal names}}
+#: {{uxa|hnn|'''Si''' Gawid|Gawid}}
+#: {{uxa|hnn|Sintay '''si''' Luyon?|Who is Luyon?}}
+#: {{uxa|hnn|Kang manok '''si''' manayti.|My bird the manayti (small bird)}}
+
+====See also====
+{{col3|hnn|ni|ti|kay|kan}}
+
+===Further reading===
+* {{R:hnn:Conklin 1953|page=244}}
+
+==Iau==
+
+===Noun===
+{{head|tmu|noun}}
+
+# [[woman]]
+
+===References===
+* {{R:Palmer:2018|page=531}}
+
+==Ido==
+
+===Etymology===
+{{io-bor|it=sì|es=sí}}
+
+===Pronunciation===
+{{io-IPA}}
+
+===Adverb===
+{{head|io|adverb}} {{tlb|io|archaic}}
+
+# {{l|en|yes}}
+#: {{syn|io|yes}}
+#: {{ant|io|no}}
+
+===References===
+* {{R:io:Progreso|1|p=10}}
+
+==Indonesian==
+
+===Pronunciation===
+{{id-pr|audio=LL-Q9240 (ind)-Diahasy-si.wav}}
+
+===Etymology 1===
+{{inh+|id|ms|si}}, from {{inh|id|map-pro|*si}}. Compare {{cog|bcl|si}}, {{cog|ch|si}}, and  {{cog|tl|si}}.
+
+====Article====
+{{head|id|articles}}
+
+# {{ng|definite article used before the names of those with whom the speaker and interlocutor is intimate or familiar with}}
+#: {{uxa|id|Tiada satupun yang berani pada '''si''' Tigor pemberani.|No one dared to oppose '''the brave Tigor'''.|inline=1}}
+#: {{uxa|id|Kukatakan pada '''si''' Yopi kecil, janganlah marah|I said to '''little Yopi''', don't angry.|inline=1}}
+#: {{uxa|id|Kudengar bahwa '''si''' Tuti besar sedang sakit|I hear that '''big Tuti''' is ill.|inline=1}}
+# {{ng|definite article used before a noun referring to a particular person with a particular characteristic}}
+#: {{uxa|id|'''Si''' penjual jamu itu cantik sekali.|'''That''' jamu seller is very pretty.|inline=1}}
+#: {{uxa|id|Dia tertawa dengan '''si''' orang asing itu.|She was laughing with '''the''' foreigner.|inline=1}}
+#: {{uxa|id|'''Si''' pemuda itu tersenyum lebar lalu pergi.|'''The''' young man smiled broadly then left.|inline=1}}
+# {{ng|definite article used before a nickname, typically for a subject whose well-known attributes are referred to by an adjective}}
+#: {{uxa|id|Namanya '''si''' Putih|The name is '''Whitey'''.|inline=1}}
+#: {{uxa|id|'''Si''' Gendut|'''The Fatso'''|inline=1}}
+#: {{uxa|id|Si Goblok|'''The Old Muttonhead'''|inline=1}}
+# {{ng|definite article used before animals}}
+#: {{uxa|id|si kucing|'''the''' cat|inline=1}}
+
+=====Usage notes=====
+Only used for singular nouns/proper nouns.
+
+===Etymology 2===
+{{bor+|id|bew}}.
+
+====Particle====
+{{head|id|pcl}}
+
+# {{ng|Used following [[question word|interrogative words]] for [[emphasis]]}}
+#: {{syn|id|[[-kah|kah]]|sih|tah}}
+#: {{uxi|id|Apa '''si''' yang dicari?|What '''is it''' that (you) look for?}}
+# {{lb|id|modal}} {{ng|Used to express [[verity]] based on the speaker's sentiment, often indicates certain [[contrast]]}}: [[truly]], [[actually]]; [[after all]], [[so]]
+#: {{syn|id|memang|sebenarnya|sih}}
+#: {{uxi|id|Tidak apalah, saya '''si''' tidak salah.|That's okay. I'm not at fault, '''after all'''.}}
+
+=====Alternative forms=====
+* {{l|id|sih}}
+
+===Etymology 3===
+From {{der|id|it|si}} in the solmization of Guido of Arezzo, from the initials of {{der|id|la|Sāncte Iohannēs|t=Saint John (the Baptist)}} in the lyrics of the scale-ascending hymn ''{{w|Ut queant laxis}}'' by Paulus Deacon; thus, also an {{init|la|Sāncte Iohannēs|nocap=1|nocat=1}}.
+
+====Noun====
+{{head|id|noun}}
+
+# {{lb|id|music}} {{l|en|si}}: seventh note of a major scale
+
+===Etymology 4===
+
+====Noun====
+{{head|id|noun}}
+
+# {{lb|id|police}} {{apheretic form of|id|seksi|t=section}}
+
+===Etymology 5===
+{{ubor|id|ja|-}} {{ja-r|市|し|t=city}}. Romanised according modified {{w|Kunrei-shiki romanization}}.
+
+====Noun====
+{{head|id|noun}}
+
+# {{lb|id|historical|1942-1945}} {{syn of|id|kota|t=city}}
+
+===Further reading===
+* {{R:KBBI Daring}}
+
+==Interlingua==
+
+===Adverb===
+{{head|ia|adverbs}}
+
+# [[yes]]
+
+==Italian==
+
+===Etymology 1===
+{{etymon|it|id=pronoun|:inh|la:se}}
+From {{inh|it|la|se||pos=reflexive third-person pronoun|him-, her-, it-, themselves}}. Cognate with {{cog|es|se}} and {{cog|pt|se}} and {{m|pt|si}}.
+
+====Alternative forms====
+* {{alt|it|-si||enclitic}}
+* {{alt|it|se||before an accusative particle, or [[ne]]}}
+* {{alt|it|ci||before another [[si]]}}
+
+====Pronunciation====
+{{it-pr|si̇°<r:DiPI<<name:dipi>>>,si̇<r:DOP:lid#1082792><audio:It-si.ogg><rhyme:->}}
+
+====Pronoun====
+{{head|it|pronouns}}
+
+# {{senseid|it|reflexive}} {{lb|it|reflexive pronoun}} [[oneself]], [[himself]], [[herself]], [[itself]], [[themselves]]
+#: {{uxa|inline=1|it|Il tuo gatto '''si''' lava sul mio letto.|Your cat cleans '''himself'''/'''itself''' on my bed.}}
+#: {{uxa|inline=1|it|La tua gatta '''si''' lava sul mio letto.|Your cat cleans '''herself''' on my bed.}}
+#: {{uxa|inline=1|it|Marco '''si''' è rotto il braccio.|Marco has broken '''his''' arm.}}
+# {{senseid|it|reciprocal}} {{lb|it|reciprocal pronoun}} [[each other]], [[one another]]
+#: {{uxa|inline=1|it|Carlo e Laura '''si''' amano.|Carlo and Laura love '''each other'''.}}
+# {{senseid|it|indefinite}} {{lb|it|indefinite}} [[one]], [[you]], [[we]], [[they]], [[people]]
+#: {{uxa|inline=1|it|In Italia '''si''' pranza intorno all'una.|In Italy '''they''' eat lunch around 13.}}
+#: {{uxa|inline=1|it|In Italia '''si''' tende ad andare a letto tardi.|In Italy, '''people''' tend to go to bed late.}}
+#: {{uxa|inline=1|it|'''Si''' dice che Maria volesse uccidere Giovanni.|'''It is''' said that Maria wanted to kill Giovanni.}}
+#: {{uxa|inline=1|it|Da questa finestra '''si''' vede la banca.|From this window, '''one''' can see the bank.}}
+# {{senseid|it|passive}} {{lb|it|si passivante}} {{n-g|Used to form the [[passive voice]] of a verb}}; [[it]]
+#: {{uxa|inline=1|it|'''Si''' vende latte.'' / ''Vende'''si''' latte.|Milk for sale.}}
+#: {{uxa|inline=1|it|Non '''si''' accettano carte di credito.|Credit cards are not accepted.}}
+# {{senseid|it|first person}} {{lb|it|dialectal|notably|_|Rome}} {{n-g|reflexive and reciprocal first person pronoun, where Standard Italian uses {{m|it|ci}}}}
+#: {{uxa|it|'''Se''' semo fatti sei chilometri [[a fette]].|q=[[farsi|'''Ci''' siamo fatti]] sei chilometri [[a piedi]].|We walked for six kilometers.}}
+#: {{uxa|it|Volemo'''se''' bene.|q=Vogliamo'''ci''' bene.|Let's love each other.}}
+#: {{uxa|it|'''Se''' la [[smezzare|smezzamo]]?|q='''Ce''' la dividiamo?|Do you want to split?}}
+#* {{quote-book|it|author=Matteo Maria Boiardo|title=Orlando Innamorato|year=1483|section=I, XVIII|lines=37–39|text=Ambo '''se''' poseremo in questo prato <br> e domatina, come il giorno pare, <br> ritornaremo insieme a battagliare.|t=We will both lie down in this meadow <br> and tomorrow morning, when the day appears, <br> together we will go back to fight.}}
+
+=====Usage notes=====
+* When {{m|it|si}} is part of an infinitive, it can be placed before it as a separate word, but more often it is attached to the end. In this case, the final -''e'' of the infinitive is dropped, or, in the case of infinitives ending in -''rre'', the final -''re'' is dropped. Examples: {{m|it|amare|amar(e)}} + {{m|it|si}} = {{m|it|amarsi}}; {{m|it|ridurre|ridur(re)}} + {{m|it|si}} = {{m|it|ridursi}}.
+* Often translated using the passive voice in English when used as indefinite personal pronoun:
+*: {{uxa|it|Si dice che {{...}}|It is said that {{...}}}}
+* ''Verb'' + {{m|it|si}} is often translated as {{m|en|become}} or {{m|en|get}} + [past participle] in English.
+* In cases where {{m|it|si|pos=indefinite pronoun}} and {{m|it|si|pos=reflexive pronoun}} follow each other, the first {{m|it|si}} is replaced with {{m|it|ci}}:
+*: {{uxa|inline=1|it|Ci si lava.|One washes oneself.}}
+*: (instead of: ''{{lang|it|*Si si lava.}}'')
+* Becomes {{m|it|se}} when followed by a third-person direct object clitic ({{m|it|lo}}, {{m|it|la}}, {{m|it|li}}, {{m|it|le}}, or {{m|it|ne}}).
+
+====See also====
+{{it-personal pronouns}}
+
+===Etymology 2===
+{{ety|it|id=note|rfe=1}}
+
+====Pronunciation====
+{{it-pr|sì°<r:<<name:dipi>>>,#sì*<r:<<name:dipi>>><r:DOP:lid#1082793>}}
+
+====Noun====
+{{it-noun|m|#}}
+
+# {{lb|it|music}} {{l|en|si}} {{gloss|musical note B}}
+
+===References===
+{{reflist}}
+
+==Jamaican Creole==
+
+===Etymology===
+{{der+|jam|en|see}}.
+
+===Pronunciation===
+* {{IPA|jam|/si/}}
+
+===Verb===
+{{jam-verb}}
+
+# to [[see]]
+#: {{uxa|jam|Mi wuda laik '''si''' im tu.|I'd like to '''see''' him too.}}
+
+===Preposition===
+{{h|jam|prep}}
+
+# {{ng|(Used with {{m|jam|ya}})}} Here is; here are.
+#: {{uxa|jam|'''Si''' Jan '''ya'''.|'''Here is''' John.}}
+#: {{uxa|jam|'''Si''' yu buk-dem '''ya'''.|'''Here are''' your books.}}
+
+===Further reading===
+* {{R:jam:majstro.com}}
+
+==Japanese==
+
+===Romanization===
+{{ja-romaji}}
+
+# {{Latn-def|ja|syllable|-|スィ|si}}
+
+==Japhug==
+
+===Pronunciation===
+* {{IPA|sit-jap|/si/}}
+
+===Etymology 1===
+From {{inh|sit-jap|sit-pro|*sij||to die}}. Cognate with {{cog|bo|ཤི}}, {{cog|zh|-}} {{och-l|死}}.<ref>{{R:sit:Zhang Jacques Lai 2019|89}}</ref>
+
+====Verb====
+{{head|sit-jap|verb}}
+
+# {{lb|sit-jap|Kamnyu|intransitive}} to [[die]]
+
+===Etymology 2===
+From {{inh|sit-jap|sit-pro|*siŋ ~ sik|*siŋ ~ *sik|tree; wood; firewood}}. Cognate with {{cog|bo|ཤིང||tree}}, {{cog|zh|-}} {{och-l|薪|firewood}}, {{cog|txg|𗝠||tree}}.<ref>{{R:sit:Zhang Jacques Lai 2019|85}}</ref><ref>{{R:txg:Jacques 2014|100}}</ref>
+
+====Noun====
+{{head|sit-jap|noun}}
+
+# {{lb|sit-jap|Kamnyu}} [[tree]]
+# {{lb|sit-jap|Kamnyu}} [[wood]]
+
+===References===
+<references />
+* Guillaume Jacques, ''Argument Demotion in Japhug Rgyalrong'' (2012)
+* {{R:sit-jap:Jacques2021}}
+
+==Judeo-Tat==
+{{number box|jdt|30}}
+
+===Etymology===
+{{ety|jdt|:inh|fa-cls:سِی<id:thirty>|text=+|tree=1}}
+
+===Pronunciation===
+* {{jdt-IPA}}
+
+===Numeral===
+{{head|jdt|numeral}}
+
+# {{cln|jdt|cardinal numbers}} [[thirty]]
+
+====Coordinate terms====
+{{jdt-cardinals}}
+
+===References===
+* {{R:jdt:Agarunov|page=226}}
+* {{R:jdt:Naftaliev|page=443}}
+
+==Kabuverdianu==
+
+===Etymology 1===
+{{ety|kea|id=if|:der|pt:se|text=+|tree=1}}
+
+====Conjunction====
+{{head|kea|conjunctions}}
+
+# [[if]]
+
+===Etymology 2===
+{{ety|kea|id=yes|:der|pt:sim|text=+|tree=1}}
+
+====Adverb====
+{{head|kea|adverbs}}
+
+# [[yes]]
+
+==Kankanaey==
+
+===Alternative forms===
+* {{alt|kne|sis}}
+
+===Pronunciation===
+{{kne-pr}}
+
+===Article===
+{{kne-head|article}}
+
+# {{n-g|{{glossary|oblique}} argument, specifically a common {{glossary|nominal}} {{glossary|indefinite}} marker}}
+
+====Synonyms====
+{{dial syn|kne}}
+
+====See also====
+* {{list helper 2|title=oblique arguments|list={{l-self|kne|sin}}, {{l-self|kne|si}}, {{l-self|kne|sis}}, {{l-self|kne|ed}}, {{l-self|kne|en}}, {{l-self|kne|en da}}}}
+
+===References===
+* {{R:kne:Grammar|page=128}}
+
+==Khumi Chin==
+[[Image:Indian Gaur from anaimalai hills JEG5290.jpg|thumb|Si.]]
+
+===Pronunciation===
+* {{IPA|cnk|/sʰi˩/}}
+
+===Noun===
+{{head|cnk|nouns}}
+
+# wild [[cow]]
+
+===References===
+* {{R:cnk:Herr:2011|page=50}}
+
+{{C|cnk|Bovines}}
+
+==Koro (India)==
+
+===Noun===
+{{head|jkr|nouns}}
+
+# [[water]]
+
+===References===
+* Roger Blench, Mark Post, ''(De)classifying Arunachal languages: Reconstructing the evidence'' (2011)
+
+==Kosarek Yale==
+
+===Noun===
+{{head|kkl|noun}}
+
+# [[tooth]]
+
+===References===
+* Andrew Pawley et al., "The Trans New Guinea family", in ''The Languages and Linguistics of the New Guinea Area: A Comprehensive Guide'' (2018, {{ISBN|978-3-11-028642-7}})
+* [https://asjp.clld.org/languages/YALE_KOSAREK ASJP]
+
+==Kusaal==
+
+===Etymology===
+from {{bor|kus|fr|scie||saw}}
+
+===Noun===
+{{head|kus|nouns}}
+
+# [[saw]] {{gloss|tool}}
+
+==Ladin==
+
+===Etymology===
+From {{inh|lld|la|se|sē}}.
+
+===Adjective===
+{{head|lld|adjectives}}
+
+# {{lb|lld|possessive}} [[his]], [[her]], [[hers]], [[its]], [[their]]
+
+==Ladino==
+
+===Pronunciation===
+* {{audio|lad|lad-si.ogg|a=Spain}} 
+
+===Etymology 1===
+{{inh+|lad|osp|si||if}}.
+
+====Conjunction====
+{{lad-conj|heb=סי}}<ref name="Folkmasa">{{R:lad:Folkmasa}}</ref>
+
+# {{l|en|if}} ({{l|en|supposing}} that)
+
+===Etymology 2===
+{{inh+|lad|osp|si||oneself}}.
+
+====Pronoun====
+{{head|lad|reflexive pronoun|Hebrew spelling|סי}}<ref name="Folkmasa"/>
+
+# {{l|en|oneself}}; {{l|en|herself}}; {{l|en|itself}}; {{l|en|himself}}; {{l|en|themselves}} {{gloss|form of {{m|lad|se}} used after prepositions}}
+
+===Etymology 3===
+{{inh+|lad|osp|si||yea}}.
+
+====Particle====
+{{head|lad|particle|Hebrew spelling|סי|cat2=phrasebook}}<ref name="Folkmasa"/>
+
+# {{l|en|yes}}; {{l|en|aye}} {{q|commonly used to respond affirmatively to a question}}
+#: {{ant|lad|no}}
+
+====References====
+<references/>
+
+==Latin==
+
+===Alternative forms===
+* {{alter|la|sei||standard in Republican spelling}}
+* {{alter|la|se||Merovingian}}
+
+===Etymology===
+{{etymon|la|:inh|itc-pro:*sei}}
+From {{inh|la|itc-pro|*sei||so, thus}} used in [[parataxis]], likely via the meaning "in this" as the locative singular of {{der|la|ine-pro|*só||this, that}}; this older meaning is preserved in {{cog|la|sic|sīc}} as well as in the oath {{m|la|si dis placet|sī dīs placet}}, cf. {{ncog|en|so help me God}}.<ref>{{R:itc:EDL|page=561|head=sī, sīc}}</ref> Related to {{m+|ang|sē||he, that}}.
+
+===Pronunciation===
+* {{la-IPA|sī}}
+
+===Conjunction===
+{{head|la|conjunctions|head=sī}}
+
+# [[if]], [[supposing]] that
+#: {{uxa|la|'''Sī''' versūs hōrum duōrum poētārum neglegētis, magnā parte litterārum carēbitis.|'''If''' you neglect the verses of these two poets, you will miss a great part of literature.}}
+#: {{uxa|la| '''Sī''' vis pacem, para bellum.|'''If''' you want peace, prepare for war.}}
+# [[whether]] {{gloss|when a verb of ''seeing'' or ''trying'' is the main verb in the apodosis; or when ''sī'' is used twice correlatively}}
+#: {{uxa|inline=1|la|'''sī'''... '''sī'''|'''whether'''... '''or'''}}
+
+====Derived terms====
+{{col|la
+|sīc<t:so, thus>
+|sīcut<t:as>
+|sīs<t:if you will>
+|sīve,seu<t:disjunctive ''sī''>
+|sōdēs<t:if you will>
+|ac sī<t:just as if>
+|nisi<t:unless>
+|quasi<t:as if, like>
+|[[si aliter|sī(n) aliter]]<t:if otherwise>
+|sī dīs placet<t:expr. of indignant surprise>
+|sīcubi<t:if anywhere>
+|sīcunde<t:if from anywhere>
+|sīn<t:if however>
+|sī mē amās<t:please>
+|sī minus<t:if not>
+|sī modo<t:provided that>
+|sī nōn<t:if not>
+|sī̆ quandō<t:if ever>
+|sī̆ quidem<t:if/since indeed>
+|sī quis,sī quid<t:if anybody/anything>
+|sī vīs<t:if you like>
+|sī vīvō<t:as sure as I'm alive>
+|sī nōndum<t:if not yet>
+}}
+
+====Descendants====
+{{top2}}
+* {{desc|rup|si}}
+* {{desc|ca|si}}
+* {{desc|frp|se}}
+* {{desc|fr|si}}
+* {{desc|fur|se}}
+* {{desc|gl|se}}
+* {{desc|it|se}}
+* {{desc|oc|se}}
+* {{desc|pt|se}}
+** {{desc|pov|si}}
+** {{desc|kea|si}}
+** {{desc|pap|si}}
+* {{desc|ro|să}}
+* {{desc|rm|sche}}
+* {{desc|scn|si}}
+* {{desc|es|si}}
+{{bottom}}
+
+===References===
+<references />
+
+===Further reading===
+* [https://www.perseus.tufts.edu/hopper/text?doc=Perseus:text:1999.04.0059:entry=si si] in {{cite-book|author=Charlton T. Lewis and Charles Short|title=[[w:A Latin Dictionary|A Latin Dictionary]]|publisher=Clarendon Press|location=Oxford|year=1879}}
+* [https://www.perseus.tufts.edu/hopper/resolveform?type=exact&lookup=si&lang=latin si] in {{cite-book|author=Charlton T. Lewis|title=An Elementary Latin Dictionary|publisher=Harper & Brothers|location=New York|year=1891}}
+* {{R:la:du Cange}}
+* {{R:la:Gaffiot}}<!--
+* {{R:M&A}}-->
+* [https://www.perseus.tufts.edu/hopper/text?doc=Perseus:text:1999.04.0006:entry=si si] in {{cite-book|editor=Richard Stillwell et al.|title=The Princeton Encyclopedia of Classical Sites|publisher=Princeton University Press|location=Princeton, N.J.|year=1976}}
+* {{R:Sihler 1995}}
+
+==Latvian==
+
+===Noun===
+{{lv-noun|m|-}}
+
+# {{lb|lv|music}} [[#English|si]]
+
+==Lolopo==
+
+===Etymology===
+From {{inh|ycl|tbq-lol-pro|*ʃe²||to die}}, from {{inh|ycl|tbq-lob-pro|*səj¹||to die}}, from {{inh|ycl|sit-pro|*sij||to die}}.
+
+===Pronunciation===
+* {{IPA|ycl|[sz̩³³]}}
+
+===Verb===
+{{head|ycl|verb}}
+
+# {{lb|ycl|Yao'an}} to [[die]]
+
+===Noun===
+{{head|ycl|noun}}
+
+# {{lb|ycl|Yao'an}} [[death]]
+
+===References===
+* {{R:ycl:Merrifield}}
+
+==Louisiana Creole==
+
+===Pronunciation===
+* {{IPA|lou|/si/}}
+* {{rhymes|lou|i|s=1}}
+
+===Etymology 1===
+Inherited from {{inh|lou|fr|si|t=if}}.
+
+====Conjunction====
+{{head|lou|conjunction}}
+
+# [[if]]
+
+===Etymology 2===
+Inherited from {{inh|lou|fr|si|t=so}}.
+
+====Adverb====
+{{head|lou|adverb}}
+
+# [[so]] {{lb|lou|intensifier}}
+
+===Etymology 3===
+{{cardinalbox|lou|5|6|7|sink|sèt}}
+Inherited from {{inh|lou|fr|six||six}}.
+
+====Numeral====
+{{head|lou|numerals}}
+
+# [[six]]
+
+=====Usage notes=====
+* Precedes consonant-initial words. See usage notes at ''{{l|lou|sis}}''.
+
+{{catlangname|lou|cardinal numbers}}
+
+==Lower Tanana==
+
+===Alternative forms===
+* {{alter|taa|sih||Chena}}
+
+===Etymology===
+From {{inh|taa|ath-pro|*šiˑ}}. Cognate with {{cog|nv|shí}}, {{cog|aht|sii}}.
+
+===Pronoun===
+{{head|taa|pronoun}}
+
+# {{n-g|first-person singular pronoun}}; [[I]], [[me]]
+
+====See also====
+* {{l|taa|es-}}
+{{taa-pronouns}}
+
+===References===
+* {{Kari24|page=496}}
+
+==Luxembourgish==
+
+===Pronunciation===
+* {{IPA|lb|/zi/}}
+
+===Etymology 1===
+
+====Pronoun====
+{{head|lb|pronouns|cat2=personal pronouns}}
+
+# ''third-person feminine singular, nominative'': [[she]]
+#: {{uxa|lb|'''Si''' ass eng ganz schéi Fra.|'''She''' is a very beautiful woman|inline=1}}
+# ''third-person feminine singular, accusative'': [[her]]
+#: {{uxa|lb|Den Hond huet '''si''' gebass.|The dog bit '''her'''|inline=1}}
+# ''third-person plural, nominative'': [[they]]
+#: {{uxa|lb|'''Si''' si ganz schéi Fraen.|'''They''' are very beautiful women.|inline=1}}
+# ''third-person plural, accusative'': [[them]]
+#: {{uxa|lb|Den Hond huet '''si''' gebass.|The dog bit '''them'''|inline=1}}
+
+=====Usage notes=====
+* The feminine singular is used chiefly with feminine words for things. Female persons are predominantly treated as grammatically neuter, though the feminine is not impossible. See {{m|lb|hatt}} for more.
+
+=====Declension=====
+{{lb-personal pronouns}}
+
+===Etymology 2===
+
+====Verb====
+{{head|lb|verb form}}
+
+# {{lb-Eifel rule form|sinn}}
+
+===Further reading===
+* {{R:lb:LOD}}
+
+==Macanese==
+
+===Alternative forms===
+* {{alt|mzs|se}}
+
+===Etymology===
+{{ety|mzs|:der|pt:se|text=+|tree=1}}
+
+===Conjunction===
+{{head|mzs|conjunction}}
+
+# [[if]] {{gloss|''introduces a condition''}}
+#: {{coa|mzs|'''si''' nunca|t=otherwise|lit='''if''' not}}
+#: {{coa|mzs|'''si''' sâm capaz|t='''if''' you are brave / '''if''' you dare}}
+#: {{coa|mzs|'''si''' más pricisâ|t='''if''' more is needed}}
+#: {{coa|mzs|'''si''' já falâ co iou|t='''if''' you had told me}}
+#: {{coa|mzs|'''si''' vosôtro querê vêm|t='''if''' you (pl.) want to come}}
+#: {{coa|mzs|iou vai olâ '''si''' têm|t=I'm going to see '''if''' there is any}}
+#: {{coa|mzs|'''si''' têm vagar lôgo vêm|t=I'll come '''if''' I have time}}
+
+====Derived terms====
+* {{l|mzs|nunca-si}}
+
+===References===
+* https://www.macaneselibrary.org/pub/english/uipatua.htm
+
+==Malay==
+
+===Etymology===
+{{inh+|ms|map-pro|*si₁}}. Compare {{cog|bkl|si}}, {{cog|ch|si}}, {{cog|id|si}}, and {{cog|tl|si}}.
+
+===Pronunciation===
+* {{ms-IPA}}
+* {{rhymes|ms|i|s=1}}
+
+===Article===
+{{head|ms|articles|Jawi spelling [[سي]]}}
+
+# [[the]] {{qualifier|primarily used with people, rarely necessary}}
+#: {{uxa|ms|Ke mana perginya '''si''' budak nakal yang aku jumpa di taman tadi?|Where has '''the''' brat I just met in the park headed to?}}
+# {{n-g|definite particle used with adjectives to describe people}}
+#: {{uxa|ms|'''si''' mati|'''the''' dead (person)}}
+#: {{uxa|ms|'''si''' pengawal buncit|'''the''' fat controller }}
+# {{n-g|a definite article used in names or nicknames}}
+#: {{uxa|ms|'''Si''' Polan|[[John Doe]]}}
+# definite article used before animals
+#: {{uxa|ms|'''si''' arnab|'''the''' bunny}}
+
+====Synonyms====
+* {{l|ms|sang|q=honorific}}
+
+====Descendants====
+* {{desc|id|inh=1|si}}
+
+===Further reading===
+* {{R:PRPM}}|
+
+==Mandarin==
+
+===Romanization===
+{{cmn-pinyin}}
+
+# {{cmn-pinyin of|廁}}
+
+{{cmn-pinyin|notr=1}}
+
+# {{nonstandard spelling of|cmn|sī}}
+# {{nonstandard spelling of|cmn|sǐ}}
+# {{nonstandard spelling of|cmn|sì}}
+
+====Usage notes====
+* {{cmn-toneless-note}}
+
+==Mauritian Creole==
+
+===Pronunciation===
+* {{IPA|mfe|/si/}}
+
+===Etymology 1===
+From {{inh|mfe|fr|si|t=if}}.
+
+====Conjunction====
+{{head|mfe|conjunctions}}
+
+# [[if]]
+
+=====Related terms=====
+{{col2|mfe|sinon}}
+
+===Etymology 2===
+From {{inh|mfe|fr|si|t=yes}}.
+
+====Interjection====
+{{head|mfe|interjections}}
+
+# [[yes]] {{gloss|used to contradict a negative statement}}
+
+===References===
+* {{R:mfe:Baker:1987|page=294}}
+* {{R:mfe:Carpooran:2011|page=967}}
+
+==Middle Dutch==
+
+===Pronunciation===
+* {{IPA|dum|/ziː/}}
+
+===Etymology 1===
+From {{inh|dum|odt|sia}}.
+
+====Alternative forms====
+* {{alter|dum|sie|soe|so}}
+
+====Pronoun====
+{{head|dum|pronouns}}
+
+# [[she]]
+
+=====Inflection=====
+{{dum-personal pronouns}}
+
+=====Descendants=====
+* {{desc|nl|zij}}
+** {{desc|af|sy}}
+* {{desc|li|zie}}
+
+===Etymology 2===
+From {{inh|dum|odt|sia}}.
+
+====Alternative forms====
+* {{alter|dum|sie}}
+
+====Pronoun====
+{{head|dum|pronouns}}
+
+# [[they]] {{gloss|all genders}}
+#* {{RQ:dum:Schepenbrief|'''Si''' maken bekent die nu sien ende wesen selen|'''They''' make known to those who are now and will be}}
+
+=====Inflection=====
+{{dum-personal pronouns}}
+
+=====Descendants=====
+* {{desc|nl|zij}}
+* {{desc|li|zie}}
+
+===Etymology 3===
+{{nonlemma}}
+
+====Verb====
+{{head|dum|verb forms}}
+
+# {{inflection of|dum|wēsen||1//3|s|pres|subj}}
+
+===Further reading===
+* {{R:VMNW|ID85432|II}}
+* {{R:VMNW|ID65242|III}}
+* {{R:MNW|51644|I}}
+
+==Middle English==
+
+===Etymology===
+From {{inh|enm|ang|sie|sīe}}, singular subjunctive of {{m|ang|wesan}}, from {{inh|enm|gem-pro|*sijǭ|pos=first person}}, {{m|gem-pro|*sijēs|pos=second person}}, and {{m|gem-pro|*sijē|pos=third person}}, singular subjunctive forms of {{m|gem-pro|*wesaną}}.
+
+===Verb===
+{{head|enm|verb forms}}
+
+# {{tlb|enm|Early ME|rare}} {{inflection of|enm|been||s|pres|sub}}
+
+==Middle French==
+
+===Alternative forms===
+* {{alter|frm|se}}
+
+===Etymology===
+From {{inh|frm|fro|se}}.
+
+===Adverb===
+{{head|frm|adverbs}}
+
+# [[if]]
+# [[then]] (afterwards; following)
+
+====Descendants====
+* {{desc|fr|si}}
+
+==Middle High German==
+
+===Pronunciation===
+* {{gmh-IPA|si|sî}}
+
+===Pronoun===
+{{head|gmh|pronoun|head1=si|head2=sī}}
+
+# {{alternative form of|ang|siu}}
+# {{alternative form of|ang|sie}}
+
+==Middle Low German==
+
+===Pronunciation===
+* Possibly: {{IPA|gml|/siː/}}
+* Certainly: '''[[Wiktionary:About Middle Low German#Stem vowels|Stem vowel]]: ê⁴'''
+** {{IPA|gml|/siɛ/|/siə/}}
+
+===Pronoun===
+{{head|gml|pronouns|head=sî}}
+
+# {{alt form|gml|se|sê}}
+
+==Mòcheno==
+
+===Etymology===
+From {{inh|mhn|gmh|si|si(e)}}, from {{inh|mhn|goh|siu}}, from {{inh|mhn|gmw-pro|*sī}}, from {{inh|mhn|gem-pro|*sī}}, nominative singular feminine of {{m|gem-pro|*iz}}. Cognate with {{cog|de|sie}}.
+
+===Pronoun===
+{{head|mhn|pronouns|cat2=personal pronouns}}
+
+# [[she]], [[it]]
+
+====Inflection====
+{{mhn-personal pronouns}}
+
+===References===
+* {{R:CLM}}
+
+==Mokilese==
+
+===Pronunciation===
+* {{IPA|mkj|/ˈsi/}}
+
+===Noun===
+{{head|mkj|noun}}
+
+# [[ear]]
+
+====Declension====
+{{mkj-tinalienable-oa-a-poss|sioa|sia|sie}}
+
+{{topics|mkj|Body parts}}
+
+==Molo==
+
+===Noun===
+{{head|zmo|nouns}}
+
+# [[water]]
+
+===References===
+* Marvin Lionel Bender, ''Topics in Nilo-Saharan linguistics'' (1989)
+* [https://starling.rinet.ru/cgi-bin/response.cgi?root=new100&morpho=0&basename=new100\esu\jeb&limit=-1]
+
+==Nalca==
+
+===Noun===
+{{head|nlc|nouns}}
+
+# [[tooth]]
+# [[name]]
+
+==Norman==
+
+===Etymology===
+From {{inh|nrf|fro|si}}, from {{inh|nrf|la|si||if}}.
+
+===Conjunction===
+{{head|nrf|conjunctions}}
+
+# {{lb|nrf|Guernsey}} [[if]]
+
+==North Frisian==
+
+===Alternative forms===
+* {{alt|frr|sä||Föhr-Amrum}}
+* {{alt|frr|siin||Goesharde}}
+* {{alt|frr|siine||Halligen}}
+* {{alt|frr|siinj||Mooring}}
+* {{alt|frr|se||Sylt}}
+* {{alt|frr|säie||Wiedingharde}}
+
+===Etymology===
+From {{inh|frr|ofs|sia|siā}}, from {{inh|frr|gmw-pro|*sehwan}}, from {{inh|frr|gem-pro|*sehwaną|t=to see}}, from {{inh|frr|ine-pro|*sekʷ-|t=to see|id=see}}.
+
+===Verb===
+{{head|frr|verb}}
+
+# {{lb|frr|Heligoland}} to {{l|en|see}}
+
+==Norwegian Bokmål==
+
+===Pronunciation===
+* {{IPA|nb|/siː/|[siː]}}
+* {{rhymes|nb|iː|s=1}}
+* {{homophones|nb|sid}}
+* {{hyphenation|nb|si}}
+
+===Etymology 1===
+{{root|nb|ine-pro|*sekʷ-|id=say}}
+{{inh+|nb|gmq-mno|segia|t=to say}},<ref>Endre Mørck (2015), “[https://ojs.novus.no/index.php/MOM/article/download/1209/1198 Hovedtrekk ved akkusativ med infinitiv i mellomnorsk]”, in ''Maal og Minne'', number 2, pages 43–85, here page 60, example 24a, citing ''Diplomatarium Norvegicum'' I, number 657 (1418).</ref> from {{inh|nb|non|segja}}, from {{inh|nb|gem-pro|*sagjaną}}, ultimately from {{der|nb|ine-pro|*sekʷ-|id=say|t=to say}}.
+
+Compare {{cog|nn|seia}}, {{cog|da|sige}}, {{cog|sv|säga}}, {{cog|is|segja}}, {{cog|fo|siga}}, {{cog|de|sagen}} and {{cog|en|say|t=to say}}.
+
+====Verb====
+{{head|nb|verb|imperative|si|present tense|sier|passive|sies|simple past|sa|supine|sagt|past participle|sagt|present participle|siende|verbal noun|siing}}
+
+# To [[say]], to [[utter]].
+#: {{uxi|nb|«Jeg kommer snart», '''sa''' hun.|“I'll come soon,” she '''said'''.}}
+#* {{quote-book|nb|year=1879|author=P. Chr. Asbjørnsen|title=Norske Folke- og Huldre-Eventyr|page=25|passage=«Jeg er ikke ræd for trold og trugsmaal», '''sagde''' gutten|translation=“I am not afraid of trolls and threats,” '''said''' the boy.}}
+#* {{quote-book|nb|year=1882|author=Henrik Ibsen|title=En folkefiende|page=161|passage=når har jeg '''sagt''' det på tryk?|translation=When have I '''said''' that in print?}}
+#: '''som sagt''' — “as already mentioned”.
+#:: {{uxi|nb|'''Som sagt''' begynner møtet klokka tre.|'''As already mentioned''', the meeting starts at three.}}
+#* {{quote-book|nb|year=1881|author=Henrik Ibsen|title=Gengangere|page=72|passage=jeg er jo, som '''sagt''', ikke inde i den slags ting|translation=As I have '''said''', I am not familiar with that sort of thing.}}
+#: '''som sagt, så gjort''' — “no sooner said than done”.
+#:: {{uxi|nb|Vi bestemte oss for å reise. '''Som sagt, så gjort'''.|We decided to leave. '''No sooner said than done'''.}}
+#* {{quote-book|nb|year=1907|author=Bjørnstjerne Bjørnson|title=Bjørnstjerne Bjørnsons fortællinger|page=238|passage=hver kunde kjøbe det, han vilde, og dele udbyttet. Som '''sagt''', så gjort|translation=Each could buy what he wanted and share the proceeds. No sooner '''said''' than done.}}
+#: '''lettere sagt enn gjort''' — “easier said than done”.
+#:: {{uxi|nb|Å endre gamle vaner er '''lettere sagt enn gjort'''.|Changing old habits is '''easier said than done'''.}}
+#: '''si etter''' — “to repeat after; quote”.
+#:: {{uxi|nb|'''Si etter''' meg: «Jeg lover å prøve.»|'''Repeat after''' me: “I promise to try.”}}
+#: '''for å si det med''' — “to quote; in the words of”.
+#:: {{uxi|nb|'''For å si det med''' læreren vår: «Øvelse gjør mester.»|'''To quote''' our teacher: “Practice makes perfect.”}}
+#: '''si ja og amen''' — “to agree unquestioningly”.
+#:: {{uxi|nb|Du trenger ikke å '''si ja og amen''' til alt.|You don't have to '''agree unquestioningly''' to everything.}}
+#: '''har man sagt a, får man si b''' — “in for a penny, in for a pound; having started, one must follow through”.
+#:: {{uxi|nb|Nå har vi begynt, og '''har man sagt a, får man si b'''.|We've started now, and '''in for a penny, in for a pound'''.}}
+## To [[say]] a greeting, farewell, thanks, or similar conventional expression.
+##: {{uxi|nb|Hun '''sa''' god natt til barna.|She '''said''' goodnight to the children.}}
+##* {{quote-book|nb|year=1888|author=Henrik Ibsen|title=Fruen fra havet|page=48|passage=[jeg] får nok '''sige''' tak for mig|translation=[I] had better '''say''' my thanks and goodbye.}}
+## To [[pronounce]] a word in a particular way or use a particular grammatical form.<ref>''Det Norske Akademis ordbok'', “si”, verb, sense 1.2.</ref>
+##: {{uxi|nb|Hun '''sier''' «kjerke» der jeg '''sier''' «kirke».|She '''says''' “kjerke” where I '''say''' “kirke”.}}
+## To [[use]] a particular word, expression, or form of address.
+##: {{uxi|nb|Du kan '''si''' du til meg.|You can '''address''' me as ''du''.}}
+##* {{quote-book|nb|year=1881|author=Henrik Ibsen|title=Gengangere|page=142|passage=hvorfor kan du ikke '''sige''' du til mig, Regine?|translation=Why can't you '''address''' me with the familiar “du”, Regine?}}
+##* {{quote-book|nb|year=1884|author=Henrik Ibsen|title=Vildanden|page=59|passage=krøllet vil jeg ikke egentlig kalde det [håret]; jeg vil snarere '''sige''' lokket|translation=I would not really call it [the hair] curly; I would rather '''say''' wavy.}}
+##: '''for ikke å si''' — “not to say; if not”.
+##:: {{uxi|nb|Rommet var lite, '''for ikke å si''' trangt.|The room was small, '''not to say''' cramped.}}
+##* {{quote-book|nb|year=1930|author=Henrik Ibsen|title=Samlede verker|volume=XV|page=313|passage=[gudshuset] staar paa svage for ikke at '''sige''' faldefærdige fødder|translation=[The church] stands on weak—not to '''say''' crumbling—foundations.}}
+## To [[express]], to [[put into words]].
+##: {{uxi|nb|Jeg kan ikke '''si''' hvor glad jeg er.|I cannot '''express''' how happy I am.}}
+##* {{quote-book|nb|year=1882|author=Henrik Ibsen|title=En folkefiende|page=58|passage=jeg kan ikke '''sige''' Dem, kære herr Aslaksen, hvor inderligt det glæder mig|translation=I cannot '''tell''' you, dear Mr Aslaksen, how deeply this delights me.}}
+## To [[put]], to [[phrase]]; to express in a specified manner.
+##: {{uxi|nb|Kan du '''si''' det på en enklere måte?|Can you '''put''' it more simply?}}
+##* {{quote-book|nb|year=1884|author=Henrik Ibsen|title=Vildanden|page=159|passage='''sig''' det bent ud, Ekdal!|translation='''Say''' it outright, Ekdal!}}
+##* {{quote-book|nb|year=1957|author=Edvard Grieg|title=Artikler og taler|page=82|passage=når jeg '''siger''', at jeg ikke blev skuffet, så er det, om muligt, endog for lidt '''sagt'''|translation=When I '''say''' that I was not disappointed, that is, if anything, an understatement.}}
+##: '''for å si det sånn''' — “to put it that way”.
+##:: {{uxi|nb|Det gikk ikke helt etter planen, '''for å si det sånn'''.|It didn't quite go according to plan, '''to put it that way'''.}}
+##* {{quote-book|nb|year=1997|author=Torgrim Eggen|title=Den nye Dylan|page=35|passage=[…] for å '''si''' det sånn|translation=[…] to '''put''' it that way}}
+##: '''så å si''' — “so to speak; virtually”.
+##:: {{uxi|nb|Salen var '''så å si''' full.|The hall was '''virtually''' full.}}
+##* {{quote-book|nb|year=1874|author=Henrik Ibsen|title=Peer Gynt|page=150|passage=det hele er, så at '''sige''', privat|translation=The whole thing is, so to '''speak''', private.}}
+##: '''snart sagt''' {{q|now rare}} — “practically; almost”.
+##:: {{uxi|nb|Han kjente '''snart sagt''' alle i byen.|He knew '''practically''' everyone in town.}}
+##* {{quote-book|nb|year=1909|author=Henrik Ibsen|title=Efterladte Skrifter|volume=I|page=318|passage=disse kendsgerninger kunde suppleres snart '''sagt''' i det uendelige|translation=These facts could be supplemented virtually without end.}}
+##: '''om jeg så må si''' — “if I may put it that way”.
+##:: {{uxi|nb|Han var festens midtpunkt, '''om jeg så må si'''.|He was the centre of the party, '''if I may put it that way'''.}}
+##: '''med permisjon å si''' {{q|dated}} — “if I may say so; pardon the expression”.
+##:: {{uxi|nb|Dette er, '''med permisjon å si''', tull.|This is, '''if I may say so''', nonsense.}}
+##* {{quote-book|nb|year=1874|author=Henrik Ibsen|title=De unges forbund|page=208|passage=[madam Rundholmen] så ud som en havfrue, med permission at '''sige'''|translation=[Madam Rundholmen] looked like a mermaid, if I may '''say''' so.}}
+##: '''kort sagt''' — “in short”.
+##:: {{uxi|nb|'''Kort sagt''' trenger vi mer tid.|'''In short''', we need more time.}}
+##: '''nær sagt''' — “one might almost say”.
+##:: {{uxi|nb|Vi har ventet i, '''nær sagt''', en evighet.|We have waited for, '''one might almost say''', an eternity.}}
+##: '''rettere sagt''' — “or rather; more precisely”.
+##:: {{uxi|nb|Vi møtes i morgen, eller '''rettere sagt''' i kveld.|We'll meet tomorrow, '''or rather''' this evening.}}
+##: '''sant å si''' — “to tell the truth”.
+##:: {{uxi|nb|'''Sant å si''' husker jeg ikke navnet.|'''To tell the truth''', I don't remember the name.}}
+##: '''for sterkt sagt''' — “put too strongly; an overstatement”.
+##:: {{uxi|nb|Å kalle det en katastrofe er '''for sterkt sagt'''.|Calling it a catastrophe is '''an overstatement'''.}}
+##: '''å si''' {{q|obsolete}} — “that is to say”, introducing a qualification.
+##:: {{uxi|nb|Jeg kommer gjerne, '''å si''', hvis jeg er frisk.|I'll gladly come, '''that is''', if I am well.}}
+##* {{quote-book|nb|year=1888|author=Henrik Ibsen|title=Fruen fra havet|page=43|passage=jeg har også oplevet dette her. På en måde, at '''sige'''|translation=I have experienced this too. In a way, that is to '''say'''.}}
+## To [[recite]], to [[deliver]] orally.
+##: {{uxi|nb|Hun '''sa''' et vers utenat.|She '''recited''' a verse from memory.}}
+##* {{quote-book|nb|year=1872|author=Henrik Ibsen|title=Kongs-Emnerne|page=127|passage=Jatgejr skald vil '''sige''' sit kvad til ære for kong Skule|translation=Jatgeir the skald wishes to '''recite''' his poem in honour of King Skule.}}
+##* {{quote-book|nb|year=1925|author=Sigrid Undset|title=Olav Audunssøn i Hestviken|volume=I|page=182|passage=[hun] '''sa''' eventyr og regler|translation=[She] '''recited''' fairy tales and rhymes.}}
+##: '''si fram''', '''si frem''' — “to recite”.
+##:: {{uxi|nb|Elevene '''sa fram''' et dikt for klassen.|The pupils '''recited''' a poem to the class.}}
+## {{lb|nb|of a text or saying}} To [[say]], to [[read]].
+##: {{uxi|nb|Skiltet '''sier''' at veien er stengt.|The sign '''says''' that the road is closed.}}
+##* {{quote-book|nb|year=1850|author=Bernhard Herre|title=En Jægers Erindringer|page=22|passage=eventyret '''siger''', at denne huldre var fiin og skjær som morgentaagen|translation=The tale '''says''' that this huldra was delicate and fair as the morning mist.}}
+##* {{quote-book|nb|year=1873|author=Henrik Ibsen|title=Kærlighedens komedie|page=94|passage=således '''siger''' jo et gammelt ord|translation=That is what an old saying '''says'''.}}
+## {{lb|nb|of an animal}} To [[make]] its characteristic sound.
+##: {{uxi|nb|Sauen '''sier''' bæ.|The sheep '''goes''' baa.}}
+##* {{quote-book|nb|year=1907|author=Bjørnstjerne Bjørnson|title=Bjørnstjerne Bjørnsons fortællinger|page=233|passage=«Hvad '''siger''' katten,» spurte Øyvind|translation=“What does the cat '''say'''?” asked Øyvind.}}
+## {{lb|nb|of an object|also impersonal}} To [[make]] a sound; to [[go]].
+##: {{uxi|nb|Det '''sa''' klikk da døra gikk igjen.|There '''was''' a click as the door closed.}}
+##* {{quote-book|nb|year=1917|author=Knut Hamsun|title=Markens Grøde|volume=II|page=228|passage=klingeling! '''sier''' bjældene langt opi lien|translation=Jingle-jangle! '''go''' the bells far up the hillside.}}
+##: '''som sier seks''' {{q|figuratively}} — “that packs a punch; considerable”.
+##:: {{uxi|nb|De fikk en regning '''som sa seks'''.|They received a bill '''that really packed a punch'''.}}
+# To [[state]], [[assert]], or [[declare]]; to express an [[opinion]].
+#: {{uxi|nb|Hva '''sier''' du til forslaget?|What do you '''think''' of the proposal?}}
+#* {{quote-book|nb|year=1879|author=Henrik Ibsen|title=Et dukkehjem|page=32|passage=fire tusend otte hundrede kroner. Hvad '''siger''' du til det?|translation=Four thousand eight hundred kroner. What do you '''say''' to that?}}
+#* {{quote-book|nb|year=1907|author=Bernt Lie|title=Mot Overmagt|page=242|passage=en fik '''si''' der var sommer, eftersom bjerkekrattet stod grønt|translation=One had to '''say''' it was summer, since the birch scrub was green.}}
+#: '''ha noe man skulle ha sagt''' — “to have a say”.
+#:: {{uxi|nb|De ansatte bør også '''ha noe de skulle ha sagt'''.|The employees should also '''have a say'''.}}
+#: '''man kan si hva man vil''' — “say what you will”.
+#:: {{uxi|nb|'''Man kan si hva man vil''', men hun arbeider hardt.|'''Say what you will''', but she works hard.}}
+#* {{quote-book|nb|year=1880|author=Jonas Lie|title=Rutland|page=204|passage=man '''sige''' nu, hvad man vil!|translation=People may '''say''' what they like!}}
+#: '''jeg skal si''' — “I tell you”, emphasizing a statement.
+#:: {{uxi|nb|'''Jeg skal si''' det regnet!|It really poured, '''I tell you'''!}}
+#* {{quote-book|nb|year=1914|author=Sigrid Undset|title=Vaaren|page=193|passage=aajoda, dama begynder at faa figur, skal jeg '''si'''|translation=Oh yes, the lady is beginning to develop a figure, I '''tell''' you.}}
+#: '''det må jeg si''' — “I must say; well, I never”, expressing surprise, approval, or disapproval.
+#:: {{uxi|nb|'''Det må jeg si''', du har gjort en god jobb!|'''I must say''', you've done a good job!}}
+#* {{quote-book|nb|year=1886|author=Henrik Ibsen|title=Rosmersholm|page=203|passage=ikke inde? Ude sammen på denne tid? Nå da, – det må jeg '''sige''' –!|translation=Not at home? Out together at this hour? Well, I must '''say'''—!}}
+#: '''det kan du si''', '''du kan så si''' — “you can say that again; you're right”.
+#:: {{uxi|nb|«Dette var dyrt.» — «Ja, '''det kan du si'''.»|“This was expensive.” — “Yes, '''you can say that again'''.”}}
+#* {{quote-book|nb|year=1917|author=Gunnar Heiberg|title=Samlede dramatiske verker|volume=III|page=78|passage=ja, De kan saa '''si'''|translation=Yes, you can '''say''' that.}}
+#: '''det kan du si''' — “that's easy for you to say”, distancing oneself from another's opinion.
+#:: {{uxi|nb|«Du må bare slappe av.» — «'''Det kan du si'''.»|“You just need to relax.” — “'''That's easy for you to say'''.”}}
+#: '''sier og skriver''' — “in words and figures”, emphasizing an amount.
+#:: {{uxi|nb|Det kostet '''sier og skriver''' ti millioner.|It cost '''no less than''' ten million.}}
+#* {{quote-book|nb|year=1899|author=Sfinx|title=Vi og Voreses|page=153|passage=tænke Dem ikke sovet paa fem aar, … '''siger''' og skriver fem aar!|translation=Imagine not having slept for five years … five whole years, in words and figures!}}
+#: '''det er ikke sagt''' — “it is not certain; it does not necessarily follow”.
+#:: {{uxi|nb|'''Det er ikke sagt''' at alle kan komme.|'''It is not certain''' that everyone can come.}}
+#* {{quote-book|nb|year=1877|author=Henrik Ibsen|title=Samfundets støtter|page=165|passage=om der tilstøder et fartøj noget, så er det jo heller ikke '''sagt''', at der går menneskeliv tilspilde|translation=If something happens to a vessel, it does not necessarily follow that lives will be lost.}}
+#: '''si ja''' — “to agree; accept”.
+#:: {{uxi|nb|Hun '''sa ja''' til tilbudet.|She '''accepted''' the offer.}}
+#: '''si fra seg''' — “to relinquish; renounce”.
+#:: {{uxi|nb|Han '''sa fra seg''' vervet som leder.|He '''relinquished''' his position as chair.}}
+#: '''si imot''' — “to contradict; disagree”.
+#:: {{uxi|nb|Ingen våget å '''si''' henne '''imot'''.|Nobody dared to '''contradict''' her.}}
+#* {{quote-book|nb|year=1879|author=Henrik Ibsen|title=Et dukkehjem|page=125|passage=du bør ikke '''sige''' hende imod|translation=You should not '''contradict''' her.}}
+#: '''si på''', '''si om''' — “to object to; find fault with”, especially in negative constructions.
+#:: {{uxi|nb|Det er lite å '''si på''' resultatet.|There is little to '''find fault with''' in the result.}}
+#* {{quote-book|nb|year=1884|author=Alexander L. Kielland|title=Fortuna|page=134|passage=[det var] intet at '''sige''' paa selve forretningen|translation=[There was] nothing to '''object''' to in the transaction itself.}}
+#* {{quote-book|nb|year=1923|author=Hans Aanrud|title=Fortællinger|volume=I|page=33|passage=ja, jeg '''siger''' ikke om det; Gamlesmeruden er nok ikke den, som vil vide af noget ap|translation=Well, I am not '''criticizing''' it; old Smerud certainly will not tolerate any fooling about.}}
+#: '''si opp''' — “to dismiss; lay off”.
+#:: {{uxi|nb|Bedriften måtte '''si opp''' fem ansatte.|The company had to '''lay off''' five employees.}}
+#* {{quote-book|nb|year=1986|author=Terje Stigen|title=Ved foten av kunnskapens tre|passage=[…] måtte '''si''' opp folk […]|translation=[…] had to '''dismiss''' people […]}}
+#: '''si opp''' — “to resign; give notice”.
+#:: {{uxi|nb|Hun '''sa opp''' for å begynne i en annen jobb.|She '''resigned''' to start another job.}}
+#* {{quote-book|nb|year=1976|author=Torborg Nedreaas|title=Det dumme hjertet|page=145|passage=[…] kommer til å '''si''' opp […]|translation=[…] am going to '''resign''' […]}}
+#: '''si opp''' — “to declare a relationship ended”.
+#:: {{uxi|nb|Han '''sa opp''' vennskapet etter krangelen.|He '''ended''' the friendship after the argument.}}
+#* {{quote-book|nb|year=1873|author=Henrik Ibsen|title=Kærlighedens komedie|page=107|passage=jeg '''siger''' op vort venskab!|translation=I '''renounce''' our friendship!}}
+#: '''si opp''' — “to cancel; terminate”, of an agreement or subscription.
+#:: {{uxi|nb|Vi har '''sagt opp''' abonnementet.|We have '''cancelled''' the subscription.}}
+#* {{quote-book|nb|year=1998|author=May B. Lund|title=… ikke stykkevis og delt|passage=[…] '''si''' opp abonnementet […]|translation=[…] '''cancel''' the subscription […]}}
+## {{lb|nb|reflexive}} To [[declare]] oneself.
+##: {{uxi|nb|Hun '''sa seg''' enig i forslaget.|She '''declared herself''' in agreement with the proposal.}}
+##* {{quote-book|nb|year=1916|author=Tryggve Andersen|title=Samlede fortællinger|volume=I|page=152|passage=den bygd, dér han havde '''sagt''' sig hjemme|translation=The district where he had '''declared''' himself to be at home.}}
+##: '''si seg selv''' — “to go without saying; be self-evident”.
+##:: {{uxi|nb|Det '''sier seg selv''' at vi må hjelpe.|It '''goes without saying''' that we must help.}}
+##* {{quote-book|nb|year=1890|author=Henrik Ibsen|title=Hedda Gabler|page=75|passage=det '''siger''' sig da af sig selv!|translation=That goes without '''saying'''!}}
+### {{lb|nb|literary|with an infinitive}} To [[claim]] oneself to be or to have done something.
+###: {{uxi|nb|Han '''sier seg''' å være uskyldig.|He '''claims''' to be innocent.}}
+###* {{quote-book|nb|year=1873|author=Henrik Ibsen|title=Kejser og Galilæer|page=31|passage=han '''siger''' sig at have sovet tre år i en hule hinsides Jordan|translation=He '''claims''' to have slept for three years in a cave beyond the Jordan.}}
+## To [[agree]] [[on]], [[stipulate]], or [[settle on]].
+##: {{uxi|nb|Skal vi '''si''' klokka fire?|Shall we '''say''' four o'clock?}}
+##* {{quote-book|nb|year=1884|author=Henrik Ibsen|title=Vildanden|page=156|passage=fra imorgen af – eller, lad os '''sige''' fra iovermorgen af|translation=From tomorrow—or, let us '''say''', from the day after tomorrow.}}
+# To [[tell]], to [[inform]].
+#: {{uxi|nb|Hun '''sa''' til meg at toget var forsinket.|She '''told''' me that the train was delayed.}}
+#* {{quote-book|nb|year=1881|author=Henrik Ibsen|title=Gengangere|page=114|passage='''sig''' mig, – hvad synes du om Regine?|translation='''Tell''' me—what do you think of Regine?}}
+#* {{quote-book|nb|year=1899|author=Henrik Ibsen|title=Når vi døde vågner|page=130|passage=jeg vil '''sige''' dig én ting, Arnold|translation=I will '''tell''' you one thing, Arnold.}}
+#: '''om jeg selv skal si det''', '''om jeg skal si det selv''' — “if I may say so myself”.
+#:: {{uxi|nb|Kaka ble god, '''om jeg skal si det selv'''.|The cake turned out well, '''if I may say so myself'''.}}
+#* {{quote-book|nb|year=1882|author=Henrik Ibsen|title=En folkefiende|page=56|passage=jeg [har] jo en viss indflydelse i byen … – om jeg selv skal '''sige''' det|translation=I [do have] a certain influence in the town … if I may '''say''' so myself.}}
+#: '''si det som det er''' — “to tell it like it is”.
+#:: {{uxi|nb|Jeg vil heller '''si det som det er''' enn å finne på en unnskyldning.|I'd rather '''tell it like it is''' than invent an excuse.}}
+#* {{quote-book|nb|year=1913|author=Kristian Elster d.y.|title=Mester|page=128|passage=jeg faar '''si''' det som det er, Lerke … De faar finde Dem en anden varamand|translation=I must '''tell''' it as it is, Lerke … you will have to find yourself another deputy.}}
+## To [[convey]] or [[express]] through a gesture, object, artwork, or other medium.
+##: {{uxi|nb|Bildet '''sier''' mer enn ordene.|The picture '''says''' more than the words.}}
+##: '''si det med blomster''' — “to say it with flowers”.
+##:: {{uxi|nb|Han ønsket å takke henne og '''sa det med blomster'''.|He wanted to thank her and '''said it with flowers'''.}}
+##* {{quote-book|nb|year=1995|author=Ebba Haslund|title=I mangel av sverd|page=185|passage=[…] '''si''' det med blomster eller pakke|translation=[…] '''say''' it with flowers or a parcel}}
+## To [[notify]], to [[give notice]].
+##: {{uxi|nb|Hun '''sa''' at hun ikke kunne komme.|She '''gave notice''' that she could not come.}}
+##* {{quote-book|nb|year=1874|author=Henrik Ibsen|title=De unges forbund|page=7|passage='''sig''', Monsen betaler!|translation='''Tell''' them Monsen will pay!}}
+##: '''si fra''', '''si ifra''' — “to let someone know; speak up”.
+##:: {{uxi|nb|'''Si fra''' når du er ferdig.|'''Let me know''' when you are finished.}}
+##: '''si beskjed''' {{q|obsolete}} — “to give information; let someone know”.
+##:: {{uxi|nb|Du får '''si''' meg '''beskjed''' om saken.|You must '''let''' me '''know''' about the matter.}}
+##: '''si noen til''' {{q|obsolete}} — “to notify someone”.
+##:: {{uxi|nb|'''Si''' meg '''til''' når gjestene kommer.|'''Let''' me '''know''' when the guests arrive.}}
+##* {{quote-book|nb|year=1874|author=Henrik Ibsen|title=De unges forbund|page=141|passage=De må være så god at '''sige''' mig til, når proprietær Monsen kommer|translation=Please '''let''' me know when the landowner Monsen arrives.}}
+##: '''la seg si''' {{q|obsolete}} — “to heed advice; let oneself be persuaded”.
+##:: {{uxi|nb|Han ville ikke '''la seg si'''.|He would not '''listen to advice'''.}}
+##* {{quote-book|nb|year=1906|author=J. S. Welhaven|title=Samlede Digterverker|volume=I|page=206|passage=omsider lod hun sig … '''sige''', fordi familien overhang hende|translation=Eventually she let herself be '''persuaded''' … because the family kept urging her.}}
+## To [[say]], [[report]], or [[rumour]], with an indefinite or general subject.
+##: {{uxi|nb|Folk '''sier''' at huset er hjemsøkt.|People '''say''' that the house is haunted.}}
+##* {{quote-book|nb|year=1884|author=Henrik Ibsen|title=Vildanden|page=1|passage=folk '''siger''', at der er noget imellem dem|translation=People '''say''' there is something between them.}}
+##* {{quote-book|nb|year=1886|author=Henrik Ibsen|title=Rosmersholm|page=115|passage=jeg har hørt '''sige''' det|translation=I have heard it '''said'''.}}
+##: '''man sier for et gammelt ord''' {{q|dated}} — “as the old saying goes”.
+##:: {{uxi|nb|'''Man sier for et gammelt ord''' at ærlighet varer lengst.|'''As the old saying goes''', honesty is the best policy.}}
+### {{lb|nb|passive}} To [[be]] [[said]] or [[be]] [[reported]].
+###: {{uxi|nb|Det '''sies''' at hun har flyttet.|It '''is said''' that she has moved.}}
+###* {{quote-book|nb|year=1874|author=Henrik Ibsen|title=Fru Inger til Østråt|page=80|passage=ingen anden mand er som han, '''siges''' der|translation=No other man is like him, it '''is said'''.}}
+###* {{quote-book|nb|year=1882|author=Alexander L. Kielland|title=Skipper Worse|page=186|passage=han '''sagdes''' især at færdes nordpaa|translation=He '''was said''' to travel chiefly in the north.}}
+## To [[reveal]], to [[divulge]].
+##: {{uxi|nb|Ikke '''si''' det til noen.|Don't '''tell''' anyone.}}
+##* {{quote-book|nb|year=1884|author=Henrik Ibsen|title=Vildanden|page=136|passage=å nej, du skal ikke '''sige''' noget, far!|translation=Oh no, you must not '''tell''' anyone, Father!}}
+##* {{quote-book|nb|year=1888|author=Henrik Ibsen|title=Fruen fra havet|page=161|passage=jeg må '''sige''' dig alle mine tanker|translation=I must '''tell''' you all my thoughts.}}
+##: '''si det bort''' {{q|colloquial}} — “to give away a secret”.
+##:: {{uxi|nb|Du må love at du ikke '''sier det bort'''.|You must promise that you won't '''give it away'''.}}
+## To [[predict]], [[foretell]], or [[portend]].
+##: {{uxi|nb|Det er vanskelig å '''si''' hvordan dette vil ende.|It is difficult to '''predict''' how this will end.}}
+##* {{quote-book|nb|year=1874|author=Henrik Ibsen|title=De unges forbund|page=82|passage=det er vanskeligt at '''sige''' [om han blir valgt]|translation=It is difficult to '''say''' [whether he will be elected].}}
+##* {{quote-book|nb|year=1895|author=Hans E. Kinck|title=Flaggermus-vinger|page=157|passage=et og andet vift, som '''sa''', at stormen kom|translation=An occasional gust which '''foretold''' the coming storm.}}
+# To [[tell]] someone to do something; to [[order]], [[instruct]], or [[prescribe]].
+#: {{uxi|nb|Læreren '''sa''' at vi måtte vente ute.|The teacher '''told''' us to wait outside.}}
+#* {{quote-book|nb|year=1877|author=Henrik Ibsen|title=Samfundets støtter|page=99|passage=Lona, du gør det ikke, '''siger''' jeg!|translation=Lona, you will not do it, I '''tell''' you!}}
+#* {{quote-book|nb|year=1890|author=Henrik Ibsen|title=Hedda Gabler|page=153|passage=du [skal] gøre, som jeg '''siger'''|translation=You [must] do as I '''say'''.}}
+# To [[mean]], [[signify]], or [[entail]].
+#: {{uxi|nb|Hva vil det '''si''' å være myndig?|What does it '''mean''' to be of legal age?}}
+#* {{quote-book|nb|year=1895|author=Bjørnstjerne Bjørnson|title=Over Ævne|volume=II|page=144|passage=hvad vil dette '''sige'''?|translation=What does this '''mean'''?}}
+#* {{quote-book|nb|year=1897|author=Fridtjof Nansen|title=Fram over Polhavet|volume=I|page=482|passage=merke til gagns hvad det vil '''si''' at gå uden ski|translation=Fully experience what it '''means''' to walk without skis.}}
+#: '''det vil si''' — “that is; in other words”, abbreviated {{m|nb|dvs.}}.
+#:: {{uxi|nb|Vi møtes om en uke, '''det vil si''' neste torsdag.|We'll meet in a week, '''that is''', next Thursday.}}
+#* {{quote-book|nb|year=1874|author=Henrik Ibsen|title=Peer Gynt|page=170|passage=i Babylon jeg søger de rygtbare hængende haver og skøger, – det vil '''sige''', de vigtigste spor af kultur|translation=In Babylon I seek the celebrated hanging gardens and harlots—that is to '''say''', the chief traces of culture.}}
+#: '''ha noe å si''' — “to matter; have significance or influence”.
+#:: {{uxi|nb|Det '''har''' mye '''å si''' hvem som bestemmer.|It '''matters''' a great deal who makes the decisions.}}
+#* {{quote-book|nb|year=1874|author=Bjørnstjerne Bjørnson|title=En fallit|page=42|passage=ingen har så meget at '''sige''' hos din far som du|translation=No one has as much '''influence''' with your father as you do.}}
+#* {{quote-book|nb|year=1929|author=Ronald Fangen|title=Nogen unge mennesker|page=24|passage=folk som har «noe at '''si'''»|translation=People who have “some '''influence'''”.}}
+
+=====Usage notes=====
+* {{m|nb|si|Si}} commonly introduces direct speech or an {{m|nb|at}} clause. The recipient is normally introduced with {{m|nb|til}}: {{uxi|nb|Hun '''sa''' til meg at hun ville [[komme]].|She '''told''' me that she would come.}}
+* The regular present participle is {{m|nb|siende}}. The lexicalized adjective {{m|nb|sigende|t=telling; significant}} preserves the older stem.
+* Older quotations may contain ''sige'', ''siger'', ''sagde'' and ''sig'' corresponding to modern ''si'', ''sier'', ''sa'' and imperative ''si''.
+
+=====Derived terms=====
+{{col-top|2|Derived terms}}
+* {{l|nb|avsi|t=to pronounce, deliver a judgment; renounce}}
+* {{l|nb|foresi|t=to dictate, prompt}} {{q|literary}}
+* {{l|nb|forutsi|t=to predict, foretell}}
+* {{l|nb|frasi|t=to renounce, relinquish}} {{q|with ''seg''}}
+* {{l|nb|framsi}}, {{l|nb|fremsi|t=to recite, deliver}}
+* {{l|nb|intetsigende|t=meaningless, empty}}
+* {{l|nb|megetsigende|t=meaningful, telling}} {{q|literary}}
+* {{l|nb|motsi|t=to contradict}}
+* {{l|nb|oppsi|t=to recite; terminate; dismiss}} {{q|obsolete}}
+* {{l|nb|selvsagt}}, {{l|nb|sjølsagt|t=self-evident; of course}}
+* {{l|nb|sigende|t=telling, significant}} {{q|adjective}}
+* {{l|nb|tilsi|t=to require; imply, indicate}}
+* {{l|nb|utsi|t=to state, express}}
+{{col-bottom}}
+
+=====Related terms=====
+* {{l|nb|sigende|t=report, statement}} {{q|noun, literary}}
+* {{l|nb|unnsi|t=to repudiate, disavow}} {{q|literary}}
+
+===Etymology 2===
+{{nonlemma}}
+
+====Determiner====
+{{head|nb|determiner form|g=f}}
+
+# {{infl of|nb|sin||f|s}}
+
+====Pronoun====
+{{head|nb|pronoun form|g=f}}
+
+# {{infl of|nb|sin||f|s}}
+
+===Etymology 3===
+{{inh+|nb|non|síða|t=side}}, from {{inh|nb|gem-pro|*sīdǭ}}, a derivative of {{der|nb|gem-pro|*sīdaz|t=long, hanging down}}. A variant of {{m|nb|side}}.
+
+Compare {{cog|nn|side}}, {{cog|da|side}}, {{cog|sv|sida}}, {{cog|is|síða}}, {{cog|fo|síða}}, {{cog|de|Seite}} and {{cog|en|side|t=side}}.
+
+====Noun====
+{{head|nb|noun|g=m|indeclinable}}
+
+# Used in {{l|nb|på si|t=on the side; in addition}}.
+#: {{uxi|nb|Hun [[studere|studerer]] og har en [[liten]] [[jobb]] '''på si'''.|She studies and has a small job '''on the side'''.}}
+#: {{uxi|nb|Han hadde en [[kjæreste]] '''på si'''.|He had a lover '''on the side'''.}}
+#* {{quote-book|nb|year=1952|author=Agnar Mykle|title=«Jeg er like glad», sa gutten|page=43|passage=så var det dét at han hadde ei dame på '''si'''|translation=Then there was the fact that he had a woman on the '''side'''.}}
+#* {{quote-book|nb|year=1954|author=Agnar Mykle|title=Lasso rundt fru Luna|page=93|passage=på '''si''', i sin fritid, hadde faren arbeidet med forskjellige ting|translation=On the '''side''', in his spare time, his father had worked on various things.}}
+
+===Etymology 4===
+{{wikipedia|lang=no|Solmisasjon}}
+[[File:B Note.png|thumb|The note B natural, called ''si'' in fixed-do solmization.]]
+{{root|nb|ine-pro|*seh₂k-}}
+{{bor+|nb|it|si}}, formed from the initials of {{der|nb|la|[[sanctus|Sāncte]] [[Iohannes|Iohannēs]]|t=Saint John}}, the closing words of the first stanza of the hymn ''[[w:Ut queant laxis|Ut queant laxis]]''.
+
+The first word is the vocative of {{m|la|sānctus|t=holy}}, from {{der|nb|itc-pro|*sanktos}}, a participle of {{m|itc-pro|*sankjō|t=to consecrate}}, ultimately from {{der|nb|ine-pro|*seh₂k-|t=to sanctify}}. The second is a variant of {{m|la|Iōannēs}}, from {{der|nb|grc|Ἰωάννης}}, from {{der|nb|hbo|יוֹחָנָן|tr=Yōḥānān|t=John}}.
+
+Compare {{cog|nn|si}}, {{cog|ca|si}}, {{cog|fr|si}}, {{cog|pt|si}}, {{cog|nl|si}}, {{cog|pl|si}} and {{cog|en|si|t=si, ti}}.
+
+====Noun====
+{{head|nb|noun|g=m|definite singular|sien|indefinite plural|sier|definite plural|siene}}
+
+# {{lb|nb|music}} [[#English|si]], [[ti]]; the seventh syllable or scale degree in [[solmization]].
+#: {{uxi|nb|Det er en [[halvtone]] fra '''si''' til [[do]].|There is a semitone from '''si''' to do.}}
+#* {{quote-book|nb|year=1999|author=Toril Brekke|title=Aske|page=109|passage=det sang i henne … Evinnelige løp. De sang seg selv. Evinnelige uten halvtonen fra '''si''' til do|translation=There was singing inside her … Endless runs. They sang themselves. Endless, without the semitone from '''si''' to do.}}
+
+=====Usage notes=====
+* In fixed-do solmization, {{m|nb|si}} denotes B natural, called ''h'' in Norwegian letter notation. In movable-do solmization, it denotes the seventh degree of the major scale.
+
+=====Synonyms=====
+* {{l|nb|ti|t=ti, the seventh solfège syllable}}
+
+=====Coordinate terms=====
+{{top2}}
+* {{l|nb|do|t=do, the first solfège syllable}}
+* {{l|nb|re|t=re, the second solfège syllable}}
+* {{l|nb|mi|t=mi, the third solfège syllable}}
+* {{l|nb|fa|t=fa, the fourth solfège syllable}}
+* {{l|nb|sol|t=sol, the fifth solfège syllable}}
+* {{l|nb|la|t=la, the sixth solfège syllable}}
+{{bottom}}
+
+===Etymology 5===
+[[File:Drev och drevjärn samt träklubba 004.jpg|thumb|Oakum and tools used for caulking wooden boats.]]
+Compare the first element of {{m|non|síþráðr|t=loose thread of cattle hair}}. Its further origin is uncertain.
+
+Compare {{cog|nn|si|t=caulking fibres}}.
+
+====Noun====
+{{head|nb|noun|g=n|uncountable}}
+
+# {{lb|nb|dialectal|nautical|historical}} [[caulking]] material made from loose fibres, such as unravelled rope, wool, or cattle hair, used to seal a wooden boat.
+#: {{uxi|nb|[[båtbygger|Båtbyggeren]] [[legge|la]] '''si''' mellom [[bord|bordene]] for å [[tette]] [[skrog|skroget]].|The boatbuilder placed '''caulking material''' between the planks to seal the hull.}}
+#* {{quote-journal|nb|date=31 December 2021|author=Irmelin Martens|title=Ikke-agrare økonomiske virksomheter – viktige ledd i middelalderens økonomi: Var de uten konflikter?|journal=Collegium Medievale|volume=34|page=40|url=https://ojs.novus.no/index.php/CM/article/download/2030/1999/2855|passage=Ull og nauthår til «'''si'''», tettingsmaterialet mellom bordene, Ca. 900 meter i Gokstad.|translation=Wool and cattle hair for “'''caulking'''”, the sealing material between the planks, approximately 900 metres in the Gokstad ship.}}
+
+===References===
+<references />
+* {{R:nb:Ordbokene}}
+* {{R:nb:NAOB}}
+* [https://snl.no/si_-_musikk “si – musikk”] in ''Store norske leksikon''.
+
+===Anagrams===
+* {{anagrams|nb|a=is|-is|is|IS}}
+
+==Norwegian Nynorsk==
+
+===Etymology 1===
+
+====Determiner====
+{{head|nn|determiner forms|g=f}}
+
+# {{infl of|nn|sin||f|s}}
+
+===Etymology 2===
+Acronym of {{der|nn|la|sanctus|Sancte}} {{m|la|Ioannes}}, the phrase ending the hymn ''[[w:Ut queant laxis|Ut queant laxis]]'' from earlier words of which the other notes of [[solfège]] were derived. A younger alteration, {{m|nn|ti|id=solfège}}, allows for every note of the solfège to begin with a different letter.
+
+====Pronunciation====
+* {{IPA|nn|/siː/}} {{nn-pronu-note}}
+* {{homophones|nn|sid}}
+
+====Noun====
+{{nn-noun-m1|si-}}
+
+# {{senseid|nn|solfège}} {{lb|nn|music}} {{l|nn|si|id=solfège}}, a syllable used in seventh note of a [[major scale]]
+
+=====Coordinate terms=====
+* {{sense|scale of solfège}} ''{{l|nn|do|id=solfège}}, {{l|nn|re|id=solfège}}, {{l|nn|mi|id=solfège}}, {{l|nn|fa|id=solfège}}, {{l|nn|so|id=solfège}} ''(or ''{{l|nn|sol|id=solfège}}'')'', {{l|nn|la|id=solfège}}, {{l|nn|ti|id=solfège}} ''(or '''''si''''')'', {{l|nn|do|id=solfège}}''
+
+===Etymology 3===
+Akin to the first part of {{cog|non|síþráðr}}.
+
+====Noun====
+{{nn-noun-nu}}
+
+# {{lb|nn|collective|nautical|dated}} [[tatter]]s of [[rope]] used to [[stop]] [[leakage]]
+
+===Etymology 4===
+{{doublet|nn|side}}.
+
+====Noun====
+{{head|nn|nouns|g=?}}
+
+# {{n-g|Used only idiomatically in the prepositional phrase {{m|nn|på si}}.}}
+
+===Etymology 5===
+{{clipping|nn|sidan}}.
+
+====Adverb====
+{{nn-adv}}
+
+# {{lb|nn|dialectal}} [[since]]
+# {{lb|nn|dialectal}} [[ago]]
+# {{lb|nn|dialectal}} [[because]], [[for]]
+
+===References===
+* {{R:nn:OB}}
+
+===Anagrams===
+* {{anagrams|nn|a=is|IS|is|SI|si-}}
+
+{{cln|nn|acronyms|eponyms}}
+
+==Old English==
+
+===Pronunciation===
+* {{ang-IPA|sī}}
+* {{rhymes|ang|iː|s=1}}
+
+===Verb===
+{{ang-verb|sī}}
+
+# {{alt form|ang|sīe}}
+
+==Old French==
+
+===Alternative forms===
+* {{l|fro|se}}<!--both etymologies-->
+* {{l|fro|s'}} {{qualifier|before a vowel}}<!--both etymologies-->
+
+===Etymology 1===
+From {{inh|fro|la|sic}}.
+
+====Adverb====
+{{head|fro|adverbs}}
+
+# [[so]]; [[thus]]; in such a way
+#* {{quote-book|fro|year=c. 1180|author=w:Chrétien de Troyes|title=''[[s:fr:Lancelot ou le Chevalier de la charrette (Édition de Foulet et Uitti)|Lancelot ou le Chevalier de la charrette]]''|passage='''Si''' li a dit eneslepas|translation=So he said to him quickly}}
+
+=====Descendants=====
+* {{desc|fr|si}}
+* {{desc|nrf|si}}
+
+===Etymology 2===
+See {{m|fro|se}}.
+
+====Conjunction====
+{{head|fro|conjunctions}}
+
+# {{alt form|fro|se}} {{gloss|if}}
+
+==Old Galician-Portuguese==
+
+===Pronunciation===
+* {{IPA|roa-opt|/ˈsi/}}
+
+===Etymology 1===
+{{ety|roa-opt|id=oneself|:inh|la:sibi|tree=1|text=:la}} Cognate with {{cog|fro|sei}} and {{cog|osp|si}}.
+
+====Pronoun====
+{{head|roa-opt|reflexive pronoun}}
+
+# {{l|en|oneself}}; {{l|en|herself}}; {{l|en|itself}}; {{l|en|himself}}; {{l|en|themselves}} {{gloss|form of {{m|roa-opt|se}} used after prepositions}}
+
+===Etymology 2===
+{{ety|roa-opt|id=yes|:inh|la:sīc<t:thus; so>|tree=1|text=:la}}
+
+====Particle====
+{{head|roa-opt|particle}}
+
+# [[yes]] {{gl|{{l|en|affirmatively}}}}
+#: {{ant|roa-opt|non}}
+#* {{roa-opt-cite-cantigas|E|84|https://www.pbm.com/~lindahl/cantigas/facsimiles/E/194small.gif}}
+#*: '''ſi''' ou non
+#*:: '''yes''' or no
+
+=====Descendants=====
+* {{desc|fax|sí}}
+* {{desc|gl|si}}
+* {{desc|pt|sim}}
+
+==Old High German==
+
+===Verb===
+{{head|goh|verb forms|head=sī}}
+
+# {{inflection of|goh|wesan||1//3|s|pres|subj}}
+
+==Old Irish==
+
+===Pronoun===
+{{h|sga|pron|var=1}}
+
+# {{alt sp|sga|sí|id=she|t=she}}
+# {{alt sp|sga|síi}}
+
+==Old Saxon==
+
+===Pronunciation===
+* {{IPA|osx|/si/}}
+
+===Article===
+{{head|osx|article forms}}
+
+# {{inflection of|osx|sē||f|nom|s}}
+
+====Declension====
+{{osx-prondem|sē|that|[[si]], [[sia]]|[[thē]], [[thie]]|[[than]], [[then]]|that|[[thē]], [[thie]]|[[thē]], [[thie]]|thēs|thēs|thēra|thēra|thēm|thēm|thēra|thēm|[[thiu]], [[thia]], [[thuo]], [[thuru]]}}
+
+==Old Spanish==
+
+===Etymology 1===
+{{inh+|osp|la|si||if}}.
+
+====Conjunction====
+{{head|osp|conj}}
+
+# {{l|en|if}} ({{l|en|supposing}} that)
+
+===Etymology 2===
+{{inh+|osp|la|sibi}}, from {{inh|osp|ine-pro|*sébʰye}}, dative of {{m|ine-pro|*swé|t=self}}. Cognate with {{cog|fro|sei}} and {{cog|roa-opt|si}}.
+
+====Pronoun====
+{{head|osp|reflexive pronoun}}
+
+# {{l|en|oneself}}; {{l|en|herself}}; {{l|en|itself}}; {{l|en|himself}}; {{l|en|themselves}} {{gloss|form of {{m|osp|se}} used after prepositions}}
+
+===Etymology 3===
+{{inh+|osp|la|[[sīc]] (est)||thus}}.
+
+====Particle====
+{{head|osp|particle}}
+
+# {{l|en|yea}}; {{l|en|aye}}; {{l|en|yes}} {{q|commonly used to respond affirmatively to a question}}
+#: {{ant|osp|no}}
+
+=====Descendants=====
+* {{desc|lad|si|סי}}
+* {{desc|es|si}}
+
+===References===
+* {{R:osp:TDMS|469}}
+
+==Oromo==
+
+===Pronunciation===
+{{om-IPA}}
+{{om-syllables}}
+**{{audio|om|Om-si.ogg}}
+
+===Pronoun===
+{{head|om|pronoun}}
+
+# [[you]]; the second-person singular object pronoun.
+#: {{ux|om|ani si arge.|I saw you.}}
+
+====Related terms====
+* [[sii]]
+* [[siif]]
+
+====See also====
+{{om-personal pronouns}}
+
+==Pali==
+<!-- Roots are only given in the Roman script. -->
+
+===Etymology 1===
+{{etymid|pi|lie}}{{inh+|pi|sa|शी}}.
+
+====Root====
+{{pi-root}}
+
+# to [[lie down]]
+
+=====Derived terms=====
+{{col3|pi|title=Verbs|sayati|seti|sayāpeti}}
+<!-- Keep as template! {{der3|pi|title=Non-present participles, gerundives, absolutives and infinitives
+|gahīta|gahita|gahetabba|niggahīta|niggahita}}
+{{der3|pi|title=Nouns|gaha|aggahaṇa}}
+-->
+
+===Etymology 2===
+{{etymid|pi|rest}}{{inh+|pi|sa|श्रि}}.
+
+====Root====
+{{pi-root}}
+
+# to [[rest]] on
+
+=====Usage notes=====
+The initial consonant tends to geminate after prefixes.
+
+=====Derived terms=====
+{{col3|pi|title=Verbs|nissayati}}
+{{col3|pi|title=Non-present participles, gerundives, absolutives and infinitives|sita|nissāya}}
+{{col3|pi|title=Nouns|nissaya}}
+
+===Etymology 3===
+{{etymid|pi|bind}}{{inh+|pi|sa|सि}}.
+
+====Root====
+{{pi-root}}
+
+# to [[bind]]
+
+=====Derived terms=====
+{{rootsee|pi|pi|si (bind)}}
+
+==Papiamentu==
+
+===Etymology 1===
+{{ety|pap|:der<conj:and>|es:si|pt:se|kea:si|text=+|tree=1}}
+
+====Conjunction====
+{{head|pap|conjunctions}}
+
+# [[if]]
+# [[when]]
+
+===Etymology 2===
+{{ety|pap|:der<conj:and>|es:sí|pt:sim|kea:si|text=+|tree=1}}
+
+====Adverb====
+{{head|pap|adverbs}}
+
+# [[yes]]
+
+==Phrygian==
+
+===Etymology===
+From {{inh|xpg|ine-pro|*ḱís}}.
+
+===Pronoun===
+{{head|xpg|pronoun|nominative or accusative singular neuter}}
+
+# [[this]]
+
+====Declension====
+Old Phrygian:
+* {{l|xpg|sin|pos=acc. sg. m.}}
+
+New Phrygian:
+* {{l|xpg|σαν|pos=acc. sg. f.}}
+* {{l|xpg|σεμουν|pos=dat. sg. m./n.}}
+* {{l|xpg|σως|pos=dat. pl. m.}}
+
+===Further reading===
+* {{R:xpg:Obrador-Cursach:2020|343-344}}
+* {{R:xpg:Sorgo|335-352}}
+
+==Polish==
+
+===Etymology 1===
+{{etymon|pl|id=musical note|pos=word|etydate=|tree=1|text=*|:bor|it:si<alt:sì><id:note>}}
+
+====Pronunciation====
+{{pl-pr|s-i|a=LL-Q809 (pol)-Olaf-#.wav}}
+
+====Noun====
+{{pl-noun|n|indecl=1}}
+
+# {{senseid|pl|Q726738}} {{lb|pl|music}} {{l|en|si}} {{gl|seventh note of a major scale}}
+
+===Etymology 2===
+{{etymon|pl|id=this|pos=word|tree=1|text=*|:inh|zlw-opl:si<id:this><ety:inh<sla-pro:*sь<id:this>>>}}
+
+====Pronunciation====
+{{pl-pr}}
+{{rfap|pl}}
+
+====Pronoun====
+{{head|pl|pronoun}}
+
+# {{senseid|pl|this}} {{lb|pl|obsolete|_|except in set phrases}} [[this]]
+
+=====Declension=====
+{{rfinfl|pl|adjective}}{{attn|pl|(not recognized by irreg) si, sia, sio; si, sie}}
+
+===Further reading===
+* {{R:pl:WSJP|si I (rzeczownik)|119909}}
+* {{R:pl:WSJP|si II (przymiotnik)|119910}}
+* {{R:pl:PWN}}
+* {{R:pl:SXVII|SI}}
+* {{R:pl:SJP1807||222|3}}
+* {{R:pl:SJP1861||1473|II}}
+* {{R:pl:SJP1900||85|6}}
+* {{R:pl:SGJP|si ''nazwa dźwięku; nuta''|80895}}
+* {{R:pl:SGJP|si ''ów, ten, tamten''|142811}}
+* {{R:zlw-opl:SSP1953|si|159|49}}
+
+==Portuguese==
+
+===Pronunciation===
+{{pt-IPA}}
+* {{audio|pt|LL-Q5146 (por)-Santamarcanda-si.wav|a=<<Portugal>> (<<Porto>>)}}
+* {{rhymes|pt|i|s=1}}
+* {{hyph|pt|si}}
+
+===Etymology 1===
+From {{inh|pt|roa-opt|si}}, from {{inh|pt|la|sibi}}, from {{inh|pt|ine-pro|*sébʰye}}, dative of {{m|ine-pro|*swé||self}}. Cognate with {{cog|fr|soi}}, {{cog|it|sé}}, {{cog|es|sí}}.
+
+====Alternative forms====
+* {{alt|pt|sy||obsolete}}
+
+====Pronoun====
+{{head|pt|pronoun forms|reflexive}}
+
+# {{lb|pt|following a preposition}} [[oneself]], [[yourself]], [[himself]], [[herself]], [[itself]], [[yourselves]], [[themselves]]
+
+=====See also=====
+{{pt-personal pronouns}}
+
+===Etymology 2===
+From {{der|pt|la|sancte|'''S'''ancte}} {{m|la|Iohannes|'''I'''ohannes|Saint John}} in the [[w:Ut queant laxis|hymn for St. John the Baptist]].
+
+====Noun====
+{{pt-noun|m}}
+
+# {{l|en|si}} {{gloss|musical note}}
+
+=====Coordinate terms=====
+{{list:C major scale/pt}}
+
+===Etymology 3===
+
+====Conjunction====
+{{head|pt|conjunctions}}
+
+# {{eye dialect of|pt|se|from=Brazilian}}
+
+===Etymology 4===
+Possibly borrowed from {{bor|pt|es|sí}} or a {{clipping|pt|sim|nocap=1}}.
+
+====Interjection====
+{{head|pt|intj}}
+
+# {{lb|pt|Rio Grande do Sul|informal|internet slang}} [[yes]] {{gloss|affirmative answer}}
+#: {{syn|pt|Thesaurus:sim}}
+
+===Further reading===
+* {{R:pt:Aulete}}
+* {{R:pt:Priberam}}
+
+==Quapaw==
+
+===Etymology===
+Cognate with {{cog|asb|sihá}}, {{cog|dak|sihá}}, {{cog|lkt|sí}}, {{cog|oma|si}}, {{cog|hid|icí}}, {{cog|cro|iché}}.
+
+===Noun===
+{{head|qua|noun}}
+
+# [[foot]]
+
+===References===
+* {{R:qua:QTA|f|4}}
+
+===Further reading===
+* {{R:qua:Rankin:1982|page=136}}
+
+{{c|qua|Anatomy}}
+
+==Romagnol==
+
+===Pronunciation===
+{{rgn-IPA/2|rf=1|vu=1|'|s|ì}}
+
+===Etymology 1===
+{{inh+|rgn|la|sex|sĕx|t=six}}.
+
+====Numeral====
+{{head|rgn|numerals|g=m}}
+
+# [[six]]
+#: {{uxa|rgn|Uj vö '''si''' dè.|It takes '''six''' days.}}
+
+===Etymology 2===
+From the initial letters of ''[[sancte|'''S'''ancte]] + [[Iohannes|'''I'''ohannes]]'', of the seventh verse of the hymn [[w:Ut queant laxis|Ut queant laxis]].
+
+====Noun====
+{{rgn-noun|m|g=p|si}}
+
+# [[Si]] (musical note)
+
+===Etymology 3===
+{{inh+|rgn|la|sebum|sēbum|t=tallow}}.
+
+====Noun====
+{{rgn-noun|m|g=p|si}}
+
+# [[tallow]]
+
+===References===
+{{R:rgn:V|page=584, 585}}
+
+==Romani==
+
+===Etymology===
+{{rfe|rom}}
+
+===Verb===
+{{head|rom|verbs}}
+
+# to [[be]]
+# [[there be]]
+# {{n-g|Used before an accusative personal pronoun to indicate possession.}}
+#: {{uxa|rom|'''Si''' la kale bala.|She '''has''' black hair.}}
+
+====Usage notes====
+* The personal pronoun is often omitted when ''si'' is used to mean "to be".
+* When a noun indicates the possessor, ''si'' follows the accusative case of the noun.
+
+====Conjugation====
+{{rom-conj-si}}
+
+====Derived terms====
+{{col2|rom|si te}}
+
+===References===
+* {{cite-book|ja|author=Yūsuke Sumi|title=ニューエクスプレスプラス　ロマ（ジプシー）語|trans-title=New Express Plus Romani (Gypsy)|location=Tokyo|publisher=Hakusuisha|year=2018|year_published=2021|page=71|isbn=978-4-560-08916-3|oclc=1267332830}}
+
+==Romanian==
+
+===Etymology===
+{{ety|ro|:bor|it:si|text=+|tree=1}}
+
+===Pronunciation===
+* {{IPA|ro|/si/}}
+
+===Noun===
+{{ro-noun|m|si}}
+
+# {{lb|ro|music}} {{l|en|si}} {{gloss|musical note B}}
+
+====Declension====
+{{ro-noun-m|pl=si}}
+
+==Romansh==
+
+===Alternative forms===
+* {{qualifier|Sutsilvan|Surmiran}} {{alt|rm|sen|se}}
+* {{qualifier|Puter|Vallader}} {{alt|rm|sü}}
+
+===Etymology===
+From {{inh|rm|la-vul|-}}, {{inh|rm|la-lat|-}} root {{m|la||sūsum}}, from {{inh|rm|la|sursum|sūrsum}}.
+
+===Adverb===
+{{head|rm|adverbs}}
+
+# {{lb|rm|Rumantsch Grischun|Sursilvan}} [[up]], [[upward]], [[upwards]]
+
+==Sassarese==
+
+===Pronunciation===
+* {{IPA|sdc|/si/}}
+
+===Etymology 1===
+From {{inh|sdc|la|se||pos=reflexive third-person pronoun|him-, her-, it-, themselves}}. Cognate with {{cog|it|si}}, {{cog|pt|si}} and {{m|es|se}}.
+
+====Alternative forms====
+* {{alter|sdc|s'||apocopic}}
+* {{alter|sdc|-ssi||enclitic}}
+
+====Pronoun====
+{{head|sdc|pronouns|cat2=personal pronouns}}
+
+# {{lb|sdc|reflexive pronoun}} [[oneself]], [[himself]], [[herself]], [[itself]], [[themselves]]
+#: {{uxa|sdc|La camìsgia '''si''' la pònini li manni|inline=1|Adults wear shirts|lit=The adults put the shirt on '''themselves'''}}
+# {{lb|sdc|reciprocal pronoun}} [[each other]], [[one another]]
+#: {{uxa|sdc|Eddi '''s''''àmani|inline=1|They love '''each other'''}}
+# {{lb|sdc|indefinite}} [[one]], [[you]], [[we]], [[they]], [[people]]
+#: {{uxa|sdc|Lu zipressu '''si''' dizi "àiburu di campusantu"|inline=1|The cypress is called "graveyard tree"}}
+
+=====Related terms=====
+* {{l|sdc|sóiu}}
+
+===Etymology 2===
+From {{inh|sdc|la|si|sī}}, from {{inh|sdc|itc-pro|*sei||so, thus}} used in parataxis, likely via the meaning "in this" as the locative singular of {{der|sdc|ine-pro|*só||this, that}}.
+
+====Conjunction====
+{{head|sdc|conjunctions}}
+
+# {{l|en|if}}
+#: {{uxa|sdc|'''Si''' lu sai, dìmmiru!|inline=1|'''If''' you know, tell me!|lit='''If''' you know it, tell it to me!}}
+
+===References===
+* {{R:sc:Rubattu2006}}
+
+==Savi==
+
+===Etymology===
+{{ety|sdg|:inh|sa:सेतु|tree=1|text=++}}
+
+===Noun===
+{{head|sdg|nouns}}
+
+# [[bridge]]
+
+===References===
+* {{R:sdg:Knobloch}}
+
+==Serbo-Croatian==
+
+===Pronunciation===
+* {{sh-IPA|si}}
+
+===Pronoun===
+{{sh-pron}}
+
+# {{lb|sh|reflexive}} Replaces the [[dative]] of a personal pronoun when the [[subject]] is of the same [[person]] as the dative [[object]]; to [[oneself]] (clitic dative singular of {{m|sh|sebe|sȅbe|oneself}})
+## to [[myself]]
+## to [[yourself]]
+## to [[himself]], [[herself]], [[itself]]
+## to [[ourselves]]
+## to [[yourselves]]
+## to [[themselves]]
+# {{lb|sh|reflexive|emphatic|possessive|dative}} [[one's]], of [[oneself]] ({{inflection of|sh|sebe||clitic|dat|s|t=one}})
+#: {{uxa|sh|Kako li je samo zaboravio gdje '''si''' je parkirao auto?|Just how did he forget where he parked his car?}}
+
+====Declension====
+{{sh-decl-noun
+|gs={{l|sh|sȅbe}}, {{l|sh|se}}|gp={{l|sh|sȅbe}}
+|ds={{l|sh|sȅbi}}, {{l|sh|si}}|dp={{l|sh|sȅbi}}
+|as={{l|sh|sȅbe}}, {{l|sh|se}}|ap={{l|sh|sȅbe}}
+|ls={{l|sh|sȅbi}}|lp={{l|sh|sȅbi}}
+|is={{l|sh|sȍbōm}}|ip={{l|sh|sȍbom}}
+}}
+
+===Verb===
+{{sh-verb form}}
+
+# {{verb form of|sh|biti|bȉti|2s|pres}}
+
+===Usage notes===
+Sense 2 is limited to most Croatian dialects and the Torlakian/Prizren-Timok dialect. The Serbian and Bosnian standards discourage the usage of ''si'' as an empathic clitic and instead rely purely on sentence intonation.
+
+==Slovak==
+
+===Etymology===
+{{ety|sk|:inh|sla-pro:*esi|text=+|tree=1}}
+
+===Pronunciation===
+* {{sk-IPA}}
+
+===Verb===
+{{head|sk|verb forms}}
+
+# {{inflection of|sk|byť||2|s|pres}}: (you) [[are]], (thou) [[art]]
+
+===Pronoun===
+{{head|sk|pronoun form}}
+
+# {{noun form of|sk|seba||dat}}
+#: {{uxa|sk|Kupujem '''si''' topánky.|I am buying '''me''' shoes.}}
+#: {{uxa|sk|Komu kupuješ topánky? '''Sebe'''.|Whom are you buying shoes for? '''Myself'''.}}
+
+===Further reading===
+* {{R:sk:SDK}}
+
+==Slovene==
+
+===Pronunciation 1===
+* {{sl-IPA|sȉ}}
+
+====Verb====
+{{head|sl|verb forms|head=sȉ}}
+
+# {{infl of|sl|bíti||2|s|pres}}
+
+===Pronunciation 2===
+* {{sl-IPA|si}}
+
+====Pronoun====
+{{head|sl|pronoun forms}}
+
+# {{infl of|sl|sébe||dat|s}}
+
+==Spanish==
+
+===Etymology===
+{{ety|es|:inh|la:si<t:if>|text=+|tree=1}}
+
+===Pronunciation===
+{{es-pr|+<audio:LL-Q1321 (spa)-Rodelar-si.wav><hmp:sí>}}
+
+===Conjunction===
+{{head|es|conjunctions}}
+
+# [[if]], [[whether]]
+#* {{quote-journal|es|author=Allison Morrow|title=Por qué la Cybertruck de Tesla ha sido un fracaso total|magazine=w:CNN en Español|url=https://cnnespanol.cnn.com/2025/07/04/economia/cybertruck-tesla-fracaso-por-que-trax|date=2025-07-04|passage=Se podría estimar, entonces, que Tesla probablemente vendió entre 5.000 y 6.000 Cybertrucks en el segundo trimestre '''si''' las tendencias de consumo se mantuvieron estables.|translation=It could be estimated, then, that Tesla probably sold between 5,000 and 6,000 Cybertrucks in the second quarter '''if''' consumer trends remained stable.}}
+# {{lb|es|often|after {{m|es|pero}}}} {{ng|points out something obvious, usually not translated}}
+#* {{RQ:Reddit|es|date=2026-12-24|username=bimbochungo|subreddit=spain|id=1hmokgw|comment=m3vgh2c
+|text=Normal, '''si''' tener hijos es caro y los salarios son una basura. Y los horarios no ayudan...
+|t=Well duh, having kids is expensive and wages are garbage. And the work hours don't help...
+|footer=Replying to a post titled "Spain runs out of children: there are 80,000 fewer than in 2023".}}<!--honestly i prefer using quotes for this
+#: {{uxa|es|¿¡(Pero) a dónde va este!? ¡'''Si''' la carretera está cerrada!|Where's this guy going!? The road is closed! (therefore he can't drive there)}}
+#: {{uxa|es|"¿Cómo fue el concierto?" "(Pero) '''si''' es mañana..."|"How was the concert?" "It's tomorrow... (How was I supposed to be there if it's tomorrow?)"}}
+#: {{uxa|es|"Voy a salir." "¡Pero '''si''' estás malo! ¿¡Cómo vas a salir!?" (can be rephrased as "¿¡Cómo vas a salir si estás malo!?", which uses sense 1)|"I'm going out now." "But you're sick! What do you mean, you're going out!?"}}-->
+
+====Derived terms====
+{{col|es
+|apenas si
+|cual si
+|como si
+|por si
+|que si
+|si bien
+|si Dios lo quiere|si eso
+|si la mirada matara
+|si lo sabré yo
+|si mal no recuerdo
+|si me apuras
+|si no
+|si no quieres caldo, taza y media
+|si que
+|si quisiera Dios
+|si tan siquiera
+|si y solo si
+|si ya
+}}
+
+====See also====
+* {{l|es|sí}}
+
+===Further reading===
+* {{R:es:DRAE}}
+
+==Sranan Tongo==
+
+===Alternative forms===
+* {{alt|srn|syi}}
+
+===Etymology===
+From {{der|srn|en|see}} or {{der|srn|nl|zien}},<ref>{{cite-thesis
+|author=Norval H.S. Smith
+|type=PhD
+|date=1987
+|title=The genesis of the Creole languages of Surinam
+|publisher=Universiteit van Amsterdam
+|url=https://dagenta.ivdnt.org/wp-content/uploads/pdf/1987-smith-genesis-of-creole-languages-of-surinam.pdf
+|page=25}}</ref> both from {{der|srn|gmw-pro|*sehwan}}. 
+
+===Pronunciation===
+* {{srn-IPA}}
+
+===Verb===
+{{head|srn|verb}}
+
+# to {{l|en|see}}
+#* {{quote-book|srn
+|chapter=Basya Adyuku koni 
+|editors=Ursy M. Lichtveld; {{w|lang=nl|Jan Voorhoeve (surinamist)|Jan Voorhoeve}}
+|title=Creole drum. An Anthology of Creole Literature in Surinam
+|location=New Haven, London
+|publisher=Yale University Press
+|year=1975
+|page=86
+|isbn=0300016611
+|url=https://dbnl.nl/tekst/voor007creo01_01/voor007creo01_01_0011.php
+|text=A krabdagu taki: - Angri e kiri mi ba. A di mi '''si''' yu e nyan, ne mi kon.
+|translation=The crab-eating raccoon said: 'I'm starving, brother. When I '''saw''' that you're eating, I came over immediately.}}
+#* {{quote-song
+|srn
+|lyricist=w:nl:Anne-Marie Hunsel
+|composer=w:Bob Dylan
+|title=Mi Dren (I Shall Be Released)
+|url=https://www.discogs.com/release/1721701-Anne-Marie-Hunsel-The-Steel-Electric-Band-mmv-Het-Koor-Moksi-Uma-Mi-Dren-I-Shall-Be-Released
+|album=Mi Dren (I Shall Be Released)
+|artist=w:nl:Anne-Marie Hunsel
+|year=1985
+|text=Ini mi dren mi ben '''si''' / fa Srananman ben makandra / Ala buba ben kon na wan / Ke Masra, mi winsi a ben de tru
+|t=In my dream, I '''saw''' / how the Surinamese were getting along / All races had united / Oh Lord, I wish it were true}}
+#* {{quote-book|srn|year=1991
+|title=Sranan kloroeboekoe
+|trans-title=Surinamese colouring book
+|author=Ronald L. Pinas
+|location=Paramaribo
+|publisher=Instituut voor Taalwetenschap ({{w|SIL Global|SIL}})
+|page=58
+|url=https://www.dbnl.org/tekst/pina017sran01_01/pina017sran01_01_0002.php
+|text=Nanka nanga Joeria gwe go onti ini a boesi. Den wani njan legwana meti tide. Den '''si''' wan kapelka, wan loiri nanga wan toekanfowroe. Joe kan jepi den foe feni wan legwana?
+|norm=Nanka nanga Yuria gwe go onti ini a busi. Den wani nyan legwanameti tide. Den '''si''' wan kapelka, wan loiri nanga wan tukanfowru. Yu kan yepi den fu feni wan legwana?
+|t=Nanka and Yuria left to go hunting in the jungle. They want to eat iguana meat today. They '''see''' a butterfly, a sloth, and a toucan. Can you help them to find an iguana?}}
+
+====Descendants====
+* {{desc|djk|si}}
+* {{desc|srm|si}}
+
+===References===
+<references/>
+
+==Sumerian==
+
+===Romanization===
+{{sux-rom}}
+
+# {{romanization of|sux|𒋛}}
+
+==Swahili==
+
+===Pronunciation===
+{{sw-IPA}}
+* {{audio|sw|Sw-ke-si.flac|a=Kenya}}
+
+===Verb===
+{{head|sw|verb forms}}
+
+# {{inflection of|sw|wa|-wa|negative|present|(all persons, numbers, and classes)|t=to not be}}
+
+===Verb===
+{{sw-variant|سِ|ـسِ}}
+{{head|sw|verb forms|head=-si}}
+
+# {{inflection of|sw|[[wa|-wa]], [[wapo|-wapo]], [[wako|-wako]], or [[wamo|-wamo]]||negative|relative|stem}}
+#: {{uxa|sw|mtu a'''si'''ye na maarifa|a person without knowledge}}
+
+==Tagalog==
+
+===Pronunciation===
+{{tl-pr}}
+
+===Etymology 1===
+{{ety|tl|:inh|map-pro:*si|text=+|tree=1}} Compare {{cog|bcl|si}}, {{cog|ceb|si}}, {{cog|gor|ti}}, {{cog|hil|si}}, {{cog|ilo|si}}, {{cog|pam|i}}, {{cog|pag|si}}, {{cog|tsg|hi}}, and {{cog|war|si}}.
+
+====Article====
+{{tl-head|article|b=+|pl=sina}}
+
+# {{n-g|direct marker placed before names or terms of address of people}}
+#: {{uxa|tl|Tumakbo '''si''' Juan.|Juan ran.}}
+#: {{uxa|tl|Dinala nila '''si''' Tatay sa ospital.|They brought Father to the hospital.}}
+# {{n-g|direct marker placed before an adjective used to refer to a person with those distinct characteristics}}
+#: {{uxa|tl|Nandiyan na '''si''' taba.|Fatso is there.|inline=1}}
+
+=====Alternative forms=====
+* {{alt|tl|c||text messaging}}
+* {{alt|tl|çi||obsolete}}
+
+=====See also=====
+{{tl-markers}}
+
+===Etymology 2===
+{{bor+|tl|en|cee}}, the English name of the letter {{m|en|C//c}}.
+
+====Noun====
+{{tl-noun|b=+}}
+
+# {{tl-letter name|C|c|alph=fil}}
+#: {{syn|tl|ce|q1=in the Abecedario}}
+
+=====See also=====
+{{list:Latin script letter names/tl}}
+
+===Further reading===
+* {{R:Pambansang Diksiyonaryo}}
+
+==Ternate==
+
+===Adverb===
+{{head|tft|adverbs}}
+
+# [[first]], [[firstly]]
+
+====References====
+* Rika Hayami-Allen (2001). A Descriptive Study of the Language of Ternate, the Northern Moluccas, Indonesia. University of Pittsburgh.
+
+==Tok Pisin==
+
+===Etymology===
+From {{der|tpi|en|sea}}.
+
+===Noun===
+{{head|tpi|nouns}}
+
+# [[sea]]
+# [[wave]]s; [[breaker]]s; [[swell]]s
+
+==Turkish==
+
+===Etymology===
+{{ety|tr|:bor|it:si|text=+|tree=1}}
+
+===Pronunciation===
+* {{tr-IPA||[ˈs̪ɪ]}}
+* {{rhymes|tr|i|s=1}}
+
+===Noun===
+{{tr-noun|yi|ler}}
+
+# {{lb|tr|music}} [[#English|si]] {{gloss|musical note B}}
+
+==Vietnamese==
+
+===Pronunciation===
+{{vi-IPA}}
+
+===Etymology 1===
+From {{inh|vi|mkh-vie-pro|*ɟ-riː}}, from {{inh|vi|aav-pro|*ɟriːʔ||banyan, ficus}}. Cognate with {{cog|bdq|jri}}, {{cog|km|ជ្រៃ}}, {{cog|kha|jri}}, {{cog|omx|jrey}}.
+
+====Noun====
+{{vi-noun|cls=[[cây]], [[quả]], [[trái]]|󰊮}}
+
+# certain [[plant]]s of the {{taxfmt|Mallotus|genus}} and {{taxfmt|Ficus|genus}} genera
+#: {{syn|vi|gừa}}
+
+===Etymology 2===
+From {{bor|vi|fr|si}}.
+
+====Noun====
+{{vi-noun|cls=nốt}}
+
+# {{lb|vi|music}} [[si]], [[B]]
+
+===Etymology 3===
+
+====Romanization====
+{{head|vi|romanization}}
+
+# {{sino-vietnamese reading of|愚}}
+
+=====Derived terms=====
+{{col|vi|ngu si|si mê|cuồng si|sân si|si tình}}
+
+{{C|vi|Fig trees}}
+
+==Volapük==
+
+===Interjection===
+{{head|vo|interjections}}
+
+# [[yes]]
+#* {{quote-book|vo|1932|Arie de Jong|Leerboek der Wereldtaal|page=19|text=Cils äbinons-li i pö zäl et? '''Si'''! elogob us tumis.|t=Were there children at that party as well? '''Yes''', I've seen hundreds of them there.}}
+
+==Waigali==
+
+===Etymology===
+Borrowed from a descendant of {{der|wbk|sa|सिंह|tr=siṃhá}}.
+
+===Pronunciation===
+* {{IPA|wbk|/ˈsi/}}
+
+===Noun===
+{{head|wbk|noun}} {{q|Nisheigram}}<ref name="NEL">{{R:iir-nur:NEL|si}}</ref>
+
+# [[lion]]
+
+===References===
+<references />
+
+==Walloon==
+
+===Etymology===
+From {{inh|wa|fro|-}}, from {{inh|wa|la|si||if}}.
+
+===Pronunciation===
+* {{IPA|wa|/si/}}
+
+===Conjunction===
+{{head|wa|conjunctions}}
+
+# [[if]]
+
+==Welsh==
+
+===Alternative forms===
+* {{alter|cy|su}}
+
+===Pronunciation===
+* {{IPA|cy|/siː/}}
+* {{rhymes|cy|iː|s=1}}
+* {{hyph|cy|si}}
+
+===Noun===
+{{cy-noun|m|sïon}}
+
+# [[murmur]], [[hum]]
+# [[rumour]]
+
+====Derived terms====
+* {{l|cy|sïedn}}, {{l|cy|adar y si|aderyn y si}}, {{l|cy|adar bach y si|aderyn bach y si|hummingbird}}
+
+====Related terms====
+* {{l|cy|sïo||to murmur, to hum}}
+* {{l|cy|sïol||murmuring, hissing}}
+
+===Mutation===
+{{cy-mut}}
+
+===Further reading===
+* {{R:cy:Gweiadur}}
+* {{R:cy:GPC}}
+
+==Yoruba==
+
+===Etymology 1===
+{{etymid|yo|letter s}}
+
+====Pronunciation====
+* {{IPA|yo|/sí/}}
+
+====Noun====
+{{yo-pos|noun|sí}}
+
+# {{Latn-def|yo|name|S|s}}
+
+====See also====
+{{list:Latin script letter names/yo}}
+
+===Etymology 2===
+{{etymid|yo|to}}
+
+====Preposition====
+{{yo-pos|preposition|sí}}
+
+# [[to]], [[at]], [[toward]] {{q|used when movement is implied}}
+
+====See also====
+* {{l|yo|ni|ní}}
+
+===Etymology 3===
+{{etymid|yo|far}}
+Compare with {{cog|its|sin|sín}}
+
+====Verb====
+{{yo-pos|verb|sí}}
+
+# {{lb|yo|intransitive}} to be [[far]], to be [[distant]]
+
+===Etymology 4===
+{{etymid|yo|exist, negative}}
+
+====Verb====
+{{yo-verb|sí}}
+
+# {{lb|yo|intransitive}} {{form of|yo|Negative form|wà}}
+
+===Etymology 5===
+{{etymid|yo|and}}
+
+====Conjunction====
+{{yo-pos|conjunction|sì}}
+
+# [[and]]
+
+=====Usage notes=====
+''Sì'' is solely used to join verbs/sentences and not nouns, for which {{m|yo|ati|àti}} is used. Additionally, when ''sì'' is used, the subject of each verb must be specified.
+# Mo jó, mo kọ́ ẹ̀kọ́, mo '''sì''' kọ lẹ́tà. – ''I danced, studied, and wrote a letter.''
+# Wọn kò fẹ́ ṣiṣẹ́, wọn kò '''sì''' fẹ́ ṣeré. – ''They don't want to work or play.''
+
+==Zhuang==
+
+===Etymology===
+From {{bor|za|zh|-}} {{zh-l|市}}.
+
+===Pronunciation===
+* {{za-pron|new_bor=1}}
+
+===Noun===
+{{za-head|noun}}
+
+# [[city]]
+#: {{uxa|za|Nanzningz '''Si'''|Nanning '''City'''}}
+
+{{C|za|Administrative divisions}}
+
+==Zou==
+
+===Etymology 1===
+From {{inh|zom|tbq-kuk-pro|*thii}}, from {{inh|zom|sit-pro|*swiʔ}}.
+
+====Pronunciation====
+* {{zom-IPA|sí}}
+* {{hyph|zom|si}}
+
+====Noun====
+{{zom-noun|sí}}
+
+# [[blood]]
+
+===Etymology 2===
+From {{inh|zom|tbq-kuk-pro|*thii}}, from {{inh|zom|sit-pro|*sij}}.
+
+====Pronunciation====
+* {{zom-IPA|sî}}
+* {{hyph|zom|si}}
+
+====Verb====
+{{zom-verb|sî}}
+
+# {{lb|zom|intransitive}} to [[die]]
+
+===References===
+* {{R:zom:Thanglienmang:2010|pages=22, 92}}
+* {{R:zom:Singh:2013|pages=40, 47}}
+
+{{C|zom|Bodily fluids}}

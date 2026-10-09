@@ -1,5 +1,6 @@
 // `pnpm run correct:records`: the one-off update that writes the curated
-// corrections (src/italian/curatedCorrections.ts, #420, #450) into an already seeded
+// corrections (src/italian/curatedCorrections.ts, #420, #450) and the hand-kept
+// readings (src/italian/handKeptReadings.ts, #745) into an already seeded
 // dictionary (correctRecords.ts). It picks its database the way the seed does:
 // the local D1 under `SEED_STATE` (default `.data/seed-state`), or the remote
 // D1 `SEED_REMOTE` names. The dictionary deploy workflow writes the shared
@@ -13,10 +14,11 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { finish, flags, isMain, usageError, type CommandResult } from "../commandLine.js";
 import { CURATED_CORRECTIONS, type CuratedCorrection } from "../italian/curatedCorrections.js";
+import { HAND_KEPT_READINGS, type HandKeptReading } from "../italian/handKeptReadings.js";
 import { planOnlyAnswer, planOnlyFlag, planOnlyRun } from "../update/planOnly.js";
 import { upgradeFirst } from "../update/master.js";
 import { masterReaderOf } from "../update/updateCli.js";
-import { describeDefinition, describeEntry, missingForCorrections, planCorrections, unwritten } from "./correctRecords.js";
+import { describeDefinition, describeEntry, describeReading, missingForCorrections, planCorrections, unwritten } from "./correctRecords.js";
 import { seedTargetFrom, webWrangler, type Wrangler } from "./seedTarget.js";
 
 const USAGE = "usage: pnpm run correct:records [--out <dir>] [--plan-only]";
@@ -30,22 +32,23 @@ export async function main(
   args: readonly string[] = [],
   wrangler: Wrangler = webWrangler,
   corrections: readonly CuratedCorrection[] = CURATED_CORRECTIONS,
+  readings: readonly HandKeptReading[] = HAND_KEPT_READINGS,
 ): Promise<CommandResult> {
   const { planOnly, rest } = planOnlyFlag(args);
   const options = flags(rest, ["out"]);
   if (typeof options === "string") return usageError(options, USAGE);
   const target = seedTargetFrom(env, wrangler, resolve(".data/seed-state"));
   const reader = masterReaderOf(target);
-  const plan = planCorrections(reader, corrections);
-  log(`planning ${corrections.length} curated correction(s) for the master ${plan.masterReleaseId} in ${target.dictionary}`);
-  const lines = [...plan.entries.map(describeEntry), ...plan.edges.map(describeEntry), ...plan.definitions.map(describeDefinition)];
+  const plan = planCorrections(reader, corrections, readings);
+  log(`planning ${corrections.length} curated correction(s) and ${readings.length} hand-kept reading(s) for the master ${plan.masterReleaseId} in ${target.dictionary}`);
+  const lines = [...plan.entries.map(describeEntry), ...plan.edges.map(describeEntry), ...plan.definitions.map(describeDefinition), ...plan.readings.map(describeReading)];
   const out = resolve(options.get("out") ?? ".data/updates");
   if (planOnly) {
     return planOnlyAnswer(planOnlyRun("correct:records", plan.counts, reader), plan.sql, out, `correct-${plan.masterReleaseId}`, {
       entries: lines.map((line) => line.trim()),
     });
   }
-  const writes = [...plan.entries, ...plan.edges, ...plan.definitions].filter((entry) => entry.state === "write").length;
+  const writes = [...plan.entries, ...plan.edges, ...plan.definitions, ...plan.readings].filter((entry) => entry.state === "write").length;
   if (plan.sql === "") return { out: [`nothing to write in ${target.dictionary}`, ...lines].join("\n"), status: 0 };
   const needed = missingForCorrections(reader);
   if (needed.length > 0) return { out: upgradeFirst(target.dictionary, needed), status: 1 };

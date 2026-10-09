@@ -1057,3 +1057,42 @@ CREATE TABLE corrected_definition (
   PRIMARY KEY (entry_id, definition_index),
   FOREIGN KEY (entry_id, definition_index) REFERENCES entry_definition(entry_id, definition_index)
 ) STRICT;
+
+-- A hand-kept reading (ADR 0031, #745): a whole reading the source lacks, kept
+-- by hand on a ruling from the committed list (src/italian/handKeptReadings.ts).
+-- `si` has no pronoun record and `come` no conjunction, because Italian
+-- Wiktionary has no such section. One row per definition, so a reading exists
+-- only as at least one definition, each with Lexema's approved Italian wording
+-- and the en.wiktionary revision that shows it. It keys to nothing in the
+-- source: no record, no raw page and no recovered entry, and no imported row
+-- is touched. A lookup reads it beside the source's readings of its word
+-- (src/lookup/handKept.ts). Absent on a master seeded before it until
+-- `update:upgrade` creates it; a lookup reads an absent one as empty.
+CREATE TABLE hand_kept_definition (
+  -- The reading's word and part of speech, `si:pron`: every row of a reading names both.
+  reading_id         TEXT    NOT NULL,
+  definition_index   INTEGER NOT NULL CHECK (definition_index >= 0),
+  word               TEXT    NOT NULL CHECK (word <> '' AND trim(word) = word),
+  word_key           TEXT    NOT NULL CHECK (word_key <> ''), -- the normalizer applied to word, as lookup_form's
+  pos                TEXT    NOT NULL CHECK (pos IN ('noun', 'adj', 'verb', 'name', 'adv', 'abbrev', 'intj', 'conj', 'prep', 'pron', 'article', 'prefix', 'suffix', 'affix', 'character', 'symbol', 'num', 'particle', 'phrase', 'adv_phrase', 'prep_phrase')),
+  pos_title          TEXT    NOT NULL CHECK (pos_title <> ''),
+  -- Lexema's wording, approved by Huey on the pull request that adds it.
+  text               TEXT    NOT NULL CHECK (trim(text) <> ''),
+  -- The sense line of the cited revision the wording paraphrases, verbatim.
+  page_line          INTEGER NOT NULL CHECK (page_line > 0),
+  wikitext           TEXT    NOT NULL,
+  -- The heading of the revision's section that states the part of speech.
+  section_line       INTEGER NOT NULL CHECK (section_line > 0 AND section_line < page_line),
+  section_wikitext   TEXT    NOT NULL CHECK (section_wikitext <> ''),
+  -- The en.wiktionary revision the reading cites first, as a permanent link.
+  -- Two GLOBs, each under D1's 50-byte pattern limit (#489).
+  evidence_url       TEXT    NOT NULL CHECK (evidence_url GLOB 'https://en.wiktionary.org/w/index.php?title=?*'
+                                             AND evidence_url GLOB '*&oldid=[1-9]*'),
+  revision_timestamp TEXT    NOT NULL,
+  CHECK (reading_id = word || ':' || pos),
+  PRIMARY KEY (reading_id, definition_index)
+) STRICT;
+
+-- "Which hand-kept reading spells this?", as lookup_form_by_key.
+CREATE INDEX hand_kept_definition_by_key
+  ON hand_kept_definition (word_key);
