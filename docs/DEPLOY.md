@@ -797,8 +797,12 @@ built from, for the pages, as a seed reads them. For each record-backed
 definition it writes one `recovered_definition` row, its `recovered_label` and
 `recovered_example` rows, and the page's `raw_page` row when the dictionary has
 none; for each page-only one, an `entry_definition` row and its `entry_label`
-and `entry_example` rows. It touches no record and no `source_record_json`
-line, and deletes no row but the ones `recovered-verb-part/v1` names. A definition the dictionary already holds, by its record or entry and
+and `entry_example` rows. For the key of each held page-only entry it reads,
+it writes the `accent_fold` and `typo_key` rows a fresh seed writes, ranked by
+the key's lemma records and the definitions of all its page-only entries, held
+and written now, and deletes the held ones that differ, as `load:page-entries`
+does (#785). It touches no record and no `source_record_json` line, and deletes
+no other row but the ones `recovered-verb-part/v1` names. A definition the dictionary already holds, by its record or entry and
 page line, keeps its text, labels and examples, so a second run plans nothing;
 one held with other text than a fresh seed's is reported and left (text changes
 are `normalize:source-text`'s). A record a feed replaced

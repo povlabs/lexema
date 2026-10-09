@@ -1,0 +1,32 @@
+<!-- it.wiktionary.org/wiki/Aglio revision 4023379 (2025-04-08T09:17:25Z), CC BY-SA 4.0. Saved verbatim. -->
+{{Vedi|aglio}}
+{{-sost-|it}}
+{{Pn|w}} ''m sing''
+#{{Term|botanica|it}}  [[genere]] della famiglia delle [[Liliacee]]; {{taxon|Allium sativum}}
+[[File:Allium sativum garden.jpg|thumb| aglio: [[w:Allium sativum|Allium sativum]]]]
+
+
+{{-sill-}}
+; à | glio
+
+{{-etim-}}
+dal latino  ''[[allium]]''
+
+{{-iperon-}}
+*''(specie)'' [[aglio]]
+
+{{-iperon-}}
+*''(divisione)'' [[Angiosperme]], ''(classe)'' [[Monocotiledoni]], ''(famiglia)'' [[Liliacee]]
+
+
+{{-trad-}}
+{{Trad1|{{Term|botanica|it}}}}
+:*{{en}}:
+{{Trad2}}
+
+{{-ref-}}
+*{{Fonte|dem}}
+*{{Fonte|trec}}
+
+== Altri progetti ==
+{{Interprogetto|w|commons=Category:Allium sativum|wikispecies=Allium sativum}}
