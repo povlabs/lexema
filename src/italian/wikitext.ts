@@ -235,7 +235,13 @@ export type Rendered =
   | { rendered: false; template: string };
 
 /**
- * Replace every template on a line, innermost first: a label by a space, noted
+ * Stands where a label template printed, until the punctuation that only
+ * separates labels is dropped. XML cannot carry it, so no page holds it.
+ */
+const LABEL = "\u0001";
+
+/**
+ * Replace every template on a line, innermost first: a label by `LABEL`, noted
  * in `labels`; the headword, a printing template and a language name by what
  * they print; any other by what `unknown` returns for its name.
  */
@@ -256,13 +262,44 @@ function expandTemplates(
       if (label !== undefined) {
         const printed = label(args);
         if (printed !== undefined && printed !== "") labels.push(printed);
-        return " ";
+        return ` ${LABEL} `;
       }
       const printer = Object.hasOwn(PRINTING_TEMPLATES, name) ? PRINTING_TEMPLATES[name] : Object.hasOwn(printing, name) ? printing[name] : undefined;
       return printer?.(args) ?? LANGUAGE_TEMPLATES[name] ?? unknown(name);
     });
   }
   return { text: text.replace(LINK, (_, target: string, label?: string) => label ?? target), labels };
+}
+
+/** Spaces, emphasis toggles and the punctuation a label may be set off by: what may stand between two labels. */
+const SEPARATOR = String.raw`(?:\s|'{2,5}|[,;:])`;
+/** A run of separators and labels after a label, up to the next label. */
+const BETWEEN_LABELS = new RegExp(`${LABEL}(${SEPARATOR}*)(?=${LABEL})`, "gu");
+/** The labels a line opens with and the separators after them, when visible text follows. */
+const OPENING_LABELS = new RegExp(`^((?:\\s|'{2,5})*${LABEL})((?:${SEPARATOR}|${LABEL})*)(?=\\S)`, "u");
+const withoutPunctuation = (separators: string): string => separators.replace(/[,;:]/g, " ");
+
+/**
+ * The text a label leaves behind, as the page shows it. it.wiktionary prints
+ * each label template as `(''label'')` (Template:Term, read 2026-10-09), so a
+ * comma, semicolon or colon written between two labels, or between the labels
+ * a line opens with and its first visible word, only separates labels: it is
+ * no part of the definition, and goes with them (#712). Punctuation between
+ * words stays, and so does the punctuation of a line that is labels alone.
+ */
+function withoutLabels(text: string): string {
+  return text
+    .replace(OPENING_LABELS, (_, labels: string, separators: string) => labels + withoutPunctuation(separators))
+    .replace(BETWEEN_LABELS, (_, separators: string) => LABEL + withoutPunctuation(separators))
+    .replaceAll(LABEL, " ");
+}
+
+/** What a line shows once its labels are gone, and what it showed when the punctuation that only separates labels stayed, before #712. */
+export interface LabelPunctuation {
+  /** The text `renderInline` gives. */
+  text: string;
+  /** The text with that punctuation kept, as rows stored before #712 hold it. */
+  kept: string;
 }
 
 /**
@@ -274,14 +311,37 @@ function expandTemplates(
  * does not say. The line is reported instead.
  */
 export function renderInline(body: string, headword: string, printing: Readonly<Record<string, TemplatePrinter>> = {}): Rendered {
+  const expanded = expandLine(body, headword, printing);
+  if (!expanded.rendered) return expanded;
+  const runs = runsOf(withoutLabels(expanded.text));
+  return { rendered: true, text: collapse(runs.map((run) => run.text).join("")), labels: expanded.labels, runs };
+}
+
+/**
+ * A line as `renderInline` renders it, beside the text it rendered before the
+ * punctuation that only separates labels was dropped (#712); `undefined` when
+ * a template stops the line. The update that brings stored rows to the
+ * renderer reads both, so it changes only a row that still holds the old text.
+ */
+export function labelPunctuation(body: string, headword: string): LabelPunctuation | undefined {
+  const expanded = expandLine(body, headword, {});
+  if (!expanded.rendered) return undefined;
+  const plain = (text: string): string => collapse(runsOf(text).map((run) => run.text).join(""));
+  return { text: plain(withoutLabels(expanded.text)), kept: plain(expanded.text.replaceAll(LABEL, " ")) };
+}
+
+/** Every template on a line expanded, labels still marked; or the first template that stops it. */
+function expandLine(
+  body: string,
+  headword: string,
+  printing: Readonly<Record<string, TemplatePrinter>>,
+): { rendered: true; text: string; labels: string[] } | { rendered: false; template: string } {
   let unknown: string | undefined;
   const { text, labels } = expandTemplates(body, headword, (name) => {
     unknown ??= name;
     return " ";
   }, printing);
-  if (unknown !== undefined) return { rendered: false, template: unknown };
-  const runs = runsOf(text);
-  return { rendered: true, text: collapse(runs.map((run) => run.text).join("")), labels, runs };
+  return unknown === undefined ? { rendered: true, text, labels } : { rendered: false, template: unknown };
 }
 
 /**
@@ -300,7 +360,7 @@ const GAP = "\u0000";
  */
 function readSenseLine(body: string, headword: string): SenseLineText {
   const { text } = expandTemplates(body, headword, (name) => (name === "nodef" ? NODEF_PRINTS : GAP));
-  const [first, ...rest] = runsOf(text).map((run) => run.text).join("").split(GAP).map(collapse);
+  const [first, ...rest] = runsOf(text.replaceAll(LABEL, " ")).map((run) => run.text).join("").split(GAP).map(collapse);
   return rest.length === 0 ? { known: "whole", text: first } : { known: "around-gaps", parts: [first, ...rest] };
 }
 

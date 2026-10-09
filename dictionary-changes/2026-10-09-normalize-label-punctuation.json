@@ -1,0 +1,14 @@
+{
+  "command": "normalize:source-text",
+  "inputs": { "rules": ["gloss-headword-lead/v1", "gloss-person-ordinal/v1", "form-plural-placeholder/v1", "it-gloss-stamp/v1", "rendered-label-punctuation/v1"] },
+  "lookups": [
+    { "word": "cinquantadue", "gloss": "numero che viene dopo il cinquantuno e prima del cinquantatré" },
+    { "word": "ozelot", "gloss": "gattopardo americano" },
+    { "word": "travet", "gloss": "impiegato diligente e puntuale" }
+  ],
+  "expected": {
+    "records": { "added": 0, "changed": 7, "removed": 0 },
+    "written": { "recovered_definition": 7, "entry_definition": 4 },
+    "deleted": {}
+  }
+}
