@@ -32,6 +32,7 @@ import {
   CORRECTION_TABLES,
   createStatement,
   definitionOf,
+  HAND_KEPT_TABLES,
   HIDE_TABLES,
   masterUpgradeSql,
   rebuildSql,
@@ -529,7 +530,7 @@ test("the upgrade brings a master seeded before #18 up to the schema and is safe
   const old = new DatabaseSync(":memory:");
   old.exec(await readFile(SCHEMA, "utf8"));
   for (const view of [...SERVING_VIEWS].reverse()) old.exec(`DROP VIEW ${view}`);
-  for (const table of [...UPDATE_TABLES, ...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_FACT_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES, ...CORRECTION_TABLES, ...HIDE_TABLES].reverse()) old.exec(`DROP TABLE ${table}`);
+  for (const table of [...UPDATE_TABLES, ...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_FACT_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES, ...CORRECTION_TABLES, ...HAND_KEPT_TABLES, ...HIDE_TABLES].reverse()) old.exec(`DROP TABLE ${table}`);
   assert.deepEqual(missingUpgrade(readerOf(old)), [...UPGRADE_NAMES]);
   assert.deepEqual(
     UPGRADE_NAMES.filter((name) => [...CORRECTION_TABLES, ...HIDE_TABLES].includes(name as never)),

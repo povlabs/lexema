@@ -26,6 +26,8 @@ import { PageOnlyCandidates } from "./pageOnlyCandidates.js";
 import { CorrectedLayer, type CorrectionSummary } from "./correctedLayer.js";
 import { CorrectedDefinitionLayer, type DefinitionCorrectionSummary } from "./correctedDefinitions.js";
 import { CURATED_CORRECTIONS, type CuratedCorrection } from "../italian/curatedCorrections.js";
+import { HAND_KEPT_READINGS, type HandKeptReading } from "../italian/handKeptReadings.js";
+import { handKeptRows } from "./handKeptRows.js";
 import { normalizeItalianExact } from "../italian/normalize.js";
 import { SOURCE_TEXT_RULES, type SourceTextRuleId } from "../italian/sourceTextNormalization.js";
 import { deletionKeys, foldKey } from "../lookup/nearby.js";
@@ -56,6 +58,7 @@ const TABLE_ORDER = [
   "entry_example",
   "entry_fact",
   "corrected_definition",
+  "hand_kept_definition",
   "release_table_rows",
 ] as const;
 
@@ -89,6 +92,7 @@ export const COLUMNS: Record<TableName, string> = {
   entry_example: "entry_id,definition_index,example_index,page_line,wikitext,text",
   entry_fact: "entry_id,fact_index,rule,kind,page_line,wikitext,value,source_text,meaning,tags,definition_index",
   corrected_definition: "entry_id,definition_index,text,correction_id,evidence_url",
+  hand_kept_definition: "reading_id,definition_index,word,word_key,pos,pos_title,text,page_line,wikitext,section_line,section_wikitext,evidence_url,revision_timestamp",
   release_table_rows: "release_id,table_name,rows",
 };
 
@@ -141,6 +145,7 @@ class SqlBatchWriter {
     entry_example: 0,
     entry_fact: 0,
     corrected_definition: 0,
+    hand_kept_definition: 0,
     release_table_rows: 0,
   };
 
@@ -395,6 +400,12 @@ export interface SeedSqlOptions {
    */
   corrections?: readonly CuratedCorrection[];
   /**
+   * The hand-kept readings to write (ADR 0031, #745); the committed list
+   * unless a test passes its own. Each is written whole, whatever the archive
+   * holds: it keys to no record.
+   */
+  handKeptReadings?: readonly HandKeptReading[];
+  /**
    * Leave the release `importing` at the end of the SQL instead of writing its
    * final status. The counters are still written. A caller that verifies the
    * loaded database sets the final status itself once every check passes, so
@@ -545,6 +556,11 @@ export async function seedSql(options: SeedSqlOptions): Promise<SeedSqlReport> {
       keys.set(key, true);
       addPageEntryScore(lemmaKeys, key, result.entries.reduce((sum, entry) => sum + entry.definitions.length, 0));
       if (writer.hasFullBatch()) await writer.flush();
+    }
+    const handKept = writer.statement("hand_kept_definition");
+    for (const reading of options.handKeptReadings ?? HAND_KEPT_READINGS) {
+      for (const values of handKeptRows(reading)) handKept.run(...values);
+      writer.counts.hand_kept_definition += reading.definitions.length;
     }
     await writeNearbyIndexes(writer, start.releaseId, keys, lemmaKeys);
     await writer.finish();

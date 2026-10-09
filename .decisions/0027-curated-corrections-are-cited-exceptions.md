@@ -1,7 +1,7 @@
 ---
 id: 0027
 title: A source fact may be corrected by a cited, ruled layer beside the record, never by editing the record
-status: amended-in-part by [0030](0030-corrections-may-fix-edges-and-cells.md)
+status: amended-in-part by [0030](0030-corrections-may-fix-edges-and-cells.md), [0031](0031-hand-kept-readings-fill-source-gaps.md)
 date: 2026-10-03
 tags: [data, provenance]
 ---

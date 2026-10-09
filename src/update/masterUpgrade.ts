@@ -1,7 +1,7 @@
 // The tables and views a master needs before a change can be applied to it
 // (#18), the page-entry tables lookups read (ADR 0024, #403) with their
 // definition corrections (#450), and the tables `correct:records` and
-// `hide:records` write (#420, #382), for a dictionary seeded before they
+// `hide:records` write (#420, #382, #745), for a dictionary seeded before they
 // existed. The dictionary deploy runs this as its own step before any data
 // (#507), and no write command carries DDL of its own (#509): each refuses to
 // write while the upgrade has something to do for it. They are read out of
@@ -59,6 +59,10 @@ export const CORRECTION_TABLES = ["correction_version", "corrected_claim", "corr
 /** The indexes lookups read a corrected edge through by the word it names (#722), and a corrected cell by its spelling (#743). */
 export const CORRECTION_INDEXES = ["corrected_edge_by_target", "corrected_form_by_key"] as const;
 
+/** The table `correct:records` writes the hand-kept readings to (ADR 0031, #745), and the index a lookup reads it through. */
+export const HAND_KEPT_TABLES = ["hand_kept_definition"] as const;
+export const HAND_KEPT_INDEXES = ["hand_kept_definition_by_key"] as const;
+
 /** The tables `hide:records` writes a hidden record to (#382), after its cache revision. */
 export const HIDE_TABLES = ["hide_version", "hidden_record"] as const;
 
@@ -72,10 +76,10 @@ export const SERVING_VIEWS = ["served_release", "served_record", "form_of_candid
 export type ServingView = (typeof SERVING_VIEWS)[number];
 
 /** Every table the upgrade creates when absent, in the order their foreign keys need. */
-const UPGRADE_TABLES = [...UPDATE_TABLES, ...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_FACT_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES, ...CORRECTION_TABLES, ...HIDE_TABLES] as const;
+const UPGRADE_TABLES = [...UPDATE_TABLES, ...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_FACT_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES, ...CORRECTION_TABLES, ...HAND_KEPT_TABLES, ...HIDE_TABLES] as const;
 
 /** Every table, index and view the upgrade creates, by its sqlite_schema name. */
-export const UPGRADE_NAMES: readonly string[] = [...UPGRADE_TABLES, ...PAGE_ENTRY_INDEXES, ...CORRECTION_INDEXES, ...SERVING_VIEWS];
+export const UPGRADE_NAMES: readonly string[] = [...UPGRADE_TABLES, ...PAGE_ENTRY_INDEXES, ...CORRECTION_INDEXES, ...HAND_KEPT_INDEXES, ...SERVING_VIEWS];
 
 /** The recovered definitions (#28) with their labels and examples, which point at them, and their index. */
 export const RECOVERED_TABLES = ["recovered_definition", "recovered_label", "recovered_example"] as const;
@@ -318,7 +322,7 @@ export function masterUpgradeSql(schema: string): string {
   const tables = UPGRADE_TABLES.map((name) =>
     createStatement(schema, "TABLE", name).replace(/^CREATE TABLE /, "CREATE TABLE IF NOT EXISTS "),
   );
-  const indexes = [...PAGE_ENTRY_INDEXES, ...CORRECTION_INDEXES].map((name) =>
+  const indexes = [...PAGE_ENTRY_INDEXES, ...CORRECTION_INDEXES, ...HAND_KEPT_INDEXES].map((name) =>
     createStatement(schema, "INDEX", name).replace(/^CREATE INDEX /, "CREATE INDEX IF NOT EXISTS "),
   );
   const drops = [...SERVING_VIEWS].reverse().map((name) => `DROP VIEW IF EXISTS ${name};`);

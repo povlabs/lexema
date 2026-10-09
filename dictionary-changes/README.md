@@ -25,7 +25,7 @@ cannot read as one, naming the file.
 | `update:auto` | `feedRelease`: the feed release id |
 | `hide:records` | `archive`: the release id the master was seeded from; `rules`: every hiding rule |
 | `normalize:source-text` | `rules`: every source text rule the command applies |
-| `correct:records` | none: it writes the committed list of curated corrections, and `expected` pins what that list writes ([RUN_AN_IMPORT.md](../docs/RUN_AN_IMPORT.md#write-the-curated-corrections-into-a-seeded-database)) |
+| `correct:records` | none: it writes the committed lists of curated corrections and hand-kept readings ([ADR 0031](../.decisions/0031-hand-kept-readings-fill-source-gaps.md)), and `expected` pins what those lists write ([RUN_AN_IMPORT.md](../docs/RUN_AN_IMPORT.md#write-the-curated-corrections-into-a-seeded-database)) |
 | `load:page-entries` | `archive`: the release id the master was seeded from, whose dump the rule reads; `rules`: every page-entry and page-fact rule ([PAGE_ENTRIES.md](../docs/PAGE_ENTRIES.md#load-them-into-a-seeded-dictionary)) |
 | `load:recovered-definitions` | `archive`: the release id the master was seeded from, whose records and dump the rules read; `rules`: `recovered-bullet-line/v1` and `recovered-prose-line/v1` ([DEPLOY.md](../docs/DEPLOY.md#load-recovered-definitions)) |
 
