@@ -76,15 +76,19 @@ test("a plain line with no list mark under the part-of-speech heading is a defin
 
 test("each record reads the lines of its own section: `furbo` and `esterofilo` give their adjective and their noun apart", () => {
   // `furbo` numbers its lines `1.` to `7.` across two sections; the numbers stay as the page writes them.
-  // `{{Spreg}}` is a template the renderer does not know, so its lines are reported, never printed wrong.
   assert.deepEqual(recovered("furbo", "Aggettivo"), [
     ["prose-line", 5, "1. che usa la sua intelligenza"],
     ["prose-line", 8, "2. chi considera, spesso meditando in proposito, quando e come qualcosa debba essere detto e/o fatto"],
+    ["prose-line", 10, '3. che "ruba" e/o "imbroglia"'],
+    ["prose-line", 12, "4. che strumentalizza, anche verbalmente, a danno di una o più persone anche falsando quanto [già] detto e/o fatto, talvolta inibendo motivi di pacificazione"],
   ]);
-  assert.deepEqual(recovered("furbo", "Sostantivo"), [["prose-line", 17, "5. chi è molto astuto (spesso con una sfumatura di malizia)"]]);
+  assert.deepEqual(recovered("furbo", "Sostantivo"), [
+    ["prose-line", 17, "5. chi è molto astuto (spesso con una sfumatura di malizia)"],
+    ["prose-line", 19, "6. chi, approfittando di conoscere una o più cose, soprattutto di qualcuno, trascorre le giornate in illusorie macchinazioni alternando minacce a perdita di tempo"],
+    ["prose-line", 21, "7. chi, convinto di nascondere qualcosa di sbagliato invece evidente, non si accorge di apparire sciocco, goffo e disonesto"],
+  ]);
   const adjective = recovery("furbo", "Aggettivo");
   assert.ok(adjective.outcome === "matched");
-  assert.deepEqual(adjective.unrendered.map((line) => [line.ref.line, line.template]), [[10, "spreg"], [12, "spreg"]]);
   assert.deepEqual(adjective.recovered[1].labels, ["per estensione"]);
 
   assert.deepEqual(recovered("esterofilo", "Aggettivo"), [["bullet-line", 6, "amante dell'estero"]]);
@@ -93,8 +97,22 @@ test("each record reads the lines of its own section: `furbo` and `esterofilo` g
   ]);
 });
 
+test("a line opening with a fixed usage-label template is rendered with that label: `{{Spreg}}` on `furbo`, `{{Intransitivo|it}}` on `urgere` (#711)", () => {
+  const labels = (word: string, posTitle: string): [number, string[]][] => {
+    const result = recovery(word, posTitle);
+    assert.ok(result.outcome === "matched");
+    assert.deepEqual(result.unrendered, [], `${word} (${posTitle})`);
+    return result.recovered.map((definition) => [definition.ref.line, definition.labels]);
+  };
+  assert.deepEqual(labels("furbo", "Aggettivo"), [[5, []], [8, ["per estensione"]], [10, ["spregiativo"]], [12, ["spregiativo"]]]);
+  assert.deepEqual(labels("furbo", "Sostantivo"), [[17, []], [19, ["per estensione", "spregiativo"]], [21, ["spregiativo"]]]);
+  // Template:Intransitivo prints the heading `====[[intransitivo|Intransitivo]]====`; the line under it is the definition.
+  assert.deepEqual(recovered("urgere", "Verbo"), [["prose-line", 3, "occorrere nell'immediato, necessario al più presto."]]);
+  assert.deepEqual(labels("urgere", "Verbo"), [[3, ["intransitivo"]]]);
+});
+
 test("every recovered line keeps its wikitext byte for byte, with the page revision and its 1-based line", () => {
-  for (const [word, posTitle] of [["centouno", "Aggettivo numerale"], ["decrepito", "Aggettivo"], ["bavaglio", "Sostantivo"], ["museruola", "Sostantivo"], ["furbo", "Aggettivo"], ["furbo", "Sostantivo"]] as const) {
+  for (const [word, posTitle] of [["centouno", "Aggettivo numerale"], ["decrepito", "Aggettivo"], ["bavaglio", "Sostantivo"], ["museruola", "Sostantivo"], ["furbo", "Aggettivo"], ["furbo", "Sostantivo"], ["urgere", "Verbo"]] as const) {
     const result = recovery(word, posTitle);
     assert.ok(result.outcome === "matched");
     const raw = page(word);

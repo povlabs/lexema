@@ -168,6 +168,7 @@ const WRITTEN: readonly [string, string][] = [
   ["furbo", "Aggettivo"],
   ["furbo", "Sostantivo"],
   ["museruola", "Sostantivo"],
+  ["urgere", "Verbo"],
 ];
 
 test("a dictionary seeded before the rules, with a feed applied, gains their definitions and keeps every earlier row", async () => {
@@ -177,7 +178,7 @@ test("a dictionary seeded before the rules, with a feed applied, gains their def
     const reader = readerOf(db);
     const before = snapshot(db);
     const pages = await pagesWithUnlistedLines(PAGES);
-    assert.deepEqual([...pages.keys()].sort(), ["Consap", "bavaglio", "centouno", "cinquantadue", "decrepito", "esterofilo", "furbo", "museruola"]);
+    assert.deepEqual([...pages.keys()].sort(), ["Consap", "bavaglio", "centouno", "cinquantadue", "decrepito", "esterofilo", "furbo", "museruola", "urgere"]);
     const found = await findUnlistedDefinitions(archive, pages);
     const plan = planRecoveredDefinitions(reader, found);
     assert.deepEqual(
@@ -188,8 +189,11 @@ test("a dictionary seeded before the rules, with a feed applied, gains their def
         ["bavaglio", "Sostantivo", ["carried-by-served"]],
         ["museruola", "Sostantivo", ["write"]],
         ["centouno", "Aggettivo numerale", ["write"]],
-        ["furbo", "Aggettivo", ["write", "write"]],
-        ["furbo", "Sostantivo", ["write"]],
+        ["furbo", "Aggettivo", ["write", "write", "write", "write"]],
+        ["furbo", "Sostantivo", ["write", "write", "write"]],
+        // Both of `urgere`'s records, intransitive and transitive, match its one Verbo section.
+        ["urgere", "Verbo", ["write"]],
+        ["urgere", "Verbo", ["write"]],
         ["esterofilo", "Aggettivo", ["write"]],
         ["esterofilo", "Sostantivo", ["write"]],
         ["Consap", "Acronimo / Abbreviazione", ["write"]],
@@ -201,12 +205,12 @@ test("a dictionary seeded before the rules, with a feed applied, gains their def
     assert.equal(replaced.get("decrepito"), true);
     assert.equal(replaced.get("bavaglio"), true);
     assert.equal(replaced.get("centouno"), false);
-    assert.deepEqual(plan.counts.toJSON(), new PlanCounts({ added: 0, changed: 0, removed: 0 }, { raw_page: 7, recovered_definition: 11, recovered_label: 4 }).toJSON());
+    assert.deepEqual(plan.counts.toJSON(), new PlanCounts({ added: 0, changed: 0, removed: 0 }, { raw_page: 8, recovered_definition: 17, recovered_label: 11 }).toJSON());
     assert.deepEqual(plan.counts.deleted, {});
     // Data only: the upgrade is what changes a table (#507).
     assert.doesNotMatch(plan.sql, /\b(CREATE|DROP|DELETE|UPDATE|ALTER)\b/i);
     assert.match(describePlannedRecord(plan.records.find((record) => record.found.word === "bavaglio") ?? assert.fail()).join("\n"), /not written; record \d+, applied in its place, carries it/);
-    assert.deepEqual(wordsOfRecoveredDefinitions(plan), { kind: "words", words: ["Consap", "centouno", "cinquantadue", "decrepito", "esterofilo", "furbo", "museruola"] });
+    assert.deepEqual(wordsOfRecoveredDefinitions(plan), { kind: "words", words: ["Consap", "centouno", "cinquantadue", "decrepito", "esterofilo", "furbo", "museruola", "urgere"] });
 
     execute(db, plan.sql);
     assert.deepEqual(unwrittenDefinitions(reader, plan), []);

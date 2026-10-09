@@ -94,6 +94,44 @@ export interface Run {
 }
 
 /**
+ * Templates that print one fixed usage label and nothing else a reader sees,
+ * and that label (#711). Each source was read on it.wiktionary on 2026-10-09;
+ * a category link a template adds is not shown. A template whose output
+ * depends on its arguments or the page is not one of these, and stays unknown.
+ *
+ * `Categoria:Template ambito`: each prints `<small>(''label'')</small>`, or
+ * `(''label'')`, or `{{Term|label}}`, whose words are the label whatever the
+ * language argument. `Est` and `Fig` are in `LABEL_TEMPLATES` already.
+ *
+ * The verb-type templates of `Categoria:Template per i verbi` print a level-4
+ * heading, `====[[intransitivo|Intransitivo]]====`, and a category: the line
+ * is labelled with the word the heading links to.
+ */
+const FIXED_LABELS: Readonly<Record<string, string>> = {
+  accr: "accrescitivo", // Template:Accr, <small>(''accrescitivo'')</small>
+  ant: "per antonomasia", // Template:Ant, {{term|per antonomasia}}
+  coll: "colloquiale", // Template:Coll, {{term|colloquiale}}
+  dim: "diminutivo", // Template:Dim, <small>(''[[diminutivo]]'')</small>
+  lett: "letteralmente", // Template:Lett, <small>(''letteralmente'')</small>
+  narr: "narrativa", // Template:Narr, <small>(''narrativa'')</small> and a category
+  obs: "obsoleto", // Template:Obs, {{Term|obsoleto|{{{1|}}}}}
+  pegg: "peggiorativo", // Template:Pegg, <small>(''peggiorativo'')</small>
+  pers: "riferito solo a persone", // Template:Pers, (''riferito solo a persone'')
+  pop: "popolare", // Template:Pop, <small>(''popolare'')</small>
+  sndc: "per sineddoche", // Template:Sndc, {{term|per sineddoche}}
+  "spec pl": "specialmente al plurale", // Template:Spec pl, <small>(''specialmente al plurale'')</small>
+  spreg: "spregiativo", // Template:Spreg, <small>(''[[spregiativo]]'')</small>
+  teen: "linguaggio giovanile", // Template:Teen, <small>(''linguaggio giovanile'')</small> and a category
+  vezz: "vezzeggiativo", // Template:Vezz, <small>(''vezzeggiativo'')</small>
+  vulg: "volgare", // Template:Vulg, {{Term|volgare|{{{1|}}}}}
+  yprb: "per iperbole", // Template:Yprb, <small>(''per iperbole'')</small>
+  intransitivo: "intransitivo", // Template:Intransitivo, ====[[intransitivo|Intransitivo]]==== and a category
+  transitivo: "transitivo", // Template:Transitivo, ====[[transitivo|Transitivo]]==== and a category
+  riflessivo: "riflessivo", // Template:Riflessivo, ====[[riflessivo|Riflessivo]]==== and a category
+  reciproco: "reciproco", // Template:Reciproco, ====[[reciproco|Reciproco]]==== and a category
+};
+
+/**
  * Templates whose whole job on a definition line is a usage label, and the label
  * each one prints. `{{Term|architettura|it}}` labels its line `architettura`,
  * which the page shows the way it shows the extraction's labels.
@@ -103,6 +141,7 @@ const LABEL_TEMPLATES: Readonly<Record<string, (args: readonly string[]) => stri
   glossa: (args) => args[0],
   fig: () => "figurato",
   est: () => "per estensione",
+  ...Object.fromEntries(Object.entries(FIXED_LABELS).map(([name, label]) => [name, () => label])),
 };
 
 /**

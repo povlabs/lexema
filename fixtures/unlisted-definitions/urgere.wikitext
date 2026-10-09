@@ -1,0 +1,51 @@
+<!-- it.wiktionary.org/wiki/urgere revision 3936244 (2023-05-14T20:55:50Z), CC BY-SA 4.0. Saved verbatim. -->
+== {{-it-}} ==
+{{-verb-|it}}
+{{Intransitivo|it}} occorrere nell'immediato, necessario al più presto. 
+{{Pn|c}}
+# {{Nodef|it}}
+
+{{Transitivo|it}}
+{{Pn|c}}
+# {{Nodef|it}}
+
+{{-sill-}}
+; ùr | ge | re
+
+{{-pron-}}
+{{IPA|/ˈurd͡ʒere/}}
+
+{{-etim-}}
+dal [[latino]] ''[[urgēre]]'' cioè "[[incalzare]], [[spingere]], [[sollecitare]]"
+
+{{-sin-}}
+*[[incalzare]], [[premere]]
+* {{Fig}} [[sollecitare]], [[spronare]], [[spingere]], [[stimolare]], [[incitare]]
+*essere necessario, [[necessitare]], [[occorrere]], avere bisogno
+
+{{-ant-}}
+* {{Fig}} [[frenare]], [[rallentare]], [[trattenere]]
+*essere superfluo, essere inutile.
+
+{{-der-}}
+*[[urgente]], [[urgentemente]], [[urgenza]], [[urgenzare]]
+
+{{-trad-}}
+{{Trad1|}}
+:* {{en}}:to be urgent, to be vital, to be pressing
+{{Trad2}}
+
+== {{-la-}} ==
+{{-verb-|la}}
+{{Pn}}
+# [[spingere]]
+
+{{-ref-}}
+*italiano
+** {{Fonte|sabco}}
+**{{Fonte|sin-co}}
+** {{Fonte|dizit}}
+** {{Fonte|trec}}
+
+*latino
+** {{Noref|la}}
