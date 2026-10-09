@@ -7,8 +7,8 @@
     { "word": "travet", "gloss": "impiegato diligente e puntuale" }
   ],
   "expected": {
-    "records": { "added": 0, "changed": 7, "removed": 0 },
-    "written": { "recovered_definition": 7, "entry_definition": 4 },
+    "records": { "added": 0, "changed": 18, "removed": 0 },
+    "written": { "sense_gloss": 12, "recovered_definition": 7, "entry_definition": 4 },
     "deleted": {}
   }
 }
