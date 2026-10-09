@@ -41,7 +41,7 @@
 // A searched verb form shows one block per verb it is a form of (#636; Huey's
 // ruling of 2026-10-06, frame 37): `1 · Voce verbale · salire`, that verb's
 // form-of lines right under it, then *Definitions*, the verb's own (#686), then
-// *Forms of salire*, its conjugation opened where the searched cell is (matched
+// *Forme di salire*, its conjugation opened where the searched cell is (matched
 // by pointer). A block's lines come from two places:
 //
 // - A form record about the query: each of its definitions goes to the verb its
@@ -79,8 +79,8 @@
 // only tables are its verb's.
 //
 // A form reading carries its lemma's table the way the lemma's own page draws
-// it: `andavano` shows *Forms of andare*, the
-// conjugation, and `bella` the adjective shows *Forms of bello*, the gender and
+// it: `andavano` shows *Forme di andare*, the
+// conjugation, and `bella` the adjective shows *Forme di bello*, the gender and
 // number grid, in place of its own (#626). The lookup does not return the lemma
 // as a record of its own, so nothing is counted twice: the readings are the
 // lookup's records, and the tables are their lemmas'. A verb's table comes with
@@ -148,7 +148,7 @@ import type {
 
 /**
  * A lemma's table, as its own page draws it, under a form's reading as *Forms
- * of andare* or *Forms of bello* (design-system-manifest.md § "The result").
+ * of andare* or *Forme di bello* (design-system-manifest.md § "The result").
  *
  * - A verb's whole conjugation, opened where the form sits when its table
  *   lists it (`andare` for `andavano`), and otherwise as the verb's own page
@@ -194,7 +194,7 @@ export interface LemmaDefinitionList {
   /** The lemma record the definitions are its own. */
   lemma: EntryIdentity & { word: string };
   items: [DefinitionItem, ...DefinitionItem[]];
-  /** The examples of the lemma's senses not shown as definitions, kept behind `+ more` as its own page keeps them. */
+  /** The examples of the lemma's senses not shown as definitions, kept behind `+ altro` as its own page keeps them. */
   looseExamples: string[];
   /** The lemma record's own links, which its glosses link where they write the word; none when it was read only as a link target. */
   lemmaLinks: Reading["lemmaLinks"];
@@ -313,7 +313,7 @@ export interface DefinitionGroup {
 }
 
 /**
- * A form's block's *Definitions*, behind one `+ more` (#686, #727). A block
+ * A form's block's *Definitions*, behind one `+ altro` (#686, #727). A block
  * headed by one part of speech lists its base word's meanings with no label;
  * a block headed by several groups them by part of speech, in the heading's
  * order, each under a small label naming it (Huey's ruling of 2026-10-07 on
@@ -329,7 +329,7 @@ export type BlockDefinitions =
  * in turn, a line another record already gave shown once. When a lemma's grid
  * lists it (`bella` the adjective, of bello), that lemma's *Definitions* follow
  * (#686), grouped by part of speech when its records have several (#727), then
- * the grid as *Forms of bello*. It never shows a *Forms* table of
+ * the grid as *Forme di bello*. It never shows a *Forms* table of
  * its own, with or without a lemma's (Huey, 2026-10-06, #694), nor an
  * Etymology or Synonyms (rule 3, #695), so there is no part for either.
  */
@@ -512,7 +512,7 @@ export interface GridFormLine {
  * other form blocks read (Huey's rule 4 of 2026-10-06 on #695, built by #700;
  * P3): `gravida`, which only gravido's grid spells, shows `1 · Aggettivo, forma
  * flessa · femminile, singolare`, its line built by rule from the cell, then
- * gravido's *Definitions*, then *Forms of gravido*. One block per base word
+ * gravido's *Definitions*, then *Forme di gravido*. One block per base word
  * (rule 1).
  */
 export interface GridFormBlock {
@@ -1007,7 +1007,7 @@ class Drawn {
 function drawnKey(table: LemmaTable | { kind: "own"; reading: Reading; forms: OwnForms }): string {
   if (table.kind === "conjugation") return `conjugation\u0000${conjugationKey(table)}`;
   // A base word's grid shows once, whichever of its records it is read from:
-  // `bella`'s noun record shows no second *Forms of bello* (rule 1, #695).
+  // `bella`'s noun record shows no second *Forme di bello* (rule 1, #695).
   if (table.kind === "grid") return `lemma-grid\u0000${table.lemma.word}`;
   const { reading, forms } = table;
   return forms.kind === "grid"
@@ -1020,7 +1020,7 @@ function drawnKey(table: LemmaTable | { kind: "own"; reading: Reading; forms: Ow
  * conjugation none of whose forms fills a cell, which would draw only a row of
  * dashes (#674, design-system-manifest.md § 4 "The base word's table").
  * `smentita`'s block of smentito, a participle record whose forms are only its
- * agreement, shows smentito's meanings and no *Forms of smentito*.
+ * agreement, shows smentito's meanings and no *Forme di smentito*.
  */
 function drawsHere(table: LemmaTable, drawn: Drawn): boolean {
   return (table.kind !== "conjugation" || conjugates(table.listing.forms)) && drawn.first(drawnKey(table));

@@ -333,7 +333,7 @@ check; *Huey* marks the ones only Huey can run.
 |---|---|---|
 | Health | `curl -s` each `/health` above | 200, `"ok":true`, the live release, every database `ok` |
 | Found | <https://lexema.fyi/?q=andare> | the verb, its forms grouped by tense |
-| Not found | <https://lexema.fyi/?q=citta> | `No entry for "citta"`, offering `città` |
+| Not found | <https://lexema.fyi/?q=citta> | `Nessuna voce per "citta"`, offering `città` |
 | Ambiguous | <https://lexema.fyi/?q=sale> | several entries; the link to `sala` searches it and shows both the noun and the verb, without picking one |
 | Missing data | <https://lexema.fyi/?q=casa> | one entry; what the source does not give, such as its forms, is missing, not filled in |
 | Disputed | <https://lexema.fyi/?q=studente> | every reading as the source states it, and no note about a dispute ([WEB.md](WEB.md#why-a-disputed-claim-is-a-row-and-not-a-code-path)) |

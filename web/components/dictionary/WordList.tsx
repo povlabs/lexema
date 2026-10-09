@@ -3,8 +3,8 @@
 // A run of related words — synonyms, antonyms, derived words, suggestions —
 // separated by `·`, each a search. A note the source wrote inside the list
 // (relatedList.ts) sits in the run where it came, as text, read-only. Closed,
-// the items that fit on one line, then `+ more` right after the last of them;
-// open, every item, then `less`
+// the items that fit on one line, then `+ altro` right after the last of them;
+// open, every item, then `meno`
 // (More.tsx). Used after the readings and, where the source ties a synonym
 // group to one part of speech, inside a reading.
 //
@@ -35,7 +35,7 @@ import {
 export const WORD_LIST_SLICE = 8;
 
 /**
- * How many words fit on the first line with `+ more` after them, laid out with
+ * How many words fit on the first line with `+ altro` after them, laid out with
  * every word showing; all of them when they fit on one line alone. At least
  * one, so the control always follows a word.
  */
@@ -100,7 +100,7 @@ export function WordList({
   const cut = shown < items.length;
   return (
     <section className={level === "h2" ? WORD_BLOCK : BLOCK} aria-labelledby={id}>
-      <Heading className={BLOCK_LABEL} id={id}>
+      <Heading className={BLOCK_LABEL} id={id} lang="it">
         {label}
       </Heading>
       <Collapsible.Root className={WORD_LIST} id={`${id}-words`} render={<ul ref={list} />}>

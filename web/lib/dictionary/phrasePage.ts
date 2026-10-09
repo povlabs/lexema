@@ -4,7 +4,7 @@
 // replaced by *andare via*, a link to that entry, unnumbered, as a word page's
 // form lines read (Huey's rule 4 of 2026-10-06 on #695, "Same layout
 // everywhere"; P11, built by #700). Then *Definitions*: the expression's own
-// meanings, as imported, only each expression's first until `+ more` opens
+// meanings, as imported, only each expression's first until `+ altro` opens
 // the rest. No forms and no pronunciation. What the form lines say is the
 // lookup's (`phraseForms`, src/lookup/phrase.ts); the meanings are the
 // headword's senses, read as its own page reads them (definitions.ts). This
@@ -17,7 +17,7 @@ type NonEmpty<T> = [T, ...T[]];
 
 /**
  * One meaning of an expression, copied from the record that holds it. Every
- * meaning but an expression's first is `folded`: it waits for `+ more` (Huey's
+ * meaning but an expression's first is `folded`: it waits for `+ altro` (Huey's
  * hand check of 2026-09-30, 11:19Z on #214).
  */
 export interface PhraseMeaning {

@@ -206,8 +206,8 @@ test("a report from a search that found nothing stores the query as its word, wi
 });
 
 test("a missing word's details are optional, and its box says so; every other report still needs details", async () => {
-  assert.equal(REPORT_DETAILS_HINT.missing, "Anything to add? (optional)");
-  assert.equal(REPORT_DETAILS_HINT.mistake, "What should it say instead?");
+  assert.equal(REPORT_DETAILS_HINT.missing, "Qualcosa da aggiungere? (facoltativo)");
+  assert.equal(REPORT_DETAILS_HINT.mistake, "Cosa dovrebbe dire invece?");
   const read = readSubmission({ word: "xqzt", choice: "missing", details: "   ", openToken: "token" });
   assert.ok(!("reason" in read));
   assert.equal(read.details, "");
@@ -682,6 +682,6 @@ test("a failed opening is not final: asking again gets a token, and a 429 says t
 
   const limited = (async () => Response.json({ outcome: "limited" }, { status: 429 })) as typeof fetch;
   assert.deepEqual(await requestOpening(limited), { trouble: "open-limited" });
-  assert.match(OPENING_TROUBLE["open-limited"], /opened this box too often/);
-  assert.doesNotMatch(OPENING_TROUBLE["open-limited"], /hour/, "not the hourly report limit");
+  assert.match(OPENING_TROUBLE["open-limited"], /aperto questa finestra troppe volte/);
+  assert.doesNotMatch(OPENING_TROUBLE["open-limited"], /ultima ora/, "not the hourly report limit");
 });

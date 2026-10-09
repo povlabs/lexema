@@ -2,7 +2,7 @@
 // its form-of records declare. It is laid out as any word's page is
 // (design-system-manifest.md § "The result"): the headword, then each reading,
 // headed by its part of speech alone since it has no definition, then *Forms*
-// in the shape its data has, then *Source* and *Report a mistake*.
+// in the shape its data has, then *Source* and *Segnala un errore*.
 //
 // Nothing here says the word has no entry of its own (ADR 0016): no
 // definitions block, no pronunciation, and no note. What it is built from is
@@ -12,6 +12,7 @@ import { ConjugationView, GridView } from "./Forms";
 import { Block } from "./Reading";
 import { SourceLine } from "./Word";
 import { JUMP_LINKS_FROM } from "@/lib/dictionary/wordPage.ts";
+import { formsOf, READINGS_NAV, SECTION_LABEL } from "@/lib/dictionary/wordPageText.ts";
 import type { DeclaredLemmaPage, DeclaredPageReading } from "@/lib/dictionary/declaredLemmaPage.ts";
 import {
   JUMP_LINK,
@@ -33,11 +34,11 @@ function DeclaredReadingView({ entry }: { entry: DeclaredPageReading }) {
       <h2 className={READING_HEADING} id={`reading-heading-${id}`}>
         <span lang="it">{reading.posTitle}</span>
       </h2>
-      <Block id={`forms-${id}`} label="Forms">
+      <Block id={`forms-${id}`} label={SECTION_LABEL.forms}>
         {table.shape === "conjugation" ? (
           <ConjugationView conjugation={table.conjugation} searchedPointers={NOTHING_SEARCHED} word={reading.word} />
         ) : (
-          <GridView grid={table.grid} label={`Forms of ${reading.word}`} />
+          <GridView grid={table.grid} label={formsOf(reading.word)} />
         )}
       </Block>
     </article>
@@ -47,7 +48,7 @@ function DeclaredReadingView({ entry }: { entry: DeclaredPageReading }) {
 function JumpLinks({ page }: { page: DeclaredLemmaPage }) {
   if (page.readings.length < JUMP_LINKS_FROM) return null;
   return (
-    <nav aria-label="Readings">
+    <nav aria-label={READINGS_NAV} lang="it">
       <ul className={JUMP_LINKS}>
         {page.readings.map(({ reading }) => (
           <li key={reading.pos}>

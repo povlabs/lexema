@@ -47,14 +47,14 @@ each visible in the source:
 
    ```ts
    export const OPENING_TROUBLE: Readonly<Record<OpeningTrouble, string>> = {
-     "open-limited": "You have opened this box too often in the last minute. Wait a moment, then try again.",
-     "open-failed": "The box could not get ready to send. Try again in a moment.",
+     "open-limited": "Hai aperto questa finestra troppe volte nell’ultimo minuto. Aspetta un momento, poi riprova.",
+     "open-failed": "La finestra non è riuscita a prepararsi per l’invio. Riprova tra un momento.",
    };
    ```
 
    ([`web/lib/dictionary/report.ts`](../web/lib/dictionary/report.ts)).
 5. **The dictionary page states the result, never a note about the data.** A miss
-   is "No entry for" the query, then what is near it
+   is "Nessuna voce per" the query, then what is near it
    ([`web/components/dictionary/NotFound.tsx`](../web/components/dictionary/NotFound.tsx)).
    No line says a fact was missing, recovered, derived or hidden
    ([ADR 0016](../.decisions/0016-page-shows-no-origin-marks.md),

@@ -2,8 +2,8 @@
 
 // The *Expressions* section (#213): the expressions the source lists for the
 // word itself, never its base word's (rule 3 of #695, built by #700). No count
-// on the label. Closed, the first row, then `+ more` when
-// there are others; open, every row, then `less` (More.tsx). A phrase that is
+// on the label. Closed, the first row, then `+ altro` when
+// there are others; open, every row, then `meno` (More.tsx). A phrase that is
 // its own headword is bright and links to its entry; one that is not is dimmer
 // and plain. A list longer than thirty rows takes *Find an expression* once
 // open, matching the phrase or the meaning.
@@ -34,6 +34,7 @@ import {
   EXPRESSIONS,
   WORD_BLOCK,
 } from "@/components/shared/styles.ts";
+import { FIND_EXPRESSION, SECTION_LABEL } from "@/lib/dictionary/wordPageText.ts";
 
 function Row({ expression, className }: { expression: ExpressionRow; className: string }) {
   const meaning = expressionMeaning(expression);
@@ -63,8 +64,8 @@ export function Expressions({ id, expressions }: { id: string; expressions: read
   const list = `${id}-list`;
   return (
     <section className={WORD_BLOCK} aria-labelledby={id}>
-      <h2 className={BLOCK_LABEL} id={id}>
-        Expressions
+      <h2 className={BLOCK_LABEL} id={id} lang="it">
+        {SECTION_LABEL.expressions}
       </h2>
       <Collapsible.Root className={EXPRESSIONS} onOpenChange={(open) => open || setTyped("")}>
         {takesFilter(expressions) && (
@@ -73,8 +74,9 @@ export function Expressions({ id, expressions }: { id: string; expressions: read
             <Input
               className={EXPRESSION_FILTER_INPUT}
               type="search"
-              placeholder="Find an expression"
-              aria-label="Find an expression"
+              placeholder={FIND_EXPRESSION}
+              aria-label={FIND_EXPRESSION}
+              lang="it"
               aria-controls={list}
               value={typed}
               onValueChange={setTyped}

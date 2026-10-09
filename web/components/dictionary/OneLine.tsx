@@ -1,7 +1,7 @@
 "use client";
 
 // A text shown on one line, cut with an ellipsis, with the one expand control
-// (More.tsx) right after it: `+ more` opens the rest in place, and `less`, after
+// (More.tsx) right after it: `+ altro` opens the rest in place, and `meno`, after
 // the text's last word, closes it again (boards 10 and 19: every Etymology block).
 //
 // The whole text is in the HTML, and the line is Base UI's collapsible, open

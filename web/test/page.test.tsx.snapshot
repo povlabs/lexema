@@ -23,10 +23,10 @@ exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
 </div>
 <input id="base-ui-_R_6_-hidden-input" style="clip-path:inset(50%);overflow:hidden;white-space:nowrap;border:0;padding:0;width:1px;height:1px;margin:-1px;position:fixed;top:0;left:0" tabindex="-1" aria-hidden="true" value="bello"/>
 <h1 class="m-0 mt-[2.625rem] font-serif text-[3rem] leading-none font-normal break-words text-text-strong sm:mt-[3.6875rem] sm:text-[4.5rem]" lang="it">bello</h1>
-<p class="m-0 mt-[0.9375rem] font-mono text-[0.8125rem] text-text-muted sm:mt-[1.5625rem] sm:text-[0.9375rem] sm:leading-5" aria-label="Pronunciation">
+<p class="m-0 mt-[0.9375rem] font-mono text-[0.8125rem] text-text-muted sm:mt-[1.5625rem] sm:text-[0.9375rem] sm:leading-5" aria-label="Pronuncia" lang="it">
 <span>/ˈbɛllo/</span>
 </p>
-<nav aria-label="Readings">
+<nav aria-label="Sezioni" lang="it">
 <ul class="m-0 mt-2.5 flex list-none flex-wrap gap-x-3.5 gap-y-1 p-0 sm:mt-[1.375rem] sm:gap-x-[1.125rem]">
 <li>
 <a class="font-sans text-[0.78125rem] text-text no-underline sm:text-[0.8125rem] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="#reading-152">
@@ -60,7 +60,7 @@ exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
 </span>
 </h2>
 <section class="mt-[1.125rem] sm:mt-[1.375rem]" aria-labelledby="definitions-152">
-<h3 class="m-0 mb-[0.3125rem] font-sans text-[0.75rem] font-normal text-text-muted sm:mb-1.5 sm:text-[0.8rem]" id="definitions-152">Definitions</h3>
+<h3 class="m-0 mb-[0.3125rem] font-sans text-[0.75rem] font-normal text-text-muted sm:mb-1.5 sm:text-[0.8rem]" id="definitions-152" lang="it">Definizioni</h3>
 <div data-closed="" class="group/definitions">
 <ol class="m-0 flex list-none flex-col gap-4 p-0" id="definition-list-152">
 <li class="flex gap-[0.4375rem] sm:gap-3" data-definition="1">
@@ -116,16 +116,16 @@ exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
 </li>
 </ol>
 <div class="mt-[0.4375rem] block leading-4 sm:mt-[0.3125rem] sm:leading-[1.375rem]">
-<button type="button" tabindex="0" aria-disabled="false" aria-controls="definition-list-152" aria-expanded="false" class="group inline cursor-pointer font-sans text-[0.8rem] text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
-<span class="group-data-panel-open:hidden">+ more</span>
-<span class="hidden group-data-panel-open:inline">less</span>
+<button type="button" tabindex="0" aria-disabled="false" aria-controls="definition-list-152" aria-expanded="false" lang="it" class="group inline cursor-pointer font-sans text-[0.8rem] text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+<span class="group-data-panel-open:hidden">+ altro</span>
+<span class="hidden group-data-panel-open:inline">meno</span>
 </button>
 </div>
 </div>
 </section>
 <section class="mt-[1.125rem] sm:mt-[1.375rem]" aria-labelledby="forms-152">
-<h3 class="m-0 mb-[0.3125rem] font-sans text-[0.75rem] font-normal text-text-muted sm:mb-1.5 sm:text-[0.8rem]" id="forms-152">Forms</h3>
-<div class="grid grid-cols-2 sm:gap-x-6 sm:grid-cols-[5.375rem_14.75rem_14.75rem]" role="table" aria-label="Forms of bello" data-grid="">
+<h3 class="m-0 mb-[0.3125rem] font-sans text-[0.75rem] font-normal text-text-muted sm:mb-1.5 sm:text-[0.8rem]" id="forms-152" lang="it">Forme</h3>
+<div class="grid grid-cols-2 sm:gap-x-6 sm:grid-cols-[5.375rem_14.75rem_14.75rem]" role="table" aria-label="Forme di bello" data-grid="">
 <div role="row" class="contents">
 <span class="max-sm:hidden" role="columnheader">
 </span>
@@ -216,7 +216,7 @@ exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
 </span>
 </h2>
 <section class="mt-[1.125rem] sm:mt-[1.375rem]" aria-labelledby="definitions-153">
-<h3 class="m-0 mb-[0.3125rem] font-sans text-[0.75rem] font-normal text-text-muted sm:mb-1.5 sm:text-[0.8rem]" id="definitions-153">Definitions</h3>
+<h3 class="m-0 mb-[0.3125rem] font-sans text-[0.75rem] font-normal text-text-muted sm:mb-1.5 sm:text-[0.8rem]" id="definitions-153" lang="it">Definizioni</h3>
 <div data-closed="" class="group/definitions">
 <ol class="m-0 flex list-none flex-col gap-4 p-0" id="definition-list-153">
 <li class="flex gap-[0.4375rem] sm:gap-3" data-definition="1">
@@ -236,16 +236,16 @@ exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
 </li>
 </ol>
 <div class="mt-[0.4375rem] block leading-4 sm:mt-[0.3125rem] sm:leading-[1.375rem]">
-<button type="button" tabindex="0" aria-disabled="false" aria-controls="definition-list-153" aria-expanded="false" class="group inline cursor-pointer font-sans text-[0.8rem] text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
-<span class="group-data-panel-open:hidden">+ more</span>
-<span class="hidden group-data-panel-open:inline">less</span>
+<button type="button" tabindex="0" aria-disabled="false" aria-controls="definition-list-153" aria-expanded="false" lang="it" class="group inline cursor-pointer font-sans text-[0.8rem] text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+<span class="group-data-panel-open:hidden">+ altro</span>
+<span class="hidden group-data-panel-open:inline">meno</span>
 </button>
 </div>
 </div>
 </section>
 <section class="mt-[1.125rem] sm:mt-[1.375rem]" aria-labelledby="forms-153">
-<h3 class="m-0 mb-[0.3125rem] font-sans text-[0.75rem] font-normal text-text-muted sm:mb-1.5 sm:text-[0.8rem]" id="forms-153">Forms</h3>
-<div class="grid grid-cols-2 sm:gap-x-6 sm:grid-cols-[5.375rem_14.75rem_14.75rem]" role="table" aria-label="Forms of bello" data-grid="">
+<h3 class="m-0 mb-[0.3125rem] font-sans text-[0.75rem] font-normal text-text-muted sm:mb-1.5 sm:text-[0.8rem]" id="forms-153" lang="it">Forme</h3>
+<div class="grid grid-cols-2 sm:gap-x-6 sm:grid-cols-[5.375rem_14.75rem_14.75rem]" role="table" aria-label="Forme di bello" data-grid="">
 <div role="row" class="contents">
 <span class="max-sm:hidden" role="columnheader">
 </span>
@@ -288,7 +288,7 @@ exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
 </span>
 </h2>
 <section class="mt-[1.125rem] sm:mt-[1.375rem]" aria-labelledby="definitions-154">
-<h3 class="m-0 mb-[0.3125rem] font-sans text-[0.75rem] font-normal text-text-muted sm:mb-1.5 sm:text-[0.8rem]" id="definitions-154">Definitions</h3>
+<h3 class="m-0 mb-[0.3125rem] font-sans text-[0.75rem] font-normal text-text-muted sm:mb-1.5 sm:text-[0.8rem]" id="definitions-154" lang="it">Definizioni</h3>
 <div data-closed="" class="group/definitions">
 <ol class="m-0 flex list-none flex-col gap-4 p-0" id="definition-list-154">
 <li class="flex gap-[0.4375rem] sm:gap-3" data-definition="1">
@@ -301,8 +301,8 @@ exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
 </div>
 </section>
 <section class="mt-[1.125rem] sm:mt-[1.375rem]" aria-labelledby="forms-154">
-<h3 class="m-0 mb-[0.3125rem] font-sans text-[0.75rem] font-normal text-text-muted sm:mb-1.5 sm:text-[0.8rem]" id="forms-154">Forms</h3>
-<div class="grid grid-cols-2 sm:gap-x-6 sm:grid-cols-[5.375rem_14.75rem_14.75rem]" role="table" aria-label="Forms of bello" data-grid="">
+<h3 class="m-0 mb-[0.3125rem] font-sans text-[0.75rem] font-normal text-text-muted sm:mb-1.5 sm:text-[0.8rem]" id="forms-154" lang="it">Forme</h3>
+<div class="grid grid-cols-2 sm:gap-x-6 sm:grid-cols-[5.375rem_14.75rem_14.75rem]" role="table" aria-label="Forme di bello" data-grid="">
 <div role="row" class="contents">
 <span class="max-sm:hidden" role="columnheader">
 </span>
@@ -350,19 +350,19 @@ exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
 </div>
 <div class="mt-[1.6875rem] border-t border-border pt-6.5 sm:mt-[2.4375rem] sm:pt-[2.4375rem]">
 <section class="mt-6 first:mt-0 sm:mt-7" aria-labelledby="etymology">
-<h2 class="m-0 mb-[0.3125rem] font-sans text-[0.75rem] font-normal text-text-muted sm:mb-1.5 sm:text-[0.8rem]" id="etymology">Etymology</h2>
+<h2 class="m-0 mb-[0.3125rem] font-sans text-[0.75rem] font-normal text-text-muted sm:mb-1.5 sm:text-[0.8rem]" id="etymology" lang="it">Etimologia</h2>
 <div data-closed="" data-one-line="" class="group/line flex max-w-[48rem] items-baseline gap-1.5 [&amp;+&amp;]:mt-3 data-open:block">
 <p id="_R_66q_" class="m-0 max-w-[48rem] font-serif text-[1.1rem] text-text sm:text-[1.0625rem] min-w-0 truncate group-data-open/line:inline group-data-open/line:whitespace-normal" lang="it">dal latino bĕllus ossia &quot;carino, grazioso&quot;</p>
 <div class="inline shrink-0 group-data-open/line:ml-1.5">
-<button type="button" tabindex="0" aria-disabled="false" aria-controls="_R_66q_" aria-expanded="false" class="group inline cursor-pointer font-sans text-[0.8rem] text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
-<span class="group-data-panel-open:hidden">+ more</span>
-<span class="hidden group-data-panel-open:inline">less</span>
+<button type="button" tabindex="0" aria-disabled="false" aria-controls="_R_66q_" aria-expanded="false" lang="it" class="group inline cursor-pointer font-sans text-[0.8rem] text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+<span class="group-data-panel-open:hidden">+ altro</span>
+<span class="hidden group-data-panel-open:inline">meno</span>
 </button>
 </div>
 </div>
 </section>
 <section class="mt-6 first:mt-0 sm:mt-7" aria-labelledby="synonyms">
-<h2 class="m-0 mb-[0.3125rem] font-sans text-[0.75rem] font-normal text-text-muted sm:mb-1.5 sm:text-[0.8rem]" id="synonyms">Synonyms</h2>
+<h2 class="m-0 mb-[0.3125rem] font-sans text-[0.75rem] font-normal text-text-muted sm:mb-1.5 sm:text-[0.8rem]" id="synonyms" lang="it">Sinonimi</h2>
 <ul data-closed="" id="synonyms-words" class="group/words m-0 flex list-none flex-wrap items-baseline gap-x-3 gap-y-2 p-0">
 <li class="flex items-baseline gap-3" data-item="">
 <a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=affascinante" lang="it">affascinante</a>
@@ -657,16 +657,16 @@ exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
 </li>
 <li class="flex items-baseline gap-3">
 <div class="inline">
-<button type="button" tabindex="0" aria-disabled="false" aria-controls="synonyms-words" aria-expanded="false" class="group inline cursor-pointer font-sans text-[0.8rem] text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
-<span class="group-data-panel-open:hidden">+ more</span>
-<span class="hidden group-data-panel-open:inline">less</span>
+<button type="button" tabindex="0" aria-disabled="false" aria-controls="synonyms-words" aria-expanded="false" lang="it" class="group inline cursor-pointer font-sans text-[0.8rem] text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+<span class="group-data-panel-open:hidden">+ altro</span>
+<span class="hidden group-data-panel-open:inline">meno</span>
 </button>
 </div>
 </li>
 </ul>
 </section>
 <section class="mt-6 first:mt-0 sm:mt-7" aria-labelledby="antonyms">
-<h2 class="m-0 mb-[0.3125rem] font-sans text-[0.75rem] font-normal text-text-muted sm:mb-1.5 sm:text-[0.8rem]" id="antonyms">Antonyms</h2>
+<h2 class="m-0 mb-[0.3125rem] font-sans text-[0.75rem] font-normal text-text-muted sm:mb-1.5 sm:text-[0.8rem]" id="antonyms" lang="it">Contrari</h2>
 <ul data-closed="" id="antonyms-words" class="group/words m-0 flex list-none flex-wrap items-baseline gap-x-3 gap-y-2 p-0">
 <li class="flex items-baseline gap-3" data-item="">
 <a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=brutto" lang="it">brutto</a>
@@ -829,16 +829,16 @@ exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
 </li>
 <li class="flex items-baseline gap-3">
 <div class="inline">
-<button type="button" tabindex="0" aria-disabled="false" aria-controls="antonyms-words" aria-expanded="false" class="group inline cursor-pointer font-sans text-[0.8rem] text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
-<span class="group-data-panel-open:hidden">+ more</span>
-<span class="hidden group-data-panel-open:inline">less</span>
+<button type="button" tabindex="0" aria-disabled="false" aria-controls="antonyms-words" aria-expanded="false" lang="it" class="group inline cursor-pointer font-sans text-[0.8rem] text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+<span class="group-data-panel-open:hidden">+ altro</span>
+<span class="hidden group-data-panel-open:inline">meno</span>
 </button>
 </div>
 </li>
 </ul>
 </section>
 <section class="mt-6 first:mt-0 sm:mt-7" aria-labelledby="derived">
-<h2 class="m-0 mb-[0.3125rem] font-sans text-[0.75rem] font-normal text-text-muted sm:mb-1.5 sm:text-[0.8rem]" id="derived">Derived words</h2>
+<h2 class="m-0 mb-[0.3125rem] font-sans text-[0.75rem] font-normal text-text-muted sm:mb-1.5 sm:text-[0.8rem]" id="derived" lang="it">Parole derivate</h2>
 <ul data-closed="" id="derived-words" class="group/words m-0 flex list-none flex-wrap items-baseline gap-x-3 gap-y-2 p-0">
 <li class="flex items-baseline gap-3" data-item="">
 <a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=bellezza" lang="it">bellezza</a>
@@ -905,16 +905,16 @@ exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
 </li>
 <li class="flex items-baseline gap-3">
 <div class="inline">
-<button type="button" tabindex="0" aria-disabled="false" aria-controls="derived-words" aria-expanded="false" class="group inline cursor-pointer font-sans text-[0.8rem] text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
-<span class="group-data-panel-open:hidden">+ more</span>
-<span class="hidden group-data-panel-open:inline">less</span>
+<button type="button" tabindex="0" aria-disabled="false" aria-controls="derived-words" aria-expanded="false" lang="it" class="group inline cursor-pointer font-sans text-[0.8rem] text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+<span class="group-data-panel-open:hidden">+ altro</span>
+<span class="hidden group-data-panel-open:inline">meno</span>
 </button>
 </div>
 </li>
 </ul>
 </section>
 <section class="mt-6 first:mt-0 sm:mt-7" aria-labelledby="expressions-0">
-<h2 class="m-0 mb-[0.3125rem] font-sans text-[0.75rem] font-normal text-text-muted sm:mb-1.5 sm:text-[0.8rem]" id="expressions-0">Expressions</h2>
+<h2 class="m-0 mb-[0.3125rem] font-sans text-[0.75rem] font-normal text-text-muted sm:mb-1.5 sm:text-[0.8rem]" id="expressions-0" lang="it">Espressioni</h2>
 <div data-closed="" class="group/expressions">
 <ul class="m-0 flex list-none flex-col gap-4 p-0" id="expressions-0-list">
 <li class="flex gap-x-4 gap-y-1 max-sm:flex-col sm:items-baseline group-data-open/expressions:sm:grid-cols-[11.875rem_minmax(0,1fr)] group-data-open/expressions:sm:grid" data-expression="">
@@ -939,22 +939,22 @@ exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
 </li>
 </ul>
 <div class="mt-3 block">
-<button type="button" tabindex="0" aria-disabled="false" aria-controls="expressions-0-list" aria-expanded="false" class="group inline cursor-pointer font-sans text-[0.8rem] text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
-<span class="group-data-panel-open:hidden">+ more</span>
-<span class="hidden group-data-panel-open:inline">less</span>
+<button type="button" tabindex="0" aria-disabled="false" aria-controls="expressions-0-list" aria-expanded="false" lang="it" class="group inline cursor-pointer font-sans text-[0.8rem] text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+<span class="group-data-panel-open:hidden">+ altro</span>
+<span class="hidden group-data-panel-open:inline">meno</span>
 </button>
 </div>
 </div>
 </section>
 </div>
-<footer class="mt-9 sm:mt-12 flex flex-wrap items-center gap-x-3 gap-y-1 font-sans text-[0.8rem] text-text-muted">
-<a class="inline-flex items-center gap-1.5 text-text-muted no-underline hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="https://it.wiktionary.org/wiki/bello" target="_blank" rel="noopener noreferrer" aria-label="Wiktionary page for bello, the source of this page (opens in a new tab)">Source<svg class="size-3.5" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+<footer class="mt-9 sm:mt-12 flex flex-wrap items-center gap-x-3 gap-y-1 font-sans text-[0.8rem] text-text-muted" lang="it">
+<a class="inline-flex items-center gap-1.5 text-text-muted no-underline hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="https://it.wiktionary.org/wiki/bello" target="_blank" rel="noopener noreferrer" aria-label="Pagina di Wikizionario per bello, la fonte di questa pagina (si apre in una nuova scheda)">Fonte<svg class="size-3.5" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
 <path d="M9.5 2.5h4v4M13.5 2.5 7.5 8.5M12 9.5V13a.5.5 0 0 1-.5.5h-8A.5.5 0 0 1 3 13V5a.5.5 0 0 1 .5-.5H7" stroke-linecap="round" stroke-linejoin="round">
 </path>
 </svg>
 </a>
 <span aria-hidden="true">·</span>
-<button type="button" tabindex="0" data-base-ui-click-trigger="" id="base-ui-_R_fva_" aria-haspopup="dialog" aria-expanded="false" class="cursor-pointer border-0 bg-transparent p-0 font-sans text-[0.8rem] text-text-muted hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">Report a mistake</button>
+<button type="button" tabindex="0" data-base-ui-click-trigger="" id="base-ui-_R_fva_" aria-haspopup="dialog" aria-expanded="false" class="cursor-pointer border-0 bg-transparent p-0 font-sans text-[0.8rem] text-text-muted hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">Segnala un errore</button>
 </footer>
 </main>
 `;

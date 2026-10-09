@@ -255,13 +255,13 @@ export const FORM_OF_LINE = "m-0 mt-4 font-sans text-[0.85rem] text-text-muted";
 
 export const DEFINITIONS = "m-0 flex list-none flex-col gap-4 p-0";
 export const DEFINITION = "flex gap-[0.4375rem] sm:gap-3";
-/** A definition after the first: in the document, shown once the reading's `+ more` is open. */
+/** A definition after the first: in the document, shown once the reading's `+ altro` is open. */
 export const DEFINITION_EXTRA = "hidden gap-[0.4375rem] group-data-open/definitions:flex sm:gap-3";
 /**
  * The small label over one part of speech's definitions in a form's block
  * whose records have several (#727): a grammar label, so Inter and muted, as
  * the reading's heading draws its grammar. The first shows closed; the rest
- * wait for `+ more` with their definitions, 16 px under the last one above.
+ * wait for `+ altro` with their definitions, 16 px under the last one above.
  */
 export const DEFINITION_GROUP_LABEL = "m-0 mb-2 font-sans text-[0.8rem] font-normal italic text-text-muted sm:text-[0.85rem]";
 export const DEFINITION_GROUP_LABEL_EXTRA = `${DEFINITION_GROUP_LABEL} mt-4 hidden group-data-open/definitions:block`;
@@ -280,7 +280,7 @@ export const GLOSS_LINK = `text-accent no-underline ${FOCUS_RING}`;
 /** The items of a list a definition opens with a colon (#123), nested under it. */
 export const SUB_ITEMS = "mt-2 mb-0 flex list-disc flex-col gap-2 pl-5 marker:text-text-muted";
 export const EXAMPLE = "m-0 mt-1 max-w-[48rem] font-serif text-[0.9375rem] italic text-text-muted sm:mt-[0.3125rem] sm:text-base";
-/** An example past the first definition's first: in the document, shown once `+ more` is open. */
+/** An example past the first definition's first: in the document, shown once `+ altro` is open. */
 export const EXAMPLE_EXTRA = `${EXAMPLE} hidden group-data-open/definitions:block`;
 /** An example of a sense not shown as a definition, after the definitions, in line with their text. */
 export const EXAMPLE_LOOSE = `${EXAMPLE_EXTRA} ml-[1.6875rem] sm:ml-8`;
@@ -293,11 +293,11 @@ export const EXAMPLE_LOOSE = `${EXAMPLE_EXTRA} ml-[1.6875rem] sm:ml-8`;
 export const FORM_LINES = "mt-2.5 flex flex-col gap-1 pb-1.5 pl-[2.125rem]";
 /** One form line: serif 17, strong, unnumbered, the lemma linked at its end. */
 export const FORM_LINE = "m-0 max-w-[48rem] font-serif text-[1.0625rem] leading-[1.625rem] text-text-strong wrap-anywhere";
-/** A reading's definitions and the one `+ more` after them, which reveals everything else: `data-open` once open. */
+/** A reading's definitions and the one `+ altro` after them, which reveals everything else: `data-open` once open. */
 export const DEFINITIONS_GROUP = "group/definitions";
 
 /**
- * The one expand control, `+ more` closed and `less` open (More.tsx): small,
+ * The one expand control, `+ altro` closed and `meno` open (More.tsx): small,
  * in the accent, in the flow of the text it ends. Base UI marks the open
  * trigger `data-panel-open`.
  */
@@ -419,20 +419,20 @@ export const TENSE_CELL_SEARCHED_ROW = `${TENSE_CELL} py-px`;
 export const TENSE_CELL_SEARCHED_ROW_WIDE = `${TENSE_CELL} sm:py-px`;
 export const CELL_SEPARATOR = "text-text-muted";
 
-/** One mood's tables, and the `+ more` after the simple tenses that shows the compound ones: `data-open` once open. */
+/** One mood's tables, and the `+ altro` after the simple tenses that shows the compound ones: `data-open` once open. */
 export const MOOD_PANEL = "group/panel";
 /** *Tempi semplici* / *Tempi composti*, named only while the compound tenses are open. */
 export const TENSE_SET = "m-0 mb-2 font-sans text-[0.8rem] font-semibold text-text-strong";
 export const TENSE_SET_SIMPLE = `${TENSE_SET} hidden group-data-open/panel:block`;
-/** Base UI's panel: hidden until the `+ more` after it opens. */
+/** Base UI's panel: hidden until the `+ altro` after it opens. */
 export const COMPOUND_TABLES = "pt-4";
 export const COMPOUND_MORE = "mt-[0.4375rem] block pb-0.5 leading-3 sm:pb-[0.1875rem]";
 
 export const WORD_FACTS = "mt-[1.6875rem] border-t border-border pt-6.5 sm:mt-[2.4375rem] sm:pt-[2.4375rem]";
 export const ETYMOLOGY = "m-0 max-w-[48rem] font-serif text-[1.1rem] text-text sm:text-[1.0625rem]";
 /**
- * An etymology on one line, cut with an ellipsis, and `+ more` right after the
- * ellipsis; open, the whole text wraps and `less` follows its last word. The
+ * An etymology on one line, cut with an ellipsis, and `+ altro` right after the
+ * ellipsis; open, the whole text wraps and `meno` follows its last word. The
  * text takes only its own width, so the control follows it, not the edge.
  */
 export const ONE_LINE = "group/line flex max-w-[48rem] items-baseline gap-1.5 [&+&]:mt-3 data-open:block";
@@ -443,17 +443,17 @@ export const ONE_LINE_MORE_UNNEEDED = "hidden";
 export const WORD_LIST = "group/words m-0 flex list-none flex-wrap items-baseline gap-x-3 gap-y-2 p-0";
 export const WORD_LIST_ITEM = "flex items-baseline gap-3";
 /**
- * A word past the first line: in the document, shown once `+ more` is open,
+ * A word past the first line: in the document, shown once `+ altro` is open,
  * and while the list measures which words fit (WordList.tsx).
  */
 export const WORD_LIST_ITEM_REST = "hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex";
-/** The `+ more` item of a list whose words all fit: laid out only to be measured. */
+/** The `+ altro` item of a list whose words all fit: laid out only to be measured. */
 export const WORD_LIST_MORE_UNNEEDED = "hidden group-data-measuring/words:flex";
 export const WORD_LINK = `cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline ${FOCUS_RING}`;
 /** A note the source wrote inside a word list: its text, muted, and no link. */
 export const WORD_NOTE = "font-serif text-[1.1rem] italic text-text-muted";
 export const WORD_DOT = "font-sans text-[0.75rem] text-text-muted";
-/** The dot after the last word that shows closed: `+ more` follows the word itself. */
+/** The dot after the last word that shows closed: `+ altro` follows the word itself. */
 export const WORD_DOT_BEFORE_REST = "hidden font-sans text-[0.75rem] text-text-muted group-data-open/words:inline";
 export const WORD_MORE = "inline";
 
@@ -469,7 +469,7 @@ export const EXPRESSION_LIST = "m-0 flex list-none flex-col gap-4 p-0";
 const EXPRESSION_ROW_LAYOUT =
   "gap-x-4 gap-y-1 max-sm:flex-col sm:items-baseline group-data-open/expressions:sm:grid-cols-[11.875rem_minmax(0,1fr)]";
 export const EXPRESSION_ROW = `flex ${EXPRESSION_ROW_LAYOUT} group-data-open/expressions:sm:grid`;
-/** A row past the first: in the document, shown once `+ more` is open. */
+/** A row past the first: in the document, shown once `+ altro` is open. */
 export const EXPRESSION_ROW_EXTRA = `hidden ${EXPRESSION_ROW_LAYOUT} group-data-open/expressions:max-sm:flex group-data-open/expressions:sm:grid`;
 /** A row *Find an expression* does not match. */
 export const EXPRESSION_ROW_FILTERED = "hidden";
@@ -516,19 +516,19 @@ export const ICON = "size-3.5";
 export const NOT_FOUND_HEADING =
   "m-0 mt-12 font-serif text-[2.25rem] leading-tight font-normal break-words text-text-strong sm:mt-[3.3125rem] sm:text-[2.5rem]";
 export const NOT_FOUND_TEXT = "m-0 mt-6 max-w-[42rem] font-sans text-[0.95rem] text-text sm:mt-4.5";
-/** "Did you mean città?": the word in the accent, larger, and a link to its search. */
+/** "Forse cercavi città?": the word in the accent, larger, and a link to its search. */
 export const NOT_FOUND_LEAD = "m-0 mt-6 font-sans text-[0.95rem] text-text sm:mt-4.5";
 export const NOT_FOUND_LINK = `ml-1.5 mr-2.5 font-serif text-[1.5rem] text-accent no-underline ${FOCUS_RING}`;
 
 // A word found whose query an accented or apostrophe headword also writes (board 32, #478)
 
-/** "Did you mean città?" under the search bar: the not-found offer's form, smaller and muted. */
+/** "Forse cercavi città?" under the search bar: the not-found offer's form, smaller and muted. */
 export const WRITTEN_OFFER_LEAD = "m-0 mt-3 font-sans text-[0.8125rem] text-text-muted";
 export const WRITTEN_OFFER_LINK = `mx-1 font-serif text-[0.9375rem] text-accent no-underline ${FOCUS_RING}`;
 
 // The report box (board 22, #51) ----------------------------------------------
 
-/** "Report a mistake", beside Source and in the same small muted type. */
+/** "Segnala un errore", beside Source and in the same small muted type. */
 export const REPORT_TRIGGER = `cursor-pointer border-0 bg-transparent p-0 font-sans text-[0.8rem] text-text-muted hover:text-text ${FOCUS_RING}`;
 export const REPORT_BACKDROP = "fixed inset-0 bg-surface/70";
 /** A small box in the middle of the screen; on a phone, the width of the screen less its margin. */

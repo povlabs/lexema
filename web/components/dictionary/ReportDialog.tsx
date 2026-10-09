@@ -1,13 +1,16 @@
 "use client";
 
-// "Report a mistake": the link beside Source and the small box it opens
+// "Segnala un errore": the link beside *Fonte* and the small box it opens
 // (board 22; ruled on #51, 2026-09-27). What's wrong, which reading (optional),
 // and details; Send stays off until a choice and details are given. No account
 // and no email field. What the server does with a report is lib/dictionary/report.ts.
 //
-// The same box opens from "Report a missing word" on a search that found
+// The same box opens from "Segnala una parola mancante" on a search that found
 // nothing (#441). There it reports the query as a missing word: it asks no
-// "What's wrong?", names no reading, and its details are optional.
+// "Cosa c’è di sbagliato?", names no reading, and its details are optional.
+//
+// Its words are Italian, as the whole word page's are (Huey's ruling of
+// 2026-10-09 on #789).
 //
 // Base UI supplies the dialog's behaviour (ADR 0010): focus is kept inside,
 // Escape closes it, and the page behind is inert while it is open.
@@ -17,6 +20,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import {
   afterAnswer,
   OPENING_TROUBLE,
+  REPORT_BOX,
   REPORT_CHOICE_LABEL,
   REPORT_CHOICES,
   REPORT_DETAILS_HINT,
@@ -24,6 +28,7 @@ import {
   REPORT_SUBJECT_LABEL,
   needsDetails,
   requestOpening,
+  SEND_TROUBLE,
   type OpeningTrouble,
   type ReportAnswer,
   type ReportChoice,
@@ -67,10 +72,7 @@ export const readingChoiceLabel = ({ number, posTitle }: ReportReading): string 
 type Status = "editing" | "sending" | ReturnType<typeof afterAnswer>["status"] | OpeningTrouble;
 
 const TROUBLE: Partial<Record<Status, string>> = {
-  limited: "Too many reports from you in the last hour. Try again later.",
-  challenge: "The check that you are a person did not pass. Try again.",
-  expired: "This box has been open too long. Close it and open it again.",
-  failed: "The report could not be sent. Try again in a moment.",
+  ...SEND_TROUBLE,
   ...OPENING_TROUBLE,
 };
 
@@ -123,7 +125,7 @@ function Chip({ name, value, checked, onChange, children }: { name: string; valu
   return (
     <label className={REPORT_CHIP}>
       <input className="sr-only" type="radio" name={name} value={value} checked={checked} onChange={onChange} />
-      <span lang={name === "reading" ? "it" : undefined}>{children}</span>
+      <span>{children}</span>
     </label>
   );
 }
@@ -225,9 +227,9 @@ export function ReportDialog({ word, subject, siteKey }: { word: string; subject
       <Dialog.Trigger className={REPORT_TRIGGER}>{label}</Dialog.Trigger>
       <Dialog.Portal>
         <Dialog.Backdrop className={REPORT_BACKDROP} />
-        <Dialog.Popup className={REPORT_POPUP}>
+        <Dialog.Popup className={REPORT_POPUP} lang="it">
           {status !== "sent" && (
-            <Dialog.Close className={REPORT_X} aria-label="Close">
+            <Dialog.Close className={REPORT_X} aria-label={REPORT_BOX.close}>
               ×
             </Dialog.Close>
           )}
@@ -237,12 +239,12 @@ export function ReportDialog({ word, subject, siteKey }: { word: string; subject
                 <span className={REPORT_SENT_CHECK} aria-hidden="true">
                   ✓
                 </span>
-                Report sent
+                {REPORT_BOX.sentTitle}
               </Dialog.Title>
               <Dialog.Description className={REPORT_SENT_TEXT}>
-                Thank you. Your report on <span lang="it">{word}</span> has been sent.
+                {REPORT_BOX.sentBefore} {word} {REPORT_BOX.sentAfter}
               </Dialog.Description>
-              <Dialog.Close className={REPORT_CLOSE}>Close</Dialog.Close>
+              <Dialog.Close className={REPORT_CLOSE}>{REPORT_BOX.close}</Dialog.Close>
             </>
           ) : (
             <form
@@ -253,8 +255,8 @@ export function ReportDialog({ word, subject, siteKey }: { word: string; subject
             >
               <Dialog.Title className={REPORT_TITLE}>{label}</Dialog.Title>
               <Dialog.Description className={REPORT_SUBTITLE}>
-                on{" "}
-                <span className={REPORT_SUBTITLE_WORD} lang="it">
+                {REPORT_BOX.subjectLead}{" "}
+                <span className={REPORT_SUBTITLE_WORD}>
                   {word}
                 </span>
               </Dialog.Description>
@@ -262,7 +264,7 @@ export function ReportDialog({ word, subject, siteKey }: { word: string; subject
               {subject.kind === "mistake" && (
                 <fieldset className={REPORT_FIELD}>
                   <legend className={REPORT_FIELD_LABEL} id={ids.choice}>
-                    What’s wrong?
+                    {REPORT_BOX.choiceQuestion}
                   </legend>
                   <div className={REPORT_CHIPS}>
                     {REPORT_CHOICES.map((value) => (
@@ -277,7 +279,7 @@ export function ReportDialog({ word, subject, siteKey }: { word: string; subject
               {readings.length > 0 && (
                 <fieldset className={REPORT_FIELD}>
                   <legend className={REPORT_FIELD_LABEL} id={ids.reading}>
-                    Which reading? <span className={REPORT_OPTIONAL}>optional</span>
+                    {REPORT_BOX.readingQuestion} <span className={REPORT_OPTIONAL}>{REPORT_BOX.optional}</span>
                   </legend>
                   <div className={REPORT_CHIPS}>
                     {readings.map((entry) => (
@@ -300,7 +302,7 @@ export function ReportDialog({ word, subject, siteKey }: { word: string; subject
                         checked={reading === "unsure"}
                         onChange={() => setReading("unsure")}
                       />
-                      <span>Not sure</span>
+                      <span>{REPORT_BOX.unsure}</span>
                     </label>
                   </div>
                 </fieldset>
@@ -308,7 +310,7 @@ export function ReportDialog({ word, subject, siteKey }: { word: string; subject
 
               <div className={REPORT_FIELD}>
                 <label className={REPORT_FIELD_LABEL} htmlFor={ids.details}>
-                  Details
+                  {REPORT_BOX.details}
                 </label>
                 <textarea
                   id={ids.details}
@@ -323,7 +325,7 @@ export function ReportDialog({ word, subject, siteKey }: { word: string; subject
               {/* A field no reader sees or reaches; a bot that fills it is dropped. */}
               <div hidden aria-hidden="true">
                 <label>
-                  Website
+                  {REPORT_BOX.honeypot}
                   <input ref={honeypot} type="text" name="website" tabIndex={-1} autoComplete="off" defaultValue="" />
                 </label>
               </div>
@@ -335,17 +337,17 @@ export function ReportDialog({ word, subject, siteKey }: { word: string; subject
                   {TROUBLE[status]}
                   {isOpeningTrouble(status) && (
                     <button type="button" className={REPORT_RETRY} onClick={() => void requestOpenToken()}>
-                      Try again
+                      {REPORT_BOX.retry}
                     </button>
                   )}
                 </p>
               )}
 
               <div className={REPORT_FOOTER}>
-                <p className={REPORT_NOTE}>No account needed.</p>
-                <Dialog.Close className={REPORT_CANCEL}>Cancel</Dialog.Close>
+                <p className={REPORT_NOTE}>{REPORT_BOX.noAccount}</p>
+                <Dialog.Close className={REPORT_CANCEL}>{REPORT_BOX.cancel}</Dialog.Close>
                 <button type="submit" className={REPORT_SEND} disabled={!ready}>
-                  Send report
+                  {REPORT_BOX.send}
                 </button>
               </div>
             </form>

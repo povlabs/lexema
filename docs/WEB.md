@@ -124,7 +124,7 @@ hidden, and only an inline script swaps it in, so without JavaScript a reader sa
 the loading line and never the result. While the read runs, the browser shows
 its own page-loading indicator instead. The search form, the home page and every
 link are plain HTML and work without JavaScript; the suggestion list, the mood
-tabs and `+ more` need it.
+tabs and `+ altro` need it.
 
 The cost is that a server component here has no way to set a response status, so
 even the failed-lookup page returns 200. The state the reader needs is on the
@@ -211,7 +211,7 @@ three entries, the three records whose headword is `sale`. Two of them say what
 they are a form of, `sala` and `salire`, and those lemmas come back inside the
 reading that names them rather than as entries of their own. The definition
 that names each links it to its own search, and a verb lemma whose table lists
-the searched form renders its whole conjugation under the reading, as *Forms of
+the searched form renders its whole conjugation under the reading, as *Forme di
 salire*. A reader never sees
 `salire` offered as a meaning of `sale`, because the source only ever said one
 of `sale`'s readings is a form of it.
@@ -241,7 +241,7 @@ gender stamp is lifted (#317) it reads `presina`. The lookup treats a gloss equa
 to the headword, ignoring case, accents, apostrophes and the punctuation around
 it, as no definition too (#395); one that only contains the headword (`sci`'s
 `sport associato all'attività di andare sugli sci`) stays. A reading with no definition has no
-*Definitions* block, and it is numbered like every other reading: `salivare`
+*Definizioni* block, and it is numbered like every other reading: `salivare`
 reads `1 · Aggettivo` then `2 · Verbo` (#687, reversing #250). A reading with
 nothing to show at all, `litigante`'s noun, is left out before numbering, so
 `litigante` reads `1 · Aggettivo` then `2 · Voce verbale`; a page where no
@@ -275,7 +275,7 @@ matches nothing. When there is no match, the item stays numbered at the top of
 the list, as before (`filetto`'s heraldic items). A sense that opens such a list is a definition, never
 furniture, even when its gloss starts like `casa`'s.
 
-**A search that found nothing.** The page says `No entry for "<query>"` and
+**A search that found nothing.** The page says `Nessuna voce per "<query>"` and
 offers what is close, in order: the same letters with an accent, a spelling one
 edit away, the words that begin with it, or how to search instead
 ([the lookup reference](LOOKUP.md#when-nothing-is-found)). The old "Nothing in
@@ -351,7 +351,7 @@ record's part of speech with `forma flessa` and the cells' gender and number,
 then one line per cell built by rule `it-grid-form-line/v1`
 ([`gridFormLine.ts`](../web/lib/dictionary/gridFormLine.ts)), "femminile
 singolare di gravido", in the names the grid heads its rows and columns with,
-then gravido's *Definitions* and *Forms of gravido* (`GridFormBlock`). Like a
+then gravido's *Definizioni* and *Forme di gravido* (`GridFormBlock`). Like a
 verb form line, the line is Lexema's text, built when the page is built, never
 stored, and unmarked on the page (ADR 0008, 0012, 0016). The other records
 keep their readings, as every page did before #695, less two kinds of form;
@@ -377,8 +377,8 @@ own, drawn like any other, with no line saying why it is there: a record that
 declares no `form_of` edge, or one whose edge names some other word.
 
 A noun or adjective form about the query shows its base word's grid, the one
-that word's own reading draws, as *Forms of bello* under `bella`'s adjective
-reading and *Forms of casa* under `case`, in place of its own grid
+that word's own reading draws, as *Forme di bello* under `bella`'s adjective
+reading and *Forme di casa* under `case`, in place of its own grid
 ([ruling](https://github.com/povlabs/lexema/issues/626#issuecomment-6001258715)),
 with nothing marked. Its base word is the word its `form_of` edge names, of its
 own part of speech when it names one, followed through a record that is itself
@@ -403,11 +403,11 @@ adjective form in the slot of the first form of its first base word, so
 show as one block. The first record heads it (`FormOfReading.reading`), the
 others ride in `also`, and the form lines list every record's in turn, a line
 another record already gave shown once with both records' examples
-(`recordLinesOf`, `definitionTextKey`). The block's *Definitions* are those of
+(`recordLinesOf`, `definitionTextKey`). The block's *Definizioni* are those of
 the first record's first base word, as a verb form block reads its first
 table's; its tables are one per base word.
 
-A table shows once on a page, and so does one base record's *Definitions*
+A table shows once on a page, and so does one base record's *Definizioni*
 (`Drawn` in `wordPage.ts`; rule 1, "never two … tables for the same word"):
 `essere`'s and `vivere`'s two verb records draw one conjugation, under the
 first, and a base word's grid shows once, whichever of its records it is read
@@ -417,7 +417,7 @@ from.
 for each verb it is a form of, as frame 37 draws it
 ([#636](https://github.com/povlabs/lexema/issues/636), Huey's ruling of
 2026-10-06): `1 · Voce verbale · salire`, that verb's form-of lines right under
-it with no label, then *Definitions*, the verb record's own, then *Forms of
+it with no label, then *Definizioni*, the verb record's own, then *Forme di
 salire*, the verb's conjugation opened where the searched cell is (frames 17 and
 37, [#686](https://github.com/povlabs/lexema/issues/686)). The definitions are
 those of the record whose table the block shows first: a verb that is a reading
@@ -426,7 +426,7 @@ brings its own, and a verb a form record names has its senses read by
 other reads after the lookup, so a page sends more statements and no more calls
 (`web/test/pageStatements.test.ts`). A noun or adjective form that shows its
 lemma's grid draws the same way, its own lines under its heading and the lemma
-record's definitions as its *Definitions*. The table is a lemma link's `listing` or the verb reading's
+record's definitions as its *Definizioni*. The table is a lemma link's `listing` or the verb reading's
 own `forms`, both already in the lookup's answer, so the page reads nothing
 more for it; a verb whose table does not list the form (`andati`: andare's lists
 only `andato`) has a block with no table. A block's lines come from two places:
@@ -481,7 +481,7 @@ once each, under the block's number and heading. The lookup and the API do not
 change.
 
 **One expand control.** Etymology, the word lists and Definitions share one
-control (`web/components/dictionary/More.tsx`): `+ more` right after what shows, and, open, `less`
+control (`web/components/dictionary/More.tsx`): `+ altro` right after what shows, and, open, `meno`
 at the very end, with no count. It is a native `<details>` placed after all the
 content it reveals; that content is its sibling, not its child, and CSS shows it
 once the `<details>` is open (`:has(details[open])`). So with the rest hidden
@@ -489,13 +489,13 @@ the control follows the last thing that shows, and with it shown the control is
 last of all. Everything is in the HTML and opens with no script.
 
 An Etymology block cuts its text to one line with an ellipsis, and open lets it
-wrap with `less` after its last word (`web/components/dictionary/OneLine.tsx`). A word list
+wrap with `meno` after its last word (`web/components/dictionary/OneLine.tsx`). A word list
 (`web/components/dictionary/WordList.tsx`) shows the words that fit on its first line: once
-hydrated it lays every word out, measures which fit with `+ more` after them,
+hydrated it lays every word out, measures which fit with `+ altro` after them,
 and hides the rest, again on a resize or when closed. Without a script the
 first eight show. In both, a text or list that fits needs no control and shows
 none. Definitions show the first definition and its own first example, then
-`+ more` under it; open, every definition with its examples in order.
+`+ altro` under it; open, every definition with its examples in order.
 
 **Once per word.** Pronunciation, etymologies, synonyms, antonyms and derived
 words are read from `source_record_json` and render once: the IPA under the
@@ -555,7 +555,7 @@ the page says nothing about what it did not match.
 
 ## Why a report is stored and nothing more
 
-Every word page ends with `Source ↗ · Report a mistake` (#51). The link opens a
+Every word page ends with `Fonte ↗ · Segnala un errore` (#51). The link opens a
 small box: what is wrong, which reading (optional), and details, with no account
 and no email. `POST /report` (`web/app/(lexema)/report/route.ts`, `web/lib/dictionary/report.ts`)
 stores the report in `reader_report`, in the app database, and changes nothing on the page; a person
@@ -568,7 +568,7 @@ The person's answer is stored on the report, with `pnpm run report answer`
 ([DEVELOPMENT.md](../DEVELOPMENT.md#review-a-readers-report)); no page and no
 API answer reads a report or its answer.
 
-A search that finds nothing ends with `Report a missing word` (#441), which
+A search that finds nothing ends with `Segnala una parola mancante` (#441), which
 opens the same box on the trimmed query, through the same `POST /report` and
 spam layers. There the box asks no "what is wrong" and offers no reading: it
 sends `missing`, a sixth `choice` the word page never offers, and the report is
@@ -641,7 +641,7 @@ contain, so it is a separate write over a release the import already made.
 
 ## Why the source link is labelled the way it is
 
-The page ends with exactly one *Source* link, labelled *Source* and nothing
+The page ends with exactly one *Fonte* link, labelled *Fonte* and nothing
 more. It opens the Italian Wiktionary page of the spelling in the page's title:
 `macchina` links to *macchina*'s page, which holds both the noun and the form of
 *macchinare*, and `andavano` links to *andavano*'s page though it also shows

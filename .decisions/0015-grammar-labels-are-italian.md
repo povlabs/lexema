@@ -51,6 +51,10 @@ A result page is deliberately in two languages: English for the structure around
 
 The web app needs an Italian label for each grammar value it shows today, and the part-of-speech heading reads `pos_title` instead of mapping `pos`. The design manifest's first rule, "The interface is in English", changes to match.
 
+## Amendments
+
+- **The word page's interface is Italian too (2026-10-09).** Huey, in chat, quoted on [#789](https://github.com/povlabs/lexema/issues/789): "ok now we need to make all the english parts in italian in the word page", and, asked whether the footer and the rest of the site change too, "not footer, only word page". Every interface word on a word page and on the no-entry page is now Italian: the section labels (*Definizioni*, *Forme*, *Etimologia*, *Sinonimi* and the rest), the controls and links (`+ altro` / `meno`, *Fonte*, *Segnala un errore*), the report box, the no-entry state and the names a screen reader reads. The English list in the Decision above no longer covers the word page. The footer, the landing page, the search box, the legal pages and the developer site stay English, and so do the tab's title and the share cards. The design manifest names the labels.
+
 ## Records
 
 no vocabulary impact
