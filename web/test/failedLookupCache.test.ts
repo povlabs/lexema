@@ -34,7 +34,7 @@ import { SITE_LIMITS } from "./siteLimits.ts";
 
 const REPO = fileURLToPath(new URL("../..", import.meta.url));
 const RELEASE = "it-failed-lookup-cache";
-/** What vinext 1.0.0-beta.10 marks a dynamic page with (`NO_STORE_CACHE_CONTROL`). */
+/** What vinext 1.1.0 marks a dynamic page with (`NO_STORE_CACHE_CONTROL`). */
 const VINEXT_DYNAMIC = "no-store, must-revalidate";
 
 /** The Worker's `env` as `cloudflare:workers` hands it to the word page; a request sets `DB` before it runs. */

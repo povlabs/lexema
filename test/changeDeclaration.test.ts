@@ -219,6 +219,11 @@ test("every declaration already in dictionary-changes parses as before, with no 
       assert.deepEqual(parseDraft(path, text).lookups?.map((item) => item.word), ["mele", "scandinave", "fermi", "pampini", "scandinava", "andarsene"]);
       continue;
     }
+    // The label punctuation rule (#712) names words whose page text it rewrites.
+    if (name === "2026-10-09-normalize-label-punctuation.json") {
+      assert.deepEqual(parseDraft(path, text).lookups?.map((item) => item.word), ["cinquantadue", "ozelot", "travet"]);
+      continue;
+    }
     // The upgrade that keys corrected cells (#743) names the spellings a search now finds, and the source's it still finds.
     if (name === "2026-10-08-update-upgrade-corrected-form-key.json") {
       assert.deepEqual(

@@ -10,6 +10,7 @@ import type { MasterReader } from "../update/master.js";
 import { PlanCounts, type CountedTable, type TableRows } from "../update/planCounts.js";
 import { type GlossStampReport, planGlossStamps } from "./glossStampUpdate.js";
 import { type HeadwordLeadReport, planHeadwordLeads } from "./headwordLeadUpdate.js";
+import { LABEL_PUNCTUATION_RULE, type LabelPunctuationReport, planLabelPunctuation } from "./labelPunctuationUpdate.js";
 import { type FormNormalizationReport, planPlaceholderForms } from "./normalizeForms.js";
 import { type GlossNormalizationReport, planPersonOrdinals } from "./normalizeGlosses.js";
 import { PlannedGlosses, type RulePlan } from "./sourceTextUpdate.js";
@@ -23,6 +24,7 @@ export const SOURCE_TEXT_UPDATE_RULES = [
   SOURCE_TEXT_RULES.personOrdinalGloss,
   SOURCE_TEXT_RULES.pluralPlaceholderForm,
   GLOSS_GRAMMAR_STAMP_RULE,
+  LABEL_PUNCTUATION_RULE,
 ] as const;
 
 export type SourceTextUpdateRule = (typeof SOURCE_TEXT_UPDATE_RULES)[number];
@@ -33,6 +35,7 @@ export interface SourceTextReports {
   readonly glosses: GlossNormalizationReport;
   readonly forms: FormNormalizationReport;
   readonly glossStamps: GlossStampReport;
+  readonly labelPunctuation: LabelPunctuationReport;
 }
 
 /** The whole update, ready to run. */
@@ -56,7 +59,8 @@ export function planSourceText(db: MasterReader): SourceTextPlan {
   const personOrdinals = planPersonOrdinals(db, glosses);
   const forms = planPlaceholderForms(db, glosses);
   const glossStamps = planGlossStamps(db, glosses);
-  const plans: RulePlan<unknown>[] = [headwordLeads, personOrdinals, forms, glossStamps];
+  const labelPunctuation = planLabelPunctuation(db, glosses);
+  const plans: RulePlan<unknown>[] = [headwordLeads, personOrdinals, forms, glossStamps, labelPunctuation];
 
   const glossRows = glosses.rows();
   const written: Partial<Record<CountedTable, number>> = { sense_gloss: glossRows.written };
@@ -68,7 +72,7 @@ export function planSourceText(db: MasterReader): SourceTextPlan {
   const records = new Set([...glosses.records(), ...plans.flatMap((plan) => plan.records)]);
   const statements = plans.flatMap((plan) => plan.statements);
   return {
-    reports: { headwordLeads: headwordLeads.report, glosses: personOrdinals.report, forms: forms.report, glossStamps: glossStamps.report },
+    reports: { headwordLeads: headwordLeads.report, glosses: personOrdinals.report, forms: forms.report, glossStamps: glossStamps.report, labelPunctuation: labelPunctuation.report },
     statements: statements.length,
     counts: new PlanCounts({ added: 0, changed: records.size, removed: 0 }, written, deleted),
     sql: statements.length === 0
