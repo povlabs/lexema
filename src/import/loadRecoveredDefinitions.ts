@@ -664,12 +664,13 @@ export function planListing(plan: RecoveredDefinitionPlan): string[] {
   const described = [...plan.records.flatMap(describePlannedRecord), ...plan.entries.flatMap(describePlannedEntry)];
   const written = described.filter((line) => line.includes(" — written as "));
   const moved = described.filter((line) => line.includes(" — moved from index "));
-  const differing = plan.records.reduce((total, record) => total + record.differing.length, 0) + plan.entries.reduce((total, entry) => total + entry.differing.length, 0);
+  const differing = described.filter((line) => line.includes(" — held, and a fresh seed does not write it so"));
   const keys = new Set([...plan.records.flatMap((record) => (record.definitions.some((planned) => planned.state === "write") ? [record.found.word] : [])), ...plan.entries.flatMap((entry) => (entry.definitions.some((planned) => planned.state === "write") ? [entry.entry.page.title] : []))].map(normalizeItalianExact));
   return [
     ...written,
     ...moved,
+    ...differing,
     `${written.length} definition(s) written for ${keys.size} word(s), and ${moved.length} held one(s) moved to a fresh seed's index; afterwards the dictionary lacks none a fresh seed writes for the records and held entries read.`,
-    `${differing} held definition(s) of those records and entries a fresh seed does not write as held; left as they are.`,
+    `${differing.length} held definition(s) of those records and entries a fresh seed does not write as held; left as they are.`,
   ];
 }
