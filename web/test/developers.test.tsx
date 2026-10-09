@@ -39,6 +39,7 @@ import {
   ERRORS,
   EXAMPLE_KEY,
   HEADERS,
+  LANGUAGES,
   type Example,
 } from "@/lib/developers/apiReference.ts";
 import { DeveloperDocs } from "@/components/developers/DeveloperDocs";
@@ -365,6 +366,96 @@ test("every Python example sends its example's method, path, query and body", ()
     assert.equal(sent.pathname, printed.pathname, name);
     assert.deepEqual([...sent.searchParams], [...printed.searchParams], name);
     assert.deepEqual(body === undefined ? undefined : JSON.parse(body), example.body, name);
+  }
+});
+
+/** A request as it goes on the wire: its method, its address with the query, and its JSON body if it has one. */
+interface Sent {
+  method: string;
+  url: URL;
+  body: unknown;
+}
+
+/** The words of a printed command, as a POSIX shell splits them: quotes kept out, `\` line ends joined. */
+const wordsOf = (command: string): string[] =>
+  [...command.replaceAll("\\\n", " ").matchAll(/'([^']*)'|"([^"]*)"|(\S+)/g)].map((match) => match[1] ?? match[2] ?? match[3]);
+
+/** What curl sends for a printed command: `-d` makes a POST, unless `-G` moves its data into the query of a GET. */
+function sentByCurl(command: string): Sent {
+  const [program, ...words] = wordsOf(command);
+  assert.equal(program, "curl", command);
+  let get = false;
+  const data: string[] = [];
+  const encoded: string[] = [];
+  let address: string | undefined;
+  for (let i = 0; i < words.length; i++) {
+    const word = words[i];
+    if (word === "-G") get = true;
+    else if (word === "-H") i++;
+    else if (word === "-d") data.push(words[++i]);
+    else if (word === "--data-urlencode") encoded.push(words[++i]);
+    else if (word.startsWith("-")) assert.fail(`an option the test does not read: ${word}`);
+    else address = word;
+  }
+  assert.ok(address !== undefined, command);
+  const url = new URL(address);
+  if (get || data.length === 0) {
+    for (const each of [...data, ...encoded]) {
+      const [name, ...value] = each.split("=");
+      url.searchParams.append(name, value.join("="));
+    }
+    return { method: "GET", url, body: undefined };
+  }
+  assert.equal(encoded.length, 0, `--data-urlencode joins a POST's body: ${command}`);
+  return { method: "POST", url, body: JSON.parse(data.join("&")) };
+}
+
+/** What a printed JavaScript example passes to `fetch`, read by running it. */
+async function sentByJavaScript(script: string): Promise<Sent> {
+  const run = Object.getPrototypeOf(async () => {}).constructor as new (...args: string[]) => (
+    fetch: typeof globalThis.fetch,
+  ) => Promise<unknown>;
+  let sent: Sent | undefined;
+  const fetch = (async (input: string, init: RequestInit = {}) => {
+    sent = { method: init.method ?? "GET", url: new URL(input), body: init.body === undefined ? undefined : JSON.parse(String(init.body)) };
+    return Response.json({});
+  }) as typeof globalThis.fetch;
+  await new run("fetch", script)(fetch);
+  assert.ok(sent !== undefined, script);
+  return sent;
+}
+
+/** What a printed Python example passes to `requests`. */
+function sentByPython(script: string): Sent {
+  const call = script.match(/requests\.(\w+)\(\n {4}"([^"]+)",/);
+  assert.ok(call, script);
+  const url = new URL(call[2]);
+  const params = script.match(/\n {4}params=(\{.*\}),\n/)?.[1];
+  for (const [name, value] of Object.entries(params === undefined ? {} : (JSON.parse(params) as Record<string, string>))) {
+    url.searchParams.append(name, value);
+  }
+  const body = script.match(/\n {4}json=(\{.*\}),\n/)?.[1];
+  return { method: call[1].toUpperCase(), url, body: body === undefined ? undefined : JSON.parse(body) };
+}
+
+test("every request the docs print, in every language, uses its endpoint's method and its example's query and body (#763)", async () => {
+  const readers: Record<(typeof LANGUAGES)[number], (code: string) => Sent | Promise<Sent>> = {
+    curl: sentByCurl,
+    JavaScript: sentByJavaScript,
+    Python: sentByPython,
+  };
+  for (const language of LANGUAGES) {
+    const printed = requestsIn(language);
+    assert.equal(printed.length, EXAMPLES.length, language);
+    for (const [i, [name, method, example]] of EXAMPLES.entries()) {
+      const expected = new URL(`${API_BASE}/${example.path}`);
+      const sent = await readers[language](printed[i]);
+      const at = `${name} ${language}`;
+      assert.equal(sent.method, method, at);
+      assert.equal(`${sent.url.origin}${sent.url.pathname}`, `${expected.origin}${expected.pathname}`, at);
+      assert.deepEqual([...sent.url.searchParams], [...expected.searchParams], at);
+      assert.deepEqual(sent.body, example.body, at);
+    }
   }
 });
 

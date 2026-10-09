@@ -17,6 +17,7 @@ import {
   ENDPOINT_REFERENCE,
   ENDPOINTS_IN_ORDER,
   ERRORS,
+  exampleRequestsOf,
   FIELDS_TEXT,
   formatJson,
   GRAMMAR_VALUES,
@@ -25,7 +26,7 @@ import {
   MATCH_VALUES,
   POS_TEXT,
   requestsOf,
-  type Example,
+  type EndpointReference,
   type Parameter,
   type ValueList,
 } from "@/lib/developers/apiReference.ts";
@@ -167,13 +168,13 @@ function Subheading({ id, children }: { id?: string; children: string }) {
 /** The widest line a response is printed to, in characters: the code panel's width. */
 const PANEL_WIDTH = 56;
 
-/** Examples as the code panel prints them. */
-const panelOf = (examples: readonly Example[], origins: SiteOrigins) =>
-  examples.map((example) => ({
-    status: example.status,
-    label: example.label,
-    requests: requestsOf(example, origins),
-    response: formatJson(example.response, PANEL_WIDTH),
+/** An endpoint's examples as the code panel prints them. */
+const panelOf = (reference: EndpointReference, origins: SiteOrigins) =>
+  exampleRequestsOf(reference).map((request) => ({
+    status: request.example.status,
+    label: request.example.label,
+    requests: requestsOf(request, origins),
+    response: formatJson(request.example.response, PANEL_WIDTH),
   }));
 
 /** Previous / Next: the pages either side of this one, in the sidebar's order. */
@@ -251,7 +252,7 @@ function EndpointTopic({ endpoint, origins }: { endpoint: Endpoint; origins: Sit
   return (
     <Topic
       page={{ kind: "endpoint", endpoint }}
-      code={<CodePanel examples={panelOf(reference.examples, origins)} languages={LANGUAGES} />}
+      code={<CodePanel examples={panelOf(reference, origins)} languages={LANGUAGES} />}
     >
       <p className={DOCS_ENDPOINT}>
         <span className={DOCS_METHOD}>{reference.method}</span>
