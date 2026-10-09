@@ -58,6 +58,8 @@ test("no served-release lookup probes lookup_form or form_of_edge on the release
     "INFLECTION_SQL",
     "INFLECTION_CANDIDATE_SQL",
     "BATCH_SEARCH_SQL",
+    "CORRECTED_CELL_BATCH_SEARCH_SQL",
+    "CORRECTED_CELL_BATCH_ARCHIVE_SEARCH_SQL",
     "BATCH_LEMMA_LINK_SQL",
     "CORRECTED_LEMMA_LINK_SQL",
     "CORRECTED_INFLECTION_SQL",
