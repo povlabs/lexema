@@ -6,7 +6,8 @@ import { IT_NORMALIZER_VERSION, normalizeItalianExact } from "../italian/normali
 import { shownGloss } from "../italian/headwordEcho.js";
 import { recordGlosses, type RecordGloss } from "../italian/recovery.js";
 import { readPluralGloss, type PluralGlossGender } from "../italian/pluralGloss.js";
-import { readingPartOfSpeech } from "./articles.js";
+import { agreesWithArticle, readingPartOfSpeech } from "./articles.js";
+import { articleQuery, type QueryArticle } from "../italian/articleQuery.js";
 import { keyedRead, readKeys, type DictionaryRead, type KeyedRead, type LookupDatabase } from "./database.js";
 import { phraseForms, phraseMatches } from "./phrase.js";
 import { pageEntriesOf, type PageEntries } from "./pageEntry.js";
@@ -195,12 +196,20 @@ export async function exists({ db, releaseId, query }: LookupOptions): Promise<E
   if (prepared.outcome === "rejected") return prepared;
   const [first] = prepared.probed;
   const { key } = prepared.query;
+  /** The record of the first row spelling `spelled`, `row` being the source's first, as `spelledResult` reads them. */
+  const spelledWord = async (spelled: string, row: HitRow | undefined): Promise<string | undefined> =>
+    row?.record_word ?? (await correctedCellHits(db, releaseId, spelled, tables))[0]?.record_word ?? (await pages.candidates(spelled))[0]?.word;
+  const articleWord = async (): Promise<string | undefined> => {
+    const article = articleQuery(key);
+    if (article === undefined) return undefined;
+    const [row] = await queryAll<HitRow>(db, `${SEARCH_SQL}\n      LIMIT 1`, releaseId, article.word);
+    return spelledWord(article.word, row);
+  };
   const word =
-    first?.record_word ??
-    (await correctedCellHits(db, releaseId, key, tables))[0]?.record_word ??
-    (await pages.candidates(key))[0]?.word ??
+    (await spelledWord(key, first)) ??
     (await phraseHits(db, releaseId, tables, key))?.hits[0].record_word ??
-    (await agreementHits(db, releaseId, key, tables))?.hits[0].record_word;
+    (await agreementHits(db, releaseId, key, tables))?.hits[0].record_word ??
+    (await articleWord());
   return word === undefined
     ? { outcome: "absent", query: prepared.query, release: prepared.release }
     : { outcome: "present", query: prepared.query, release: prepared.release, word };
@@ -249,23 +258,10 @@ export async function lookup({ db, releaseId, query }: LookupOptions): Promise<L
   const corrected: Corrected = tables;
   // The same holds for `corrected_edge` before #722: every sense keeps its own edges.
   const edges = tables.edgeCorrections;
+  const asTyped: Spelled = { db, releaseId, pages, query: queryInfo, release, tables };
 
-  const pageReadings = pages.readings(key);
-  // A curated table cell spelled as the query (#743) is read once the tables
-  // say the master keys them, beside the page entries. A lookup the source's
-  // spellings already found builds its readings meanwhile, and builds them
-  // again only when a cell adds a row: no cell spells most queries.
-  const cells = handled(correctedCellHits(db, releaseId, key, tables));
-  const sourceOnly = hits.length > 0 ? handled(found(db, releaseId, pages, queryInfo, release, hits, { kind: "surface" }, corrected, edges)) : undefined;
-  const [cellRows, read] = await Promise.all([cells, pageReadings]);
-  if (hits.length > 0 || cellRows.length > 0) {
-    const result = await (sourceOnly !== undefined && cellRows.length === 0
-      ? sourceOnly
-      : found(db, releaseId, pages, queryInfo, release, withCells(hits, cellRows), { kind: "surface" }, corrected, edges));
-    return { ...result, readings: [...result.readings, ...read] };
-  }
-  const [page, ...otherPages] = read;
-  if (page !== undefined) return { outcome: "found", query: queryInfo, release, route: { kind: "surface" }, readings: [page, ...otherPages] };
+  const spelled = await spelledResult(asTyped, key, hits);
+  if (spelled !== undefined) return spelled;
 
   // Nothing spells the query. A query of several words may still be a
   // multi-word headword said the way a speaker says it (#214).
@@ -280,8 +276,70 @@ export async function lookup({ db, releaseId, query }: LookupOptions): Promise<L
   // spellings one cell holds, `mi sono arreso` of `mi sono arreso, arresosi`
   // (#676).
   const agreement = await agreementHits(db, releaseId, key, tables);
-  if (agreement === undefined) return { outcome: "not-found", query: queryInfo, release };
-  return found(db, releaseId, pages, queryInfo, release, agreement.hits, agreement.route, corrected, edges, agreement.tables);
+  if (agreement !== undefined) {
+    return found(db, releaseId, pages, queryInfo, release, agreement.hits, agreement.route, corrected, edges, agreement.tables);
+  }
+
+  // Nor a compound form. It may be a word typed with its article, `una
+  // macchina` or `l'acqua` (#738): the word's readings, as a search for the
+  // word finds them, the readings the article agrees with first.
+  const article = articleQuery(key);
+  if (article === undefined) return { outcome: "not-found", query: queryInfo, release };
+  const word = await spelledResult(asTyped, article.word, await queryAll<HitRow>(db, SEARCH_SQL, releaseId, article.word));
+  if (word === undefined) return { outcome: "not-found", query: queryInfo, release };
+  return { ...word, route: { kind: "article", query: article }, readings: articleFirst(word.readings, article.article) };
+}
+
+/** What `spelledResult` reads with: the lookup's database, release and tables, and the query as typed. */
+interface Spelled {
+  db: LookupDatabase;
+  releaseId: string;
+  pages: PageEntries;
+  query: QueryInfo;
+  release: ReleaseInfo;
+  tables: DictionaryTables;
+}
+
+/**
+ * The readings of everything that spells `key`, as found as typed: the
+ * source's rows `hits`, `SEARCH_SQL`'s answer for `key`, the curated table
+ * cells that spell it (#743), and the page entries. Undefined when none does.
+ */
+async function spelledResult({ db, releaseId, pages, query, release, tables }: Spelled, key: string, hits: readonly HitRow[]): Promise<FoundResult | undefined> {
+  const corrected: Corrected = tables;
+  const edges = tables.edgeCorrections;
+  const pageReadings = pages.readings(key);
+  // A curated table cell spelled as the query (#743) is read once the tables
+  // say the master keys them, beside the page entries. A lookup the source's
+  // spellings already found builds its readings meanwhile, and builds them
+  // again only when a cell adds a row: no cell spells most queries.
+  const cells = handled(correctedCellHits(db, releaseId, key, tables));
+  const sourceOnly = hits.length > 0 ? handled(found(db, releaseId, pages, query, release, hits, { kind: "surface" }, corrected, edges)) : undefined;
+  const [cellRows, read] = await Promise.all([cells, pageReadings]);
+  if (hits.length > 0 || cellRows.length > 0) {
+    const result = await (sourceOnly !== undefined && cellRows.length === 0
+      ? sourceOnly
+      : found(db, releaseId, pages, query, release, withCells(hits, cellRows), { kind: "surface" }, corrected, edges));
+    return { ...result, readings: [...result.readings, ...read] };
+  }
+  const [page, ...otherPages] = read;
+  if (page !== undefined) return { outcome: "found", query, release, route: { kind: "surface" }, readings: [page, ...otherPages] };
+  return undefined;
+}
+
+/**
+ * The readings, those whose own articles include `article` first (rule
+ * `it-article-query/v1`, `agreesWithArticle`), each part otherwise in the
+ * order it had. Nothing is dropped: `un macchina` still opens macchina.
+ */
+function articleFirst(readings: readonly [Reading, ...Reading[]], article: QueryArticle): [Reading, ...Reading[]] {
+  const [first, ...rest] = [
+    ...readings.filter((reading) => agreesWithArticle(reading, article)),
+    ...readings.filter((reading) => !agreesWithArticle(reading, article)),
+  ];
+  // Every reading is in one of the two parts, and there is at least one.
+  if (first === undefined) throw new Error("no reading to order by its article");
+  return [first, ...rest];
 }
 
 /**

@@ -2302,6 +2302,28 @@ test("bello's whole page is the page the snapshot holds (#385)", async (t) => {
   });
 });
 
+test("a word typed with its article opens the word's own page, the readings the article agrees with first (#738)", async () => {
+  // Verbatim release lines (test/articleLookup.test.ts names them).
+  const lines = (await readFile(join(REPO, "fixtures/article-query.jsonl"), "utf8")).trim().split("\n");
+  await withLines(lines, async ({ db }) => {
+    /** The result below the search box, which is all a page shows of its lookup. */
+    const outcome = async (query: string): Promise<string> => renderToStaticMarkup(<Outcome raw={query} attempt={await attempt(db, query)} />);
+    const macchina = await outcome("macchina");
+    assert.deepEqual(headingsOf(macchina), ["1·Sostantivo·femminile", "2·Voce verbale·macchinare"]);
+    assert.match(macchina, new RegExp(`<h1 class="${esc(WORD_HEADING)}" lang="it">macchina</h1>`));
+    for (const query of ["una macchina", "la macchina", "La macchina"]) {
+      assert.equal(await outcome(query), macchina, `${query} is macchina's page`);
+    }
+    assert.equal(await outcome("l’acqua"), await outcome("acqua"));
+
+    // porta's adjective is first in the source; `la porta` puts the noun first.
+    assert.deepEqual(headingsOf(await outcome("porta")), ["1·Aggettivo", "2·Sostantivo·femminile, singolare", "3·Voce verbale"]);
+    const laPorta = await outcome("la porta");
+    assert.deepEqual(headingsOf(laPorta), ["1·Sostantivo·femminile, singolare", "2·Aggettivo", "3·Voce verbale"]);
+    assert.match(laPorta, new RegExp(`<h1 class="${esc(WORD_HEADING)}" lang="it">porta</h1>`));
+  });
+});
+
 test("a result page has one Source, with no word after it, to the page of the spelling in its title (#281)", async () => {
   // macchina: a noun, and a form of macchinare whose table shows under it.
   // The page of macchina holds both entries, so one link covers both readings.
