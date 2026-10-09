@@ -34,6 +34,7 @@
 // https://github.com/povlabs/lexema/issues/676#issuecomment-6013478337
 
 import type { VerbNumber } from "./moods.js";
+import { normalizeItalianExact } from "./normalize.js";
 
 /** The rule's name and version. */
 export const ESSERE_AGREEMENT_RULE = "it-essere-agreement/v1" as const;
@@ -163,3 +164,34 @@ export function agreeingQuery(typed: string): AgreeingQuery | undefined {
 
 const asQuery = (spelled: AgreeingQuery["spelled"], read: EssereAgreement): AgreeingQuery | undefined =>
   read.kind === "agrees" ? { spelled, spelling: read.spelling } : undefined;
+
+/**
+ * The cell keys a query is probed by, in order. A feminine is first read as
+ * its masculine, `sono andata` as the cell `sono andato`; the masculine typed
+ * as such already went through the search, so it has no exact probe. Then
+ * every cell whose spelling opens with the masculine and a later spelling:
+ * `mi sono arreso, ` reaches `mi sono arreso, arresosi`. The second is read
+ * only when the first keeps no cell.
+ */
+export interface AgreementProbes {
+  exact: string | undefined;
+  /** A key prefix: the cells whose key starts with it. */
+  laterSpellings: string;
+}
+
+export const agreementProbes = ({ spelled, spelling }: AgreeingQuery): AgreementProbes => ({
+  exact: spelled === "feminine" ? spelling.first : undefined,
+  laterSpellings: `${spelling.first}${LATER_SPELLINGS}`,
+});
+
+/**
+ * Whether a verb's table cell a probe found, spelled `surface` on a row of
+ * `number` (undefined when the row says none), is the cell `query` names: its
+ * first spelling agrees on a row of the query's number and is the query's
+ * masculine, compared as index keys.
+ */
+export function namesCell(query: AgreeingQuery, surface: string, number: VerbNumber | undefined): boolean {
+  if (number !== query.spelling.number) return false;
+  const read = essereAgreement(surface, number);
+  return read.kind === "agrees" && normalizeItalianExact(read.spelling.first) === query.spelling.first;
+}

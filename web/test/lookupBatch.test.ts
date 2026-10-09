@@ -14,9 +14,11 @@ import { DatabaseSync } from "node:sqlite";
 import { gzipSync } from "node:zlib";
 import { seedSql } from "../../src/import/seedSql.js";
 import {
+  BATCH_AGREEMENT_SQL,
   BATCH_LEMMA_LINK_SQL,
   BATCH_SEARCH_SQL,
   CORRECTED_BATCH_LEMMA_LINK_SQL,
+  CORRECTED_CELL_BATCH_AGREEMENT_SQL,
   CORRECTED_CELL_BATCH_SEARCH_SQL,
   lookupBatch,
   type BatchAnswer,
@@ -91,6 +93,21 @@ const light = (answer: BatchAnswer): Light[] =>
       }))
     : ["not found"];
 
+/** A dictionary seeded from `lines` the way `pnpm run seed:dev` seeds D1, with the curated table cells `corrections`. */
+async function seededWith(lines: readonly string[], releaseId: string, corrections: readonly CellCorrection[]): Promise<DatabaseSync> {
+  const cellDir = await mkdtemp(join(tmpdir(), "lexema-batch-cells-"));
+  try {
+    const archive = join(cellDir, "fixture.jsonl.gz");
+    await writeFile(archive, gzipSync(Buffer.from(`${lines.join("\n")}\n`, "utf8")));
+    const { parts } = await seedSql({ input: archive, outputDir: join(cellDir, "sql"), schema: join(REPO, "src/db/schema.sql"), releaseId, license: "CC-BY-SA-4.0", corrections });
+    const seededDb = new DatabaseSync(":memory:");
+    for (const part of parts) seededDb.exec(await readFile(part, "utf8"));
+    return seededDb;
+  } finally {
+    await rm(cellDir, { recursive: true, force: true });
+  }
+}
+
 /** Whether a statement reads `corrected_form`, rather than only naming it, as the optional-tables read does. */
 const readsCells = (sql: string): boolean => /\b(FROM|JOIN) corrected_form\b/.test(sql);
 
@@ -125,6 +142,8 @@ test("the batch answers every word with the candidates candidatesOf makes of its
     ...spellings,
     ...["vado via", "sono andati via", "faccio l'abitudine", "hanno fatte fuori", "tiro fuori", "aerei a reazione"],
     ...["sale", "andavano", "qqqqqq", "vado viaa", "Casa", " sale "],
+    // Compound forms of essere verbs by rule `it-essere-agreement/v1` (#756), and two it does not read.
+    ...["sono andata", "siamo andate", "Sono Andata", "ho mangiata", "sono andat"],
   ];
   const { release, answers } = await lookupBatch({ db, releaseId: RELEASE, queries: words });
   assert.equal(release.releaseId, RELEASE);
@@ -267,19 +286,7 @@ test("the batch finds a curated table cell by its corrected spelling and by the 
   const lines = (await readFile(join(REPO, "fixtures/essere-compound-cells.jsonl"), "utf8")).trimEnd().split("\n");
   const [assorbire] = cellCorrections(CURATED_CORRECTIONS);
   const keyed: CellCorrection[] = atFixtureLines(lines, releaseId, [assorbire]);
-  const seeded = async (corrections: readonly CellCorrection[]): Promise<DatabaseSync> => {
-    const cellDir = await mkdtemp(join(tmpdir(), "lexema-batch-cells-"));
-    try {
-      const archive = join(cellDir, "fixture.jsonl.gz");
-      await writeFile(archive, gzipSync(Buffer.from(`${lines.join("\n")}\n`, "utf8")));
-      const { parts } = await seedSql({ input: archive, outputDir: join(cellDir, "sql"), schema: join(REPO, "src/db/schema.sql"), releaseId, license: "CC-BY-SA-4.0", corrections });
-      const seededDb = new DatabaseSync(":memory:");
-      for (const part of parts) seededDb.exec(await readFile(part, "utf8"));
-      return seededDb;
-    } finally {
-      await rm(cellDir, { recursive: true, force: true });
-    }
-  };
+  const seeded = (corrections: readonly CellCorrection[]): Promise<DatabaseSync> => seededWith(lines, releaseId, corrections);
   const corrected = await seeded(keyed);
   const source = await seeded([]);
   // The same corrected rows on a master whose `corrected_form` predates its key.
@@ -327,4 +334,105 @@ test("the batch finds a curated table cell by its corrected spelling and by the 
     source.close();
     unkeyed.close();
   }
+});
+
+/** Whether a statement is the batch's agreement read, on either kind of master. */
+const readsAgreement = (sql: string): boolean => sql === BATCH_AGREEMENT_SQL || sql === CORRECTED_CELL_BATCH_AGREEMENT_SQL;
+
+test("the batch reads an essere verb's compound form by rule it-essere-agreement/v1, as the single lookup does (#756)", async () => {
+  // The development fixture and the lines of accorgersi, arrendersi, assorbire
+  // and perdersi, with assorbire's corrected cells keyed where the master keys them.
+  const releaseId = "it-batch-agreement";
+  const lines = [
+    ...(await readFile(join(REPO, "fixtures/dev-seed.jsonl"), "utf8")).trimEnd().split("\n"),
+    ...(await readFile(join(REPO, "fixtures/essere-compound-cells.jsonl"), "utf8")).trimEnd().split("\n"),
+  ];
+  const [assorbire] = cellCorrections(CURATED_CORRECTIONS);
+  const corrected = await seededWith(lines, releaseId, atFixtureLines(lines, releaseId, [assorbire]));
+  const source = await seededWith(lines, releaseId, []);
+  try {
+    const words = ["sono andata", "siamo andate", "mi sono arresa", "mi sono arreso", "siamo assorbite", "sono andato", "ho mangiata", "qqqqqq"];
+    for (const [read, expectedRoutes] of [
+      [corrected, ["feminine", "feminine", "feminine", "first-spelling", "feminine", "surface", "not-found", "not-found"]],
+      // Without assorbire's corrected cell, `siamo assorbite` names no cell the source lists.
+      [source, ["feminine", "feminine", "feminine", "first-spelling", "not-found", "surface", "not-found", "not-found"]],
+    ] as const) {
+      const on = { db: fromNodeSqlite(read), releaseId };
+      // Each word's route through the single lookup, so the routes the criterion names are all covered.
+      const routes = await Promise.all(
+        words.map(async (word) => {
+          const result = await lookup({ ...on, query: word });
+          return result.outcome === "found" ? result.route.kind : result.outcome;
+        }),
+      );
+      assert.deepEqual(routes, expectedRoutes);
+
+      const { answers } = await lookupBatch({ ...on, queries: words });
+      const single = await Promise.all(words.map((word) => throughCandidatesOf(word, on)));
+      for (const [at, word] of words.entries()) assert.deepEqual(light(answers[at]), single[at], word);
+
+      const lemmas = (word: string) => light(answers[words.indexOf(word)]).map((candidate) => candidate !== "not found" && candidate.lemma);
+      assert.deepEqual(lemmas("sono andata"), ["andare"]);
+      assert.deepEqual(lemmas("mi sono arresa"), ["arrendersi"]);
+      assert.deepEqual(lemmas("mi sono arreso"), ["arrendersi"]);
+      assert.deepEqual(lemmas("siamo assorbite"), read === corrected ? ["assorbire"] : [false]);
+    }
+  } finally {
+    corrected.close();
+    source.close();
+  }
+});
+
+test("a batch of words without the agreement rule's shape sends no agreement read and keeps its answers (#756)", async () => {
+  // `sono andato` has the shape, but the search spells it, so it is not asked either.
+  const words = ["casa", "ho mangiata", "sono andat", "sono andato", "qqqqqq"];
+  const asked = recording();
+  const { answers } = await lookupBatch({ db: asked.db, releaseId: RELEASE, queries: words });
+  assert.ok(!asked.asked.some(readsAgreement), asked.asked.join("\n---\n"));
+  for (const [at, word] of words.entries()) assert.deepEqual(light(answers[at]), await throughCandidatesOf(word), word);
+  assert.deepEqual(light(answers[words.indexOf("ho mangiata")]), ["not found"]);
+  assert.deepEqual(light(answers[words.indexOf("sono andat")]), ["not found"]);
+});
+
+test("a batch with agreement-route words runs the same statements for a few words or a hundred, the agreement read once (#756)", async () => {
+  const spellings = (sqlite.prepare("SELECT DISTINCT surface FROM lookup_form ORDER BY surface LIMIT 100").all() as { surface: string }[]).map(
+    (row) => row.surface,
+  );
+  // The few send every statement a batch can: the search and its links, the
+  // multi-word reading's words, participles and headwords, and the agreement read.
+  const one = recording();
+  await lookupBatch({ db: one.db, releaseId: RELEASE, queries: ["andavano", "sono andata", "è andata"] });
+  // Compound forms of many verbs: each verb's participle is not a statement of its own.
+  const compounds = ["sono vissuta", "sono finita", "sono partita", "sono venuta", "sono morta", "sono salita", "siamo andate", "è andata", "eravamo partite", "ho mangiata"];
+  const many = recording();
+  await lookupBatch({ db: many.db, releaseId: RELEASE, queries: [...spellings, "qqqqqq", ...compounds] });
+  const { answers } = await lookupBatch({ db, releaseId: RELEASE, queries: compounds });
+  for (const [at, word] of compounds.entries()) assert.deepEqual(light(answers[at]), await throughCandidatesOf(word), word);
+  assert.ok(answers.filter((answer) => answer.outcome === "found").length > 5, JSON.stringify(answers.map(light)));
+
+  for (const { asked } of [one, many]) {
+    assert.equal(asked.filter((sql) => sql === CORRECTED_CELL_BATCH_AGREEMENT_SQL).length, 1, asked.join("\n---\n"));
+    assert.equal(asked.filter((sql) => sql === CORRECTED_CELL_BATCH_SEARCH_SQL).length, 1, asked.join("\n---\n"));
+  }
+  // The same statements, whatever order the concurrent reads went out in.
+  assert.deepEqual([...many.asked].sort(), [...one.asked].sort());
+  // The release and the optional tables, the search, the links, the words, the participles, the headwords, the agreement.
+  assert.equal(one.asked.length, 8, one.asked.join("\n---\n"));
+});
+
+test("the batch's agreement read stays on indexes rather than scanning (#756)", () => {
+  const plan = (sql: string, ...params: string[]) =>
+    (sqlite.prepare(`EXPLAIN QUERY PLAN ${sql}`).all(...params) as { detail: string }[]).map((row) => row.detail);
+  const params = [RELEASE, JSON.stringify(["sono andato"]), JSON.stringify([["sono andato, ", "sono andato,!"]])];
+
+  const source = plan(BATCH_AGREEMENT_SQL, ...params);
+  assert.ok(!source.some((step) => /SCAN (lookup_form|grammar_claim|source_record|lf|r|g)\b/.test(step)), source.join("\n"));
+  assert.ok(source.some((step) => /^SEARCH lf USING INDEX lookup_form_by_key \(release_id=\? AND surface_key=\?\)/.test(step)), source.join("\n"));
+  assert.ok(source.some((step) => /^SEARCH lf USING INDEX lookup_form_by_key \(release_id=\? AND surface_key>\? AND surface_key<\?\)/.test(step)), source.join("\n"));
+  assert.ok(source.some((step) => step.includes("grammar_claim_by_record")), source.join("\n"));
+
+  const cells = plan(CORRECTED_CELL_BATCH_AGREEMENT_SQL, ...params);
+  assert.ok(!cells.some((step) => /SCAN (corrected_form|lookup_form|grammar_claim|source_record|c|lf|r|g)\b/.test(step)), cells.join("\n"));
+  assert.ok(cells.some((step) => /^SEARCH c USING INDEX corrected_form_by_key \(release_id=\? AND surface_key=\?\)/.test(step)), cells.join("\n"));
+  assert.ok(cells.some((step) => /^SEARCH c USING INDEX corrected_form_by_key \(release_id=\? AND surface_key>\? AND surface_key<\?\)/.test(step)), cells.join("\n"));
 });

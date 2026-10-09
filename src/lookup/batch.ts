@@ -7,10 +7,13 @@
 // record's grammar, forms, senses and raw line one statement at a time: 20 to
 // 110 statements a word, where Cloudflare allows a request 1,000
 // (reports/2026-10-01-batch-d1-statements.md). Here every step is one
-// statement for all the words: the release, the search, the lemma links, and
-// for words nothing spells, the multi-word reading (src/lookup/phrase.ts). The
-// search reads a curated table cell's corrected spelling beside the source's
-// where the master keys it (#748), as `lookup()` does.
+// statement for all the words: the release, the search, the lemma links, for
+// words nothing spells, the multi-word reading (src/lookup/phrase.ts), and for
+// words no phrase answers either, the essere agreement reading (rule
+// `it-essere-agreement/v1`, #676, #756): `sono andata` as the feminine of
+// andare's `sono andato`. The search and the agreement reading read a curated
+// table cell's corrected spelling beside the source's where the master keys
+// it (#748), as `lookup()` does.
 //
 // The answer is the full lookup's, made the same way: records grouped and put
 // in source order, a lemma the query also matched folded into the reading that
@@ -23,7 +26,10 @@ import { phraseMatchesOf } from "./phrase.js";
 import { correctedEdgeServed, sourceEdgeServed } from "./correctedEdge.js";
 import { dictionaryTables, servedBy, type DictionaryTables } from "./served.js";
 import { readTranslations } from "./sourceRecord.js";
-import { lemmasOfPartOfSpeech, type QueryInfo, type RejectedResult, type ReleaseInfo, type Translation } from "./types.js";
+import { lemmasOfPartOfSpeech, sourceTagsAt, type QueryInfo, type RejectedResult, type ReleaseInfo, type Translation } from "./types.js";
+import { agreeingQuery, agreementProbes, namesCell, type AgreeingQuery } from "../italian/essereAgreement.js";
+import { personOfItalianVerbForm } from "../italian/moods.js";
+import { prefixUpperBound } from "./keyRange.js";
 
 /** One record a word is answered with: where it is in its release, its headword and its part of speech. */
 export type CandidateRecord = ({ recordId: number; entryId?: never; lineNo: number } | { entryId: number; revisionId: number; pageLine: number; recordId?: never; lineNo?: never }) & {
@@ -111,6 +117,64 @@ export const CORRECTED_CELL_BATCH_ARCHIVE_SEARCH_SQL: DictionaryRead = `${BATCH_
 export const CORRECTED_CELL_BATCH_SEARCH_SQL: DictionaryRead = `${BATCH_SEARCH_SQL}
       UNION ALL
      ${CORRECTED_CELL_ARM}`;
+
+/**
+ * One arm of the agreement read: the verb table cells one kind of probe of
+ * rule `it-essere-agreement/v1` finds, each with the probe that found it and
+ * its own tags and raw tags, which say the row it sits on. An `exact` probe is
+ * a key of the JSON array at `?2`, as `SEARCH_SQL` reads it; a `range` probe
+ * is a `[from, to)` pair of the array at `?3`, as `FIRST_SPELLING_SQL` reads
+ * it, named by its `from`. With `cells`, the curated cells whose corrected
+ * spelling the probe finds, as `CORRECTED_CELL_SEARCH_SQL` reads them.
+ */
+function agreementArm(probe: "exact" | "range", cells: boolean): DictionaryRead {
+  const keyed = cells ? "c" : "lf";
+  // An exact probe is a key the index is searched for, as the search's are. A
+  // range is read once per probe on the same index: `CROSS JOIN` keeps the
+  // probes the outer loop, where the planner would otherwise walk every key
+  // of the release and test it against each probe.
+  const [probes, named, at] =
+    probe === "exact"
+      ? ["", `${keyed}.surface_key`, `${keyed}.surface_key IN (SELECT value FROM json_each(?2))`]
+      : [
+          "json_each(?3) p CROSS JOIN ",
+          "json_extract(p.value, '$[0]')",
+          `${keyed}.surface_key >= json_extract(p.value, '$[0]') AND ${keyed}.surface_key < json_extract(p.value, '$[1]')`,
+        ];
+  const table = cells
+    ? `corrected_form c
+       JOIN lookup_form lf ON lf.record_id = c.record_id AND lf.form_index = c.form_index`
+    : "lookup_form lf";
+  return `SELECT ${named} AS probe, r.record_id, r.release_id, r.line_no, r.word, r.pos, r.pos_title,
+            lf.json_pointer, ${keyed}.surface, ${cells ? 1 : 0} AS corrected,
+            (SELECT json_group_array(json_array(g.json_pointer, g.source_text))
+               FROM grammar_claim g
+              WHERE g.record_id = lf.record_id AND g.scope = 'form' AND g.scope_index = lf.form_index
+                AND g.status <> 'missing') AS claims
+       FROM ${probes}${table}
+       JOIN source_record r ON r.record_id = lf.record_id
+      WHERE ${keyed}.release_id IN (${servedBy("?1")}) AND ${at}
+        AND lf.origin = 'embedded-form' AND r.pos = 'verb'
+        AND ${NOT_AUXILIARY}`;
+}
+
+/**
+ * Every probe of rule `it-essere-agreement/v1` for the words neither the
+ * search nor the multi-word reading answers, in one read (#756): the source's
+ * cells each probe finds. Its exact and range probes go together, so a word
+ * whose exact probe keeps no cell has its range probe's cells already read.
+ * Exported so a test can assert the plan.
+ */
+export const BATCH_AGREEMENT_SQL: DictionaryRead = `${agreementArm("exact", false)}
+      UNION ALL
+     ${agreementArm("range", false)}`;
+
+/** `BATCH_AGREEMENT_SQL` on a master that keys its corrected cells, with the curated cells each probe finds. Exported so a test can assert the plan. */
+export const CORRECTED_CELL_BATCH_AGREEMENT_SQL: DictionaryRead = `${BATCH_AGREEMENT_SQL}
+      UNION ALL
+     ${agreementArm("exact", true)}
+      UNION ALL
+     ${agreementArm("range", true)}`;
 
 /**
  * `LEMMA_LINK_SQL` (src/lookup/lookup.ts) for many records in one read, with
@@ -239,16 +303,33 @@ const recordOf = (row: HitRow): CandidateRecord => ({
   posTitle: row.pos_title,
 });
 
-/** The two statements a batch reads with, chosen once from the dictionary's tables. */
+/** One verb table cell an agreement probe found, as `BATCH_AGREEMENT_SQL` returns it. */
+interface AgreementRow {
+  probe: string;
+  record_id: number;
+  release_id: string;
+  line_no: number;
+  word: string;
+  pos: string;
+  pos_title: string;
+  json_pointer: string;
+  surface: string;
+  corrected: number;
+  /** The cell's claims, a JSON array of `[json_pointer, source_text]`. */
+  claims: string;
+}
+
+/** The statements a batch reads with, chosen once from the dictionary's tables. */
 interface BatchReads {
   search: DictionaryRead;
   links: DictionaryRead;
+  agreement: DictionaryRead;
 }
 
 // A master without `corrected_form_by_key` never reads `corrected_form` here,
 // as `lookup()` does not search it there.
-const readsFor = (tables: DictionaryTables): BatchReads =>
-  tables.pageEntries
+const readsFor = (tables: DictionaryTables): BatchReads => ({
+  ...(tables.pageEntries
     ? {
         search: tables.cellSearch ? CORRECTED_CELL_BATCH_SEARCH_SQL : BATCH_SEARCH_SQL,
         links: tables.edgeCorrections ? CORRECTED_BATCH_LEMMA_LINK_SQL : BATCH_LEMMA_LINK_SQL,
@@ -256,7 +337,9 @@ const readsFor = (tables: DictionaryTables): BatchReads =>
     : {
         search: tables.cellSearch ? CORRECTED_CELL_BATCH_ARCHIVE_SEARCH_SQL : BATCH_ARCHIVE_SEARCH_SQL,
         links: tables.edgeCorrections ? CORRECTED_BATCH_ARCHIVE_LEMMA_LINK_SQL : BATCH_ARCHIVE_LEMMA_LINK_SQL,
-      };
+      }),
+  agreement: tables.cellSearch ? CORRECTED_CELL_BATCH_AGREEMENT_SQL : BATCH_AGREEMENT_SQL,
+});
 
 /** Every key's matched records, by key and then by record, in one read. */
 async function search(db: LookupDatabase, reads: BatchReads, releaseId: string, keys: readonly string[]): Promise<Map<string, Map<string, Match>>> {
@@ -298,6 +381,47 @@ async function linksOf(db: LookupDatabase, reads: BatchReads, releaseId: string,
     }
   }
   return byRecord;
+}
+
+/**
+ * The candidates of each key rule `it-essere-agreement/v1` reads as an
+ * agreeing first spelling, as `agreementHits` (src/lookup/lookup.ts) and
+ * `candidatesOf` make them: the verbs whose cell the key names, in source
+ * order, from the exact probe's cells, or the range probe's where the exact
+ * one keeps none. One read for every key; none for a batch whose keys have
+ * none of the rule's shape (`casa`, `ho mangiata`, `sono andat`).
+ */
+async function agreementsOf(db: LookupDatabase, reads: BatchReads, releaseId: string, keys: readonly string[]): Promise<Map<string, CandidateRecord[]>> {
+  const queries = keys.flatMap((key) => {
+    const query = agreeingQuery(key);
+    return query === undefined ? [] : [{ key, query, probes: agreementProbes(query) }];
+  });
+  if (queries.length === 0) return new Map();
+  const exact = [...new Set(queries.flatMap(({ probes }) => (probes.exact === undefined ? [] : [probes.exact])))];
+  const ranges = [...new Set(queries.map(({ probes }) => probes.laterSpellings))].map((from) => [from, prefixUpperBound(from)]);
+
+  // By probe, each cell once: a cell both the source and its correction spell is kept as the correction spells it, as `withCells` keeps it.
+  const byProbe = new Map<string, Map<string, AgreementRow>>();
+  for (const row of await db.all<AgreementRow>(reads.agreement, [releaseId, JSON.stringify(exact), JSON.stringify(ranges)])) {
+    const cells = byProbe.get(row.probe) ?? new Map<string, AgreementRow>();
+    const at = `${row.record_id}${row.json_pointer}`;
+    if (row.corrected === 1 || !cells.has(at)) cells.set(at, row);
+    byProbe.set(row.probe, cells);
+  }
+  const named = (query: AgreeingQuery, probe: string): AgreementRow[] =>
+    [...(byProbe.get(probe)?.values() ?? [])].filter((row) => {
+      const claims = (JSON.parse(row.claims) as [string, string][]).map(([pointer, text]) => ({ pointer, text }));
+      return namesCell(query, row.surface, personOfItalianVerbForm(sourceTagsAt(claims))?.number);
+    });
+
+  return new Map(
+    queries.map(({ key, query, probes }) => {
+      const exactCells = probes.exact === undefined ? [] : named(query, probes.exact);
+      const cells = exactCells.length > 0 ? exactCells : named(query, probes.laterSpellings);
+      const matches = cells.map((row): Match => ({ record: { recordId: row.record_id, lineNo: row.line_no, releaseId: row.release_id, word: row.word, pos: row.pos, posTitle: row.pos_title }, about: false }));
+      return [key, eachOnce(inSourceOrder(matches).map((match) => match.record))];
+    }),
+  );
 }
 
 const candidateKey = (record: CandidateRecord): string => record.recordId === undefined ? `page-${record.entryId}` : String(record.recordId);
@@ -347,7 +471,9 @@ function surfaceCandidates(matches: Iterable<Match>, links: ReadonlyMap<number, 
  * it, in a fixed number of statements however many words there are: the
  * release and the dictionary's optional tables once, in one D1 call, then
  * the search, the lemma links and, when some word nothing
- * spells has several words, the multi-word reading.
+ * spells has several words, the multi-word reading, then for a word that is
+ * no phrase either and has the shape of rule `it-essere-agreement/v1`, the
+ * agreement read.
  */
 export async function lookupBatch({
   db,
@@ -375,7 +501,10 @@ export async function lookupBatch({
   const unspelled = keys.filter((key) => !spelled.has(key));
   const [links, phrases] = await Promise.all([linksOf(db, reads, releaseId, aboutIds), phraseMatchesOf(db, releaseId, tables, unspelled)]);
   const probeKeys = [...new Set([...phrases.values()].flatMap((probes) => probes.map((probe) => probe.key)))];
-  const headwords = await search(db, reads, releaseId, probeKeys);
+  // Nor a phrase: it may be a compound form of an essere verb the source
+  // lists only as the masculine, or only beside a later spelling (#676, #756).
+  const unphrased = unspelled.filter((key) => (phrases.get(key) ?? []).length === 0);
+  const [headwords, agreements] = await Promise.all([search(db, reads, releaseId, probeKeys), agreementsOf(db, reads, releaseId, unphrased)]);
 
   const candidatesOf = (key: string): CandidateRecord[] => {
     const matches = spelled.get(key);
@@ -386,7 +515,8 @@ export async function lookupBatch({
       if (heads.length === 0) throw new Error(`no headword row for phrase '${probe.key}'`);
       return heads;
     });
-    return eachOnce(inSourceOrder(reached).map((match) => match.record));
+    if (reached.length > 0) return eachOnce(inSourceOrder(reached).map((match) => match.record));
+    return agreements.get(key) ?? [];
   };
 
   const answers = prepared.map((query): BatchAnswer => {

@@ -88,11 +88,22 @@ export const CORRECTED_WORD_LEMMAS_SQL: DictionaryRead = `${WORD_ITSELF}
  * `forms[]` entry of a verb record the source tags both `participle` and
  * `past`. `andato` is `andare`'s. Exported so a test can assert the plan.
  */
-export const PAST_PARTICIPLE_SQL: DictionaryRead = `SELECT DISTINCT hw.surface_key AS verb
+export const PAST_PARTICIPLE_SQL: DictionaryRead = pastParticiplesWhere("lf.surface_key = ?2");
+
+/**
+ * `PAST_PARTICIPLE_SQL` for many spellings in one read, each verb beside the
+ * spelling that is its participle. The spellings are one JSON array, so a
+ * batch (`phraseMatchesOf`) reads every word's participle verbs at once.
+ * Exported so a test can assert the plan.
+ */
+export const PAST_PARTICIPLES_SQL: DictionaryRead = pastParticiplesWhere("lf.surface_key IN (SELECT value FROM json_each(?2))");
+
+function pastParticiplesWhere(keys: string): DictionaryRead {
+  return `SELECT DISTINCT lf.surface_key AS spelling, hw.surface_key AS verb
        FROM lookup_form lf
        JOIN source_record r ON r.record_id = lf.record_id AND r.pos = 'verb'
        JOIN lookup_form hw ON hw.record_id = lf.record_id AND hw.origin = 'headword'
-      WHERE lf.release_id IN (${servedBy("?1")}) AND lf.surface_key = ?2 AND lf.origin = 'embedded-form'
+      WHERE lf.release_id IN (${servedBy("?1")}) AND ${keys} AND lf.origin = 'embedded-form'
         AND EXISTS (
               SELECT 1 FROM grammar_claim g
                WHERE g.record_id = lf.record_id
@@ -103,6 +114,7 @@ export const PAST_PARTICIPLE_SQL: DictionaryRead = `SELECT DISTINCT hw.surface_k
                WHERE g.record_id = lf.record_id
                  AND g.scope = 'form' AND g.scope_index = lf.form_index
                  AND g.status = 'stated' AND g.dimension = 'tense' AND g.value = 'past')`;
+}
 
 /**
  * Which of the keys are headwords, with how the source spells each. The keys
@@ -192,6 +204,25 @@ class PhraseReader {
       const lemmas = named.get(spelling);
       const others = [...(lemmas ?? [])].filter((lemma) => lemma !== spelling).sort();
       this.words.set(spelling, { heads: lemmas !== undefined, lemmas: [spelling, ...others] });
+    }
+  }
+
+  /**
+   * Reads the participle verbs of every word that follows an auxiliary in any
+   * of `typed`, each spelling not read yet, all in one statement. Each of
+   * `typed` must be read already (`read`).
+   */
+  async readParticiples(typed: readonly (readonly string[])[]): Promise<void> {
+    const spellings = typed.flatMap((spellings) => {
+      const words = spellings.map((spelling) => this.word(spelling));
+      return participleCandidates(words).flatMap((index) => words[index].lemmas);
+    });
+    const asked = [...new Set(spellings)].filter((spelling) => !this.participles.has(spelling));
+    if (asked.length === 0) return;
+    const rows = await this.db.all<{ spelling: string; verb: string }>(PAST_PARTICIPLES_SQL, [this.releaseId, JSON.stringify(asked)]);
+    for (const spelling of asked) {
+      // A spelling another reading asked about meanwhile keeps that answer, which is the same.
+      if (!this.participles.has(spelling)) this.participles.set(spelling, Promise.resolve(rows.filter((row) => row.spelling === spelling).map((row) => row.verb)));
     }
   }
 
@@ -490,7 +521,8 @@ export async function phraseMatches(
 /**
  * `phraseMatches` for many keys at once, each key's answer exactly what it
  * would be alone. One reader serves them all, so every key's words are one
- * read and every lemma sequence one headword read: a batch (src/lookup/batch.ts)
+ * read, the participles after their auxiliaries one read, and every lemma
+ * sequence one headword read: a batch (src/lookup/batch.ts)
  * costs about what one query does.
  */
 export async function phraseMatchesOf(
@@ -507,6 +539,8 @@ export async function phraseMatchesOf(
     .map((key) => ({ key, typed: splitWords(key) }))
     .filter(({ typed }) => typed.length >= 2 && typed.length <= MAX_PHRASE_WORDS);
   await reader.read(phrased.flatMap(({ typed }) => typed));
+  // Every key's participles at once, so a batch of compound forms is not read verb by verb (#756).
+  await reader.readParticiples(phrased.map(({ typed }) => typed));
 
   const spelledOf = new Map<string, Map<string, PhraseWord[]>>();
   for (const { key, reading } of await Promise.all(phrased.map(async ({ key, typed }) => ({ key, reading: await reader.reading(typed) })))) {
