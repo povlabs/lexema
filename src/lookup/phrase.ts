@@ -30,10 +30,35 @@ import {
   type PhraseSlot,
   type WordLemmas,
 } from "../italian/phrase.js";
+import { correctedEdgeServed, sourceEdgeServed } from "./correctedEdge.js";
 import type { DictionaryRead, LookupDatabase } from "./database.js";
 import { HEADWORD_PREFIX_SQL, prefixUpperBound } from "./keyRange.js";
-import { inKeyOrder, servedBy, servedReleases } from "./served.js";
+import { dictionaryTables, inKeyOrder, servedBy, servedReleases, type DictionaryTables } from "./served.js";
 import type { PhraseDefinition, PhraseForm, PhraseMatch, PhraseWord } from "./types.js";
+
+/**
+ * The `form_of` edges of the records `lf` reads, aliased `e`, as one arm of a
+ * phrase read takes them (src/lookup/correctedEdge.ts): every source edge on a
+ * master without corrected edges; on a master with them, the source edges of
+ * every sense no correction sets, and the corrected edges that name a word.
+ * Each is probed by record, the table's own key.
+ */
+const SOURCE_EDGES = `JOIN form_of_edge e ON e.record_id = lf.record_id`;
+const SERVED_SOURCE_EDGES = `JOIN form_of_edge e ON e.record_id = lf.record_id AND ${sourceEdgeServed("e")}`;
+const CORRECTED_EDGES = `JOIN corrected_edge e ON e.record_id = lf.record_id AND ${correctedEdgeServed("e")}`;
+
+/** Each spelling that is a headword, as its own lemma. */
+const WORD_ITSELF: DictionaryRead = `SELECT lf.surface_key AS word, lf.surface_key AS lemma
+       FROM lookup_form lf
+      WHERE lf.release_id IN (${servedBy("?1")}) AND lf.origin = 'headword'
+        AND lf.surface_key IN (SELECT value FROM json_each(?2))`;
+
+/** The word each edge of `edges` on a spelling's headword names. */
+const wordLemmasThrough = (edges: string): DictionaryRead => `SELECT lf.surface_key AS word, e.target_word_key AS lemma
+       FROM lookup_form lf
+       ${edges}
+      WHERE lf.release_id IN (${servedBy("?1")}) AND lf.origin = 'headword'
+        AND lf.surface_key IN (SELECT value FROM json_each(?2))`;
 
 /**
  * Each spelling's lemmas, for any number of spellings in one read: the
@@ -42,16 +67,21 @@ import type { PhraseDefinition, PhraseForm, PhraseMatch, PhraseWord } from "./ty
  * spellings are one JSON array, so the read binds two values however many
  * there are. Exported so a test can assert the plan.
  */
-export const WORD_LEMMAS_SQL: DictionaryRead = `SELECT lf.surface_key AS word, lf.surface_key AS lemma
-       FROM lookup_form lf
-      WHERE lf.release_id IN (${servedBy("?1")}) AND lf.origin = 'headword'
-        AND lf.surface_key IN (SELECT value FROM json_each(?2))
+export const WORD_LEMMAS_SQL: DictionaryRead = `${WORD_ITSELF}
      UNION
-     SELECT lf.surface_key AS word, e.target_word_key AS lemma
-       FROM lookup_form lf
-       JOIN form_of_edge e ON e.record_id = lf.record_id
-      WHERE lf.release_id IN (${servedBy("?1")}) AND lf.origin = 'headword'
-        AND lf.surface_key IN (SELECT value FROM json_each(?2))`;
+     ${wordLemmasThrough(SOURCE_EDGES)}`;
+
+/**
+ * `WORD_LEMMAS_SQL` on a master with corrected edges (#759): a sense's
+ * corrected edge names a word in place of its own, and one that removes its
+ * edges names none. `porta` reads `portare`, not `presente`. Exported so a
+ * test can assert the plan.
+ */
+export const CORRECTED_WORD_LEMMAS_SQL: DictionaryRead = `${WORD_ITSELF}
+     UNION
+     ${wordLemmasThrough(SERVED_SOURCE_EDGES)}
+     UNION
+     ${wordLemmasThrough(CORRECTED_EDGES)}`;
 
 /**
  * The verbs whose own table lists a spelling as their past participle: a
@@ -135,10 +165,11 @@ class PhraseReader {
   private readonly participles = new Map<string, Promise<string[]>>();
   private served: Promise<readonly string[]> | undefined;
 
-  /** `served` is the master's releases when the caller has read them already. */
+  /** `reads` are the master's edge reads, and `served` its releases when the caller has read them already. */
   constructor(
     readonly db: LookupDatabase,
     readonly releaseId: string,
+    private readonly reads: PhraseEdgeReads,
     served?: readonly string[],
   ) {
     this.served = served === undefined ? undefined : Promise.resolve(served);
@@ -150,11 +181,11 @@ class PhraseReader {
     return this.served;
   }
 
-  /** Reads every spelling not read yet, all in one statement (`WORD_LEMMAS_SQL`). */
+  /** Reads every spelling not read yet, all in one statement (`PhraseEdgeReads.wordLemmas`). */
   async read(spellings: readonly string[]): Promise<void> {
     const asked = [...new Set(spellings)].filter((spelling) => !this.words.has(spelling));
     if (asked.length === 0) return;
-    const rows = await this.db.all<{ word: string; lemma: string }>(WORD_LEMMAS_SQL, [this.releaseId, JSON.stringify(asked)]);
+    const rows = await this.db.all<{ word: string; lemma: string }>(this.reads.wordLemmas, [this.releaseId, JSON.stringify(asked)]);
     const named = new Map<string, Set<string>>();
     for (const row of rows) named.set(row.word, (named.get(row.word) ?? new Set()).add(row.lemma));
     for (const spelling of asked) {
@@ -369,7 +400,9 @@ export async function nearPhrases(db: LookupDatabase, releaseId: string, key: st
   const typed = splitWords(key);
   if (typed.length < 2 || typed.length > MAX_PHRASE_WORDS) return [];
 
-  const reader = new PhraseReader(db, releaseId);
+  // The schema read is sent at once, so on D1 it rides in the batch of the
+  // caller's first reads (`findNearby`); the words are read once it answers.
+  const reader = new PhraseReader(db, releaseId, phraseEdgeReads(await dictionaryTables(db)));
   const near = typed.map((word) => oneEditSpellings(word));
   await reader.read([...typed, ...near.flat()]);
   const slots = await reader.slots(typed.map((spelling) => reader.word(spelling)));
@@ -420,12 +453,13 @@ export async function phraseCompletions(
   db: LookupDatabase,
   releaseId: string,
   served: readonly string[],
+  tables: Pick<DictionaryTables, "edgeCorrections">,
   key: string,
   limit: number,
 ): Promise<PhraseOffer[]> {
   const typed = splitWords(key);
   if (typed.length < 2 || typed.length > MAX_PHRASE_WORDS || limit <= 0) return [];
-  const reader = new PhraseReader(db, releaseId, served);
+  const reader = new PhraseReader(db, releaseId, phraseEdgeReads(tables), served);
   const leading = typed.slice(0, -1);
   await reader.read(leading);
   const { candidates, stored } = await completions(reader, leading, typed[typed.length - 1], limit, true);
@@ -444,8 +478,13 @@ export type PhraseProbe = Omit<PhraseMatch, "word">;
  *
  * `key` is the query as normalized for the index.
  */
-export async function phraseMatches(db: LookupDatabase, releaseId: string, key: string): Promise<PhraseProbe[]> {
-  return (await phraseMatchesOf(db, releaseId, [key])).get(key) ?? [];
+export async function phraseMatches(
+  db: LookupDatabase,
+  releaseId: string,
+  tables: Pick<DictionaryTables, "edgeCorrections">,
+  key: string,
+): Promise<PhraseProbe[]> {
+  return (await phraseMatchesOf(db, releaseId, tables, [key])).get(key) ?? [];
 }
 
 /**
@@ -457,9 +496,10 @@ export async function phraseMatches(db: LookupDatabase, releaseId: string, key: 
 export async function phraseMatchesOf(
   db: LookupDatabase,
   releaseId: string,
+  tables: Pick<DictionaryTables, "edgeCorrections">,
   keys: readonly string[],
 ): Promise<Map<string, PhraseProbe[]>> {
-  const reader = new PhraseReader(db, releaseId);
+  const reader = new PhraseReader(db, releaseId, phraseEdgeReads(tables));
   // Only a multi-word headword: a compound tense alone (`sono andati`) is one
   // place, and its verb is a single word the exact lookup answers for. A key
   // `reading` refuses for its length is never read.
@@ -500,15 +540,34 @@ export async function phraseMatchesOf(
  * "prima persona singolare del presente semplice indicativo di andare". Exported
  * so a test can assert the plan.
  */
-export const FORM_ENTRY_SQL: DictionaryRead = `SELECT DISTINCT r.record_id, r.release_id, r.word, r.pos_title, r.line_no, r.line_sha256,
+export const FORM_ENTRY_SQL: DictionaryRead = formEntries(SOURCE_EDGES);
+
+/**
+ * The glosses of the senses whose edge of `edges` names the lemma at `?3`, on
+ * the records the word at `?2` heads. `verbs` keeps only verb records, and
+ * `naming` is the condition on the edge's `target_word_key`.
+ */
+function formEntries(edges: string, verbs = false, naming = "= ?3"): DictionaryRead {
+  return `SELECT DISTINCT r.record_id, r.release_id, r.word, r.pos_title, r.line_no, r.line_sha256,
             e.target_word AS lemma, s.sense_index, g.gloss_index, g.text, g.json_pointer
        FROM lookup_form lf
-       JOIN source_record r ON r.record_id = lf.record_id
-       JOIN form_of_edge e ON e.record_id = lf.record_id
+       JOIN source_record r ON r.record_id = lf.record_id${verbs ? " AND r.pos = 'verb'" : ""}
+       ${edges}
        JOIN sense s ON s.record_id = e.record_id AND s.sense_index = e.sense_index
        JOIN sense_gloss g ON g.sense_id = s.sense_id
       WHERE lf.release_id IN (${servedBy("?1")}) AND lf.surface_key = ?2 AND lf.origin = 'headword'
-        AND e.target_word_key = ?3`;
+        AND e.target_word_key ${naming}`;
+}
+
+/**
+ * `FORM_ENTRY_SQL` on a master with corrected edges (#759): a sense's lemma
+ * is its corrected edge's where one is set, and a sense whose correction
+ * removes its edges gives no entry. `UNION` keeps each gloss once. Exported so
+ * a test can assert the plan.
+ */
+export const CORRECTED_FORM_ENTRY_SQL: DictionaryRead = `${formEntries(SERVED_SOURCE_EDGES)}
+     UNION
+     ${formEntries(CORRECTED_EDGES)}`;
 
 /**
  * The form entries of the verb records a compound tense's participle heads
@@ -519,15 +578,20 @@ export const FORM_ENTRY_SQL: DictionaryRead = `SELECT DISTINCT r.record_id, r.re
  * hop is a verb's, and `fatte` the adjective's "femminile plurale di fatto" is
  * not a form of `fare`. Exported so a test can assert the plan.
  */
-export const PARTICIPLE_FORM_ENTRY_SQL: DictionaryRead = `SELECT DISTINCT r.record_id, r.release_id, r.word, r.pos_title, r.line_no, r.line_sha256,
-            e.target_word AS lemma, s.sense_index, g.gloss_index, g.text, g.json_pointer
-       FROM lookup_form lf
-       JOIN source_record r ON r.record_id = lf.record_id AND r.pos = 'verb'
-       JOIN form_of_edge e ON e.record_id = lf.record_id
-       JOIN sense s ON s.record_id = e.record_id AND s.sense_index = e.sense_index
-       JOIN sense_gloss g ON g.sense_id = s.sense_id
-      WHERE lf.release_id IN (${servedBy("?1")}) AND lf.surface_key = ?2 AND lf.origin = 'headword'
-        AND e.target_word_key IN (
+export const PARTICIPLE_FORM_ENTRY_SQL: DictionaryRead = formEntries(SOURCE_EDGES, true, pastParticiplesOf());
+
+/**
+ * `PARTICIPLE_FORM_ENTRY_SQL` on a master with corrected edges (#759), the
+ * edges taken as `CORRECTED_FORM_ENTRY_SQL` takes them. Exported so a test
+ * can assert the plan.
+ */
+export const CORRECTED_PARTICIPLE_FORM_ENTRY_SQL: DictionaryRead = `${formEntries(SERVED_SOURCE_EDGES, true, pastParticiplesOf())}
+     UNION
+     ${formEntries(CORRECTED_EDGES, true, pastParticiplesOf())}`;
+
+/** The condition naming one of the past participles of the verbs the word at `?3` heads. */
+function pastParticiplesOf(): string {
+  return `IN (
               SELECT pp.surface_key
                 FROM lookup_form hw
                 JOIN source_record v ON v.record_id = hw.record_id AND v.pos = 'verb'
@@ -543,6 +607,37 @@ export const PARTICIPLE_FORM_ENTRY_SQL: DictionaryRead = `SELECT DISTINCT r.reco
                         WHERE c.record_id = pp.record_id
                           AND c.scope = 'form' AND c.scope_index = pp.form_index
                           AND c.status = 'stated' AND c.dimension = 'tense' AND c.value = 'past'))`;
+}
+
+/** The statements a phrase reads `form_of` edges through, as one master's tables allow. */
+export interface PhraseEdgeReads {
+  /** Each spelling's lemmas (`WORD_LEMMAS_SQL`). */
+  wordLemmas: DictionaryRead;
+  /** The form entries naming a lemma (`FORM_ENTRY_SQL`). */
+  formEntries: DictionaryRead;
+  /** The form entries naming a verb's past participle (`PARTICIPLE_FORM_ENTRY_SQL`). */
+  participleFormEntries: DictionaryRead;
+}
+
+const SOURCE_PHRASE_READS: PhraseEdgeReads = {
+  wordLemmas: WORD_LEMMAS_SQL,
+  formEntries: FORM_ENTRY_SQL,
+  participleFormEntries: PARTICIPLE_FORM_ENTRY_SQL,
+};
+
+const CORRECTED_PHRASE_READS: PhraseEdgeReads = {
+  wordLemmas: CORRECTED_WORD_LEMMAS_SQL,
+  formEntries: CORRECTED_FORM_ENTRY_SQL,
+  participleFormEntries: CORRECTED_PARTICIPLE_FORM_ENTRY_SQL,
+};
+
+/**
+ * The edge reads of a master: with corrected edges where it has the table
+ * (#759), as every other lookup read of edges takes them, so a word reads
+ * the same lemmas in a phrase as alone; the source's alone where it has not.
+ */
+export const phraseEdgeReads = ({ edgeCorrections }: Pick<DictionaryTables, "edgeCorrections">): PhraseEdgeReads =>
+  edgeCorrections ? CORRECTED_PHRASE_READS : SOURCE_PHRASE_READS;
 
 interface FormEntryRow {
   record_id: number;
@@ -571,7 +666,13 @@ interface FormEntryRow {
  * `fatte`'s verb record says "participio passato plurale femminile di fatto",
  * which reads "… di *fare fuori*" (`PARTICIPLE_FORM_ENTRY_SQL`).
  */
-export async function phraseForms(db: LookupDatabase, releaseId: string, phrases: readonly PhraseMatch[]): Promise<PhraseForm[]> {
+export async function phraseForms(
+  db: LookupDatabase,
+  releaseId: string,
+  tables: Pick<DictionaryTables, "edgeCorrections">,
+  phrases: readonly PhraseMatch[],
+): Promise<PhraseForm[]> {
+  const { formEntries: entries, participleFormEntries } = phraseEdgeReads(tables);
   const read = async (phrase: PhraseMatch, sql: DictionaryRead, word: PhraseWord) => ({
     phrase,
     rows: await db.all<FormEntryRow>(sql, [releaseId, word.inflected, word.lemma]),
@@ -580,9 +681,9 @@ export async function phraseForms(db: LookupDatabase, releaseId: string, phrases
     phrase.words
       .filter((word) => word.inflected !== word.lemma)
       .flatMap((word) => [
-        read(phrase, FORM_ENTRY_SQL, word),
+        read(phrase, entries, word),
         // Only a compound tense's word, `hanno fatte`, was read as a participle.
-        ...(word.typed === word.inflected ? [] : [read(phrase, PARTICIPLE_FORM_ENTRY_SQL, word)]),
+        ...(word.typed === word.inflected ? [] : [read(phrase, participleFormEntries, word)]),
       ]),
   );
   const lines: { row: FormEntryRow; definition: PhraseDefinition }[] = [];

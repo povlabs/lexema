@@ -27,6 +27,9 @@ import { fromNodeSqlite } from "../src/lookup/database.js";
 import { exists, lookup } from "../src/lookup/lookup.js";
 import { findNearby, withinOneEdit } from "../src/lookup/nearby.js";
 import {
+  CORRECTED_FORM_ENTRY_SQL,
+  CORRECTED_PARTICIPLE_FORM_ENTRY_SQL,
+  CORRECTED_WORD_LEMMAS_SQL,
   EXACT_KEY_SQL,
   FORM_ENTRY_SQL,
   HEADWORD_SPELLING_SQL,
@@ -38,6 +41,7 @@ import {
 } from "../src/lookup/phrase.js";
 import { offered, suggest, type Suggested } from "../src/lookup/suggest.js";
 import { HEADWORD_PREFIX_SQL } from "../src/lookup/keyRange.js";
+import { OPTIONAL_TABLES_SQL } from "../src/lookup/served.js";
 import type { DictionaryRead, LookupDatabase } from "../src/lookup/database.js";
 import type { FoundResult, LookupResult } from "../src/lookup/types.js";
 
@@ -264,18 +268,30 @@ test("the lemma sequences are bounded", () => {
 test("every phrase query stays on indexes rather than scanning", () => {
   const plans = [
     [WORD_LEMMAS_SQL, [RELEASE, JSON.stringify(["vado", "via", ...oneEditSpellings("vadp")])]],
+    [CORRECTED_WORD_LEMMAS_SQL, [RELEASE, JSON.stringify(["vado", "via", ...oneEditSpellings("vadp")])]],
     [PAST_PARTICIPLE_SQL, [RELEASE, "andato"]],
     [HEADWORD_SPELLING_SQL, [RELEASE, JSON.stringify(["andare via", "tirare fuori"])]],
     [HEADWORD_PREFIX_SQL, [RELEASE, "tirare fuo", "tirare fup", 8]],
     [EXACT_KEY_SQL, [RELEASE, JSON.stringify(["vado via", "aerei a reazione"])]],
     [FORM_ENTRY_SQL, [RELEASE, "vado", "andare"]],
+    [CORRECTED_FORM_ENTRY_SQL, [RELEASE, "vado", "andare"]],
     [PARTICIPLE_FORM_ENTRY_SQL, [RELEASE, "fatte", "fare"]],
+    [CORRECTED_PARTICIPLE_FORM_ENTRY_SQL, [RELEASE, "fatte", "fare"]],
   ] as const;
   for (const [sql, params] of plans) {
     const plan = (sqlite.prepare(`EXPLAIN QUERY PLAN ${sql}`).all(...params) as { detail: string }[]).map((row) => row.detail);
     assert.ok(
-      !plan.some((step) => /SCAN (lookup_form|form_of_edge|grammar_claim|source_record|sense|sense_gloss|lf|hw|e|g|r|s)\b/.test(step)),
+      !plan.some((step) => /SCAN (lookup_form|form_of_edge|corrected_edge|grammar_claim|source_record|sense|sense_gloss|lf|hw|e|g|r|s|ce)\b/.test(step)),
       `phrase query degraded to a scan:\n${plan.join("\n")}`,
+    );
+  }
+  // A corrected edge is read by its record, the table's own key (#759).
+  const corrected: readonly string[] = [CORRECTED_WORD_LEMMAS_SQL, CORRECTED_FORM_ENTRY_SQL, CORRECTED_PARTICIPLE_FORM_ENTRY_SQL];
+  for (const [sql, params] of plans.filter(([sql]) => corrected.includes(sql))) {
+    const plan = (sqlite.prepare(`EXPLAIN QUERY PLAN ${sql}`).all(...params) as { detail: string }[]).map((row) => row.detail);
+    assert.ok(
+      plan.some((step) => /^SEARCH e USING INDEX sqlite_autoindex_corrected_edge_1 \(record_id=\?\)$/.test(step)),
+      plan.join("\n"),
     );
   }
 });
@@ -375,6 +391,9 @@ test("a query's parts are its runs of two or more slots, not all of them", () =>
 // (Huey's hand check of 2026-09-30 on #214). `/suggest` runs on every
 // keystroke, so what each prefix reads is asserted too.
 
+/** Whether a statement is a phrase's read of its words' lemmas, on a master with corrected edges or without. */
+const lemmaRead = (sql: string): boolean => sql === WORD_LEMMAS_SQL || sql === CORRECTED_WORD_LEMMAS_SQL;
+
 /** The database, with every statement it is asked recorded. */
 function recording(): { db: LookupDatabase; asked: string[] } {
   const inner = fromNodeSqlite(sqlite);
@@ -439,8 +458,9 @@ test("a prefix whose lemmas begin no multi-word headword suggests no phrase", as
 test("a phrase suggestion costs two lemma reads, a range probe per lemma sequence and one exact read; one word costs nothing more", async () => {
   const one = recording();
   await suggest({ db: one.db, releaseId: RELEASE, prefix: "vado" });
-  // The field's own prefix read, and no phrase read.
-  assert.ok(!one.asked.includes(WORD_LEMMAS_SQL), one.asked.join("\n---\n"));
+  // The field's own prefix read, and no phrase read, nor the tables one needs.
+  assert.ok(!one.asked.some(lemmaRead), one.asked.join("\n---\n"));
+  assert.ok(!one.asked.includes(OPTIONAL_TABLES_SQL), one.asked.join("\n---\n"));
   assert.equal(one.asked.filter((sql) => sql === HEADWORD_PREFIX_SQL).length, 1);
 
   const vado = recording();
@@ -449,18 +469,20 @@ test("a phrase suggestion costs two lemma reads, a range probe per lemma sequenc
   // read already, so only `andare v` is probed. The offer `vado via` is then
   // read back the way its search reads it: `via`'s lemmas, and whether the
   // index spells `vado via` exactly.
-  assert.equal(vado.asked.filter((sql) => sql === WORD_LEMMAS_SQL).length, 2);
+  assert.equal(vado.asked.filter(lemmaRead).length, 2);
   // The field's own prefix read, and the one completion probe.
   assert.equal(vado.asked.filter((sql) => sql === HEADWORD_PREFIX_SQL).length, 2);
   assert.equal(vado.asked.filter((sql) => sql === EXACT_KEY_SQL).length, 1);
-  // The release row, the releases the master serves (src/lookup/served.ts), the
-  // field's own prefix read, and those four.
-  assert.equal(vado.asked.length, 7, vado.asked.join("\n---\n"));
+  // The release row, the releases the master serves (src/lookup/served.ts),
+  // the tables it has, which say how the lemmas are read (#759), the field's
+  // own prefix read, and those four.
+  assert.equal(vado.asked.filter((sql) => sql === OPTIONAL_TABLES_SQL).length, 1);
+  assert.equal(vado.asked.length, 8, vado.asked.join("\n---\n"));
 
   // A prefix that completes nothing reads nothing back.
   const none = recording();
   await suggest({ db: none.db, releaseId: RELEASE, prefix: "vado f" });
-  assert.equal(none.asked.filter((sql) => sql === WORD_LEMMAS_SQL).length, 1);
+  assert.equal(none.asked.filter(lemmaRead).length, 1);
   assert.ok(!none.asked.includes(EXACT_KEY_SQL), none.asked.join("\n---\n"));
 });
 

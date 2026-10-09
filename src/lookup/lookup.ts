@@ -199,7 +199,7 @@ export async function exists({ db, releaseId, query }: LookupOptions): Promise<E
     first?.record_word ??
     (await correctedCellHits(db, releaseId, key, tables))[0]?.record_word ??
     (await pages.candidates(key))[0]?.word ??
-    (await phraseHits(db, releaseId, key))?.hits[0].record_word ??
+    (await phraseHits(db, releaseId, tables, key))?.hits[0].record_word ??
     (await agreementHits(db, releaseId, key, tables))?.hits[0].record_word;
   return word === undefined
     ? { outcome: "absent", query: prepared.query, release: prepared.release }
@@ -214,9 +214,10 @@ export async function exists({ db, releaseId, query }: LookupOptions): Promise<E
 async function phraseHits(
   db: LookupDatabase,
   releaseId: string,
+  tables: DictionaryTables,
   key: string,
 ): Promise<{ hits: [HitRow, ...HitRow[]]; phrases: [PhraseMatch, ...PhraseMatch[]] } | undefined> {
-  const probes = await phraseMatches(db, releaseId, key);
+  const probes = await phraseMatches(db, releaseId, tables, key);
   const read = await Promise.all(
     probes.map(async (probe) => {
       const [head, ...others] = (await queryAll<HitRow>(db, SEARCH_SQL, releaseId, probe.key)).filter(
@@ -268,9 +269,9 @@ export async function lookup({ db, releaseId, query }: LookupOptions): Promise<L
 
   // Nothing spells the query. A query of several words may still be a
   // multi-word headword said the way a speaker says it (#214).
-  const phrase = await phraseHits(db, releaseId, key);
+  const phrase = await phraseHits(db, releaseId, tables, key);
   if (phrase !== undefined) {
-    const forms = await phraseForms(db, releaseId, phrase.phrases);
+    const forms = await phraseForms(db, releaseId, tables, phrase.phrases);
     return found(db, releaseId, pages, queryInfo, release, phrase.hits, { kind: "phrase", phrases: phrase.phrases, forms }, corrected, edges);
   }
 
