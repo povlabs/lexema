@@ -607,6 +607,19 @@ export function nearbyEdits(
 }
 
 /**
+ * The definitions the master holds for the served page-only entries of each of
+ * `keys`, summed by key: what `nearbyEdits` counts for a key its caller names
+ * no `pages` for. A key with no entry is absent.
+ */
+export function heldPageDefinitions(reader: MasterReader, served: readonly string[], keys: readonly string[]): Map<string, number> {
+  const inServed = `IN (SELECT value FROM json_each(${json(served)}))`;
+  const held = new Map<string, number>();
+  const runs = inRuns(keys, 16 * 1024).map((run) => `IN (SELECT value FROM json_each(${json(run)}))`);
+  for (const entry of pageEntriesOf(reader, inServed, runs)) held.set(entry.word_key, (held.get(entry.word_key) ?? 0) + entry.definitions);
+  return held;
+}
+
+/**
  * The served page-only entries whose word key is in one of `keyRuns`, with
  * their definition counts. None in a dictionary the upgrade has not given the
  * page-entry tables.

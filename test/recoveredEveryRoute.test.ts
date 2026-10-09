@@ -1,9 +1,13 @@
 // `pnpm run load:recovered-definitions` on every route a seed writes (#770): a
 // dictionary that lacks some of what a fresh seed recovers, on any route,
-// record-backed or page-only, gains exactly those rows and changes no other.
-// The records are verbatim archive lines of it-0c432803 and the pages verbatim
-// revisions of its dump itwiktionary-20260701 (fixtures/recovered-routes/,
-// fixtures/unlisted-definitions/, fixtures/upstream-pages/).
+// record-backed or page-only, gains exactly those rows and changes no other,
+// and the keys of its held page-only entries rank as a fresh seed ranks them
+// (#785). The records are verbatim archive lines of it-0c432803 and the pages
+// verbatim revisions of its dump itwiktionary-20260701 (fixtures/recovered-routes/,
+// fixtures/unlisted-definitions/, fixtures/upstream-pages/). `Aglio` is
+// revision 4023379, the one that dump holds
+// (reports/2026-10-03-unrecorded-page-layouts.json), saved off the wiki's API
+// by that revision id with its SHA-1 checked.
 
 import assert from "node:assert/strict";
 import { mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
@@ -12,6 +16,7 @@ import { join, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { after, before, test } from "node:test";
 import { gzipSync } from "node:zlib";
+import { wordsOfRecoveredDefinitions } from "../src/deploy/touchedWords.js";
 import { archiveWords } from "../src/import/loadPageEntries.js";
 import {
   appendKeepsSeedOrder,
@@ -58,7 +63,8 @@ before(async () => {
     devSeed.find((line) => wordOf(line) === "casa") ?? assert.fail("casa"),
     ...(await lines("fixtures/pantomima.jsonl")),
     ...unlisted.filter((line) => ["centouno", "bavaglio"].includes(wordOf(line))),
-    // progetto (archive line 24370) and quadro's Aggettivo (archive line 70573).
+    // progetto (archive line 24370), quadro's Aggettivo (archive line 70573), magrebina (archive line 59503)
+    // and aglio (archive line 1349), whose key the page-only entry `Aglio` shares.
     ...(await lines(join(ROUTES_DIR, "archive-lines.jsonl"))),
   ];
   archive = join(dir, "master.jsonl.gz");
@@ -120,7 +126,25 @@ const NEW_AGE_CORRECTION = `INSERT INTO corrected_definition (entry_id, definiti
   SELECT entry_id, 0, 'movimento spirituale', 'page:4066634:0', 'https://it.wiktionary.org/w/index.php?title=new_age&oldid=4066634'
     FROM recovered_entry WHERE word = 'new age'`;
 
-/** A fresh seed without the class rows: the shape of a dictionary seeded before the renderer read them. */
+/** `key`'s `accent_fold` and `typo_key` rows ranked `by` lower than a fresh seed ranks them. */
+const RANKED_LOWER = (key: string, by: number): string =>
+  ["accent_fold", "typo_key"].map((table) => `UPDATE ${table} SET richness = richness - ${by} WHERE surface_key = '${key}';`).join("\n");
+
+/** How many `accent_fold` and `typo_key` rows `db` holds for `key`. A key with no accent to fold has no `accent_fold` row. */
+const nearbyCount = (db: DatabaseSync, key: string): { accent_fold: number; typo_key: number } => {
+  const count = (table: string): number => (db.prepare(`SELECT count(*) AS n FROM ${table} WHERE surface_key = ?`).get(key) as { n: number }).n;
+  return { accent_fold: count("accent_fold"), typo_key: count("typo_key") };
+};
+
+/** `key`'s richness, off its own `typo_key` row. */
+const rankOf = (db: DatabaseSync, key: string): number =>
+  (db.prepare("SELECT richness FROM typo_key WHERE deletion_key = ? AND surface_key = ?").get(key, key) as { richness: number }).richness;
+
+/** Every row of the nearby tables, sorted. */
+const nearbyRows = (db: DatabaseSync): Map<string, string[]> =>
+  new Map(["accent_fold", "typo_key"].map((table) => [table, (db.prepare(`SELECT * FROM ${table}`).all() as object[]).map((row) => JSON.stringify(row)).sort()]));
+
+/** A fresh seed without the class rows: the shape of a dictionary seeded before the renderer read them, `new age` ranked by its one definition then. */
 async function lacking(name: string): Promise<DatabaseSync> {
   const db = await seeded(name);
   const ids = CLASS.map(({ word, line, route }) => {
@@ -143,6 +167,7 @@ async function lacking(name: string): Promise<DatabaseSync> {
        AND page_id NOT IN (SELECT page_id FROM hidden_record WHERE page_id IS NOT NULL)
        AND page_id NOT IN (SELECT page_id FROM recovered_entry);
      ${NEW_AGE_CORRECTION};
+     ${RANKED_LOWER("new age", 1)}
      UPDATE recovered_definition SET definition_index = 0 WHERE recovered_id = (SELECT recovered_id FROM (${MAGREBINA_PROSE}));`,
   );
   return db;
@@ -176,7 +201,9 @@ function recoveredLayer(db: DatabaseSync): unknown[] {
 }
 
 const ENTRY_TABLES = ["recovered_entry", "entry_definition", "entry_label", "entry_example", "entry_fact", "corrected_definition"];
-const PRESERVED = (table: string): boolean => !["raw_page", "recovered_definition", "recovered_label", "recovered_example", "entry_definition", "entry_label", "entry_example"].includes(table);
+const NEARBY = ["accent_fold", "typo_key"];
+const PRESERVED = (table: string): boolean =>
+  ![...NEARBY, "raw_page", "recovered_definition", "recovered_label", "recovered_example", "entry_definition", "entry_label", "entry_example"].includes(table);
 
 test("a dictionary lacking a definition on each route a seed writes, and a held entry's definition, gains exactly what a fresh seed holds", async () => {
   const db = await lacking("lacking");
@@ -220,29 +247,40 @@ test("a dictionary lacking a definition on each route a seed writes, and a held 
     ]);
     // Listed under the `#` line its lead-in is, a sense the record carries, as the seed lists it.
     assert.deepEqual(quadro.definitions[1].state === "write" ? quadro.definitions[1].leadIn : null, { in: "sense", senseIndex: 6 });
+    const newAgeEntry = plan.entries.find((entry) => entry.entry.page.title === "new age") ?? assert.fail();
     assert.deepEqual(
       plan.entries.map((entry) => [entry.entry.page.title, entry.definitions.map((planned) => [planned.state, planned.definition.ref.line, planned.definition.text, planned.definition.labels])]),
       [
+        // Held whole: the load writes nothing for it, and its key's rows already rank as a fresh seed's.
+        ["Aglio", [["already", 4, "genere della famiglia delle Liliacee; la sua classificazione scientifica è Allium sativum ( tassonomia)", ["botanica"]]]],
         [
           "new age",
           [
-            ["already", 3, plan.entries[0].definitions[0].definition.text, ["forestierismo"]],
+            ["already", 3, newAgeEntry.definitions[0].definition.text, ["forestierismo"]],
             ["write", 5, "persona trasognante che conclude poco e si impone come moralista", ["gergale", "spregiativo"]],
           ],
         ],
       ],
     );
+    // new age's key alone is ranked again: not Aglio's, which the load writes nothing for, nor any record's.
+    assert.deepEqual(plan.rerankedKeys, ["new age"]);
+    const newAgeRows = nearbyCount(fresh, "new age");
+    assert.ok(newAgeRows.typo_key > 0);
     // The pages of progetto, pantomima, centouno and bavaglio, which no held row names any more.
     assert.deepEqual(
       plan.counts.toJSON(),
       new PlanCounts(
         { added: 0, changed: 0, removed: 0 },
-        // Seven written and magrebina's held prose line moved.
-        { raw_page: 4, recovered_definition: 8, recovered_label: 6, recovered_example: 1, entry_definition: 1, entry_label: 2, entry_example: 1 },
+        // Seven written and magrebina's held prose line moved; new age's nearby rows written again at a fresh seed's rank.
+        { raw_page: 4, recovered_definition: 8, recovered_label: 6, recovered_example: 1, entry_definition: 1, entry_label: 2, entry_example: 1, ...newAgeRows },
+        newAgeRows,
       ).toJSON(),
     );
-    // Data only: no row the dictionary holds is deleted, and the one held row changed is the one moved.
-    assert.doesNotMatch(plan.sql, /\b(CREATE|DROP|DELETE|ALTER)\b/i);
+    // Data only: the rows deleted are new age's nearby rows ranked before its definition was written, and the one held row changed is the one moved.
+    assert.doesNotMatch(plan.sql, /\b(CREATE|DROP|ALTER)\b/i);
+    const deletes = plan.sql.match(/^DELETE .*$/gm) ?? [];
+    assert.equal(deletes.length, newAgeRows.accent_fold + newAgeRows.typo_key);
+    assert.ok(deletes.every((statement) => /^DELETE FROM (accent_fold|typo_key) WHERE .* surface_key = 'new age';$/.test(statement)), deletes.join("\n"));
     assert.deepEqual(plan.sql.match(/^UPDATE .*$/gm), [
       `UPDATE recovered_definition SET definition_index = definition_index + 1000000 WHERE recovered_id IN (SELECT value FROM json_each('[${prose.recovered_id}]'));`,
       `UPDATE recovered_definition SET definition_index = 1 WHERE recovered_id = ${prose.recovered_id};`,
@@ -253,6 +291,7 @@ test("a dictionary lacking a definition on each route a seed writes, and a held 
     assert.ok(listing.some((line) => line.startsWith("magrebina (") && line.includes("line 8): held as recovered") && line.includes("moved from index 0 to 1")), listing.join("\n"));
     assert.ok(listing.some((line) => line.startsWith("progetto (Sostantivo, archive line 5,") && line.includes("line 7, sub-term") && line.includes("[diritto, politica]")), listing.join("\n"));
     assert.ok(listing.some((line) => line.startsWith("new age (page-only entry") && line.includes("line 5, sense-line") && line.includes("[gergale, spregiativo]")), listing.join("\n"));
+    assert.ok(listing.includes("new age: accent_fold and typo_key rows set to a fresh seed's rank"), listing.join("\n"));
     assert.match(listing.at(-2) ?? "", /^8 definition\(s\) written for 8 word\(s\), and 1 held one\(s\) moved/);
     assert.match(listing.at(-1) ?? "", /^0 held definition/);
 
@@ -265,6 +304,9 @@ test("a dictionary lacking a definition on each route a seed writes, and a held 
     const after = snapshot(db);
     const seed = snapshot(fresh);
     for (const table of ENTRY_TABLES) assert.deepEqual(after.get(table), seed.get(table), table);
+    // So do the nearby tables, byte for byte: new age ranked by both its definitions, richness included.
+    assert.deepEqual(nearbyRows(db), nearbyRows(fresh));
+    assert.equal(rankOf(db, "new age"), 2);
     assert.deepEqual(
       after.get("raw_page")?.map((row) => JSON.parse(row) as { title: string; revision_id: number }).map(({ title, revision_id }) => `${title}@${revision_id}`).sort(),
       seed.get("raw_page")?.map((row) => JSON.parse(row) as { title: string; revision_id: number }).map(({ title, revision_id }) => `${title}@${revision_id}`).sort(),
@@ -277,6 +319,8 @@ test("a dictionary lacking a definition on each route a seed writes, and a held 
       if (table === "recovered_definition") {
         assert.deepEqual(lost.map((row) => ({ ...(JSON.parse(row) as object), definition_index: 1 })), [db.prepare(MAGREBINA_PROSE).get()].map((row) => ({ ...row })), "only the moved row changed, and only its index");
         assert.ok(lost.every(movedRow));
+      } else if (NEARBY.includes(table)) {
+        assert.ok(lost.every((row) => (JSON.parse(row) as { surface_key: string }).surface_key === "new age"), `${table} changed a row of another key`);
       } else assert.deepEqual(lost, [], `${table} lost or changed a row`);
       if (PRESERVED(table)) assert.deepEqual(after.get(table), rows, `${table} changed`);
     }
@@ -301,7 +345,7 @@ test("a dictionary lacking a definition on each route a seed writes, and a held 
     ]);
     const [newAge] = await page("new age");
     assert.deepEqual(newAge.recovered.map((definition) => [definition.text, definition.labels, definition.correction?.replaces ?? null]), [
-      ["movimento spirituale", ["forestierismo"], plan.entries[0].definitions[0].definition.text],
+      ["movimento spirituale", ["forestierismo"], newAgeEntry.definitions[0].definition.text],
       ["persona trasognante che conclude poco e si impone come moralista", ["gergale", "spregiativo"], null],
     ]);
 
@@ -312,6 +356,60 @@ test("a dictionary lacking a definition on each route a seed writes, and a held 
   } finally {
     db.close();
     fresh.close();
+  }
+});
+
+test("a dictionary holding every definition but ranking a page-only entry's key otherwise than a fresh seed is set right, and a second run plans nothing", async () => {
+  // new age's rows as the every-route load of 2026-10-09 left them on the shared dictionary, ranked by one definition of two,
+  // and Aglio's ranked by its page alone, without the aglio record whose key it shares.
+  const db = await seeded("stale");
+  const fresh = await seeded("stale-fresh");
+  try {
+    const aglio = JSON.parse((await lines(join(ROUTES_DIR, "archive-lines.jsonl"))).find((line) => wordOf(line) === "aglio") ?? assert.fail()) as { senses: unknown[]; forms: unknown[] };
+    // A fresh seed ranks aglio by its lemma record's senses plus forms and Aglio's one definition.
+    assert.equal(rankOf(fresh, "aglio"), aglio.senses.length + aglio.forms.length + 1);
+    execute(db, `${RANKED_LOWER("new age", 1)}\n${RANKED_LOWER("aglio", aglio.senses.length + aglio.forms.length)}`);
+    const reader = readerOf(db);
+    const before = snapshot(db);
+
+    const plan = planRecoveredDefinitions(reader, await found());
+    assert.deepEqual(plan.entries.flatMap((entry) => entry.definitions.filter(({ state }) => state === "write")), []);
+    assert.deepEqual(plan.records.flatMap((record) => [...record.definitions.filter(({ state }) => state === "write"), ...record.removals, ...record.moves]), []);
+    assert.deepEqual(plan.rerankedKeys, ["aglio", "new age"]);
+    // A Preview's dictionary slice holds the words whose rank the run changes.
+    assert.deepEqual(wordsOfRecoveredDefinitions(plan), { kind: "words", words: ["Aglio", "new age"] });
+    const [ofAglio, ofNewAge] = [nearbyCount(fresh, "aglio"), nearbyCount(fresh, "new age")];
+    const both = { accent_fold: ofAglio.accent_fold + ofNewAge.accent_fold, typo_key: ofAglio.typo_key + ofNewAge.typo_key };
+    assert.deepEqual(plan.counts.toJSON(), new PlanCounts({ added: 0, changed: 0, removed: 0 }, both, both).toJSON());
+
+    execute(db, plan.sql);
+    assert.deepEqual(unwrittenDefinitions(reader, plan), []);
+    assert.deepEqual(nearbyRows(db), nearbyRows(fresh));
+    assert.equal(rankOf(db, "aglio"), aglio.senses.length + aglio.forms.length + 1);
+    assert.equal(rankOf(db, "new age"), 2);
+    // Nothing else changed.
+    const after = snapshot(db);
+    for (const [table, held] of before) if (!NEARBY.includes(table)) assert.deepEqual(after.get(table), held, table);
+
+    const again = planRecoveredDefinitions(reader, await found());
+    assert.deepEqual(again.rerankedKeys, []);
+    assert.equal(again.sql, "");
+    assert.equal(again.counts, PlanCounts.NONE);
+  } finally {
+    db.close();
+    fresh.close();
+  }
+});
+
+test("a fresh seed's dictionary plans nothing: no key of a held page-only entry or of a record is ranked again", async () => {
+  const db = await seeded("as-seeded");
+  try {
+    const plan = planRecoveredDefinitions(readerOf(db), await found());
+    assert.deepEqual(plan.rerankedKeys, []);
+    assert.equal(plan.sql, "");
+    assert.equal(plan.counts, PlanCounts.NONE);
+  } finally {
+    db.close();
   }
 });
 

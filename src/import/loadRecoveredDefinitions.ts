@@ -15,10 +15,16 @@
 //   `entry_label` and `entry_example` rows. A page-only entry the dictionary
 //   lacks is `load:page-entries`' to write, and a curated correction of a
 //   definition `correct:records`'.
+// - Nearby rows: the `accent_fold` and `typo_key` rows of the key of each of
+//   those held page-only entries, as a fresh seed ranks it: by its lemma
+//   records and the definitions of every page-only entry of it, the ones held
+//   and the ones written now (#785). A held row that differs is deleted and
+//   written again, as `load:page-entries` does; a key whose rows match gets no
+//   edit. A record-backed recovered definition adds nothing to a rank.
 //
 // A definition is held when the dictionary has one of that record or entry read
 // off that page line; a held one keeps its text, labels and examples, so a
-// second run plans nothing. No record is touched, `source_record_json` least of
+// second run plans nothing, the nearby rows included. No record is touched, `source_record_json` least of
 // all. A held row a fresh seed writes otherwise is reported, never rewritten:
 // text changes are `normalize:source-text`'s.
 //
@@ -55,6 +61,7 @@ import { carries, recordGlosses, recordText, recoverDefinitions, type RecoveredD
 import { readItalianSections, type PageDefinition } from "../italian/wikitext.js";
 import { PAGE_ENTRY_TABLES } from "../lookup/served.js";
 import type { RawPage } from "../source/rawPage.js";
+import { heldPageDefinitions, NO_NEARBY_EDITS, nearbyEdits, type NearbyEdits } from "../update/apply.js";
 import { changedUpgrade, readMasterRelease, select, type MasterReader } from "../update/master.js";
 import { RECOVERED_INDEXES, RECOVERED_TABLES } from "../update/masterUpgrade.js";
 import { PlanCounts } from "../update/planCounts.js";
@@ -242,6 +249,8 @@ export interface RecoveredDefinitionPlan {
   readonly records: readonly PlannedRecord[];
   /** The page-only entries the dictionary holds that a seed reads definitions for. */
   readonly entries: readonly PlannedEntry[];
+  /** The keys of those entries whose `accent_fold` and `typo_key` rows the run rewrites to a fresh seed's, sorted. */
+  readonly rerankedKeys: readonly string[];
   /** Empty when there is nothing to write or delete. */
   readonly sql: string;
   /** What `sql` writes and deletes; `PlanCounts.NONE` when it is empty. No record is added, changed or removed. */
@@ -318,13 +327,15 @@ export function planRecoveredDefinitions(reader: MasterReader, found: FoundDefin
   const master = readMasterRelease(reader);
   const records = planRecords(reader, master.releaseId, found.records);
   const entries = planEntries(reader, master.releaseId, found.entries);
-  const nothing: RecoveredDefinitionPlan = { masterReleaseId: master.releaseId, records: records.planned, entries, sql: "", counts: PlanCounts.NONE };
+  const nearby = nearbyOfEntries(reader, [master.releaseId, ...master.feeds.map((feed) => feed.releaseId)], entries);
+  const rerankedKeys = [...new Set([...nearby.accent.map((row) => row.surfaceKey), ...nearby.typo.map((row) => row.surfaceKey)])].sort();
+  const nothing: RecoveredDefinitionPlan = { masterReleaseId: master.releaseId, records: records.planned, entries, rerankedKeys: [], sql: "", counts: PlanCounts.NONE };
 
   const writes = records.planned.flatMap((record) => record.definitions.flatMap((planned) => (planned.state === "write" ? [{ record, planned }] : [])));
   const moves = records.planned.flatMap((record) => record.moves);
   const removed = records.planned.flatMap((record) => record.removals);
   const entryWrites = entries.flatMap((entry) => entry.definitions.flatMap((planned) => (planned.state === "write" ? [{ entry, planned }] : [])));
-  if (writes.length === 0 && entryWrites.length === 0 && removed.length === 0) return nothing;
+  if (writes.length === 0 && entryWrites.length === 0 && removed.length === 0 && rerankedKeys.length === 0 && nearby.deletes.length === 0) return nothing;
 
   // Only the pages a written definition names: a record whose every definition is held or carried needs none.
   const pagesUsed = new Set(writes.map(({ record }) => record.pageId));
@@ -379,6 +390,9 @@ export function planRecoveredDefinitions(reader: MasterReader, found: FoundDefin
         ]),
     ...(writes.length === 0 ? [] : [`-- ${writes.length} recovered definition(s) of records: ${words.join(", ")}.`]),
     ...(entryWrites.length === 0 ? [] : [`-- ${entryWrites.length} definition(s) of held page-only entries: ${titles.join(", ")}.`]),
+    ...(rerankedKeys.length === 0
+      ? []
+      : [`-- The accent_fold and typo_key rows of ${rerankedKeys.length} key(s) of held page-only entries, as a fresh seed ranks them: ${rerankedKeys.join(", ")}.`]),
     ...(moves.length === 0
       ? []
       : [
@@ -393,10 +407,14 @@ export function planRecoveredDefinitions(reader: MasterReader, found: FoundDefin
     ...inserts("entry_definition", entryDefinitionRows),
     ...inserts("entry_label", entryLabelRows),
     ...inserts("entry_example", entryExampleRows),
+    ...nearby.deletes,
+    ...inserts("accent_fold", nearby.accent.map((row) => [master.releaseId, row.foldKey, row.surfaceKey, row.headword, row.languages, row.richness])),
+    ...inserts("typo_key", nearby.typo.map((row) => [master.releaseId, row.deletionKey, row.surfaceKey, row.languages, row.richness])),
   ];
   const sum = (count: (removal: PlannedRemoval) => number): number => removed.reduce((total, removal) => total + count(removal), 0);
   return {
     ...nothing,
+    rerankedKeys,
     sql: `${sql.join("\n")}\n`,
     counts: new PlanCounts(
       { added: 0, changed: 0, removed: 0 },
@@ -408,10 +426,33 @@ export function planRecoveredDefinitions(reader: MasterReader, found: FoundDefin
         entry_definition: entryDefinitionRows.length,
         entry_label: entryLabelRows.length,
         entry_example: entryExampleRows.length,
+        accent_fold: nearby.accent.length,
+        typo_key: nearby.typo.length,
       },
-      { recovered_definition: removed.length, recovered_label: sum(({ labels }) => labels), recovered_example: sum(({ examples }) => examples) },
+      { recovered_definition: removed.length, recovered_label: sum(({ labels }) => labels), recovered_example: sum(({ examples }) => examples), ...nearby.replaced },
     ),
   };
+}
+
+/**
+ * The `accent_fold` and `typo_key` edits of the key of every held page-only
+ * entry the rules read, as a fresh seed writes those rows after the run
+ * (`nearbyEdits`). A seed ranks a key by its lemma records and the definitions
+ * of every page-only entry of it, so each key counts what its entries hold
+ * plus what the run writes. A key whose rows already match gets no edit, so a
+ * second run plans none; one whose rows went stale before a run is set right.
+ * A record-backed recovered definition adds nothing to a rank
+ * (`addLemmaRecord`), so no record's key is read.
+ */
+function nearbyOfEntries(reader: MasterReader, served: readonly string[], entries: readonly PlannedEntry[]): NearbyEdits {
+  if (entries.length === 0) return NO_NEARBY_EDITS;
+  const keyOf = (planned: PlannedEntry): string => normalizeItalianExact(planned.entry.page.title);
+  const keys = [...new Set(entries.map(keyOf))];
+  const pages = heldPageDefinitions(reader, served, keys);
+  for (const planned of entries) {
+    pages.set(keyOf(planned), (pages.get(keyOf(planned)) ?? 0) + planned.definitions.filter(({ state }) => state === "write").length);
+  }
+  return nearbyEdits(reader, served, keys, new Set(), [], [], pages);
 }
 
 /** Plan the record-backed definitions of `found`, with the `raw_page` rows a written one may need. */
@@ -697,7 +738,17 @@ export function unwrittenDefinitions(reader: MasterReader, plan: RecoveredDefini
       .map(({ entry, planned }) => `${entry.entry.page.title} (line ${planned.definition.ref.line})`),
     ...unmoved(reader, plan),
     ...unremoved(reader, plan),
+    ...unreranked(reader, plan),
   ];
+}
+
+/** The keys the plan reranks whose `accent_fold` and `typo_key` rows still differ from a fresh seed's: `key (nearby rows)`. */
+function unreranked(reader: MasterReader, plan: RecoveredDefinitionPlan): string[] {
+  if (plan.rerankedKeys.length === 0) return [];
+  const master = readMasterRelease(reader);
+  const left = nearbyEdits(reader, [master.releaseId, ...master.feeds.map((feed) => feed.releaseId)], plan.rerankedKeys, new Set(), [], []);
+  const keys = new Set([...left.accent.map((row) => row.surfaceKey), ...left.typo.map((row) => row.surfaceKey)]);
+  return plan.rerankedKeys.filter((key) => keys.has(key)).map((key) => `${key} (nearby rows)`);
 }
 
 /** The held definitions the plan removes that the dictionary still holds: `word (line N, still held)`. */
@@ -782,6 +833,7 @@ export function planListing(plan: RecoveredDefinitionPlan): string[] {
     ...moved,
     ...removed,
     ...differing,
+    ...plan.rerankedKeys.map((key) => `${key}: accent_fold and typo_key rows set to a fresh seed's rank`),
     `${written.length} definition(s) written for ${keys.size} word(s), and ${moved.length} held one(s) moved to a fresh seed's index; afterwards the dictionary lacks none a fresh seed writes for the records and held entries read.`,    `${differing.length} held definition(s) of those records and entries a fresh seed does not write as held; left as they are.`,
   ];
 }

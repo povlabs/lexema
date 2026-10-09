@@ -1,0 +1,12 @@
+{
+  "command": "load:recovered-definitions",
+  "inputs": {
+    "archive": "it-0c432803",
+    "rules": ["recovered-bullet-line/v1", "recovered-prose-line/v1", "recovered-verb-part/v1", "recovered-every-route/v1", "page-entry-definitions/v1"]
+  },
+  "expected": {
+    "records": { "added": 0, "changed": 0, "removed": 0 },
+    "written": { "typo_key": 8 },
+    "deleted": { "typo_key": 8 }
+  }
+}

@@ -12,6 +12,7 @@ import type { CorrectionPlan } from "../import/correctRecords.js";
 import type { HidePlan } from "../import/hideRecords.js";
 import type { PageEntryPlan } from "../import/loadPageEntries.js";
 import type { RecoveredDefinitionPlan } from "../import/loadRecoveredDefinitions.js";
+import { normalizeItalianExact } from "../italian/normalize.js";
 import type { ApplyPlan } from "../update/apply.js";
 import type { DeclaredCommand } from "../update/declaration.js";
 
@@ -75,9 +76,13 @@ export const wordsOfPageEntries = (plan: PageEntryPlan): TouchedWords =>
     ...plan.corrections.map(({ title }) => title),
   ]);
 
-/** `load:recovered-definitions`: the word of each record it writes or removes a recovered definition for, and of each held page-only entry it writes a definition for. */
-export const wordsOfRecoveredDefinitions = (plan: RecoveredDefinitionPlan): TouchedWords =>
-  touchedWords([
+/** `load:recovered-definitions`: the word of each record it writes or removes a recovered definition for, and of each held page-only entry it writes a definition for or reranks the key of. */
+export const wordsOfRecoveredDefinitions = (plan: RecoveredDefinitionPlan): TouchedWords => {
+  const reranked = new Set(plan.rerankedKeys);
+  return touchedWords([
     ...plan.records.flatMap((record) => (record.definitions.some((planned) => planned.state === "write") || record.removals.length > 0 ? [record.found.word] : [])),
-    ...plan.entries.flatMap((entry) => (entry.definitions.some((planned) => planned.state === "write") ? [entry.entry.page.title] : [])),
+    ...plan.entries.flatMap((entry) =>
+      entry.definitions.some((planned) => planned.state === "write") || reranked.has(normalizeItalianExact(entry.entry.page.title)) ? [entry.entry.page.title] : [],
+    ),
   ]);
+};
