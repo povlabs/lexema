@@ -6,8 +6,28 @@
   "expected": {
     "records": {
       "added": 0,
-      "changed": 1450,
+      "changed": 1314,
       "removed": 0
+    },
+    "written": {
+      "applied_change": 1314,
+      "release_table_rows": 10,
+      "source_record": 1314,
+      "source_record_json": 1314,
+      "lookup_form": 10552,
+      "form_of_edge": 225,
+      "sense": 2312,
+      "sense_gloss": 2307,
+      "sense_label": 897,
+      "grammar_claim": 38969,
+      "accent_fold": 19,
+      "typo_key": 8120
+    },
+    "deleted": {
+      "lookup_form": 10548,
+      "form_of_edge": 225,
+      "accent_fold": 19,
+      "typo_key": 8120
     }
   }
 }
