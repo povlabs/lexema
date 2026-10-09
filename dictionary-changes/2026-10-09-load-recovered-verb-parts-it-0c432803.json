@@ -1,0 +1,14 @@
+{
+  "command": "load:recovered-definitions",
+  "inputs": { "archive": "it-0c432803", "rules": ["recovered-bullet-line/v1", "recovered-prose-line/v1", "recovered-verb-part/v1"] },
+  "lookups": [
+    { "word": "urgere", "gloss": "occorrere nell'immediato" },
+    { "word": "servire", "gloss": "servire lo Stato" },
+    { "word": "transigere", "gloss": "non transigere" }
+  ],
+  "expected": {
+    "records": { "added": 0, "changed": 0, "removed": 0 },
+    "written": {},
+    "deleted": { "recovered_definition": 3, "recovered_label": 1 }
+  }
+}

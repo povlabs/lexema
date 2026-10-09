@@ -6,16 +6,18 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { recordText, recoverDefinitions, type ListedUnder, type RecordRecovery, type RecordText } from "../src/italian/recovery.js";
+import { ONLY_RECORD, recordText, recoverDefinitions, type ListedUnder, type RecordRecovery, type RecordText } from "../src/italian/recovery.js";
 import { readItalianSections, renderInline } from "../src/italian/wikitext.js";
 import { loadFixturePages, RAW_PAGE_WIKI, type RawPage } from "../src/source/rawPage.js";
 
 const pages = await loadFixturePages(resolve("fixtures"));
 
-/** A record's senses, one gloss each, as `recordText` reads them. */
-const senses = (...glosses: string[]): Pick<RecordText, "senseCount" | "glosses"> => ({
+/** A record's senses, one gloss each, as `recordText` reads them, on a record with no verb type and no sibling. */
+const senses = (...glosses: string[]): Pick<RecordText, "senseCount" | "glosses" | "verbTypes" | "siblings"> => ({
   senseCount: glosses.length,
   glosses: glosses.map((text, senseIndex) => ({ senseIndex, text })),
+  verbTypes: [],
+  siblings: ONLY_RECORD,
 });
 
 /** Example texts as one sense's examples, where a case's pointers carry nothing. */
@@ -181,7 +183,7 @@ test("a definition the record already glosses is not recovered twice", () => {
 test("lap steel guitar: a definition the extraction filed as an example is recovered as a definition, and names that example", () => {
   // Archive line 605574, verbatim: its one sense is furniture, and the page's
   // main definition sits in that sense's `examples`.
-  const record = recordText(JSON.parse(readFileSync(resolve("fixtures/lap-steel-guitar.jsonl"), "utf8")));
+  const record = recordText(JSON.parse(readFileSync(resolve("fixtures/lap-steel-guitar.jsonl"), "utf8")), ONLY_RECORD);
   const recovery = matched(recoverDefinitions(record, page("lap steel guitar")));
   assert.deepEqual(
     recovery.recovered.map((definition) => [definition.route, definition.heldAsExample]),
@@ -190,7 +192,7 @@ test("lap steel guitar: a definition the extraction filed as an example is recov
 });
 
 test("lap steel guitar: the items of a recovered definition's colon list sit under it, not beside it", () => {
-  const record = recordText(JSON.parse(readFileSync(resolve("fixtures/lap-steel-guitar.jsonl"), "utf8")));
+  const record = recordText(JSON.parse(readFileSync(resolve("fixtures/lap-steel-guitar.jsonl"), "utf8")), ONLY_RECORD);
   const recovery = matched(recoverDefinitions(record, page("lap steel guitar")));
   assert.deepEqual(
     recovery.recovered.map((definition) => [definition.ref.line, definition.leadIn?.ref.line ?? null, definition.listedUnder]),
@@ -204,7 +206,7 @@ test("lap steel guitar: the items of a recovered definition's colon list sit und
 
 test("accollato: the items below a sense the record carries sit under that sense, exactly as the page words them", () => {
   // Archive line 33357, verbatim, and its page from the 2026-07-01 dump.
-  const record = recordText(JSON.parse(readFileSync(resolve("fixtures/accollato.jsonl"), "utf8")));
+  const record = recordText(JSON.parse(readFileSync(resolve("fixtures/accollato.jsonl"), "utf8")), ONLY_RECORD);
   const recovery = matched(recoverDefinitions(record, page("accollato")));
   assert.equal(recovery.loss, "partial");
   const under = { in: "sense", senseIndex: 2 };
@@ -234,7 +236,7 @@ test("accollato: the items below a sense the record carries sit under that sense
 
 /** Where accollato's six items sit when its archive record carries `glosses`, one sense each, instead of its own. */
 const accollatoUnder = (...glosses: string[]): (ListedUnder | null)[] => {
-  const record = recordText(JSON.parse(readFileSync(resolve("fixtures/accollato.jsonl"), "utf8")));
+  const record = recordText(JSON.parse(readFileSync(resolve("fixtures/accollato.jsonl"), "utf8")), ONLY_RECORD);
   const places = matched(recoverDefinitions({ ...record, ...senses(...glosses) }, page("accollato"))).recovered.map(
     (definition) => definition.listedUnder,
   );
@@ -323,7 +325,7 @@ test("filetto: the items below `{{Pn|w=…}} detto di:` sit under the sense the 
   // Archive line 40204, verbatim, and its page from the 2026-07-01 dump. The
   // line prints `filetto detto di:`; the record glosses it `filetto (
   // approfondimento) detto di:`, the link `{{Pn|w=…}}` adds (#399).
-  const record = recordText(JSON.parse(readFileSync(resolve("fixtures/filetto.jsonl"), "utf8")));
+  const record = recordText(JSON.parse(readFileSync(resolve("fixtures/filetto.jsonl"), "utf8")), ONLY_RECORD);
   const recovery = matched(recoverDefinitions(record, page("filetto")));
   const under = { in: "sense", senseIndex: 6 };
   assert.equal(record.glosses[6].text, "filetto ( approfondimento) detto di:");
@@ -353,7 +355,7 @@ test("a lead-in is placed only under the one sense whose gloss is its text, wher
     "#*linea di partizione leggermente ingrossata e dotata di smalto proprio, utilizzata soprattutto per separare due campi dello stesso smalto,",
     "# {{Est}} [[ognuna]] delle [[quattro]] [[sezioni]] o [[parti]] dei [[pesci]]",
   ]);
-  const placed = (record: Pick<RecordText, "senseCount" | "glosses">) =>
+  const placed = (record: Pick<RecordText, "senseCount" | "glosses" | "verbTypes" | "siblings">) =>
     matched(recoverDefinitions({ word: "filetto", posTitle: "Sostantivo", examples: [], ...record }, filetto)).recovered.map(
       (definition) => definition.listedUnder,
     );
@@ -519,7 +521,7 @@ test("an italic quotation with its author in brackets is a quotation, even in a 
 
 test("pantomima: a partial loss — the figurative sense's definition sits on the line after its `#`, and comes back with that line's label", () => {
   // Archive line 421114: the theatre sense only.
-  const record = recordText(JSON.parse(readFileSync(resolve("fixtures/pantomima.jsonl"), "utf8")));
+  const record = recordText(JSON.parse(readFileSync(resolve("fixtures/pantomima.jsonl"), "utf8")), ONLY_RECORD);
   assert.equal(record.senseCount, 1);
   const recovery = matched(recoverDefinitions(record, page("pantomima")));
   assert.equal(recovery.loss, "partial");
@@ -534,7 +536,7 @@ test("pantomima: a partial loss — the figurative sense's definition sits on th
 
 test("vaglielo: a full loss — the record's one sense has no gloss, and the page's definition is the line after its empty `#`", () => {
   // Archive line 140524: `"senses": [{"tags": ["no-gloss"]}]`.
-  const vaglielo: RecordText = { word: "vaglielo", posTitle: "Verbo", senseCount: 1, glosses: [], examples: [] };
+  const vaglielo: RecordText = { word: "vaglielo", posTitle: "Verbo", senseCount: 1, glosses: [], examples: [], verbTypes: [], siblings: ONLY_RECORD };
   const recovery = matched(recoverDefinitions(vaglielo, page("vaglielo")));
   assert.equal(recovery.loss, "full");
   assert.deepEqual(

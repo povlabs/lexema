@@ -2,7 +2,7 @@
   "command": "load:recovered-definitions",
   "inputs": {
     "archive": "it-0c432803",
-    "rules": ["recovered-bullet-line/v1", "recovered-prose-line/v1", "recovered-every-route/v1", "page-entry-definitions/v1"]
+    "rules": ["recovered-bullet-line/v1", "recovered-prose-line/v1", "recovered-verb-part/v1", "recovered-every-route/v1", "page-entry-definitions/v1"]
   },
   "lookups": [
     { "word": "progetto", "gloss": "nella repubblica italiana proposta che" },

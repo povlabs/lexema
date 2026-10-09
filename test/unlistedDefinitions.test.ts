@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import test from "node:test";
-import { recordText, recoverDefinitions, type RecordRecovery } from "../src/italian/recovery.js";
+import { recordText, recoverDefinitions, SectionRecords, type RecordRecovery } from "../src/italian/recovery.js";
 import { LanguageHeadings, readItalianPosBlocks } from "../src/italian/sectionLanguage.js";
 import { POS_TITLE_BY_TEMPLATE, readItalianSections, readStatedSections } from "../src/italian/wikitext.js";
 import { RAW_PAGE_WIKI, readSavedPage, type RawPage } from "../src/source/rawPage.js";
@@ -32,11 +32,15 @@ function page(title: string): RawPage {
   return found;
 }
 
-/** The recovery of `word`'s record of `posTitle`, read off its page. */
+/** The fixture's records by word and title, each at its 1-based line in the file. */
+const sections = new SectionRecords();
+records.forEach((record, index) => sections.add(index + 1, record));
+
+/** The recovery of `word`'s first record of `posTitle`, read off its page. */
 function recovery(word: string, posTitle: string): RecordRecovery {
-  const record = records.find((line) => line.word === word && line.pos_title === posTitle);
-  assert.ok(record, `no archive line for ${word} (${posTitle})`);
-  return recoverDefinitions(recordText(record), page(word));
+  const index = records.findIndex((line) => line.word === word && line.pos_title === posTitle);
+  assert.ok(index !== -1, `no archive line for ${word} (${posTitle})`);
+  return recoverDefinitions(recordText(records[index], sections.siblingsOf(index + 1, records[index])), page(word));
 }
 
 /** Each recovered definition as [route, line, text]. */

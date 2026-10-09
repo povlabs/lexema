@@ -776,6 +776,13 @@ shared dictionary only gets this way. Its rules:
 - `recovered-bullet-line/v1` and `recovered-prose-line/v1` read a `*` bullet
   line and a plain line with no list mark under an Italian part-of-speech
   heading, in a section no `#` line of which states a meaning.
+- `recovered-verb-part/v1` (#775) keeps a definition of a Verbo section split
+  into verb-type parts (`{{Transitivo|it}}`, `{{Intransitivo|it}}`…) on the
+  record of the part it sits in: it deletes each recovered definition the
+  dictionary holds for a record at a line of another record's part, with its
+  `recovered_label` and `recovered_example` rows, whatever its route. Every
+  other rule reads a record's definitions in its own part only, so none writes
+  such a row back.
 - `recovered-every-route/v1` writes a record's lacking recovered definition on
   every route a seed writes: `below-page-control`, `sub-term`, `lead-in-item`,
   `wrapped-prose`, `bullet-line` and `prose-line` (`progetto`'s sub-term
@@ -791,7 +798,7 @@ definition it writes one `recovered_definition` row, its `recovered_label` and
 `recovered_example` rows, and the page's `raw_page` row when the dictionary has
 none; for each page-only one, an `entry_definition` row and its `entry_label`
 and `entry_example` rows. It touches no record and no `source_record_json`
-line. A definition the dictionary already holds, by its record or entry and
+line, and deletes no row but the ones `recovered-verb-part/v1` names. A definition the dictionary already holds, by its record or entry and
 page line, keeps its text, labels and examples, so a second run plans nothing;
 one held with other text than a fresh seed's is reported and left (text changes
 are `normalize:source-text`'s). A record a feed replaced
@@ -818,9 +825,10 @@ pnpm run load:recovered-definitions
 ```
 
 `--plan-only` prints the counts and one line per definition, with its word,
-archive line or entry, revision, page line, route, text and labels, and writes
-nothing. The [pull request plan check](#the-pull-request-plan-check) prints the
-lines of the definitions it writes. The shared dictionary changes only through
+archive line or entry, revision, page line, route, text and labels, and whether
+it is written, moved or removed, and writes nothing. The
+[pull request plan check](#the-pull-request-plan-check) prints the lines of the
+definitions it writes, moves and removes. The shared dictionary changes only through
 a declaration:
 
 ```json
@@ -828,7 +836,7 @@ a declaration:
   "command": "load:recovered-definitions",
   "inputs": {
     "archive": "it-0c432803",
-    "rules": ["recovered-bullet-line/v1", "recovered-prose-line/v1", "recovered-every-route/v1", "page-entry-definitions/v1"]
+    "rules": ["recovered-bullet-line/v1", "recovered-prose-line/v1", "recovered-verb-part/v1", "recovered-every-route/v1", "page-entry-definitions/v1"]
   }
 }
 ```

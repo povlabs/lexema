@@ -41,7 +41,7 @@ import {
   type QualityRecord,
   type SenseKind,
 } from "../italian/recordQuality.js";
-import { recordText, recoverDefinitions } from "../italian/recovery.js";
+import { recordText, recoverDefinitions, SectionRecords } from "../italian/recovery.js";
 import { readItalianSections } from "../italian/wikitext.js";
 import { SourceCache } from "../source/sourceCache.js";
 import { expectedFormDimensions, expectedRecordDimensions, mapStructuralTag } from "./grammarPolicy.js";
@@ -80,10 +80,14 @@ const verbTables = new Map<string, QualityRecord["forms"][]>();
 /** Token counts over every `senses[].examples[].text`, lower-cased. */
 const exampleTokens = new Map<string, number>();
 
+/** Every record's verb types, which name a record's siblings for recovery. */
+const sectionRecords = new SectionRecords();
+
 const first = await parseArchive({
   input,
   onRejection: () => {},
-  onRecord: ({ record }) => {
+  onRecord: ({ lineNo, record }) => {
+    sectionRecords.add(lineNo, record);
     add(recordsByWord, record.word);
     add(recordsByWordAndPos, `${record.pos}\u0000${record.word}`);
     if (!isFormOf(record)) add(lemmasByWordAndPos, `${record.pos}\u0000${record.word}`);
@@ -254,7 +258,7 @@ const second = await parseArchive({
     const senses = PageSenses.of(record);
     const kinds = senses.kinds;
     const page = pages.page(word);
-    const recovery = page === undefined ? undefined : recoverDefinitions(recordText(record), page);
+    const recovery = page === undefined ? undefined : recoverDefinitions(recordText(record, sectionRecords.siblingsOf(lineNo, record)), page);
     const recovered = recovery?.outcome === "matched" ? recovery.recovered : [];
     const opensList = new Set(recovered.flatMap((definition) => (definition.listedUnder?.in === "sense" ? [definition.listedUnder.senseIndex] : [])));
     const split = senses.split(recovered.length, opensList);

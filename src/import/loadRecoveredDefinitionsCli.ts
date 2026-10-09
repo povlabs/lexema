@@ -1,7 +1,8 @@
 // `pnpm run load:recovered-definitions`: the update that writes every
 // definition a fresh seed recovers that an already seeded dictionary lacks, on
 // every route, record-backed and page-only (ADR 0029, loadRecoveredDefinitions.ts,
-// #706, #770). It picks its database the way
+// #706, #770), and removes the recovered definitions a seed wrote onto a record
+// from another record's verb-type part (#775). It picks its database the way
 // the seed does: the local D1 under `SEED_STATE` (default `.data/seed-state`),
 // or the remote D1 `SEED_REMOTE` names. It reads the archive the master was
 // seeded from (`SEED_INPUT`, default the master's archive in `.data/source/`),
@@ -65,7 +66,7 @@ export async function main(
   const identity = dumpId === undefined || !Object.hasOwn(KNOWN_DUMPS, dumpId) ? undefined : KNOWN_DUMPS[dumpId];
   if (identity === undefined) return { out: `no dump is known for the master ${master.releaseId}. Nothing was written.`, status: 1 };
   const dumpPath = env.RAW_PAGES === undefined ? await source.dump(release) : resolve(env.RAW_PAGES);
-  log(`reading ${dumpPath} for the recovered definitions of the master ${master.releaseId}'s records and page-only entries in ${target.dictionary}`);
+  log(`reading ${dumpPath} for the recovered definitions and the split verb sections of the master ${master.releaseId}'s records and page-only entries in ${target.dictionary}`);
 
   const dump = await VerifiedDump.open(dumpPath, identity);
   let read;
@@ -92,7 +93,9 @@ export async function main(
   await mkdir(out, { recursive: true });
   const file = join(out, `recovered-definitions-${plan.masterReleaseId}-${Date.now()}.sql`);
   await writeFile(file, plan.sql);
-  log(`writing ${plan.counts.written.recovered_definition ?? 0} recovered definition(s) and ${plan.counts.written.entry_definition ?? 0} page-only entry definition(s) as one transaction: ${file}`);
+  log(
+    `writing ${plan.counts.written.recovered_definition ?? 0} recovered definition(s) and ${plan.counts.written.entry_definition ?? 0} page-only entry definition(s), and removing ${plan.counts.deleted.recovered_definition ?? 0} recovered definition(s), as one transaction: ${file}`,
+  );
   // One file, one transaction: if any statement fails, D1 leaves the master as it was.
   try {
     target.execute(["--file", file], false);
@@ -100,8 +103,14 @@ export async function main(
     return { out: `the update did not run to its end, so D1 kept the master as it was (${error instanceof Error ? error.message : String(error)})`, status: 1 };
   }
   const left = unwrittenDefinitions(reader, plan);
-  if (left.length > 0) return { out: `the update ran, but these definitions do not read back as written: ${left.join(", ")}`, status: 1 };
-  return { out: [`${summary}; written now: ${plan.counts.written.recovered_definition ?? 0} recovered, ${plan.counts.written.entry_definition ?? 0} page-only`, ...lines].join("\n"), status: 0 };
+  if (left.length > 0) return { out: `the update ran, but these definitions do not read back as written or removed: ${left.join(", ")}`, status: 1 };
+  return {
+    out: [
+      `${summary}; written now: ${plan.counts.written.recovered_definition ?? 0} recovered, ${plan.counts.written.entry_definition ?? 0} page-only; removed now: ${plan.counts.deleted.recovered_definition ?? 0}`,
+      ...lines,
+    ].join("\n"),
+    status: 0,
+  };
 }
 
 if (isMain(import.meta.url)) finish(await main(process.env, process.argv.slice(2)));

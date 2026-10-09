@@ -168,9 +168,11 @@ test("every declaration already in dictionary-changes parses as before, with no 
     const outgrownRules: Record<string, string> = {
       "2026-10-03-load-page-entries-it-0c432803.json": "italian-page-entry/v2, italian-page-facts/v1",
       "2026-10-03-load-page-entries-v2-it-0c432803.json": "italian-page-facts/v1",
-      // The bullet and prose lines (#706) and the lines fixed usage-label templates unblock (#711), before every route (#770).
-      "2026-10-07-load-recovered-definitions-it-0c432803.json": "recovered-every-route/v1, page-entry-definitions/v1",
-      "2026-10-09-load-recovered-label-template-lines-it-0c432803.json": "recovered-every-route/v1, page-entry-definitions/v1",
+      // The bullet and prose lines (#706) and the lines fixed usage-label templates unblock (#711), before split verb sections (#775) and every route (#770).
+      "2026-10-07-load-recovered-definitions-it-0c432803.json": "recovered-verb-part/v1, recovered-every-route/v1, page-entry-definitions/v1",
+      "2026-10-09-load-recovered-label-template-lines-it-0c432803.json": "recovered-verb-part/v1, recovered-every-route/v1, page-entry-definitions/v1",
+      // The recovered lines of split verb sections (#775), before every route (#770).
+      "2026-10-09-load-recovered-verb-parts-it-0c432803.json": "recovered-every-route/v1, page-entry-definitions/v1",
     };
     if (name in outgrownRules) {
       assert.equal(refusal(text, path), `inputs.rules must name every rule the command applies; it lacks ${outgrownRules[name]}`);
