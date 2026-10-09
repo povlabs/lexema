@@ -40,19 +40,46 @@ export interface Parameter {
 }
 
 /** One request and what the API answers it with. */
-export interface Example {
+interface ExampleShape {
   /** The path and query, from `/v1/`. */
   path: string;
-  /** The JSON body a POST sends. */
-  body?: unknown;
   status: 200 | 400 | 404;
   /** What sets the example apart from another of its status, as its tab names it. */
   label?: string;
   response: unknown;
 }
 
-export interface EndpointReference {
-  method: "GET" | "POST";
+/** An example of a GET: it sends no body. */
+export interface GetExample extends ExampleShape {
+  body?: never;
+}
+
+/** An example of a POST: it sends a JSON body. */
+export interface PostExample extends ExampleShape {
+  body: object;
+}
+
+export type Example = GetExample | PostExample;
+
+/**
+ * An endpoint as the docs state it, with the examples they show, the first the
+ * one they open on. Its method fixes its examples' kind, so a GET's example
+ * cannot carry a body and a POST's cannot lack one.
+ */
+export type EndpointReference =
+  | (EndpointShape & { method: "GET"; examples: readonly [GetExample, ...GetExample[]] })
+  | (EndpointShape & { method: "POST"; examples: readonly [PostExample, ...PostExample[]] });
+
+/** An example with the method of its endpoint: the request the docs print. */
+export type ExampleRequest = { method: "GET"; example: GetExample } | { method: "POST"; example: PostExample };
+
+/** An endpoint's examples, each with the endpoint's method, in the order the docs show them. */
+export const exampleRequestsOf = (reference: EndpointReference): readonly ExampleRequest[] =>
+  reference.method === "GET"
+    ? reference.examples.map((example) => ({ method: "GET", example }))
+    : reference.examples.map((example) => ({ method: "POST", example }));
+
+interface EndpointShape {
   /** The endpoint's heading in the docs: what a call does, as a verb phrase. */
   title: string;
   /** The endpoint in a few words, on the landing page's list. */
@@ -61,8 +88,6 @@ export interface EndpointReference {
   parameters: readonly Parameter[];
   /** What each status this endpoint answers with means. */
   answers: readonly { status: string; description: string }[];
-  /** The examples the docs show, the first the one they open on. */
-  examples: readonly [Example, ...Example[]];
 }
 
 const ATTRIBUTION = (word: string) => ({
@@ -233,7 +258,7 @@ const ANDARE_TRANSLATIONS = [
 ];
 
 /** `/lookup` unfiltered: every candidate for `andare`, with every section. */
-export const LOOKUP_EXAMPLE: Example = {
+export const LOOKUP_EXAMPLE: GetExample = {
   path: "lookup?q=andare",
   status: 200,
   response: {
@@ -505,7 +530,7 @@ export const LOOKUP_EXAMPLE: Example = {
 };
 
 /** `/lookup` narrowed by `fields`, `limit_definitions`, `mood` and `tense`. */
-export const LOOKUP_FILTERED_EXAMPLE: Example = {
+export const LOOKUP_FILTERED_EXAMPLE: GetExample = {
   path: "lookup?q=andavano&fields=definitions,forms&limit_definitions=1&mood=indicativo&tense=imperfetto",
   status: 200,
   label: "filtered",
@@ -553,7 +578,7 @@ export const LOOKUP_FILTERED_EXAMPLE: Example = {
 };
 
 /** `/lookup` with `casa`'s translations alone, kept to English and Spanish. */
-export const LOOKUP_TRANSLATIONS_EXAMPLE: Example = {
+export const LOOKUP_TRANSLATIONS_EXAMPLE: GetExample = {
   path: "lookup?q=casa&fields=translations&lang=en,es",
   status: 200,
   label: "translations",
@@ -582,7 +607,7 @@ export const LOOKUP_TRANSLATIONS_EXAMPLE: Example = {
 };
 
 /** The not-found answer of `/lookup`, which is a result, not an error. */
-export const NOT_FOUND_EXAMPLE: Example = {
+export const NOT_FOUND_EXAMPLE: GetExample = {
   path: "lookup?q=citta",
   status: 404,
   response: { query: "citta", release_id: RELEASE, results: [], suggestions: [{ word: "città", kind: "accent" }] },
@@ -933,20 +958,28 @@ export const HEADERS: readonly { name: string; description: string }[] = [
 const WIDTH = 76;
 
 /**
- * The request an example sends, as a command, the way board 31 writes it: a
- * query as `-G` with one `--data-urlencode` per parameter, a body as `-d`,
- * then the address.
+ * The request an example sends, as a command, the way board 31 writes it. A
+ * GET's query is `-G` with one `--data-urlencode` per parameter, then the
+ * address. A POST's body is `-d`, which makes curl send a POST, then the
+ * address with any query on it: `-G` there would send a GET.
  */
-export function curlOf(example: Example, origins: SiteOrigins): string {
-  const [path, query = ""] = example.path.split("?");
-  const parameters = [...new URLSearchParams(query)];
-  const lines = [`curl ${parameters.length > 0 ? "-G " : ""}-H "X-API-Key: ${EXAMPLE_KEY}" \\`];
-  if (example.body !== undefined) {
-    lines.push(`  -H "content-type: application/json" \\`, `  -d '${JSON.stringify(example.body)}' \\`);
+export function curlOf(request: ExampleRequest, origins: SiteOrigins): string {
+  const { example } = request;
+  const query = queryOf(example);
+  const key = `-H "X-API-Key: ${EXAMPLE_KEY}" \\`;
+  if (request.method === "GET") {
+    const lines = [`curl ${query.length > 0 ? "-G " : ""}${key}`];
+    for (const [name, value] of query) lines.push(`  --data-urlencode "${name}=${value}" \\`);
+    lines.push(`  "${urlOf(example, origins)}"`);
+    return lines.join("\n");
   }
-  for (const [name, value] of parameters) lines.push(`  --data-urlencode "${name}=${value}" \\`);
-  lines.push(`  "${apiBaseOf(origins)}/${path}"`);
-  return lines.join("\n");
+  const search = query.length > 0 ? `?${new URLSearchParams(query)}` : "";
+  return [
+    `curl ${key}`,
+    `  -H "content-type: application/json" \\`,
+    `  -d '${JSON.stringify(request.example.body)}' \\`,
+    `  "${urlOf(example, origins)}${search}"`,
+  ].join("\n");
 }
 
 /**
@@ -1009,37 +1042,38 @@ const objectOf = (pairs: [string, string][]): string =>
  * The request an example sends, as JavaScript: `fetch`, then the answer's
  * JSON. It is the same request `curlOf` prints.
  */
-export function javascriptOf(example: Example, origins: SiteOrigins): string {
+export function javascriptOf(request: ExampleRequest, origins: SiteOrigins): string {
+  const { example } = request;
   const query = queryOf(example);
   const lines: string[] = [];
   if (query.length > 0) lines.push(`const params = new URLSearchParams(${objectOf(query)});`);
   const url = query.length > 0 ? `\`${urlOf(example, origins)}?\${params}\`` : JSON.stringify(urlOf(example, origins));
   lines.push(`const response = await fetch(${url}, {`);
-  if (example.body !== undefined) lines.push(`  method: "POST",`);
-  if (example.body === undefined) {
+  if (request.method === "GET") {
     lines.push(`  headers: { "X-API-Key": ${JSON.stringify(EXAMPLE_KEY)} },`);
   } else {
+    lines.push(`  method: "POST",`);
     lines.push(`  headers: { "X-API-Key": ${JSON.stringify(EXAMPLE_KEY)}, "content-type": "application/json" },`);
-    lines.push(`  body: JSON.stringify(${oneLine(example.body)}),`);
+    lines.push(`  body: JSON.stringify(${oneLine(request.example.body)}),`);
   }
   lines.push(`});`, `const data = await response.json();`);
   return lines.join("\n");
 }
 
 /** The request an example sends, as Python with `requests`. */
-export function pythonOf(example: Example, origins: SiteOrigins): string {
+export function pythonOf(request: ExampleRequest, origins: SiteOrigins): string {
+  const { example } = request;
   const query = queryOf(example);
-  const method = example.body === undefined ? "get" : "post";
-  const lines = [`import requests`, ``, `response = requests.${method}(`, `    ${JSON.stringify(urlOf(example, origins))},`];
+  const lines = [`import requests`, ``, `response = requests.${request.method.toLowerCase()}(`, `    ${JSON.stringify(urlOf(example, origins))},`];
   if (query.length > 0) lines.push(`    params=${objectOf(query)},`);
-  if (example.body !== undefined) lines.push(`    json=${oneLine(example.body)},`);
+  if (request.method === "POST") lines.push(`    json=${oneLine(request.example.body)},`);
   lines.push(`    headers={ "X-API-Key": ${JSON.stringify(EXAMPLE_KEY)} },`, `)`, `data = response.json()`);
   return lines.join("\n");
 }
 
-/** An example's request in every language the docs print. */
-export const requestsOf = (example: Example, origins: SiteOrigins): Readonly<Record<Language, string>> => ({
-  curl: curlOf(example, origins),
-  JavaScript: javascriptOf(example, origins),
-  Python: pythonOf(example, origins),
+/** An example's request in every language the docs print, each with its endpoint's method. */
+export const requestsOf = (request: ExampleRequest, origins: SiteOrigins): Readonly<Record<Language, string>> => ({
+  curl: curlOf(request, origins),
+  JavaScript: javascriptOf(request, origins),
+  Python: pythonOf(request, origins),
 });
