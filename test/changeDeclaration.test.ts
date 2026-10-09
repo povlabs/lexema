@@ -214,6 +214,11 @@ test("every declaration already in dictionary-changes parses as before, with no 
       assert.deepEqual(parseDraft(path, text).lookups?.map((item) => item.word), ["svestito", "porta", "greci", "mele"]);
       continue;
     }
+    // The meaning senses' edges (#755) name words whose edges point at the record's base word, then words whose edges are removed.
+    if (name === "2026-10-09-correct-form-of-meaning-edges.json") {
+      assert.deepEqual(parseDraft(path, text).lookups?.map((item) => item.word), ["mele", "scandinave", "fermi", "pampini", "scandinava", "andarsene"]);
+      continue;
+    }
     // The upgrade that keys corrected cells (#743) names the spellings a search now finds, and the source's it still finds.
     if (name === "2026-10-08-update-upgrade-corrected-form-key.json") {
       assert.deepEqual(

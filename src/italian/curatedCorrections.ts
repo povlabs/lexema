@@ -64,6 +64,20 @@
 // gets none, and a lookup reads it in place of the sense's own edges
 // (src/lookup/correctedEdge.ts).
 //
+// An edge may also be removed (#755). `mele`'s senses 1 to 3 gloss meanings,
+// "guance, soprattutto nei bambini:", yet carry edges to a word of their gloss,
+// `bambini`. Huey ruled on 2026-10-09
+// (https://github.com/povlabs/lexema/issues/755#issuecomment-6076090404; ADR
+// 0030's amendment of that day) that such an edge is removed, or, where the
+// record also has a real form sense, pointed at the record's own base word,
+// `mela`. Rule `it-form-of-meaning-edge/v1` (formOfMeaningEdge.ts) makes both
+// from its pinned scan (formOfMeaningEdgeEvidence.ts): a pointed edge is an
+// edge correction like v2's, whose gloss is the form sense's, and a removed
+// one an `EdgeRemoval`, which keeps the source's edge verbatim
+// (`edge.removes`) and cites the record's own page. The seed writes it as a
+// `corrected_edge` row that names no word, and a lookup reads the sense as
+// having no edge.
+//
 // The list holds a second kind (#450): a definition of a page-only entry (ADR
 // 0024) that the Wiktionary page itself states wrongly. `grufolare`'s page
 // gives the sense of *grugnire*, and `tremare`'s first sense is a fragment
@@ -94,6 +108,8 @@
 
 import { FORM_OF_GLOSS_EDGE_EVIDENCE } from "./formOfGlossEdgeEvidence.js";
 import { formOfGlossEdgeCorrections } from "./formOfGlossEdge.js";
+import { FORM_OF_MEANING_EDGE_EVIDENCE } from "./formOfMeaningEdgeEvidence.js";
+import { formOfMeaningEdgeCorrections } from "./formOfMeaningEdge.js";
 import { PLURAL_GLOSS_EVIDENCE } from "./pluralGlossEvidence.js";
 import { pluralGlossCorrections } from "./pluralGlossNumber.js";
 
@@ -198,12 +214,17 @@ export interface EdgeEvidence {
 export interface CorrectedEdge {
   /** The sense's place in the record's `senses`. */
   sense: number;
-  /** The sense's gloss that names the target after "di", verbatim: `/senses/1/glosses/0`. */
+  /**
+   * The gloss that names the target after "di", verbatim: the sense's own,
+   * `/senses/1/glosses/0`, or, for a meaning sense's edge pointed at its
+   * record's base word (#755), the record's form sense's, `/senses/0/glosses/0`.
+   */
   gloss: OverriddenText;
   /** The edge the source states on the sense, verbatim, when the correction replaces it (question 9); absent when the sense has none. */
   replaces?: OverriddenText;
   /** The word the edge names: the gloss's word after "di". */
   target: string;
+  removes?: never;
 }
 
 /**
@@ -221,6 +242,42 @@ export interface EdgeCorrection {
   entry?: never;
   cells?: never;
 }
+
+/** The `form_of` edge a correction removes from one sense, whose gloss states a meaning, not a form (ADR 0030's 2026-10-09 amendment, #755). */
+export interface RemovedEdge {
+  /** The sense's place in the record's `senses`. */
+  sense: number;
+  /** The sense's own gloss, verbatim: `/senses/3/glosses/0`, "percosse". */
+  gloss: OverriddenText;
+  /** The edge the source states on the sense, verbatim, which the correction removes: `/senses/3/form_of/0/word`, "percosse". */
+  removes: OverriddenText;
+  target?: never;
+  replaces?: never;
+}
+
+/** The page an edge removal cites: the record's own, at the revision the archive was extracted from, showing the sense's gloss. */
+export interface RemovalEvidence {
+  form: ItWiktionaryEvidence;
+  base?: never;
+}
+
+/**
+ * A sense's `form_of` edge, removed: its gloss states a meaning, so the word
+ * the edge names is not a word the record is a form of (#755). A lookup reads
+ * the sense as having no edge where the source states one. It cites the
+ * record's own page, which shows the gloss.
+ */
+export interface EdgeRemoval {
+  record: CorrectedRecord;
+  edge: RemovedEdge;
+  evidence: RemovalEvidence;
+  facts?: never;
+  entry?: never;
+  cells?: never;
+}
+
+/** A correction of one sense's `form_of` edge: one that sets it, or one that removes it. Each is one `corrected_edge` row. */
+export type SenseEdgeCorrection = EdgeCorrection | EdgeRemoval;
 
 /** The page-only entry (ADR 0024) a definition correction is keyed to: the dump's revision of its page. */
 export interface CorrectedPageEntry {
@@ -255,8 +312,8 @@ export interface DefinitionCorrection {
   cells?: never;
 }
 
-/** One entry of the curated list: a record's gender or number, cells of its table, a sense's `form_of` edge, or a page-only entry's definition. */
-export type CuratedCorrection = RecordCorrection | CellCorrection | EdgeCorrection | DefinitionCorrection;
+/** One entry of the curated list: a record's gender or number, cells of its table, a sense's `form_of` edge set or removed, or a page-only entry's definition. */
+export type CuratedCorrection = RecordCorrection | CellCorrection | EdgeCorrection | EdgeRemoval | DefinitionCorrection;
 
 /** An entry keyed to one archive line as a whole: a record's gender or number, or cells of its table. */
 export type LineCorrection = RecordCorrection | CellCorrection;
@@ -267,7 +324,11 @@ export const isDefinitionCorrection = (correction: CuratedCorrection): correctio
 export const isCellCorrection = (correction: CuratedCorrection): correction is CellCorrection =>
   correction.cells !== undefined;
 
-export const isEdgeCorrection = (correction: CuratedCorrection): correction is EdgeCorrection => correction.edge !== undefined;
+export const isEdgeCorrection = (correction: CuratedCorrection): correction is EdgeCorrection => correction.edge?.target !== undefined;
+
+export const isEdgeRemoval = (correction: CuratedCorrection): correction is EdgeRemoval => correction.edge?.removes !== undefined;
+
+const isSenseEdgeCorrection = (correction: CuratedCorrection): correction is SenseEdgeCorrection => correction.edge !== undefined;
 
 /** The entries of `corrections` that correct a record's gender or number. */
 export const recordCorrections = (corrections: readonly CuratedCorrection[]): RecordCorrection[] =>
@@ -283,6 +344,12 @@ export const lineCorrections = (corrections: readonly CuratedCorrection[]): Line
 
 /** The entries of `corrections` that set a sense's `form_of` edge. */
 export const edgeCorrections = (corrections: readonly CuratedCorrection[]): EdgeCorrection[] => corrections.filter(isEdgeCorrection);
+
+/** The entries of `corrections` that remove a sense's `form_of` edge (#755). */
+export const edgeRemovals = (corrections: readonly CuratedCorrection[]): EdgeRemoval[] => corrections.filter(isEdgeRemoval);
+
+/** The entries of `corrections` that set or remove a sense's `form_of` edge, in list order: what `corrected_edge` holds. */
+export const senseEdgeCorrections = (corrections: readonly CuratedCorrection[]): SenseEdgeCorrection[] => corrections.filter(isSenseEdgeCorrection);
 
 /** The entries of `corrections` that correct a page-only entry's definition. */
 export const definitionCorrections = (corrections: readonly CuratedCorrection[]): DefinitionCorrection[] =>
@@ -319,13 +386,13 @@ export function definitionMismatch(correction: DefinitionCorrection, entry: Page
  * A correction's id, stored on each of its rows: a record's release and
  * archive line, `it-0c432803:449969`; the same and `:cells` for cells of its
  * table, `it-0c432803:113784:cells`, so one record may carry both kinds; for
- * an edge, also its sense, `it-0c432803:77162/senses/1`; or a definition's
- * page revision and place, `page:3906191:0`.
+ * an edge set or removed, also its sense, `it-0c432803:77162/senses/1`; or
+ * a definition's page revision and place, `page:3906191:0`.
  */
 export const correctionId = (correction: CuratedCorrection): string =>
   isDefinitionCorrection(correction)
     ? `page:${correction.entry.revisionId}:${correction.replaces.index}`
-    : isEdgeCorrection(correction)
+    : isSenseEdgeCorrection(correction)
       ? `${correction.record.releaseId}:${correction.record.lineNo}/senses/${correction.edge.sense}`
       : `${correction.record.releaseId}:${correction.record.lineNo}${isCellCorrection(correction) ? ":cells" : ""}`;
 
@@ -620,11 +687,18 @@ export const HAND_CORRECTIONS: readonly CuratedCorrection[] = [
  * The committed list: the hand entries, then the corrections rule
  * `it-plural-gloss-number/v3` makes from its pinned evidence (#483, #515, #516), in archive
  * order, then the edges rule `it-form-of-gloss-edge/v2` adds or replaces
- * (#722, #733), in archive order. A record a hand entry names is never also corrected by the
- * first rule, and a sense a hand entry sets never by the second.
+ * (#722, #733), in archive order, then the meaning senses' edges rule
+ * `it-form-of-meaning-edge/v1` removes or points at the record's base word
+ * (#755), in archive order. A record a hand entry names is never also
+ * corrected by the first rule, a sense a hand entry sets never by the second,
+ * and a sense either sets never by the third.
  */
+const HAND_EDGES = edgeCorrections(HAND_CORRECTIONS);
+const GLOSS_EDGES = formOfGlossEdgeCorrections(FORM_OF_GLOSS_EDGE_EVIDENCE, HAND_EDGES);
+
 export const CURATED_CORRECTIONS: readonly CuratedCorrection[] = [
   ...HAND_CORRECTIONS,
   ...pluralGlossCorrections(PLURAL_GLOSS_EVIDENCE, recordCorrections(HAND_CORRECTIONS)),
-  ...formOfGlossEdgeCorrections(FORM_OF_GLOSS_EDGE_EVIDENCE, edgeCorrections(HAND_CORRECTIONS)),
+  ...GLOSS_EDGES,
+  ...formOfMeaningEdgeCorrections(FORM_OF_MEANING_EDGE_EVIDENCE, [...HAND_EDGES, ...GLOSS_EDGES]),
 ];

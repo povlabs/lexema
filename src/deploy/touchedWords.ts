@@ -51,13 +51,16 @@ export const wordsOfHide = (plan: HidePlan): TouchedWords => touchedWords(plan.h
 
 /**
  * `correct:records`: the word of each record and page-only entry it writes a
- * correction for, and the word each edge it writes names, whose page lists
- * the record's word among its forms.
+ * correction for, the word each edge it writes names, whose page lists the
+ * record's word among its forms, and the word each edge it replaces or
+ * removes named, whose page no longer does (#755).
  */
 export const wordsOfCorrections = (plan: CorrectionPlan): TouchedWords =>
   touchedWords([
     ...plan.entries.flatMap((entry) => (entry.state === "write" ? [entry.correction.record.word] : [])),
-    ...plan.edges.flatMap((entry) => (entry.state === "write" ? [entry.correction.record.word, entry.correction.edge.target] : [])),
+    ...plan.edges.flatMap(({ state, correction: { record, edge } }) =>
+      state !== "write" ? [] : [record.word, ...(edge.removes === undefined ? [edge.target, ...(edge.replaces === undefined ? [] : [edge.replaces.text])] : [edge.removes.text])],
+    ),
     ...plan.definitions.flatMap((definition) => (definition.state === "write" ? [definition.correction.entry.title] : [])),
   ]);
 

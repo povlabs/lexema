@@ -26,14 +26,14 @@ import {
   correctionId,
   definitionCorrections,
   definitionMismatch,
-  edgeCorrections,
+  senseEdgeCorrections,
   isCellCorrection,
   lineCorrections,
   type CellCorrection,
   type CuratedCorrection,
   type DefinitionCorrection,
   type DefinitionMismatch,
-  type EdgeCorrection,
+  type SenseEdgeCorrection,
   type LineCorrection,
   type RecordCorrection,
 } from "../italian/curatedCorrections.js";
@@ -62,15 +62,15 @@ const isFormWrite = (entry: Write): entry is Write & { correction: CellCorrectio
 
 /** What a run does with one edge entry of the list. */
 export type PlannedEdgeCorrection =
-  | { state: "write"; correction: EdgeCorrection; recordId: number }
-  | { state: "already"; correction: EdgeCorrection; recordId: number }
+  | { state: "write"; correction: SenseEdgeCorrection; recordId: number }
+  | { state: "already"; correction: SenseEdgeCorrection; recordId: number }
   /** A later release's change replaced the record: reported, never carried over. */
-  | { state: "retired"; correction: EdgeCorrection; recordId: number; replacedBy: { recordId: number; changeId: string } }
+  | { state: "retired"; correction: SenseEdgeCorrection; recordId: number; replacedBy: { recordId: number; changeId: string } }
   /** The record is hidden (ADR 0023): it declares no edge, and no correction gives it one. */
-  | { state: "hidden"; correction: EdgeCorrection; recordId: number }
-  | { state: "not-in-master"; correction: EdgeCorrection; why: "no-record-at-line" | "line-digest-differs" }
+  | { state: "hidden"; correction: SenseEdgeCorrection; recordId: number }
+  | { state: "not-in-master"; correction: SenseEdgeCorrection; why: "no-record-at-line" | "line-digest-differs" }
   /** Keyed to a release this master was not seeded from. */
-  | { state: "other-release"; correction: EdgeCorrection };
+  | { state: "other-release"; correction: SenseEdgeCorrection };
 
 /** What a run does with one definition entry of the list. */
 export type PlannedDefinitionCorrection =
@@ -130,7 +130,7 @@ export function planCorrections(reader: MasterReader, corrections: readonly Cura
   const master = readMasterRelease(reader);
   const tables = tablesIn(reader, ["corrected_claim", "corrected_form", "corrected_edge", "corrected_definition", "hidden_record", ...PAGE_ENTRY_TABLES]);
   const records = lineCorrections(corrections);
-  const edgeEntries = edgeCorrections(corrections);
+  const edgeEntries = senseEdgeCorrections(corrections);
   const keyed = recordsAt(reader, master, [...records, ...edgeEntries].filter((correction) => correction.record.releaseId === master.releaseId).map((correction) => correction.record.lineNo), tables);
   const entries = planRecords(reader, master.releaseId, keyed, records, tables);
   const edges = planEdges(reader, master.releaseId, keyed, edgeEntries, tables);
@@ -248,7 +248,7 @@ function recordsAt(reader: MasterReader, master: ReturnType<typeof readMasterRel
 
 /** Where `correction`'s record stands in the master, before what it holds of the correction is read. */
 function standing(
-  correction: LineCorrection | EdgeCorrection,
+  correction: LineCorrection | SenseEdgeCorrection,
   releaseId: string,
   keyed: KeyedRecords,
 ):
@@ -316,7 +316,7 @@ function planEdges(
   reader: MasterReader,
   releaseId: string,
   keyed: KeyedRecords,
-  corrections: readonly EdgeCorrection[],
+  corrections: readonly SenseEdgeCorrection[],
   tables: ReadonlySet<string>,
 ): PlannedEdgeCorrection[] {
   const ids = [...keyed.atLine.values()].map((row) => row.record_id);

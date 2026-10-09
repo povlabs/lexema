@@ -762,6 +762,11 @@ CREATE INDEX corrected_form_by_key
 -- (`json_pointer`, `evidence_url`), and the target's, whose forms table lists
 -- the word (`base_evidence_url`). form_of_edge and source_record_json
 -- stay as imported; a lookup reads this row in place of the sense's own edges.
+-- A row may also remove the sense's edges (#755): `mele`'s sense 3 glosses a
+-- meaning, "percosse", and the source's edge to `percosse` names no word mele
+-- is a form of. Such a row names no word (`target_word`, `target_word_key`
+-- and `base_evidence_url` are NULL together), cites the record's own page,
+-- which shows that gloss, and a lookup reads the sense as having no edge.
 -- A hidden record gets none (ADR 0023). A row stays on the record it was
 -- written for, as corrected_claim's: when a later release's change retires
 -- that record, or a hiding rule hides it after, the row and its evidence stay
@@ -771,19 +776,23 @@ CREATE TABLE corrected_edge (
   record_id         INTEGER NOT NULL REFERENCES source_record(record_id) ON DELETE CASCADE,
   release_id        TEXT    NOT NULL,
   sense_index       INTEGER NOT NULL CHECK (sense_index >= 0),
-  -- The sense's gloss that names the target: '/senses/0/glosses/0'. The source
-  -- states no edge to point at, so the edge points at what it was read from.
+  -- The gloss that names the target: '/senses/0/glosses/0', the sense's own
+  -- or its record's form sense's (#755). The source states no edge to point
+  -- at, so the edge points at what it was read from. A removal points at the
+  -- sense's own gloss, the meaning that names no form.
   json_pointer      TEXT    NOT NULL,
-  target_word       TEXT    NOT NULL, -- verbatim, as the gloss writes it
-  target_word_key   TEXT    NOT NULL, -- release's normalizer applied to target_word
+  target_word       TEXT,             -- verbatim, as the gloss writes it; NULL when the row removes the edge
+  target_word_key   TEXT,             -- release's normalizer applied to target_word
   -- The list entry it was written from: release, archive line and sense, `it-0c432803:77162/senses/1`.
   correction_id     TEXT    NOT NULL,
   -- The record's own page and the target's page, each as a permanent link to
   -- its revision. Each CHECK is two GLOBs, as corrected_claim's (#489).
   evidence_url      TEXT    NOT NULL CHECK (evidence_url GLOB 'https://*'
                                             AND evidence_url GLOB '*.wiktionary.org/w/index.php?title=*&oldid=*'),
-  base_evidence_url TEXT    NOT NULL CHECK (base_evidence_url GLOB 'https://*'
+  base_evidence_url TEXT             CHECK (base_evidence_url GLOB 'https://*'
                                             AND base_evidence_url GLOB '*.wiktionary.org/w/index.php?title=*&oldid=*'),
+  -- A row sets an edge, with its word, key and target's page, or removes it, with none of them.
+  CHECK ((target_word IS NULL) = (target_word_key IS NULL) AND (target_word IS NULL) = (base_evidence_url IS NULL)),
   PRIMARY KEY (record_id, sense_index),
   FOREIGN KEY (record_id, release_id)
     REFERENCES source_record(record_id, release_id) ON DELETE CASCADE

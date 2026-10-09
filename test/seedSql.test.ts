@@ -307,12 +307,13 @@ test("the fifty-word dev seed is one part with the same rows", async () => {
       sense: 1776, sense_gloss: 1760, sense_label: 857, grammar_claim: 48170,
       raw_page: 20, recovered_definition: 10, recovered_label: 6, recovered_example: 7, hidden_record: 0,
       // The curated corrections whose lines the fixture holds, keyed to its
-      // own (#742): seven records' gender or number and 86 senses' edges, 8 of
-      // them replacing an edge that names another word (#733). The
+      // own (#742): seven records' gender or number and 99 senses' edges, 8 of
+      // them replacing an edge that names another word (#733), and 13 meaning
+      // senses' (#755): 12 removed, and `fermi`'s pointed at `fermo`. The
       // one table-cell entry's line, `assorbire`'s, is not in the fixture.
       corrected_claim: 7,
       corrected_form: 0,
-      corrected_edge: 86,
+      corrected_edge: 99,
       // Only the fixture pages on the committed list of it-0c432803's
       // record-less titles are page-only candidates (#499): 20 of them, of
       // which 17 recover (`lungo` as two entries), `grufolare` and `tremare`
@@ -339,12 +340,12 @@ test("the dev seed writes the committed corrections the fixture holds, keyed to 
   try {
     const { held, leftOut } = devCorrections;
     const keyed = held.filter((correction) => correction.record !== undefined);
-    assert.equal(keyed.length, 93);
+    assert.equal(keyed.length, 106);
     // Entries whose archive lines the fixture does not carry, `fissazione`'s and `assorbire`'s among them.
     const leftOutWords = new Set(leftOut.map((correction) => correction.record?.word));
     for (const word of ["fissazione", "assorbire"]) assert.ok(leftOutWords.has(word), word);
     const report = await devSeed(join(dir, "sql"));
-    assert.deepEqual(report.corrections, { keyed: 93, applied: 93, unapplied: [] });
+    assert.deepEqual(report.corrections, { keyed: 106, applied: 106, unapplied: [] });
     const db = openSeed(report.parts, ":memory:");
     try {
       const edges = db.prepare(
@@ -359,9 +360,15 @@ test("the dev seed writes the committed corrections the fixture holds, keyed to 
         { word: "parti", sense_index: 2, target_word: "parto", correction_id: idOf("parti", 2) },
       ]);
       assert.match(idOf("costruttori", 0), /^it-dev:\d+\/senses\/0$/);
+      // A removed edge (#755) is a row that names no word: `basilica`'s "vena principale dell'avambraccio".
+      assert.deepEqual(
+        db.prepare(`SELECT e.sense_index, e.json_pointer, e.target_word, e.target_word_key, e.base_evidence_url FROM corrected_edge e
+                      JOIN source_record r ON r.record_id = e.record_id WHERE r.word = 'basilica'`).all().map((row) => ({ ...row })),
+        [{ sense_index: 0, json_pointer: "/senses/0/glosses/0", target_word: null, target_word_key: null, base_evidence_url: null }],
+      );
       // Every row is keyed to the fixture; no entry left out reaches the SQL.
       const ids = db.prepare("SELECT correction_id AS id FROM corrected_edge UNION ALL SELECT correction_id FROM corrected_claim").all().map((row) => row.id as string);
-      assert.equal(ids.length, 93);
+      assert.equal(ids.length, 106);
       assert.ok(ids.every((id) => id.startsWith("it-dev:")), ids.join(", "));
     } finally { db.close(); }
   } finally { await rm(dir, { recursive: true, force: true }); }

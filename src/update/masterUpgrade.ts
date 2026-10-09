@@ -16,7 +16,9 @@
 // `hidden_record` written before `form-of-foreign-lemma/v1` (#389), which
 // lacks `lemma_line` and cannot hold that rule's rows. So is `corrected_form`
 // (#743): one from before `surface_key` is rebuilt with each row keyed by the
-// release's normalizer, which the plan applies, since SQL cannot.
+// release's normalizer, which the plan applies, since SQL cannot. So is
+// `corrected_edge` (#755): one from before an edge could be removed has a
+// target on every row, and is rebuilt with its rows so a row may name none.
 //
 // The serving views are held to their schema.sql definition too (#525): when
 // one a dictionary stores differs, the upgrade replaces the views
@@ -93,6 +95,7 @@ export const REBUILT_GROUPS = [
   { tables: RECOVERED_TABLES, indexes: RECOVERED_INDEXES },
   { tables: ["hidden_record"], indexes: [] },
   { tables: ["corrected_form"], indexes: ["corrected_form_by_key"] },
+  { tables: ["corrected_edge"], indexes: ["corrected_edge_by_target"] },
 ] as const satisfies readonly { tables: readonly string[]; indexes: readonly string[] }[];
 
 /** A table the upgrade may rebuild. */
@@ -101,7 +104,7 @@ export type RebuiltTable = (typeof REBUILT_GROUPS)[number]["tables"][number];
 /**
  * Every table the upgrade may rebuild: the page-entry tables,
  * `corrected_definition`, `recovered_definition`, `recovered_label`,
- * `recovered_example`, `hidden_record` and `corrected_form`.
+ * `recovered_example`, `hidden_record`, `corrected_form` and `corrected_edge`.
  */
 export const REBUILT_TABLES: readonly RebuiltTable[] = REBUILT_GROUPS.flatMap((group) => group.tables);
 

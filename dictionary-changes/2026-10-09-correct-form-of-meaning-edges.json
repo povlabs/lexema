@@ -1,0 +1,17 @@
+{
+  "command": "correct:records",
+  "inputs": {},
+  "lookups": [
+    { "word": "mele", "gloss": "guance, soprattutto nei bambini" },
+    { "word": "scandinave", "gloss": "relative alla Scandinavia" },
+    { "word": "fermi", "gloss": "un metro diviso un milione di miliardi" },
+    { "word": "pampini", "gloss": "viti" },
+    { "word": "scandinava", "gloss": "relativa alla Scandinavia" },
+    { "word": "andarsene", "gloss": "morire" }
+  ],
+  "expected": {
+    "records": { "added": 0, "changed": 467, "removed": 0 },
+    "written": { "corrected_edge": 599, "correction_version": 1 },
+    "deleted": {}
+  }
+}
