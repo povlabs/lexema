@@ -810,10 +810,12 @@ CREATE INDEX corrected_edge_by_target
 -- its wikitext and text; the seed and `correct:records` write the row only
 -- where the record's recovered definition at that line is the one it quotes.
 -- recovered_definition, its labels and the raw page stay as imported; a
--- lookup reads the record as having no definition at `page_line`. The row
--- keys the recovered definition by its record and page line, not its id, so
--- it follows the definition onto the record that replaced its own, where a
--- lookup still reads it (src/lookup/recovered.ts). Absent on a master seeded
+-- lookup reads the record as having no definition at `page_line`. The hide
+-- takes effect only on the record it names: a lookup that reads the recovered
+-- definition for a record that replaced that one shows it there, and the
+-- update reports the hide instead of carrying it over; hiding it on the
+-- replacing record is a new ruling (ADR 0027, src/lookup/lookup.ts,
+-- src/update/apply.ts). Absent on a master seeded
 -- before it until `update:upgrade` creates it; a lookup reads an absent one
 -- as empty.
 CREATE TABLE hidden_recovered_definition (
