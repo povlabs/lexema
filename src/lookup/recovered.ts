@@ -35,7 +35,11 @@ interface RecoveredLeadIn {
 export type StoredRecovered = {
   id: number;
   definition: RecoveredDefinition;
-  /** A curated correction hides it (`hidden_recovered_definition`): it states no dictionary word. */
+  /**
+   * A curated correction hides it (`hidden_recovered_definition`): it states no
+   * dictionary word. Only on the record it was recovered for; read for a record
+   * that replaced that one, it is shown (ADR 0027).
+   */
   hidden: boolean;
 } & (
   | {

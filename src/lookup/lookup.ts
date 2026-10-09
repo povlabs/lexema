@@ -1712,13 +1712,16 @@ async function readReviews(db: LookupDatabase, recordId: number): Promise<Review
  * replaced, under one of that record's senses, also carries that sense's
  * glosses off its line (`replaced_glosses`), which is how its lead-in is found
  * again. Each row says whether a curated correction hides it (#773), where the
- * master has `hidden_recovered_definition`: one probe of its key.
+ * master has `hidden_recovered_definition`: one probe of its key. A hide takes
+ * effect only on the record it names: read for a record that replaced that
+ * one, the definition is shown, as no correction is carried onto a replacing
+ * record (ADR 0027) and the update reports it.
  */
 const recoveredRead = (hides: boolean): KeyedRead =>
   keyedRead(`SELECT l.set_key AS set_key, d.recovered_id, d.record_id, d.route, d.term, d.page_line, d.text, d.held_as_example,
             d.lead_in_sense_index, d.lead_in_recovered_id, p.wiki, p.title, p.revision_id,
             h.release_id, h.line_no, h.line_sha256,
-            ${hides ? "EXISTS (SELECT 1 FROM hidden_recovered_definition hr WHERE hr.record_id = d.record_id AND hr.page_line = d.page_line)" : "0"} AS hidden,
+            ${hides ? "(d.record_id = l.set_key AND EXISTS (SELECT 1 FROM hidden_recovered_definition hr WHERE hr.record_id = d.record_id AND hr.page_line = d.page_line))" : "0"} AS hidden,
             (SELECT json_group_array(json_array(x.label_index, x.label))
                FROM recovered_label x WHERE x.recovered_id = d.recovered_id) AS labels_json,
             (SELECT json_group_array(json_array(x.example_index, x.page_line, x.text))

@@ -121,7 +121,9 @@
 // definition (`placeRecovered` in src/lookup/recovered.ts). The
 // `recovered_definition` row and its labels stay as the rule wrote them. A
 // line read from another revision, another text, or no longer read at all
-// does not get it: the seed and the run report it instead (ADR 0025).
+// does not get it: the seed and the run report it instead (ADR 0025). Like
+// every correction, it is not carried onto a record that replaces its record:
+// the replacing record shows the definition, and the update reports the hide.
 
 import { FORM_OF_GLOSS_EDGE_EVIDENCE } from "./formOfGlossEdgeEvidence.js";
 import { formOfGlossEdgeCorrections } from "./formOfGlossEdge.js";

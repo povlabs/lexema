@@ -23,10 +23,8 @@
 // the revision it names, quoting its definition; an entry read from another
 // revision, or none, is reported the same way (ADR 0025). So is a hide whose
 // record's recovered definition at its line is not the one it quotes, from
-// the revision it cites. A hide keys that definition, not the record's facts,
-// so it is written on a record a later release replaced too: the definition
-// stays beside it and is still read for the replacing record
-// (src/lookup/recovered.ts).
+// the revision it cites, and a hide whose record a later release replaced, as
+// for a record entry: the replacing record does not take it (ADR 0027).
 //
 // It also writes the hand-kept readings (src/italian/handKeptReadings.ts, ADR
 // 0031, #745), which key to no record: each reading the master does not hold
@@ -102,6 +100,8 @@ export type PlannedHide =
   | { state: "already"; correction: RecoveredDefinitionHide; recordId: number }
   /** The master holds no record at its line, another line there, or not the recovered definition it quotes: reported, never applied. */
   | { state: "not-in-master"; correction: RecoveredDefinitionHide; why: "no-record-at-line" | "line-digest-differs" | HideMismatch }
+  /** A later release's change replaced the record: reported, never carried over. */
+  | { state: "retired"; correction: RecoveredDefinitionHide; recordId: number; replacedBy: { recordId: number; changeId: string } }
   /** Keyed to a release this master was not seeded from. */
   | { state: "other-release"; correction: RecoveredDefinitionHide };
 
@@ -459,8 +459,7 @@ function planHides(
   const held = tables.has("hidden_recovered_definition") && ids.length > 0 ? heldHides(reader, ids) : new Map<string, string>();
   return corrections.map((correction): PlannedHide => {
     const stands = standing(correction, releaseId, keyed);
-    if (stands.state === "other-release" || stands.state === "not-in-master") return { ...stands, correction };
-    // A retired record's recovered definitions are read for the record that replaced it, so its hide stands.
+    if (stands.state !== "served") return { ...stands, correction };
     const { recordId } = stands;
     const mismatch = hideMismatch(correction, recovered.get(recordId) ?? []);
     if (mismatch !== undefined) return { state: "not-in-master", correction, why: mismatch };
@@ -620,6 +619,8 @@ export function describeHide(entry: PlannedHide): string {
       return `${head} (record ${entry.recordId}): written`;
     case "already":
       return `${head} (record ${entry.recordId}): already written`;
+    case "retired":
+      return `${head} (record ${entry.recordId}): not written; change ${entry.replacedBy.changeId} replaced the record with record ${entry.replacedBy.recordId}, which the hide does not reach. Check the newer record against the entry's evidence.`;
     case "other-release":
       return `${head}: keyed to ${record.releaseId}, not this master`;
     case "not-in-master":

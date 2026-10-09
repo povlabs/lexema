@@ -51,7 +51,7 @@ import { planOnlyRun } from "../src/update/planOnly.js";
 import { executeApply, main as updateMain, masterReaderOf } from "../src/update/updateCli.js";
 import { localD1 } from "./localD1.js";
 import { planCorrections } from "../src/import/correctRecords.js";
-import type { CuratedCorrection } from "../src/italian/curatedCorrections.js";
+import { correctionId, type CuratedCorrection } from "../src/italian/curatedCorrections.js";
 
 const MASTER = "it-master";
 const SCHEMA = "src/db/schema.sql";
@@ -1001,5 +1001,38 @@ test("a corrected edge stays on the record a change retires, no lookup lists tha
     const again = planCorrections(readerOf(db), [casa]);
     assert.equal(again.sql, "");
     assert.deepEqual(again.edges.map((entry) => entry.state), ["retired"]);
+  });
+});
+
+test("a hidden recovered definition is not hidden for the record that replaced its record, and the apply reports the hide (#773, ADR 0027)", async () => {
+  await withDesk(async ({ db, later }) => {
+    const [{ record_id: casaId }] = db.prepare(`SELECT record_id FROM source_record WHERE release_id = '${MASTER}' AND line_no = 1`).all() as { record_id: number }[];
+    // A synthetic entry on the master's `casa` recovered line 7, to test the mechanism; no ruling hides it.
+    const casa: CuratedCorrection = {
+      record: { releaseId: MASTER, lineNo: 1, lineSha256: createHash("sha256").update(CASA_JULY, "utf8").digest("hex"), word: "casa", pos: "noun" },
+      hides: { line: 7, wikitext: "#* edificio", text: "edificio" },
+      evidence: {
+        page: { wiki: "it.wiktionary.org", title: "casa", revisionId: 123 },
+        ruling: "https://github.com/povlabs/lexema/issues/773#issuecomment-1",
+      },
+    };
+    execute(db, planCorrections(readerOf(db), [casa]).sql);
+    const held = () => db.prepare("SELECT record_id, page_line, correction_id, evidence_url FROM hidden_recovered_definition").all().map((row) => ({ ...row }));
+    const before = held();
+    assert.deepEqual(before.map((row) => row.record_id), [casaId]);
+    const recovered = async (): Promise<string[]> => readings(await ask(db, "casa")).flatMap((reading) => everyRecovered(reading).map((item) => item.text));
+    assert.deepEqual(await recovered(), []);
+
+    const plan = await applied(db, later, [["changed", "casa"]]);
+    const [change] = plan.changes;
+    assert.deepEqual(plan.retiredCorrections, [{ correctionId: correctionId(casa), recordId: casaId, replacedBy: change.recordId, changeId: change.change.id }]);
+    assert.doesNotMatch(plan.sql, /hidden_recovered_definition/);
+    // The row and its evidence stay beside the retired record, and the replacing record does not take the hide: its page shows the line again.
+    assert.deepEqual(held(), before);
+    assert.deepEqual(await recovered(), ["edificio"]);
+    // A later run reports the entry instead of writing it.
+    const again = planCorrections(readerOf(db), [casa]);
+    assert.equal(again.sql, "");
+    assert.deepEqual(again.hides.map((entry) => entry.state), ["retired"]);
   });
 });
