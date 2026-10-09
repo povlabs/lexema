@@ -510,11 +510,6 @@ export type LemmaDefinitions = Pick<ReadingFacts, "senses" | "recovered">;
  */
 export type LemmaTarget = LemmaCandidate & {
   /**
-   * The lemma record's own expressions (#213). No word page shows them since
-   * #700: a form's page shows none of its base word's (rule 3 of #695).
-   */
-  expressions: Expression[];
-  /**
    * The verb record's own definitions, for a verb a verb form record about the
    * query names, once a page has read them (`withVerbDefinitions`,
    * src/lookup/lookup.ts); absent for every other lemma, and from the lookup.

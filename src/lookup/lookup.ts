@@ -24,7 +24,6 @@ import { correctRecordClaims, pluralDeclaration, sourcePointerOf, sourceTagsOf }
 import type {
   ArchiveClaim,
   Evidence,
-  Expression,
   FoundResult,
   FoundRoute,
   Grammar,
@@ -444,9 +443,9 @@ async function found(
     return table;
   };
 
-  // A record's verbatim line, read once whether it is a reading, a lemma a
-  // link names, or both. Every matched record is one or the other, so each
-  // line is read now, beside the links (#393).
+  // A record's verbatim line, read once. Whether a matched record stays a
+  // reading is known only once the links are read, so each line is read now,
+  // beside the links (#393).
   const records = new Map<number, Promise<RecordLine>>();
   const recordOf = (recordId: number): Promise<RecordLine> => {
     let record = records.get(recordId);
@@ -477,9 +476,6 @@ async function found(
   const anyAbout = groups.some(isAbout);
   for (const group of groups) if (isAbout(group) || !anyAbout) readsOf(group);
 
-  // The lines of the lemmas each record's links name, read beside the links,
-  // so a lemma's expressions wait on nothing the links wait on.
-  const lemmaLines = handled(readLemmaLines(db, releaseId, groups.map((group) => group[0].record_id), edges));
   const declared = new Map(
     await Promise.all(
       groups.map(async (group) => {
@@ -488,7 +484,6 @@ async function found(
       }),
     ),
   );
-  for (const [recordId, line] of await lemmaLines) if (!records.has(recordId)) records.set(recordId, Promise.resolve(line));
 
   // The lemmas the readings about the query point to. A record the query
   // matched only through its table, and that is one of these, is that
@@ -511,18 +506,6 @@ async function found(
     forms: (await tableOf(group)).forms,
     evidence,
   });
-
-  // A lemma's own expressions, read once per record however many links name it.
-  const lemmaExpressions = new Map<number, Promise<Expression[]>>();
-  const expressionsOf = (candidate: LemmaCandidate): Promise<Expression[]> => {
-    if (candidate.recordId === undefined) return Promise.resolve([]);
-    let expressions = lemmaExpressions.get(candidate.recordId);
-    if (expressions === undefined) {
-      expressions = readRecordExpressions(db, releaseId, recordOf(candidate.recordId), (pointer) => ({ ...candidate.ref, jsonPointer: pointer }));
-      lemmaExpressions.set(candidate.recordId, expressions);
-    }
-    return expressions;
-  };
 
   // A verb's whole table, read once per record, for a verb form about the
   // query that names it when its table lists nothing the query hit (`andare`
@@ -547,21 +530,16 @@ async function found(
         if (link.kind === "dangling") {
           const entries = await pages.candidates(link.targetWord);
           if (entries.length === 0) return link;
-          return { ...link, kind: "candidates", candidates: entries.map((entry) => ({ ...entry, listing: undefined, expressions: [] })) };
+          return { ...link, kind: "candidates", candidates: entries.map((entry) => ({ ...entry, listing: undefined })) };
         }
         const candidates = await Promise.all(
           link.candidates.map(async (candidate): Promise<LemmaTarget> => {
             const { recordId } = candidate;
             const listed = recordId === undefined ? undefined : listedAt(recordId);
-            if (listed !== undefined) {
-              const [listing, expressions] = await Promise.all([listingOf(listed), expressionsOf(candidate)]);
-              return { ...candidate, listing, expressions };
-            }
-            const [unlisted, expressions] = await Promise.all([
-              verbForm && recordId !== undefined && candidate.pos === "verb" ? unlistedOf({ ...candidate, recordId }) : undefined,
-              expressionsOf(candidate),
-            ]);
-            return unlisted === undefined ? { ...candidate, listing: undefined, expressions } : { ...candidate, listing: undefined, expressions, unlisted };
+            if (listed !== undefined) return { ...candidate, listing: await listingOf(listed) };
+            const unlisted =
+              verbForm && recordId !== undefined && candidate.pos === "verb" ? await unlistedOf({ ...candidate, recordId }) : undefined;
+            return unlisted === undefined ? { ...candidate, listing: undefined } : { ...candidate, listing: undefined, unlisted };
           }),
         );
         return { ...link, candidates };
@@ -909,16 +887,6 @@ async function buildReading(
   };
 }
 
-/** A record's expressions, off its own archive line: a lemma's, which is not a reading. */
-async function readRecordExpressions(
-  db: LookupDatabase,
-  releaseId: string,
-  record: Promise<RecordLine>,
-  ref: (pointer: string) => SourceRef,
-): Promise<Expression[]> {
-  return readExpressions(db, releaseId, readSourceRecord((await record).rawJson, ref).expressionItems);
-}
-
 /**
  * The readings, each verb that a verb form record about the query names given
  * its own definitions, so the verb's block can list them as its *Definitions*
@@ -991,8 +959,8 @@ interface RecordLine {
 
 /**
  * Records' section titles and verbatim lines. The line is read once per record
- * that is a returned reading or a lemma a reading names (for its expressions,
- * #213), and never for any other record: the table is split off for exactly that.
+ * that is a returned reading, and never for any other record: the table is
+ * split off for exactly that.
  */
 export const RECORD_LINE_SQL: KeyedRead = keyedRead(`SELECT r.record_id AS set_key, r.pos_title, j.raw_json
        FROM source_record r
@@ -1065,47 +1033,6 @@ export async function partsOfSpeech(
       return [recordId, readingPartOfSpeech(pos, word, grammar.record, formsOf(formsOfRecord.get(recordId) ?? [], ref, grammar), pronunciations)];
     }),
   );
-}
-
-/**
- * The lines of every headword record the `form_of` edges of the records bound
- * at `?1` name: the candidates `LEMMA_LINK_SQL` reads, each once per record
- * that names it, however many of its edges do. Read beside the links, so a
- * lemma's expressions are one wait after them, not two (#393).
- */
-export const LEMMA_LINE_SQL: KeyedRead = keyedRead(`SELECT c.set_key AS set_key, c.record_id, r.pos_title, j.raw_json
-       FROM (SELECT DISTINCT e.record_id AS set_key, lf.record_id
-               FROM form_of_edge e
-               JOIN lookup_form lf
-                 ON lf.release_id IN (${servedBy("?2")})
-                AND lf.surface_key = e.target_word_key
-                AND lf.origin = 'headword'
-              WHERE e.record_id IN (SELECT value FROM json_each(?1)) AND e.release_id IN (${servedBy("?2")})) c
-       JOIN source_record r ON r.record_id = c.record_id
-       JOIN source_record_json j ON j.record_id = c.record_id`);
-
-/** The headword records an edge table's rows on the records at `?1` name, for `LEMMA_LINE_SQL`'s corrected form. */
-const lemmaLineArm = (edges: "form_of_edge" | "corrected_edge"): string => `SELECT e.record_id AS set_key, lf.record_id
-               FROM ${edges} e
-               JOIN lookup_form lf
-                 ON lf.release_id IN (${servedBy("?2")})
-                AND lf.surface_key = e.target_word_key
-                AND lf.origin = 'headword'
-              WHERE e.record_id IN (SELECT value FROM json_each(?1)) AND e.release_id IN (${servedBy("?2")})
-                AND ${edges === "form_of_edge" ? sourceEdgeServed("e") : correctedEdgeServed("e")}`;
-
-/** `LEMMA_LINE_SQL` on a master with corrected edges: each sense's corrected edge in place of its own (src/lookup/correctedEdge.ts). */
-export const CORRECTED_LEMMA_LINE_SQL: KeyedRead = keyedRead(`SELECT c.set_key AS set_key, c.record_id, r.pos_title, j.raw_json
-       FROM (${lemmaLineArm("form_of_edge")}
-             UNION
-             ${lemmaLineArm("corrected_edge")}) c
-       JOIN source_record r ON r.record_id = c.record_id
-       JOIN source_record_json j ON j.record_id = c.record_id`);
-
-/** The lines of the lemmas the links of `recordIds` name, by lemma record. */
-async function readLemmaLines(db: LookupDatabase, releaseId: string, recordIds: readonly number[], edges: boolean): Promise<Map<number, RecordLine>> {
-  const rows = await readKeys<{ record_id: number; pos_title: string; raw_json: string }>(db, edges ? CORRECTED_LEMMA_LINE_SQL : LEMMA_LINE_SQL, recordIds, [releaseId]);
-  return new Map(rows.map((row) => [row.record_id, { posTitle: row.pos_title, rawJson: row.raw_json }]));
 }
 
 /** A record's senses as the database holds them: each gloss, and each label. */
