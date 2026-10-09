@@ -6,8 +6,7 @@ import { IT_NORMALIZER_VERSION, normalizeItalianExact } from "../italian/normali
 import { shownGloss } from "../italian/headwordEcho.js";
 import { recordGlosses, type RecordGloss } from "../italian/recovery.js";
 import { readPluralGloss, type PluralGlossGender } from "../italian/pluralGloss.js";
-import { agreesWithArticle, readingPartOfSpeech } from "./articles.js";
-import { articleQuery, type QueryArticle } from "../italian/articleQuery.js";
+import { readingPartOfSpeech } from "./articles.js";
 import { keyedRead, readKeys, type DictionaryRead, type KeyedRead, type LookupDatabase } from "./database.js";
 import { phraseForms, phraseMatches } from "./phrase.js";
 import { handKeptReadingsOf } from "./handKept.js";
@@ -196,20 +195,12 @@ export async function exists({ db, releaseId, query }: LookupOptions): Promise<E
   if (prepared.outcome === "rejected") return prepared;
   const [first] = prepared.probed;
   const { key } = prepared.query;
-  /** The record of the first row spelling `spelled`, `row` being the source's first, as `spelledResult` reads them. */
-  const spelledWord = async (spelled: string, row: HitRow | undefined): Promise<string | undefined> =>
-    row?.record_word ?? (await correctedCellHits(db, releaseId, spelled, tables))[0]?.record_word ?? (await pages.candidates(spelled))[0]?.word;
-  const articleWord = async (): Promise<string | undefined> => {
-    const article = articleQuery(key);
-    if (article === undefined) return undefined;
-    const [row] = await queryAll<HitRow>(db, `${SEARCH_SQL}\n      LIMIT 1`, releaseId, article.word);
-    return spelledWord(article.word, row);
-  };
   const word =
-    (await spelledWord(key, first)) ??
+    first?.record_word ??
+    (await correctedCellHits(db, releaseId, key, tables))[0]?.record_word ??
+    (await pages.candidates(key))[0]?.word ??
     (await phraseHits(db, releaseId, tables, key))?.hits[0].record_word ??
-    (await agreementHits(db, releaseId, key, tables))?.hits[0].record_word ??
-    (await articleWord());
+    (await agreementHits(db, releaseId, key, tables))?.hits[0].record_word;
   return word === undefined
     ? { outcome: "absent", query: prepared.query, release: prepared.release }
     : { outcome: "present", query: prepared.query, release: prepared.release, word };
@@ -276,18 +267,8 @@ export async function lookup({ db, releaseId, query }: LookupOptions): Promise<L
   // spellings one cell holds, `mi sono arreso` of `mi sono arreso, arresosi`
   // (#676).
   const agreement = await agreementHits(db, releaseId, key, tables);
-  if (agreement !== undefined) {
-    return found(db, releaseId, pages, queryInfo, release, agreement.hits, agreement.route, corrected, edges, agreement.tables);
-  }
-
-  // Nor a compound form. It may be a word typed with its article, `una
-  // macchina` or `l'acqua` (#738): the word's readings, as a search for the
-  // word finds them, the readings the article agrees with first.
-  const article = articleQuery(key);
-  if (article === undefined) return { outcome: "not-found", query: queryInfo, release };
-  const word = await spelledResult(asTyped, article.word, await queryAll<HitRow>(db, SEARCH_SQL, releaseId, article.word));
-  if (word === undefined) return { outcome: "not-found", query: queryInfo, release };
-  return { ...word, route: { kind: "article", query: article }, readings: articleFirst(word.readings, article.article) };
+  if (agreement === undefined) return { outcome: "not-found", query: queryInfo, release };
+  return found(db, releaseId, pages, queryInfo, release, agreement.hits, agreement.route, corrected, edges, agreement.tables);
 }
 
 /** What `spelledResult` reads with: the lookup's database, release and tables, and the query as typed. */
@@ -326,21 +307,6 @@ async function spelledResult({ db, releaseId, pages, query, release, tables }: S
   const [page, ...otherPages] = read;
   if (page !== undefined) return { outcome: "found", query, release, route: { kind: "surface" }, readings: [page, ...otherPages] };
   return undefined;
-}
-
-/**
- * The readings, those whose own articles include `article` first (rule
- * `it-article-query/v1`, `agreesWithArticle`), each part otherwise in the
- * order it had. Nothing is dropped: `un macchina` still opens macchina.
- */
-function articleFirst(readings: readonly [Reading, ...Reading[]], article: QueryArticle): [Reading, ...Reading[]] {
-  const [first, ...rest] = [
-    ...readings.filter((reading) => agreesWithArticle(reading, article)),
-    ...readings.filter((reading) => !agreesWithArticle(reading, article)),
-  ];
-  // Every reading is in one of the two parts, and there is at least one.
-  if (first === undefined) throw new Error("no reading to order by its article");
-  return [first, ...rest];
 }
 
 /**

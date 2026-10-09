@@ -150,68 +150,6 @@ test("sale answers every candidate the lookup returns: the salt noun, sala and s
   assert.deepEqual(body.results[1].match.grammar, [{ gender: "femminile", number: "plurale" }]);
 });
 
-test("una macchina answers macchina's candidates, and la porta porta's with the noun first (#738)", async () => {
-  // Verbatim release lines (test/articleLookup.test.ts names them), seeded under this file's release.
-  const seedDir = await mkdtemp(join(tmpdir(), "lexema-api-article-"));
-  const articles = new DatabaseSync(":memory:");
-  try {
-    const archive = join(seedDir, "article-query.jsonl.gz");
-    await writeFile(archive, gzipSync(await readFile(join(REPO, "fixtures/article-query.jsonl"))));
-    const { parts } = await seedSql({
-      input: archive,
-      outputDir: join(seedDir, "sql"),
-      schema: join(REPO, "src/db/schema.sql"),
-      releaseId: RELEASE,
-      archiveR2Key: `releases/${RELEASE}.jsonl.gz`,
-      license: "CC-BY-SA-4.0",
-      onRejection: (rejection) => {
-        throw new Error(`fixture line rejected: ${JSON.stringify(rejection)}`);
-      },
-    });
-    for (const part of parts) articles.exec(await readFile(part, "utf8"));
-    const over = readOnlyDictionary(articles);
-    const { key } = await newKey(1_000, "articles");
-    const results = async (q: string): Promise<Json[]> => {
-      const response = await call(`/v1/lookup?q=${encodeURIComponent(q)}`, key, NOW, "GET", over);
-      assert.equal(response.status, 200, q);
-      const body: Json = await response.json();
-      assert.equal(body.query, q);
-      return body.results;
-    };
-    const macchina = await results("macchina");
-    assert.deepEqual(
-      macchina.map((result: Json) => [result.word, result.pos, result.match.via]),
-      [
-        ["macchina", "noun", "headword"],
-        ["macchinare", "verb", "form_of"],
-      ],
-    );
-    assert.deepEqual(await results("una macchina"), macchina);
-    assert.deepEqual(await results("la macchina"), macchina);
-
-    const porta = await results("porta");
-    const laPorta = await results("la porta");
-    assert.deepEqual(
-      porta.map((result: Json) => [result.word, result.pos]),
-      [
-        ["porta", "adj"],
-        ["porta", "noun"],
-        ["porta", "verb"],
-      ],
-    );
-    assert.deepEqual(laPorta, [porta[1], porta[0], porta[2]]);
-
-    const exists = async (q: string): Promise<boolean> =>
-      ((await (await call(`/v1/exists?q=${encodeURIComponent(q)}`, key, NOW, "GET", over)).json()) as Json).exists;
-    assert.equal(await exists("una macchina"), true);
-    assert.equal(await exists("la macchinetta"), false);
-    assert.equal((await call(`/v1/lookup?q=${encodeURIComponent("la macchinetta")}`, key, NOW, "GET", over)).status, 404);
-  } finally {
-    articles.close();
-    await rm(seedDir, { recursive: true, force: true });
-  }
-});
-
 test("every found result carries the release and an attribution with the word's Wiktionary page", async () => {
   const { key } = await newKey();
   for (const q of ["sale", "andavano", "casa"]) {

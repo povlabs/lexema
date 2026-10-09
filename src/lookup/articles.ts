@@ -13,7 +13,6 @@
 // records spelled alike each get the articles of their own gender and number.
 
 import { articlesFor, spokenOpening, type ArticleGender, type ArticleNumber } from "../italian/articles.js";
-import type { QueryArticle } from "../italian/articleQuery.js";
 import { asserts } from "./types.js";
 import type {
   ArticleWithholding,
@@ -144,17 +143,4 @@ function deriveArticles(
     status: "derived",
     articles: pluralArticles?.status === "derived" ? [...own.articles, ...pluralArticles.articles] : own.articles,
   };
-}
-
-/**
- * Whether a reading's own articles include `article`, as rule
- * `it-article-query/v1` (#738) asks of each reading of the word after it:
- * `una macchina` agrees with macchina's feminine singular noun. A reading of
- * another part of speech, or a noun whose articles are withheld, agrees with
- * none.
- */
-export function agreesWithArticle(reading: ReadingPartOfSpeech, article: QueryArticle): boolean {
-  // Only a noun carries articles.
-  const { articles } = reading;
-  return articles?.status === "derived" && articles.articles.some((one) => one.article === article);
 }

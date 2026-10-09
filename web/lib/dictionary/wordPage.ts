@@ -1031,8 +1031,7 @@ function drawsHere(table: LemmaTable, drawn: Drawn): boolean {
  * `gridLemmaWords(readings)` names, as the lookup reads them; a lemma grid is
  * drawn only from one of them. `route` is how the lookup reached the readings:
  * a feminine compound form (`sono andata`, #676) names the gender in its
- * verbs' lines, and a word typed with its article (`una macchina`, #738) is
- * the word's own page.
+ * verbs' lines.
  */
 export function wordPage(query: string, readings: readonly [Reading, ...Reading[]], lemmas: readonly Reading[], route: WordRoute): WordPage {
   const gender: SpelledGender = route.kind === "feminine" ? "feminine" : "as-listed";
@@ -1076,8 +1075,7 @@ export function wordPage(query: string, readings: readonly [Reading, ...Reading[
   const shown = numbered(entries) ?? bareReadings(bare);
   if (shown === undefined) throw new Error("a found result renders at least one reading");
 
-  // A word typed with its article (#738) is headed as the word's own page is.
-  const headword = about[0]?.word ?? (route.kind === "article" ? route.query.word : query);
+  const headword = about[0]?.word ?? query;
   const expressions = nonEmpty(mergeExpressions(about.map((reading) => reading.wordFacts.expressions)));
   return {
     headword,

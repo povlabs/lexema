@@ -94,8 +94,7 @@ When the key matches nothing and has two to `MAX_PHRASE_WORDS` (12) words,
 The readings are those headwords' records, and `route` says how they were
 reached: `{ kind: "surface" }` for a query found as typed,
 `{ kind: "phrase", phrases, forms }`, or `{ kind: "feminine", agreement }`
-and `{ kind: "first-spelling", agreement }`, or `{ kind: "article", query }`
-(below). Each phrase is the headword `key`, its
+and `{ kind: "first-spelling", agreement }` (below). Each phrase is the headword `key`, its
 `word` as the source spells it, and the typed `words` with the lemma each
 stood for and the one word that stands for it (`inflected`: the participle of
 a compound tense). A single word is never read this way, and neither is a
@@ -198,38 +197,6 @@ Nothing derived is stored
 reflexive verbs are in scope by
 [Huey's scope reply](https://github.com/povlabs/lexema/issues/676#issuecomment-6014794503)
 of 2026-10-06).
-
-### A word typed with its article
-
-People search a noun with its article: `una macchina`, `la porta`,
-`l'acqua`. When the key matches nothing, is no phrase and is no compound
-form, `lookup()` reads it by rule `it-article-query/v1` (#738,
-[`src/italian/articleQuery.ts`](../src/italian/articleQuery.ts)):
-
-1. The key must be one article and one word. The articles are one closed
-   list, the definite and indefinite forms `it-articles/v3` gives: `il`, `lo`,
-   `la`, `i`, `gli`, `le`, `un`, `uno`, `una` before a space, and `l'` and
-   `un'` joined to the word with no space, by any of the four apostrophes the
-   normalizer folds (`l’acqua`). No articulated preposition (`della`, `sul`)
-   and no partitive is an article here, and neither is an article before more
-   than one word. Anything else sends nothing more.
-2. The word is searched as a search for the word alone searches it, and its
-   readings are that search's, in its order, except that the readings whose
-   own articles (`readingPartOfSpeech`, `agreesWithArticle` in
-   [`src/lookup/articles.ts`](../src/lookup/articles.ts)) include the typed
-   article come first. Nothing is dropped: `un macchina` still opens
-   macchina, and a reading of another part of speech or with withheld
-   articles is never put first. `la porta` puts porta's noun before its
-   adjective; `il riso` puts the noun stated masculine singular before the
-   one stated invariable, whose articles are withheld.
-3. A word the index does not hold leaves the query `not-found`.
-
-`route` is `{ kind: "article", query }`, `query` being the rule's
-`ArticleQuery`: the article and the word, which only the rule can build. The
-page is the word's own page, headed as it is, and the API answers the word's
-candidates in the same order. `exists()` answers the same way. A query that
-is itself a headword (`una volta`) or a phrase (`una volte` reads as `una
-volta`) is answered as before, because this route runs last.
 
 ## Outcomes
 
