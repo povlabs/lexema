@@ -68,7 +68,10 @@ test("`labelPunctuation` gives the text beside what the renderer gave before #71
     kept: ", gattopardo americano",
   });
   assert.deepEqual(labelPunctuation("[[uno]], [[due]]", "prova"), { text: "uno, due", kept: "uno, due" });
-  assert.equal(labelPunctuation("{{Intransitivo|it}} [[uno]]", "prova"), undefined);
+  // `{{Coppia aspettuale}}` prints its arguments, so it stays unknown (#711).
+  assert.equal(labelPunctuation("{{Coppia aspettuale|uno|due}} [[uno]]", "prova"), undefined);
+  // A fixed-label template (#711) is a label like `{{Term}}`: its comma goes with it.
+  assert.deepEqual(labelPunctuation("{{Intransitivo|it}}, {{Spreg}} [[uno]]", "prova"), { text: "uno", kept: ", uno" });
 });
 
 test("a `#` line opening with two labels and a comma: travet's page-only sense", () => {
