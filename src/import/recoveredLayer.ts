@@ -7,10 +7,21 @@
 // record's own rows are written by `writeRecord` first and are not touched here.
 
 import type { RecoveredLine } from "../italian/curatedCorrections.js";
-import { recordText, recoverDefinitions } from "../italian/recovery.js";
+import { recordText, recoverDefinitions, SectionRecords } from "../italian/recovery.js";
 import type { RawPageSource } from "../source/rawPage.js";
-import type { ImportStatement } from "./importRelease.js";
+import { parseArchive, type ImportStatement } from "./importRelease.js";
 import type { RawPageRows } from "./rawPageRows.js";
+
+/**
+ * Every record of the archive at `input`, by its word and part-of-speech
+ * title, with the verb types it names: one pass of its own, since a record's
+ * siblings can follow it (#775).
+ */
+export async function readSectionRecords(input: string): Promise<SectionRecords> {
+  const sections = new SectionRecords();
+  await parseArchive({ input, onRejection: () => {}, onRecord: ({ lineNo, record }) => sections.add(lineNo, record) });
+  return sections;
+}
 
 export interface RecoveredLayerStatements {
   insertDefinition: ImportStatement;
@@ -46,6 +57,8 @@ export class RecoveredLayer {
 
   constructor(
     private readonly pages: RawPageSource,
+    /** The archive's records by word and title, which name each record's siblings. */
+    private readonly sections: SectionRecords,
     private readonly pageRows: RawPageRows,
     private readonly statements: RecoveredLayerStatements,
     private readonly rows: RecoveredLayerRows,
@@ -65,12 +78,13 @@ export class RecoveredLayer {
   add(
     releaseId: string,
     recordId: number,
+    lineNo: number,
     record: Parameters<typeof recordText>[0],
   ): RecoveredLine[] {
     const page = this.pages.page(record.word);
     if (page === undefined) return [];
     this.summary.recordsWithAPage += 1;
-    const recovery = recoverDefinitions(recordText(record), page);
+    const recovery = recoverDefinitions(recordText(record, this.sections.siblingsOf(lineNo, record)), page);
     if (recovery.outcome !== "matched") return [];
     this.summary.unrendered += recovery.unrendered.length;
     if (recovery.loss === "full") this.summary.fullLoss += 1;

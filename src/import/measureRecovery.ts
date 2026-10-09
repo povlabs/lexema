@@ -21,6 +21,7 @@ import { resolve } from "node:path";
 import { recordText, recoverDefinitions, type RecordRecovery, type RecoveredDefinition } from "../italian/recovery.js";
 import { SourceCache } from "../source/sourceCache.js";
 import { parseArchive } from "./importRelease.js";
+import { readSectionRecords } from "./recoveredLayer.js";
 
 const source = new SourceCache();
 const input = process.env.RECOVERY_INPUT === undefined ? await source.archive() : resolve(process.env.RECOVERY_INPUT);
@@ -57,6 +58,8 @@ class Tally {
   /** Recovered items in a lead-in's list, by where the lead-in is kept; `unplaced` when the lead-in is not matched. */
   listedUnder = { sense: 0, recovered: 0, unplaced: 0 };
   alreadyGlossed = 0;
+  /** Definitions of a record's section that sit in a verb-type part another record of it was extracted from (#775). */
+  otherParts = 0;
   unrendered = 0;
 
   add(recovery: RecordRecovery): void {
@@ -65,6 +68,7 @@ class Tally {
     if (recovery.outcome !== "matched") return;
     this.loss[recovery.loss] += 1;
     this.alreadyGlossed += recovery.alreadyGlossed.length;
+    this.otherParts += recovery.otherParts.length;
     this.unrendered += recovery.unrendered.length;
     for (const definition of recovery.recovered) {
       this.definitions += 1;
@@ -89,6 +93,7 @@ function wilson(k: number, n: number): [number, number] {
 }
 
 const { pages, described } = await source.rawPages();
+const sections = await readSectionRecords(input);
 const samples = await Promise.all([readSample("sample-lemma.json"), readSample("sample-inflected.json")]);
 const sampledStratum = new Map<number, string>();
 for (const sample of samples) for (const record of sample.records) sampledStratum.set(record.line, sample.stratum);
@@ -129,7 +134,7 @@ const report = await parseArchive({
       return;
     }
     if (page.timestamp > ARCHIVE_BUILT) revisedAfterArchive.set(page.title, { revisionId: page.revisionId, timestamp: page.timestamp });
-    const recovery = recoverDefinitions(recordText(record), page);
+    const recovery = recoverDefinitions(recordText(record, sections.siblingsOf(lineNo, record)), page);
     all.add(recovery);
     const stratum = sampledStratum.get(lineNo);
     if (stratum !== undefined) byStratum.get(stratum)?.add(recovery);

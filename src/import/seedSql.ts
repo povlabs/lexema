@@ -21,7 +21,8 @@ import { HiddenLayer, readRulePass, type HiddenSummary } from "./hiddenLayer.js"
 import { RawPageRows } from "./rawPageRows.js";
 import { recoverPageEntry } from "../italian/pageEntry.js";
 import { entryDefinitionsOf, pageEntryRows } from "./pageEntryRows.js";
-import { RecoveredLayer, type RecoverySummary } from "./recoveredLayer.js";
+import { SectionRecords } from "../italian/recovery.js";
+import { readSectionRecords, RecoveredLayer, type RecoverySummary } from "./recoveredLayer.js";
 import { PageOnlyCandidates } from "./pageOnlyCandidates.js";
 import { CorrectedLayer, type CorrectionSummary } from "./correctedLayer.js";
 import { CorrectedDefinitionLayer, type DefinitionCorrectionSummary } from "./correctedDefinitions.js";
@@ -463,8 +464,10 @@ export async function seedSql(options: SeedSqlOptions): Promise<SeedSqlReport> {
   const pageRows = new RawPageRows(writer.statement("raw_page"), writer.counts);
   const rawPages: RawPageSource = options.rawPages ?? { page: () => undefined, titles: () => [], size: 0 };
   const pageOnly = options.pageOnly ?? PageOnlyCandidates.everyUnrecordedPage();
+  // With no raw page nothing is recovered, so no record's siblings are read.
   const recovered = new RecoveredLayer(
     rawPages,
+    options.rawPages === undefined ? new SectionRecords() : await readSectionRecords(options.input),
     pageRows,
     {
       insertDefinition: writer.statement("recovered_definition"),
@@ -529,7 +532,7 @@ export async function seedSql(options: SeedSqlOptions): Promise<SeedSqlReport> {
           reportMember,
           hidden: isHidden,
         });
-        const recoveredLines = recovered.add(archiveRecord.releaseId, archiveRecord.recordId, archiveRecord.record);
+        const recoveredLines = recovered.add(archiveRecord.releaseId, archiveRecord.recordId, archiveRecord.lineNo, archiveRecord.record);
         corrected.add(archiveRecord, isHidden, recoveredLines);
         if (writer.hasFullBatch()) await writer.flush();
       },

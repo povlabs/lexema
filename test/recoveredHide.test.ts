@@ -23,7 +23,7 @@ import {
   type CuratedCorrection,
   type RecoveredDefinitionHide,
 } from "../src/italian/curatedCorrections.js";
-import { recordText, recoverDefinitions } from "../src/italian/recovery.js";
+import { ONLY_RECORD, recordText, recoverDefinitions, type Siblings } from "../src/italian/recovery.js";
 import { describeHide, missingForCorrections, planCorrections, unwritten } from "../src/import/correctRecords.js";
 import { seedSql, type SeedSqlReport } from "../src/import/seedSql.js";
 import { fromNodeSqlite } from "../src/lookup/database.js";
@@ -117,13 +117,13 @@ test("the entry names diplomatizzare's archive line and its page's line 3 as rev
 });
 
 test("rule recovered-prose-line/v1 reads diplomatizzare's line 3 as a definition labelled transitivo, as it reads urgere's line 3", () => {
-  const read = (line: string, page: RawPage) => {
-    const recovery = recoverDefinitions(recordText(JSON.parse(line) as Parameters<typeof recordText>[0]), page);
+  const read = (line: string, page: RawPage, siblings: Siblings) => {
+    const recovery = recoverDefinitions(recordText(JSON.parse(line) as Parameters<typeof recordText>[0], siblings), page);
     assert.ok(recovery.outcome === "matched");
     return recovery.recovered.map((definition) => [definition.route, definition.ref.line, definition.wikitext, definition.text, definition.labels]);
   };
-  assert.deepEqual(read(DIPLOMATIZZARE_LINE, PAGES[0]), [["prose-line", 3, "{{Transitivo|it}}hhhhhhhh", "hhhhhhhh", ["transitivo"]]]);
-  assert.deepEqual(read(URGERE_LINES[0], PAGES[1]), [["prose-line", 3, "{{Intransitivo|it}} occorrere nell'immediato, necessario al più presto. ", "occorrere nell'immediato, necessario al più presto.", ["intransitivo"]]]);
+  assert.deepEqual(read(DIPLOMATIZZARE_LINE, PAGES[0], ONLY_RECORD), [["prose-line", 3, "{{Transitivo|it}}hhhhhhhh", "hhhhhhhh", ["transitivo"]]]);
+  assert.deepEqual(read(URGERE_LINES[0], PAGES[1], [["transitivo"]]), [["prose-line", 3, "{{Intransitivo|it}} occorrere nell'immediato, necessario al più presto. ", "occorrere nell'immediato, necessario al più presto.", ["intransitivo"]]]);
 });
 
 test("the seed writes the hide as its own row, leaves every imported row as it is, and the lookup shows neither the text nor its label", async () => {

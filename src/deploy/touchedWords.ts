@@ -75,6 +75,8 @@ export const wordsOfPageEntries = (plan: PageEntryPlan): TouchedWords =>
     ...plan.corrections.map(({ title }) => title),
   ]);
 
-/** `load:recovered-definitions`: the word of each record it writes a recovered definition for. */
+/** `load:recovered-definitions`: the word of each record it writes or removes a recovered definition for. */
 export const wordsOfRecoveredDefinitions = (plan: RecoveredDefinitionPlan): TouchedWords =>
-  touchedWords(plan.records.flatMap((record) => (record.definitions.some((planned) => planned.state === "write") ? [record.found.word] : [])));
+  touchedWords(
+    plan.records.flatMap((record) => (record.definitions.some((planned) => planned.state === "write") || record.removals.length > 0 ? [record.found.word] : [])),
+  );

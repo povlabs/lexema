@@ -162,11 +162,14 @@ test("every declaration already in dictionary-changes parses as before, with no 
   for (const name of files) {
     const path = `${DECLARATIONS_DIR}/${name}`;
     const text = await readFile(path, "utf8");
-    // The deployed load:page-entries files name the rule sets they deployed
-    // with, which later rules extended; each is refused for that alone.
+    // The deployed load:page-entries and load:recovered-definitions files name
+    // the rule sets they deployed with, which later rules extended; each is
+    // refused for that alone.
     const outgrownRules: Record<string, string> = {
       "2026-10-03-load-page-entries-it-0c432803.json": "italian-page-entry/v2, italian-page-facts/v1",
       "2026-10-03-load-page-entries-v2-it-0c432803.json": "italian-page-facts/v1",
+      "2026-10-07-load-recovered-definitions-it-0c432803.json": "recovered-verb-part/v1",
+      "2026-10-09-load-recovered-label-template-lines-it-0c432803.json": "recovered-verb-part/v1",
     };
     if (name in outgrownRules) {
       assert.equal(refusal(text, path), `inputs.rules must name every rule the command applies; it lacks ${outgrownRules[name]}`);
@@ -188,12 +191,13 @@ test("every declaration already in dictionary-changes parses as before, with no 
       );
       continue;
     }
-    // The recovered bullet and prose lines (#706) name the words they fill in.
-    if (name === "2026-10-07-load-recovered-definitions-it-0c432803.json") {
-      assert.deepEqual(
-        parseDraft(path, text).lookups?.map((item) => item.word),
-        ["centouno", "decrepito", "bavaglio", "museruola"],
-      );
+    // The recovered lines of split verb sections (#775) name each word whose other record loses one, with the line its own part keeps.
+    if (name === "2026-10-09-load-recovered-verb-parts-it-0c432803.json") {
+      assert.deepEqual(parseDraft(path, text).lookups?.map((item) => [item.word, item.gloss]), [
+        ["urgere", "occorrere nell'immediato"],
+        ["servire", "servire lo Stato"],
+        ["transigere", "non transigere"],
+      ]);
       continue;
     }
     // assorbire's corrected table cells (#723) name the verb.
@@ -240,11 +244,6 @@ test("every declaration already in dictionary-changes parses as before, with no 
     // The hidden recovered line (#773) names the word whose page it changes.
     if (name === "2026-10-09-correct-diplomatizzare-recovered-line.json") {
       assert.deepEqual(parseDeclaration(path, text).lookups?.map((item) => item.word), ["diplomatizzare"]);
-      continue;
-    }
-    // The lines fixed usage-label templates unblock (#711): a word of each template the issue names.
-    if (name === "2026-10-09-load-recovered-label-template-lines-it-0c432803.json") {
-      assert.deepEqual(parseDraft(path, text).lookups?.map((item) => item.word), ["furbo", "urgere"]);
       continue;
     }
     for (const parsed of [parseDeclaration(path, text), parseDraft(path, text)]) {
