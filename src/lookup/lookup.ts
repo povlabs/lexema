@@ -6,8 +6,8 @@ import { IT_NORMALIZER_VERSION, normalizeItalianExact } from "../italian/normali
 import { shownGloss } from "../italian/headwordEcho.js";
 import { recordGlosses, type RecordGloss } from "../italian/recovery.js";
 import { readPluralGloss, type PluralGlossGender } from "../italian/pluralGloss.js";
-import { articleFirst, readingPartOfSpeech } from "./articles.js";
-import { articleQuery } from "../italian/articleQuery.js";
+import { agreesWithArticle, readingPartOfSpeech } from "./articles.js";
+import { articleQuery, type QueryArticle } from "../italian/articleQuery.js";
 import { keyedRead, readKeys, type DictionaryRead, type KeyedRead, type LookupDatabase } from "./database.js";
 import { phraseForms, phraseMatches } from "./phrase.js";
 import { handKeptReadingsOf } from "./handKept.js";
@@ -40,7 +40,6 @@ import type {
   PluralDeclaration,
   QueryInfo,
   Reading,
-  ReadingPartOfSpeech,
   RecoveredDefinition,
   RecoveredRoute,
   ReleaseDump,
@@ -288,10 +287,7 @@ export async function lookup({ db, releaseId, query }: LookupOptions): Promise<L
   if (article === undefined) return { outcome: "not-found", query: queryInfo, release };
   const word = await spelledResult(asTyped, article.word, await queryAll<HitRow>(db, SEARCH_SQL, releaseId, article.word));
   if (word === undefined) return { outcome: "not-found", query: queryInfo, release };
-  const [first, ...rest] = articleFirst(word.readings, article.article, (reading) => reading);
-  // Every reading is kept, and there is at least one.
-  if (first === undefined) throw new Error("no reading to order by its article");
-  return { ...word, route: { kind: "article", query: article }, readings: [first, ...rest] };
+  return { ...word, route: { kind: "article", query: article }, readings: articleFirst(word.readings, article.article) };
 }
 
 /** What `spelledResult` reads with: the lookup's database, release and tables, and the query as typed. */
@@ -330,6 +326,21 @@ async function spelledResult({ db, releaseId, pages, query, release, tables }: S
   const [page, ...otherPages] = read;
   if (page !== undefined) return { outcome: "found", query, release, route: { kind: "surface" }, readings: [page, ...otherPages] };
   return undefined;
+}
+
+/**
+ * The readings, those whose own articles include `article` first (rule
+ * `it-article-query/v1`, `agreesWithArticle`), each part otherwise in the
+ * order it had. Nothing is dropped: `un macchina` still opens macchina.
+ */
+function articleFirst(readings: readonly [Reading, ...Reading[]], article: QueryArticle): [Reading, ...Reading[]] {
+  const [first, ...rest] = [
+    ...readings.filter((reading) => agreesWithArticle(reading, article)),
+    ...readings.filter((reading) => !agreesWithArticle(reading, article)),
+  ];
+  // Every reading is in one of the two parts, and there is at least one.
+  if (first === undefined) throw new Error("no reading to order by its article");
+  return [first, ...rest];
 }
 
 /**
@@ -981,68 +992,6 @@ async function readRecord(db: LookupDatabase, recordId: number): Promise<RecordL
   return { posTitle: row.pos_title, rawJson: row.raw_json };
 }
 
-/**
- * Records' verbatim lines, with the coordinates a ref on each needs: a batch
- * reads them for a candidate's translations (#739) and a noun's articles.
- */
-export const RECORD_SOURCE_LINE_SQL: KeyedRead = keyedRead(`SELECT r.record_id AS set_key, r.release_id, r.line_no, r.line_sha256, j.raw_json
-       FROM source_record r
-       JOIN source_record_json j ON j.record_id = r.record_id
-      WHERE r.record_id IN (SELECT value FROM json_each(?1))`);
-
-/** One row of `RECORD_SOURCE_LINE_SQL`. */
-export interface RecordSourceLine {
-  set_key: number;
-  release_id: string;
-  line_no: number;
-  line_sha256: string;
-  raw_json: string;
-}
-
-/** Rows of a keyed read, by the key each answers. */
-function byKey<T extends { set_key: number }>(rows: readonly T[]): Map<number, T[]> {
-  const grouped = new Map<number, T[]>();
-  for (const row of rows) grouped.set(row.set_key, [...(grouped.get(row.set_key) ?? []), row]);
-  return grouped;
-}
-
-/**
- * Each archive record's part of speech, with its articles where it is a noun,
- * as `buildReading` gives the reading of that record one: off the record's
- * own word, its grammar with its curated corrections, its forms with their
- * curated cells, and its IPA. Many records in one wait: no statement when
- * none is a noun, else the nouns' lines, grammar, corrections and forms, one
- * statement each however many there are. A batch orders a word typed with
- * its article by it (rule `it-article-query/v1`, src/lookup/batch.ts).
- */
-export async function partsOfSpeech(
-  db: LookupDatabase,
-  records: readonly { recordId: number; pos: string; word: string }[],
-  corrected: Corrected,
-): Promise<Map<number, ReadingPartOfSpeech>> {
-  const nouns = [...new Set(records.filter((record) => record.pos === "noun").map((record) => record.recordId))];
-  const [lines, claims, corrections, forms] = await Promise.all([
-    readKeys<RecordSourceLine>(db, RECORD_SOURCE_LINE_SQL, nouns),
-    readKeys<GrammarRow & { set_key: number }>(db, GRAMMAR_CLAIM_SQL, nouns),
-    corrected.corrections ? readKeys<CorrectionRow & { set_key: number }>(db, CORRECTED_CLAIM_SQL, nouns) : Promise.resolve([]),
-    readKeys<FormRow & { set_key: number }>(db, formRead(corrected), nouns),
-  ]);
-  const lineOf = new Map(lines.map((line) => [line.set_key, line]));
-  const [claimsOf, correctionsOf, formsOfRecord] = [byKey(claims), byKey(corrections), byKey(forms)];
-  return new Map(
-    records.map(({ recordId, pos, word }) => {
-      // Only a noun has articles, and only a noun's are read.
-      if (pos !== "noun") return [recordId, readingPartOfSpeech(pos, word, [])];
-      const line = lineOf.get(recordId);
-      if (line === undefined) throw new Error(`record ${recordId} vanished mid-lookup`);
-      const ref = refOn(line);
-      const grammar = grammarOf(claimsOf.get(recordId) ?? [], correctionsOf.get(recordId) ?? [], ref);
-      const { pronunciations } = readSourceRecord(line.raw_json, ref).wordFacts;
-      return [recordId, readingPartOfSpeech(pos, word, grammar.record, formsOf(formsOfRecord.get(recordId) ?? [], ref, grammar), pronunciations)];
-    }),
-  );
-}
-
 /** A record's senses as the database holds them: each gloss, and each label. */
 interface SenseRows {
   glosses: { sense_index: number; sense_pointer: string; text: string | null; json_pointer: string | null }[];
@@ -1157,10 +1106,8 @@ interface FormRow {
   evidence_url?: string | null;
 }
 
-/** The read of a record's forms: with their curated cells where the dictionary has `corrected_form`. */
-const formRead = (corrected: Corrected): KeyedRead => (corrected.cellCorrections ? CORRECTED_RECORD_FORM_SQL : RECORD_FORM_SQL);
-
-const readFormRows = (db: LookupDatabase, recordId: number, corrected: Corrected): Promise<FormRow[]> => readKeys<FormRow>(db, formRead(corrected), [recordId]);
+const readFormRows = (db: LookupDatabase, recordId: number, corrected: Corrected): Promise<FormRow[]> =>
+  readKeys<FormRow>(db, corrected.cellCorrections ? CORRECTED_RECORD_FORM_SQL : RECORD_FORM_SQL, [recordId]);
 
 /** The spelling a curated correction sets a row's cell to, and the correction, when one does. */
 function correctedCellOf(row: FormRow): { surface: string; corrected: CorrectedSurface } | undefined {
@@ -1211,17 +1158,6 @@ export const GRAMMAR_CLAIM_SQL: KeyedRead = keyedRead(`SELECT record_id AS set_k
       WHERE record_id IN (SELECT value FROM json_each(?1))
       ORDER BY record_id, scope, scope_index, json_pointer`);
 
-/** One of a record's grammar claims, as `GRAMMAR_CLAIM_SQL` returns it. */
-interface GrammarRow {
-  scope: "record" | "sense" | "form";
-  scope_index: number | null;
-  status: "stated" | "unclassified" | "missing";
-  dimension: string | null;
-  value: string | null;
-  source_text: string | null;
-  json_pointer: string;
-}
-
 async function readGrammar(
   db: LookupDatabase,
   recordId: number,
@@ -1229,12 +1165,16 @@ async function readGrammar(
   corrected: Corrected,
 ): Promise<Grammar> {
   const corrections = handled(corrected.corrections ? readKeys<CorrectionRow>(db, CORRECTED_CLAIM_SQL, [recordId]) : Promise.resolve([]));
-  const rows = await readKeys<GrammarRow>(db, GRAMMAR_CLAIM_SQL, [recordId]);
-  return grammarOf(rows, await corrections, ref);
-}
+  const rows = await readKeys<{
+    scope: "record" | "sense" | "form";
+    scope_index: number | null;
+    status: "stated" | "unclassified" | "missing";
+    dimension: string | null;
+    value: string | null;
+    source_text: string | null;
+    json_pointer: string;
+  }>(db, GRAMMAR_CLAIM_SQL, [recordId]);
 
-/** One record's grammar, from its `GRAMMAR_CLAIM_SQL` rows and its curated corrections. */
-function grammarOf(rows: readonly GrammarRow[], corrections: readonly CorrectionRow[], ref: (pointer: string) => SourceRef): Grammar {
   const grammar: { record: ArchiveClaim[]; byForm: Map<number, ArchiveClaim[]>; bySense: Map<number, ArchiveClaim[]> } = {
     record: [],
     byForm: new Map(),
@@ -1286,7 +1226,7 @@ function grammarOf(rows: readonly GrammarRow[], corrections: readonly Correction
   for (const claims of grammar.byForm.values()) claims.sort(byPointer);
   for (const claims of grammar.bySense.values()) claims.sort(byPointer);
 
-  return { ...grammar, record: correctRecordClaims(grammar.record, corrections.map(correctionOf)) };
+  return { ...grammar, record: correctRecordClaims(grammar.record, (await corrections).map(correctionOf)) };
 }
 
 /**

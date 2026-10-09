@@ -104,7 +104,7 @@ export function handKeptReadingsOf(db: LookupDatabase, releaseId: string, tables
 }
 
 /** A hand-kept reading's part of speech, articles and all: its own, with no claims, forms or pronunciations, since it keys to no record. */
-export function handKeptPartOfSpeech({ pos, word }: { pos: string; word: string }): ReadingPartOfSpeech {
+function handKeptPartOfSpeech({ pos, word }: { pos: string; word: string }): ReadingPartOfSpeech {
   const { claims, forms, wordFacts } = NO_ENTRY_FACTS;
   return readingPartOfSpeech(pos, word, claims, forms, wordFacts.pronunciations);
 }
