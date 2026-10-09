@@ -82,12 +82,12 @@ export const PAGE_ENTRY_FACT_TABLE = "entry_fact";
 /**
  * Which of the tables an older master may lack it has: `hide_version` (#408),
  * the page-entry tables (#403) and the curated-correction tables (#420,
- * #450, #723), and `corrected_form_by_key`, the index a search reads a
+ * #450, #723, #773), and `corrected_form_by_key`, the index a search reads a
  * corrected cell through (#743): it is on `surface_key`, so it stands only
  * where that column does. Presence is read from the schema, never inferred
  * from a failed read, so an error on a table that exists still fails.
  */
-export const OPTIONAL_TABLES_SQL: DictionaryRead = `SELECT name FROM sqlite_schema WHERE (type = 'table' AND name IN (${["hide_version", "corrected_claim", "corrected_form", "corrected_edge", "correction_version", ...PAGE_ENTRY_TABLES, PAGE_ENTRY_FACT_TABLE, "corrected_definition"].map((name) => `'${name}'`).join(", ")})) OR (type = 'index' AND name = 'corrected_form_by_key')`;
+export const OPTIONAL_TABLES_SQL: DictionaryRead = `SELECT name FROM sqlite_schema WHERE (type = 'table' AND name IN (${["hide_version", "corrected_claim", "corrected_form", "corrected_edge", "hidden_recovered_definition", "correction_version", ...PAGE_ENTRY_TABLES, PAGE_ENTRY_FACT_TABLE, "corrected_definition"].map((name) => `'${name}'`).join(", ")})) OR (type = 'index' AND name = 'corrected_form_by_key')`;
 export const HIDE_VERSION_SQL: DictionaryRead = `SELECT revision FROM hide_version WHERE singleton = 1`;
 export const CORRECTION_VERSION_SQL: DictionaryRead = `SELECT revision FROM correction_version WHERE singleton = 1`;
 
@@ -126,6 +126,12 @@ export interface DictionaryTables {
    * edges its record declares.
    */
   edgeCorrections: boolean;
+  /**
+   * `hidden_recovered_definition`; absent on a master seeded before #773
+   * until `update:upgrade` creates it, and read as empty: every recovered
+   * definition is shown.
+   */
+  recoveredHides: boolean;
   /** `correction_version`; absent on a master seeded before #420 until `update:upgrade` creates it, and read as revision zero. */
   correctionVersion: boolean;
 }
@@ -153,6 +159,7 @@ export async function dictionaryTables(db: LookupDatabase): Promise<DictionaryTa
     cellCorrections: present.has("corrected_form"),
     cellSearch: present.has("corrected_form") && present.has("corrected_form_by_key"),
     edgeCorrections: present.has("corrected_edge"),
+    recoveredHides: present.has("hidden_recovered_definition"),
     correctionVersion: present.has("correction_version"),
   };
 }

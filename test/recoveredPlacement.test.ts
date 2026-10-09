@@ -36,6 +36,7 @@ test("an old sense lead-in that two served senses carry goes to the top of the l
       {
         id: 1,
         definition: definition("la corona ferrea"),
+        hidden: false,
         writtenFor: "replaced",
         leadIn: { in: "sense", glosses: ["ornamento circolare che si porta sul capo"] },
       },
@@ -52,12 +53,24 @@ test("an item whose dropped lead-in two served senses carry goes to the top of t
   ];
   const placed = placeRecovered(
     [
-      { id: 1, definition: definition("dinastia regnante di uno stato"), writtenFor: "replaced", leadIn: null },
-      { id: 2, definition: definition("la corona dei Savoia"), writtenFor: "replaced", leadIn: { in: "recovered", id: 1 } },
+      { id: 1, definition: definition("dinastia regnante di uno stato"), hidden: false, writtenFor: "replaced", leadIn: null },
+      { id: 2, definition: definition("la corona dei Savoia"), hidden: false, writtenFor: "replaced", leadIn: { in: "recovered", id: 1 } },
     ],
     served,
   );
   // The lead-in is a sense now, so it is not shown again; its item cannot tell
   // which of the two senses it belongs to.
   assert.deepEqual(shape(placed), { topLevel: [["la corona dei Savoia", []]], underSense: [] });
+});
+
+test("a hidden definition is not shown, and an item listed under it goes to the top of the list (#773)", () => {
+  const placed = placeRecovered(
+    [
+      { id: 1, definition: definition("hhhhhhhh"), hidden: true, writtenFor: "served", leadIn: null },
+      { id: 2, definition: definition("la corona ferrea"), hidden: false, writtenFor: "served", leadIn: { in: "recovered", id: 1 } },
+      { id: 3, definition: definition("cerchio d'oro"), hidden: false, writtenFor: "served", leadIn: { in: "sense", senseIndex: 0 } },
+    ],
+    [{ senseIndex: 0, text: "ornamento circolare che si porta sul capo" }],
+  );
+  assert.deepEqual(shape(placed), { topLevel: [["la corona ferrea", []]], underSense: [[0, ["cerchio d'oro"]]] });
 });

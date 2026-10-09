@@ -6,6 +6,7 @@
 // revision it came from and the lead-in whose list it sits in, if any. The
 // record's own rows are written by `writeRecord` first and are not touched here.
 
+import type { RecoveredLine } from "../italian/curatedCorrections.js";
 import { recordText, recoverDefinitions } from "../italian/recovery.js";
 import type { RawPageSource } from "../source/rawPage.js";
 import type { ImportStatement } from "./importRelease.js";
@@ -60,20 +61,21 @@ export class RecoveredLayer {
     };
   }
 
+  /** Write the record's recovered definitions, and return each one's page revision, line, wikitext and text, in page order. */
   add(
     releaseId: string,
     recordId: number,
     record: Parameters<typeof recordText>[0],
-  ): void {
+  ): RecoveredLine[] {
     const page = this.pages.page(record.word);
-    if (page === undefined) return;
+    if (page === undefined) return [];
     this.summary.recordsWithAPage += 1;
     const recovery = recoverDefinitions(recordText(record), page);
-    if (recovery.outcome !== "matched") return;
+    if (recovery.outcome !== "matched") return [];
     this.summary.unrendered += recovery.unrendered.length;
     if (recovery.loss === "full") this.summary.fullLoss += 1;
     if (recovery.loss === "partial") this.summary.partialLoss += 1;
-    if (recovery.recovered.length === 0) return;
+    if (recovery.recovered.length === 0) return [];
 
     const pageId = this.pageRows.idOf(releaseId, page);
     // Ids follow page order, so a lead-in recovered for this record has the
@@ -109,5 +111,6 @@ export class RecoveredLayer {
         this.summary.examples += 1;
       });
     });
+    return recovery.recovered.map((definition) => ({ revisionId: page.revisionId, line: definition.ref.line, wikitext: definition.wikitext, text: definition.text }));
   }
 }

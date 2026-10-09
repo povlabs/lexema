@@ -16,7 +16,7 @@ import { CURATED_CORRECTIONS, type CuratedCorrection } from "../italian/curatedC
 import { planOnlyAnswer, planOnlyFlag, planOnlyRun } from "../update/planOnly.js";
 import { upgradeFirst } from "../update/master.js";
 import { masterReaderOf } from "../update/updateCli.js";
-import { describeDefinition, describeEntry, missingForCorrections, planCorrections, unwritten } from "./correctRecords.js";
+import { describeDefinition, describeEntry, describeHide, missingForCorrections, planCorrections, unwritten } from "./correctRecords.js";
 import { seedTargetFrom, webWrangler, type Wrangler } from "./seedTarget.js";
 
 const USAGE = "usage: pnpm run correct:records [--out <dir>] [--plan-only]";
@@ -38,14 +38,14 @@ export async function main(
   const reader = masterReaderOf(target);
   const plan = planCorrections(reader, corrections);
   log(`planning ${corrections.length} curated correction(s) for the master ${plan.masterReleaseId} in ${target.dictionary}`);
-  const lines = [...plan.entries.map(describeEntry), ...plan.edges.map(describeEntry), ...plan.definitions.map(describeDefinition)];
+  const lines = [...plan.entries.map(describeEntry), ...plan.edges.map(describeEntry), ...plan.hides.map(describeHide), ...plan.definitions.map(describeDefinition)];
   const out = resolve(options.get("out") ?? ".data/updates");
   if (planOnly) {
     return planOnlyAnswer(planOnlyRun("correct:records", plan.counts, reader), plan.sql, out, `correct-${plan.masterReleaseId}`, {
       entries: lines.map((line) => line.trim()),
     });
   }
-  const writes = [...plan.entries, ...plan.edges, ...plan.definitions].filter((entry) => entry.state === "write").length;
+  const writes = [...plan.entries, ...plan.edges, ...plan.hides, ...plan.definitions].filter((entry) => entry.state === "write").length;
   if (plan.sql === "") return { out: [`nothing to write in ${target.dictionary}`, ...lines].join("\n"), status: 0 };
   const needed = missingForCorrections(reader);
   if (needed.length > 0) return { out: upgradeFirst(target.dictionary, needed), status: 1 };

@@ -11,18 +11,20 @@ import type { Reading } from "@lexema/lookup/types.ts";
 import { declaredLemma } from "@lexema/lookup/declaredLemma.ts";
 import { lookup, withVerbDefinitions } from "@lexema/lookup/lookup.ts";
 import { findNearby, writtenSpellings } from "@lexema/lookup/nearby.ts";
+import { dictionaryTables } from "@lexema/lookup/served.ts";
 import type { Attempt } from "./attempt.ts";
 import { declaredLemmaPage } from "./declaredLemmaPage.ts";
 import { gridLemmaWords } from "./wordPage.ts";
 
 export async function searchAttempt(db: LookupDatabase, releaseId: string, query: string): Promise<Attempt> {
-  const result = await lookup({ db, releaseId, query });
+  // The tables are read beside the lookup, which reads them too: one statement in its first call.
+  const [result, tables] = await Promise.all([lookup({ db, releaseId, query }), dictionaryTables(db)]);
   const written = () => writtenSpellings({ db, releaseId, query: result.query.raw });
   if (result.outcome === "found") {
     const [spellings, lemmas, readings] = await Promise.all([
       written(),
       lemmaRecords(db, releaseId, result.readings),
-      withVerbDefinitions(db, result.readings),
+      withVerbDefinitions(db, result.readings, tables),
     ]);
     return { ...result, readings, written: spellings, lemmas };
   }

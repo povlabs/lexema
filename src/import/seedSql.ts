@@ -50,6 +50,7 @@ const TABLE_ORDER = [
   "corrected_claim",
   "corrected_form",
   "corrected_edge",
+  "hidden_recovered_definition",
   "recovered_entry",
   "entry_definition",
   "entry_label",
@@ -83,6 +84,7 @@ export const COLUMNS: Record<TableName, string> = {
   corrected_claim: "record_id,release_id,dimension,value,correction_id,evidence_url",
   corrected_form: "record_id,release_id,form_index,surface,surface_key,correction_id,evidence_url",
   corrected_edge: "record_id,release_id,sense_index,json_pointer,target_word,target_word_key,correction_id,evidence_url,base_evidence_url",
+  hidden_recovered_definition: "record_id,release_id,page_line,correction_id,evidence_url",
   recovered_entry: "entry_id,release_id,page_id,word,word_key,pos,pos_title,rule,page_line,wikitext",
   entry_definition: "entry_id,definition_index,route,term,page_line,wikitext,text,lead_in_index",
   entry_label: "entry_id,definition_index,label_index,label",
@@ -135,6 +137,7 @@ class SqlBatchWriter {
     corrected_claim: 0,
     corrected_form: 0,
     corrected_edge: 0,
+    hidden_recovered_definition: 0,
     recovered_entry: 0,
     entry_definition: 0,
     entry_label: 0,
@@ -468,7 +471,12 @@ export async function seedSql(options: SeedSqlOptions): Promise<SeedSqlReport> {
   const hidden = new HiddenLayer(judge, await readRulePass(options.input), pageRows, writer.statement("hidden_record"), writer.counts);
   const corrected = new CorrectedLayer(
     options.corrections ?? CURATED_CORRECTIONS,
-    { claim: writer.statement("corrected_claim"), form: writer.statement("corrected_form"), edge: writer.statement("corrected_edge") },
+    {
+      claim: writer.statement("corrected_claim"),
+      form: writer.statement("corrected_form"),
+      edge: writer.statement("corrected_edge"),
+      hide: writer.statement("hidden_recovered_definition"),
+    },
     writer.counts,
   );
   const correctedDefinitions = new CorrectedDefinitionLayer(options.corrections ?? CURATED_CORRECTIONS, writer.statement("corrected_definition"), writer.counts);
@@ -510,8 +518,8 @@ export async function seedSql(options: SeedSqlOptions): Promise<SeedSqlReport> {
           reportMember,
           hidden: isHidden,
         });
-        recovered.add(archiveRecord.releaseId, archiveRecord.recordId, archiveRecord.record);
-        corrected.add(archiveRecord, isHidden);
+        const recoveredLines = recovered.add(archiveRecord.releaseId, archiveRecord.recordId, archiveRecord.record);
+        corrected.add(archiveRecord, isHidden, recoveredLines);
         if (writer.hasFullBatch()) await writer.flush();
       },
     });

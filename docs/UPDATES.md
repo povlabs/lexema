@@ -190,7 +190,8 @@ The apply is one SQL file, run once
   A row already right stays in the release that wrote it.
 
 Nothing else is written. No record is deleted, and no row of `raw_page`,
-`recovered_*`, `claim_review`, `corrected_claim`, `corrected_form` or `corrected_edge` is touched.
+`recovered_*`, `claim_review`, `corrected_claim`, `corrected_form`, `corrected_edge` or
+`hidden_recovered_definition` is touched.
 
 ## Rows written by hand follow the record that replaced theirs
 
@@ -233,6 +234,11 @@ does not follow it either: it stays on the retired record with its evidence,
 and the apply names it the same way. No lookup reads a corrected edge of a retired
 record, so none lists the retired record as a form of the word it names
 (`correctedEdgeServed` in [src/lookup/correctedEdge.ts](../src/lookup/correctedEdge.ts)).
+A hidden recovered definition (`hidden_recovered_definition`,
+[#773](https://github.com/povlabs/lexema/issues/773)) is the one correction
+that keeps its effect: it hides a recovered definition, not a fact of the
+line, and that definition is still read for the replacing record, so it stays
+hidden there.
 
 ## Serving a master of several releases
 

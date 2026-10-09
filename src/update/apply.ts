@@ -13,14 +13,18 @@
 //   form_of_edge rows go, so no search reaches it, and nothing else of it is
 //   touched, the rows written by hand beside it least of all: its curated
 //   corrections stay, no lookup reads them (`correctedEdgeServed`,
-//   src/lookup/correctedEdge.ts), and the update reports them;
+//   src/lookup/correctedEdge.ts), and the update reports them. A hidden
+//   recovered definition (#773) stays hidden: the definition stays beside
+//   the retired record and is read for the one that replaced it
+//   (src/lookup/recovered.ts), and so is its hide;
 // - recomputes the `accent_fold` and `typo_key` rows of every key those
 //   records spell, with the seed's own rules, writing only rows that change;
 // - records the later release ('partial', with its checksum), the master it
 //   feeds, and each change under its id.
 //
 // It never deletes a record, never touches a table written by hand beside the
-// records (raw_page, recovered_*, claim_review, corrected_claim, corrected_form, corrected_edge), and never applies a lost
+// records (raw_page, recovered_*, claim_review, corrected_claim, corrected_form, corrected_edge,
+// hidden_recovered_definition), and never applies a lost
 // word: removing a record is not ruled.
 //
 // The file holds no DDL and changes no schema (#509): it writes into the

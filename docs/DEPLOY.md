@@ -634,7 +634,8 @@ holds needs nothing. Otherwise it starts the `deploy` job, whose steps are
    ([#507](https://github.com/povlabs/lexema/issues/507),
    [#509](https://github.com/povlabs/lexema/issues/509)). The upgrade
    creates the tables every write command writes into, `corrected_claim`,
-   `corrected_edge`, `correction_version`, `hidden_record` and `hide_version` among them, so a
+   `corrected_edge`, `hidden_recovered_definition`, `correction_version`,
+   `hidden_record` and `hide_version` among them, so a
    feed apply, a correction or a hide changes no schema. It does so when
    the dictionary lacks a table, index or view the upgrade creates, or when
    it stores a rebuilt table or its index with a definition other than
