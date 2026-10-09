@@ -178,13 +178,15 @@ test("a phrase is marked as having an entry exactly when it is a headword", asyn
   });
 });
 
-test("a form's lemma carries its own expressions: stato the verb names stare", async () => {
+test("a form's lemma keeps its expressions on its own reading: stato the verb names stare (#705)", async () => {
   await withExpressionWords(async (db) => {
     const verb = (await readings(db, "stato")).find((reading) => reading.posTitle === "Voce verbale");
     assert.ok(verb);
-    const stare = verb.lemmaLinks.flatMap((link) => (link.kind === "candidates" ? link.candidates : []));
-    assert.deepEqual(stare.map((lemma) => lemma.word), ["stare"]);
-    const phrases = stare[0]?.expressions.map((row) => row.phrase) ?? [];
+    const [lemma, ...others] = verb.lemmaLinks.flatMap((link) => (link.kind === "candidates" ? link.candidates : []));
+    assert.deepEqual([lemma?.word, ...others.map((candidate) => candidate.word)], ["stare"]);
+    assert.ok(lemma !== undefined && !("expressions" in lemma), "the link carries none of the lemma's expressions");
+    const stare = (await readings(db, "stare")).find((reading) => reading.recordId === lemma.recordId);
+    const phrases = stare?.wordFacts.expressions.map((row) => row.phrase) ?? [];
     assert.ok(phrases.includes("di argomentazione"), "the bracket rule applies to a lemma's list too");
     assert.ok(phrases.every((phrase) => phrase !== ""));
   });

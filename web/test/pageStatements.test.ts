@@ -187,6 +187,18 @@ const DEFINITIONS_READ_STATEMENTS = 4;
  */
 const CELL_SEARCH_STATEMENTS = 1;
 
+/**
+ * What #705 cut: the lemmas' own expressions, which no page shows since #700.
+ * Every lookup no longer sends the lines of the lemmas its readings' links
+ * name (`LEMMA_LINE_SQL`), which went beside the links, so no call is saved.
+ * `andavano` also no longer sends the headword read of andare's expressions
+ * (`HEADWORD_KEY_SQL`): andavano has none of its own, so that read waited on
+ * andare's line and went alone, one statement in one call. On every other
+ * page here it was not sent or went in a call that carries other reads.
+ */
+const LEMMA_LINE_STATEMENTS = 1;
+const LEMMA_EXPRESSIONS_CUT: Record<string, { statements: number; calls: number }> = { andavano: { statements: 1, calls: 1 } };
+
 /** The lookups a page runs: its own, and for `andati` and `bella` the lookup of the lemma whose grid the page draws (#626). */
 const LOOKUPS: Record<string, number> = { andati: 2, bella: 2 };
 
@@ -199,13 +211,17 @@ const EXTRA: Record<string, number> = {
 };
 
 for (const [word, then] of Object.entries(VERB_FORMS_BEFORE)) {
-  const extra = (EXTRA[word] ?? 0) + (LOOKUPS[word] ?? 1) * CELL_SEARCH_STATEMENTS;
-  test(`the page for '${word}' sends ${then.statements + extra} statements in ${then.calls} calls, and reads the page SQLite reads`, async () => {
+  const cut = LEMMA_EXPRESSIONS_CUT[word] ?? { statements: 0, calls: 0 };
+  const now = {
+    statements: then.statements + (EXTRA[word] ?? 0) + (LOOKUPS[word] ?? 1) * (CELL_SEARCH_STATEMENTS - LEMMA_LINE_STATEMENTS) - cut.statements,
+    calls: then.calls - cut.calls,
+  };
+  test(`the page for '${word}' sends ${now.statements} statements in ${now.calls} calls, and reads the page SQLite reads`, async () => {
     const sent = nothingSent();
     const attempt = await searchAttempt(fromD1(countingD1(sqlite, sent)), RELEASE, word);
     assert.equal(attempt.outcome, "found", `${word}: expected a found page`);
-    assert.equal(sent.statements, then.statements + extra, `${word}: statements`);
-    assert.equal(sent.calls, then.calls, `${word}: calls`);
+    assert.equal(sent.statements, now.statements, `${word}: statements`);
+    assert.equal(sent.calls, now.calls, `${word}: calls`);
     assert.deepEqual(attempt, await searchAttempt(fromNodeSqlite(sqlite), RELEASE, word));
   });
 }
@@ -249,7 +265,10 @@ const CUT: Record<string, { statements: number; calls: number }> = {
 };
 
 for (const [word, then] of Object.entries(DEFINITIONS_PAGES_BEFORE)) {
-  const now = { statements: then.statements - CUT[word].statements + CELL_SEARCH_STATEMENTS, calls: then.calls - CUT[word].calls };
+  const now = {
+    statements: then.statements - CUT[word].statements + CELL_SEARCH_STATEMENTS - LEMMA_LINE_STATEMENTS,
+    calls: then.calls - CUT[word].calls,
+  };
   test(`the page for '${word}' sends ${now.statements} statements in ${now.calls} calls, and reads the page SQLite reads`, async () => {
     const sent = nothingSent();
     const attempt = await searchAttempt(fromD1(countingD1(sqlite, sent)), RELEASE, word);

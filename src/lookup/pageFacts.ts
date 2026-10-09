@@ -211,5 +211,5 @@ async function lemmaLink(
     ...entries,
   ];
   if (candidates.length === 0) return { kind: "dangling", targetWord, ref };
-  return { kind: "candidates", targetWord, ref, candidates: candidates.map((candidate) => ({ ...candidate, listing: undefined, expressions: [] })) };
+  return { kind: "candidates", targetWord, ref, candidates: candidates.map((candidate) => ({ ...candidate, listing: undefined })) };
 }

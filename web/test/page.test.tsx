@@ -3886,20 +3886,24 @@ test("dictionary text that holds markup renders as escaped text, never as a scri
 // 4. Same layout everywhere: a form with no record of its own, and an
 //    expression's page, use the form-line layout (P3, P11).
 
+/** Whether the lemma record a candidate names has expressions, read off that record's own reading. */
+const hasOwnExpressions = async (db: DatabaseSync, { recordId, word }: { recordId?: number; word: string }): Promise<boolean> =>
+  recordId !== undefined &&
+  (await readingsFor(db, word)).some((reading) => reading.recordId === recordId && reading.wordFacts.expressions.length > 0);
+
 /** Whether a record about the query carries a `vedi`/`da` etymology, or names a base word with expressions: the extras rule 3 leaves out. */
-const carriesBaseWordExtras = (readings: readonly Reading[]): boolean =>
-  readings.some(
-    (reading) =>
-      reading.isAboutQuery &&
-      (reading.wordFacts.etymologies.some((etymology) => /^(?:\([^)]*\) )?(?:vedi|da) /.test(etymology.text)) ||
-        reading.lemmaLinks.some((link) => link.kind === "candidates" && link.candidates.some((candidate) => candidate.expressions.length > 0))),
-  );
+const carriesBaseWordExtras = async (db: DatabaseSync, readings: readonly Reading[]): Promise<boolean> => {
+  const about = readings.filter((reading) => reading.isAboutQuery);
+  if (about.some((reading) => reading.wordFacts.etymologies.some((etymology) => /^(?:\([^)]*\) )?(?:vedi|da) /.test(etymology.text)))) return true;
+  const candidates = about.flatMap((reading) => reading.lemmaLinks.flatMap((link) => (link.kind === "candidates" ? link.candidates : [])));
+  return (await Promise.all(candidates.map((candidate) => hasOwnExpressions(db, candidate)))).some(Boolean);
+};
 
 test("a noun or adjective form's page shows no `vedi <lemma>` Etymology and no Expressions with <lemma> (#700, rule 3, P5)", async () => {
   await withDevSeed(async ({ db }) => {
     for (const word of ["bella", "belli", "belle", "case", "studenti", "grandi", "attrici", "lavoratrici", "costruttrici", "parti"]) {
       // The release gives each of them one of the extras, so the page leaves something out.
-      assert.ok(carriesBaseWordExtras(await readingsFor(db, word)), `${word}: the release gives it no base-word extra`);
+      assert.ok(await carriesBaseWordExtras(db, await readingsFor(db, word)), `${word}: the release gives it no base-word extra`);
       const html = await render(db, word);
       assert.doesNotMatch(textOf(html), /Etymology(?:\([^)]*\) )?vedi /, `${word}: a vedi Etymology`);
       assert.doesNotMatch(html, /Expressions with/, `${word}: Expressions with its lemma`);

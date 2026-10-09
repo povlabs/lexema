@@ -286,7 +286,7 @@ lemma — `studentessa` for `studenti` — is still a reading.
 | `evidence[]` | every occurrence of the surface on this record, in source order |
 | `senses[]` | source glosses, labels and `examples[].text`, the examples read from `source_record_json`; a gloss loses the missing-field placeholder (below), and one that was only that is not returned; nor is a gloss that only repeats the headword (`presina`), compared ignoring case, accents, apostrophes and surrounding punctuation (`isHeadwordEcho` in `src/italian/headwordEcho.ts`, #395) |
 | `grammar` | claims split into `record`, `byForm` and `bySense` |
-| `lemmaLinks[]` | the reading's lemma: outgoing `form_of` edges this record declares, each candidate with its `listing` and its own `expressions` |
+| `lemmaLinks[]` | the reading's lemma: outgoing `form_of` edges this record declares, each candidate with its `listing` |
 | `inflections[]` | records declaring themselves forms of this one |
 | `reviews[]` | review verdicts on this record's claims |
 | `articles` | noun readings only: the articles `it-articles/v3` derives from the record's one stated gender and one stated number, and from the record's own IPA where the headword's spelling leaves its first sound open, plus the plural ones for the single plural form the source tags with the same gender; or, when withheld, the first reason (`ArticleWithholding` in `src/lookup/types.ts`) |
@@ -396,11 +396,12 @@ it on. Forms and senses are never corrected.
 
 `candidates[]` is never narrowed to one. More than one entry means the source
 did not choose. Each candidate is `recordId`, `word`, `pos`, a `ref` to its
-own `/word`, `listing`, and `expressions`: the lemma record's own
-[expressions](#expressions). No word page shows them: a form's page shows
-none of its base word's expressions (Huey's rule 3 of 2026-10-06 on
+own `/word`, and `listing`. A candidate carries none of the lemma record's
+[expressions](#expressions), and the lookup does not read them: a form's page
+shows none of its base word's expressions (Huey's rule 3 of 2026-10-06 on
 [#695](https://github.com/povlabs/lexema/issues/695#issuecomment-6024404411),
-built by [#700](https://github.com/povlabs/lexema/issues/700)).
+built by [#700](https://github.com/povlabs/lexema/issues/700), and
+[#705](https://github.com/povlabs/lexema/issues/705)).
 
 `listing` is where the candidate's own table spells the query: its whole
 `forms[]` and the `evidence[]` rows the key hit, never empty. It is `undefined`
