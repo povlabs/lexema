@@ -230,6 +230,8 @@ export interface PlanOnlyAnswer {
   readonly limitBreaches: readonly string[];
   /** The tables `update:upgrade` drops and creates again, with the rows each holds; empty for every other command. */
   readonly rebuilds: readonly Rebuild[];
+  /** What the plan writes, one line per row, when its command lists it (`WritePlan.listing`). */
+  readonly listing?: readonly string[];
 }
 
 /** What planning one change reads: the dictionary, and where its files come from and go. */
@@ -251,8 +253,15 @@ export async function planDeclared(change: DeclaredChange, deps: PlanDeps): Prom
  * dictionary and moves no branch.
  */
 export async function planOnly(change: DeclaredChange, deps: PlanDeps): Promise<PlanOnlyAnswer> {
-  const { run, rebuilds = [] } = await planDeclared(change, deps);
-  return { command: run.command, counts: run.counts, dictionaryRecords: run.dictionaryRecords, limitBreaches: run.counts.limitBreaches(run.dictionaryRecords), rebuilds };
+  const { run, rebuilds = [], listing } = await planDeclared(change, deps);
+  return {
+    command: run.command,
+    counts: run.counts,
+    dictionaryRecords: run.dictionaryRecords,
+    limitBreaches: run.counts.limitBreaches(run.dictionaryRecords),
+    rebuilds,
+    ...(listing === undefined ? {} : { listing }),
+  };
 }
 
 /** The command that restores the dictionary to `bookmark`, run from the repository root. */

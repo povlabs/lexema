@@ -10,7 +10,7 @@ import { planCorrections, unwritten } from "../import/correctRecords.js";
 import { readRulePass, findHiddenRecords } from "../import/hiddenLayer.js";
 import { planHide, unhidden } from "../import/hideRecords.js";
 import { archiveWords, findPageEntries, planPageEntries, unloaded } from "../import/loadPageEntries.js";
-import { findUnlistedDefinitions, pagesWithUnlistedLines, planRecoveredDefinitions, unwrittenDefinitions } from "../import/loadRecoveredDefinitions.js";
+import { findRecoveredDefinitions, planListing, planRecoveredDefinitions, readPagesForTheRules, unwrittenDefinitions } from "../import/loadRecoveredDefinitions.js";
 import { planSourceText } from "../import/normalizeSourceText.js";
 import { CURATED_CORRECTIONS, type CuratedCorrection } from "../italian/curatedCorrections.js";
 import { HAND_KEPT_READINGS, type HandKeptReading } from "../italian/handKeptReadings.js";
@@ -43,6 +43,8 @@ export interface WritePlan {
   readonly rebuilds?: readonly Rebuild[];
   /** The words the file writes, read off the plan (touchedWords.ts): what a Preview's dictionary slice holds (#447). */
   readonly touched: TouchedWords;
+  /** What the file writes, one line per row, for the pull request plan check to print; absent for a command that lists none. */
+  readonly listing?: readonly string[];
 }
 
 /** A change and the files it reads: `update:auto`, `hide:records`, `load:page-entries` and `load:recovered-definitions` read an archive and a dump, the others none. */
@@ -182,18 +184,19 @@ export async function planWrite(ready: ReadyChange, reader: MasterReader, applie
       throw new DataRefused([`${change.file} declares ${change.inputs.archive}, but the master ${master.releaseId} was seeded from the archive with SHA-256 ${master.archiveSha256}`]);
     }
     const dump = await openMasterDump(files.dump, change.inputs.archive, sha256, catalog, dumps);
-    let pages;
+    let read;
     try {
-      pages = await pagesWithUnlistedLines(dump.pages());
+      read = await readPagesForTheRules(dump.pages(), await archiveWords(files.archive));
     } finally {
       await dump.close();
     }
-    const plan = planRecoveredDefinitions(reader, await findUnlistedDefinitions(files.archive, pages));
+    const plan = planRecoveredDefinitions(reader, { records: await findRecoveredDefinitions(files.archive, read.pages), entries: read.entries });
     return {
       run: planOnlyRun(change.command, plan.counts, reader),
       sql: plan.sql,
       readBack: (after) => unwrittenDefinitions(after, plan).map((definition) => `recovered definition of ${definition} does not read back as written`),
       touched: wordsOfRecoveredDefinitions(plan),
+      listing: planListing(plan),
     };
   }
 

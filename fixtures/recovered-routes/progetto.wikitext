@@ -1,0 +1,113 @@
+<!-- it.wiktionary.org/wiki/progetto revision 4054516 (2025-12-22T16:59:34Z), CC BY-SA 4.0. Saved verbatim. -->
+{{Vedi|progettò}}
+== {{-it-}} ==
+{{-sost-|it}}
+{{Pn|w}} ''m sing'' {{Linkp|progetti}}
+
+# [[proposta]] ordinata e particolareggiata
+#* {{Term|diritto|it}},  {{Term|politica|it}} '''progetto di legge''': nella repubblica italiana   proposta che, per essere portata avanti,  necessita della [[firma]] di parlamentari o di un minimo di 50.000 elettori
+# ''(generico)'' [[piano]] più o meno stabilito
+#* ''il {{Pn}} di un lavoro all'estero''
+# {{Term|economia|it}} [[organizzazione]] di [[azioni]] nel [[tempo]] per mettere [[a punto]] uno [[scopo]] [[predefinito]]
+# {{Term|architettura|it}} {{Term|edilizia|it}} {{Term|tecnologia|it}} {{Term|ingegneria|it}} [[insieme]] di [[elaborati]] di [[natura]] [[tecnica]], per [[fornire]] [[indicazioni]] e [[regole]] per [[produrre]] [[materialmente]] [[beni]] e [[servizi]]
+#* ''dal [[disegno]] dello stesso {{Pn}} sono [[nate]] la [[w: Jaguar XJ220|Jaguar XJ220]] e la [[w: Renault Espace I|Renault Espace]]''
+# {{Est}} [[organizzare]] qualcosa per [[tempi]] [[successivi]], per il [[futuro]]
+#* ''ha in {{Pn}} di andare da loro nel caso in cui non si [[presentassero]] più''
+# {{Fig}} [[visione]] per l'[[avvenire]]
+#* ''il nostro {{Pn}} si [[realizzerà]] [[oltre]] le nostre [[aspettative]]''
+
+{{-verb form-|it}}
+{{Pn}}
+#prima persona singolare dell'indicativo presente di [[progettare]]
+
+{{-sill-}}
+; pro | gèt | to
+
+{{-pron-}}
+{{IPA|/proˈd͡ʒɛtto/}}
+
+{{-etim-}}
+dal {{fr}} ''[[projet]]'' [[derivazione]] di ''[[projeter]]'' [[gettare]] [[avanti]]
+
+{{-sin-}}
+*[[abbozzo]], [[disegno]], [[piano]], [[schema]], [[schizzo]], [[studio]]
+* {{Fig}} [[calcolo]],  [[idea]], [[intento]], [[intenzione]], [[mira]], [[pensiero]], [[programma]], [[proposito]], [[proposta]] 
+* piano di lavoro,  [[pianificazione]] [[prospetto]]
+* '' (in particolare)'' {{Term|arte|it}}   [[pianta]], [[calcolo]]
+* {{Est}}  [[proponimento]] 
+* ''(di un'azione, di un'attività)''    [[programmazione]],  [[ideazione]], [[concezione]]  
+* ''(di una macchina, di un edificio)''  [[progettazione]] 
+* [[conseguimento]]
+
+{{-ant-}}
+* [[esecuzione]], [[realizzazione]], [[attuazione]]
+
+{{-der-}}
+* [[progettuale]]
+
+{{-rel-}}
+* {{Est}} [[artefice]]
+
+{{-alter-}}
+* {{Dim}} [[progettino]]
+
+{{-prov-}}
+*''accarezzare un progetto '': desiderare di realizzare
+  
+{{-trad-}}
+{{Trad1|programma, proposito}}
+:* {{en}}: [[project]], [[proposal]]
+:* {{la}}: [[cogitātio]], [[mens]], [[institutum]], [[consilium]], [[ratio]]
+{{mid}}
+:*{{pt}}: [[projeto]] ''m'', [[propósito]] ''m''
+{{Trad2}}
+
+{{Trad1|progetto di legge}}
+:* {{en}}: [[bill]], [[draft]]
+{{mid}}
+:*{{pt}}: [[projeto de lei]] ''m''
+{{Trad2}}
+
+{{Trad1|disegno, pianta, schizzo}}
+:* {{en}}: [[design]], [[plan]], [[sketch]], [[drawing]], [[blueprint]], [[schematic]] 
+:* {{fr}}: [[projet]], [[plan]]
+:*{{pt}}: [[projeto]] ''m'', [[plano]] ''m''
+{{Trad2}}
+
+{{Trad1|}}
+:*{{en}}:  [[layout]], [[arrangement]]
+:* {{la}}: [[cogitātio]], [[institutum]], [[mens]]
+:*{{nl}}: [[project]]
+{{mid}}
+:* {{es}} [[edil proyecto]], [[plano]]
+:*{{de}}: [[Projekt]] ''n''
+{{Trad2}}
+
+{{Trad1|prima persona singolare dell'indicativo presente di progettare}}
+:* {{en}}: [[project]]
+{{mid}}
+:*{{pt}}: [[projeto]]
+{{Trad2}}
+
+{{-ref-}}
+* {{Fonte|dem}}
+* {{Fonte|trec}}
+*Enciclopedia [http://www.treccani.it/enciclopedia/ricerca/Progetto/ Treccani]
+* {{Fonte|dizit}}
+* {{Fonte|hoep}}
+* {{Fonte|gar}}
+* {{Fonte|sape}}
+* {{Fonte|sabco}}
+* {{Fonte|sin-co}}
+*{{Fonte|writen}}
+* {{Fonte|eti}}
+*Devoto/Oli, ''Il dizionario della lingua italiana'', edizione cartacea 2000-2001, Le Monnier, pagina 1621
+*AA.VV. ''Dizionario lingua italiana'' Modern languages, p. 754 
+* {{Fonte|zin|1388|1997}}
+* {{Fonte|itfd}}
+*AA.VV., ''Dizionario sinonimi e contrari'', Mariotti, 2006, pagina 430
+
+== Altri progetti ==
+{{Interprogetto|w|w_preposizione= riguardante il|q|q_preposizione=sul}}
+
+[[Categoria:Design-IT|progetto]]

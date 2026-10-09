@@ -118,9 +118,13 @@ function outcomeLines(outcome: DeclarationOutcome): string[] {
         answer.rebuilds.length === 0
           ? []
           : ["", "The plan rebuilds these tables, dropping each and copying its rows back:", "", "| Table | Rows |", "|---|---|", ...answer.rebuilds.map(({ table, rows }) => `| \`${table}\` | ${rows} |`)];
+      const listing =
+        answer.listing === undefined || answer.listing.length === 0
+          ? []
+          : ["", "<details><summary>What the plan writes</summary>", "", "```text", ...answer.listing, "```", "", "</details>"];
       const counts = ["", "Put this in the file, with `expected` set to the plan's counts:", "", ...fenced(declarationWith(outcome.declaration, answer.counts))];
-      if (check === null) return [heading, "", "It has no `expected` yet.", ...counts, ...breaches, ...rebuilds];
-      if (check.differences.length === 0) return [heading, "", "The plan's counts match `expected`.", ...breaches, ...rebuilds];
+      if (check === null) return [heading, "", "It has no `expected` yet.", ...counts, ...breaches, ...rebuilds, ...listing];
+      if (check.differences.length === 0) return [heading, "", "The plan's counts match `expected`.", ...breaches, ...rebuilds, ...listing];
       return [
         heading,
         "",
@@ -129,6 +133,7 @@ function outcomeLines(outcome: DeclarationOutcome): string[] {
         ...counts,
         ...breaches,
         ...rebuilds,
+        ...listing,
       ];
     }
   }

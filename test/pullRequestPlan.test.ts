@@ -158,6 +158,19 @@ test("an upgrade that rebuilds tables names each one with its rows (#511)", asyn
   assert.doesNotMatch(plain.markdown, /rebuilds these tables/);
 });
 
+test("a plan that lists what it writes prints the list, whether its counts match or not (#770)", async () => {
+  const listing = ["progetto (Sostantivo, archive line 24370, record 1, revision 4054516, line 7, sub-term): progetto di legge: … [diritto, politica] — written as recovered 9", "1 definition(s) written for 1 word(s)"];
+  const block = ["<details><summary>What the plan writes</summary>", "", "```text", ...listing, "```", "", "</details>"].join("\n");
+  for (const text of [correction(COUNTS), correction()]) {
+    const outcomes = await planPullRequest(drafts({ "dictionary-changes/fix.json": text }), { plan: async (change) => ({ ...answerOf(change), listing }) });
+    const report = pullRequestPlanReport(outcomes, "lexema-dictionary");
+    assert.ok(report.markdown.includes(block), report.markdown);
+  }
+  // A plan that lists nothing prints no list.
+  const plain = pullRequestPlanReport(await planPullRequest(drafts({ "dictionary-changes/fix.json": correction(COUNTS) }), planner()), "lexema-dictionary");
+  assert.doesNotMatch(plain.markdown, /What the plan writes/);
+});
+
 test("a plan that crosses a hard limit is red and names it, even when expected matches", async () => {
   const removing = { records: { added: 0, changed: 0, removed: 150 }, written: {}, deleted: {} };
   const outcomes = await planPullRequest(drafts({ "dictionary-changes/fix.json": correction(removing) }), planner(removing));

@@ -1,0 +1,10 @@
+<!-- it.wiktionary.org/wiki/new age revision 4066634 (2026-03-11T09:57:12Z), CC BY-SA 4.0. Saved verbatim. -->
+{{-espr-|it}}
+{{Pn}}
+# {{Term|forestierismo|it}} [[movimento]] o [[modo]] di [[vivere]] che, assai [[simile]] ad una cosiddetta [[nuova]] [[religione]], concentra [[elementi]] di [[varie]] [[fedi]] [[indirizzandoli]] in [[soddisfazioni]] [[emotive]] appunto tramite [[sollecitazioni]] dei [[sensi]], quali [[udito]] con [[musiche]] [[eccentriche]], [[vista]] per l'[[importanza]] data ai [[colori]], [[piacere]] con [[motivazione]] ritrovata nell'[[accettazione]] della [[natura]] 
+#* ''il movimento {{Pn}} si autodefinisce non-religione infatti si pone come [[astrazione]] della stessa''
+# {{Term|gergale|it}} {{Spreg}} persona [[trasognante]] che [[conclude]] [[poco]] e si [[impone]] come [[moralista]]
+#* ''un [[tipo]] {{Pn}}''
+
+{{-etim-}}
+{{Noetim|it}}

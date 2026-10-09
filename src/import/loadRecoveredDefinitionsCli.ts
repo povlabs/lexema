@@ -1,7 +1,7 @@
-// `pnpm run load:recovered-definitions`: the update that writes the definitions
-// a section states outside its `#` list — `*` bullet lines and plain prose
-// lines under the part-of-speech heading (ADR 0029) — into an already seeded
-// dictionary (loadRecoveredDefinitions.ts, #706). It picks its database the way
+// `pnpm run load:recovered-definitions`: the update that writes every
+// definition a fresh seed recovers that an already seeded dictionary lacks, on
+// every route, record-backed and page-only (ADR 0029, loadRecoveredDefinitions.ts,
+// #706, #770). It picks its database the way
 // the seed does: the local D1 under `SEED_STATE` (default `.data/seed-state`),
 // or the remote D1 `SEED_REMOTE` names. It reads the archive the master was
 // seeded from (`SEED_INPUT`, default the master's archive in `.data/source/`),
@@ -25,12 +25,14 @@ import { KNOWN_DUMPS, VerifiedDump } from "../source/wiktionaryDump.js";
 import { readMasterRelease, upgradeFirst } from "../update/master.js";
 import { planOnlyAnswer, planOnlyFlag, planOnlyRun } from "../update/planOnly.js";
 import { masterReaderOf } from "../update/updateCli.js";
+import { archiveWords } from "./loadPageEntries.js";
 import {
   changedForLoad,
+  describePlannedEntry,
   describePlannedRecord,
-  findUnlistedDefinitions,
-  pagesWithUnlistedLines,
+  findRecoveredDefinitions,
   planRecoveredDefinitions,
+  readPagesForTheRules,
   unwrittenDefinitions,
 } from "./loadRecoveredDefinitions.js";
 import { seedTargetFrom, webWrangler, type Wrangler } from "./seedTarget.js";
@@ -63,23 +65,23 @@ export async function main(
   const identity = dumpId === undefined || !Object.hasOwn(KNOWN_DUMPS, dumpId) ? undefined : KNOWN_DUMPS[dumpId];
   if (identity === undefined) return { out: `no dump is known for the master ${master.releaseId}. Nothing was written.`, status: 1 };
   const dumpPath = env.RAW_PAGES === undefined ? await source.dump(release) : resolve(env.RAW_PAGES);
-  log(`reading ${dumpPath} for the bullet and prose lines of the master ${master.releaseId}'s records in ${target.dictionary}`);
+  log(`reading ${dumpPath} for the recovered definitions of the master ${master.releaseId}'s records and page-only entries in ${target.dictionary}`);
 
   const dump = await VerifiedDump.open(dumpPath, identity);
-  let pages;
+  let read;
   try {
-    pages = await pagesWithUnlistedLines(dump.pages());
+    read = await readPagesForTheRules(dump.pages(), await archiveWords(archive));
   } finally {
     await dump.close();
   }
-  const found = await findUnlistedDefinitions(archive, pages);
-  const plan = planRecoveredDefinitions(reader, found);
-  const lines = plan.records.flatMap(describePlannedRecord);
-  const summary = `the rules read ${lines.length} definition(s) for ${found.length} record(s) of ${master.releaseId}`;
+  const records = await findRecoveredDefinitions(archive, read.pages);
+  const plan = planRecoveredDefinitions(reader, { records, entries: read.entries });
+  const lines = [...plan.records.flatMap(describePlannedRecord), ...plan.entries.flatMap(describePlannedEntry)];
+  const summary = `the rules read ${lines.length} definition(s) for ${records.length} record(s) and ${plan.entries.length} held page-only entr${plan.entries.length === 1 ? "y" : "ies"} of ${master.releaseId}`;
   const out = resolve(options.get("out") ?? ".data/updates");
   if (planOnly) {
     return planOnlyAnswer(planOnlyRun("load:recovered-definitions", plan.counts, reader), plan.sql, out, `recovered-definitions-${plan.masterReleaseId}`, {
-      records: found.length,
+      records: records.length,
       definitions: lines,
     });
   }
@@ -90,7 +92,7 @@ export async function main(
   await mkdir(out, { recursive: true });
   const file = join(out, `recovered-definitions-${plan.masterReleaseId}-${Date.now()}.sql`);
   await writeFile(file, plan.sql);
-  log(`writing ${plan.counts.written.recovered_definition ?? 0} recovered definition(s) as one transaction: ${file}`);
+  log(`writing ${plan.counts.written.recovered_definition ?? 0} recovered definition(s) and ${plan.counts.written.entry_definition ?? 0} page-only entry definition(s) as one transaction: ${file}`);
   // One file, one transaction: if any statement fails, D1 leaves the master as it was.
   try {
     target.execute(["--file", file], false);
@@ -99,7 +101,7 @@ export async function main(
   }
   const left = unwrittenDefinitions(reader, plan);
   if (left.length > 0) return { out: `the update ran, but these definitions do not read back as written: ${left.join(", ")}`, status: 1 };
-  return { out: [`${summary}; written now: ${plan.counts.written.recovered_definition ?? 0}`, ...lines].join("\n"), status: 0 };
+  return { out: [`${summary}; written now: ${plan.counts.written.recovered_definition ?? 0} recovered, ${plan.counts.written.entry_definition ?? 0} page-only`, ...lines].join("\n"), status: 0 };
 }
 
 if (isMain(import.meta.url)) finish(await main(process.env, process.argv.slice(2)));

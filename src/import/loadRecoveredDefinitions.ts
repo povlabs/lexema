@@ -1,28 +1,46 @@
-// The update that writes the definitions a section states outside its `#`
-// list (#706, ADR 0029) into a dictionary seeded before the recovered layer
-// read them: a `*` bullet line or a plain prose line under the part-of-speech
-// heading, in a section no `#` line of which states a meaning
-// (src/italian/wikitext.ts). For each archive record a section matches, it
-// writes what a seed now writes for those lines and nothing else: their
-// `recovered_definition` and `recovered_label` rows, and the `raw_page` row of
-// the revision they were read from when the dictionary has none. No record is
-// touched, `source_record_json` least of all, no row the dictionary holds is
-// changed, and no other route's definition is written: those are the seed's
-// already.
+// The update that writes into a seeded dictionary every definition a fresh seed
+// now recovers off the master's dump and the dictionary lacks (#706, #770,
+// ADR 0029). A renderer change that makes more lines readable gives a fresh
+// seed rows the shared dictionary never gets, since only a seed writes them;
+// this load writes them through a declaration.
+//
+// - Record-backed: for each archive record a section matches, the recovered
+//   definitions `recoverDefinitions` gives it, on every route a seed writes
+//   (`below-page-control`, `sub-term`, `lead-in-item`, `wrapped-prose`,
+//   `bullet-line`, `prose-line`), each with its `recovered_label` and
+//   `recovered_example` rows and the `raw_page` row of its revision when the
+//   dictionary has none.
+// - Page-only: for each page-only entry the dictionary holds (ADR 0024, ADR
+//   0028), the definitions `recoverPageEntry` reads for it, with their
+//   `entry_label` and `entry_example` rows. A page-only entry the dictionary
+//   lacks is `load:page-entries`' to write, and a curated correction of a
+//   definition `correct:records`'.
+//
+// A definition is held when the dictionary has one of that record or entry read
+// off that page line; a held one is left as it is, so a second run plans
+// nothing. No record is touched, `source_record_json` least of all, and no row
+// the dictionary holds is changed. A held row a fresh seed writes otherwise is
+// reported, never rewritten: text changes are `normalize:source-text`'s.
+//
+// A written definition takes the next free index of its record or entry, so the
+// page lists it after the ones held. That is where a fresh seed lists it only
+// when no held definition follows it in the seed's order; otherwise the plan is
+// refused, naming it, rather than showing the page in another order.
 //
 // A record a feed replaced (ADR 0025) keeps the rows written for it; the
 // lookup reads them for the record that replaced it (src/lookup/recovered.ts).
 // So a definition the served record now carries as a gloss is not written.
 //
-// The SQL is one batch, run as one transaction. A definition the dictionary
-// already holds, by its record and page line, is left alone, so a second run
-// plans nothing. It holds no DDL (#509): `update:upgrade` rebuilds
-// `recovered_definition` to the CHECK that admits the two routes
-// (src/update/masterUpgrade.ts), and the command refuses to write before it
-// has.
+// The SQL is one batch, run as one transaction. It holds no DDL (#509):
+// `update:upgrade` rebuilds `recovered_definition` to the CHECK that admits
+// every route (src/update/masterUpgrade.ts), and the command refuses to write
+// before it has.
 
+import { normalizeItalianExact } from "../italian/normalize.js";
+import { recoverPageEntry, type RecoveredEntry } from "../italian/pageEntry.js";
 import { carries, recordGlosses, recordText, recoverDefinitions, type RecoveredDefinition } from "../italian/recovery.js";
-import { readItalianSections, type UnlistedRoute } from "../italian/wikitext.js";
+import { readItalianSections, type PageDefinition } from "../italian/wikitext.js";
+import { PAGE_ENTRY_TABLES } from "../lookup/served.js";
 import type { RawPage } from "../source/rawPage.js";
 import { changedUpgrade, readMasterRelease, select, type MasterReader } from "../update/master.js";
 import { RECOVERED_INDEXES, RECOVERED_TABLES } from "../update/masterUpgrade.js";
@@ -34,47 +52,63 @@ import { COLUMNS, literal, tupleOf } from "./seedSql.js";
 export const BULLET_LINE_RULE = "recovered-bullet-line/v1";
 /** The rule that reads a plain prose line under the part-of-speech heading. */
 export const PROSE_LINE_RULE = "recovered-prose-line/v1";
+/** The rule that writes a record's lacking recovered definition on every route a seed writes (#770). */
+export const EVERY_ROUTE_RULE = "recovered-every-route/v1";
+/** The rule that writes a held page-only entry's lacking definitions (#770). */
+export const ENTRY_DEFINITION_RULE = "page-entry-definitions/v1";
 /** The rules the load reads pages by; a declaration names them all. */
-export const RECOVERED_DEFINITION_RULES = [BULLET_LINE_RULE, PROSE_LINE_RULE] as const;
+export const RECOVERED_DEFINITION_RULES = [BULLET_LINE_RULE, PROSE_LINE_RULE, EVERY_ROUTE_RULE, ENTRY_DEFINITION_RULE] as const;
 
-/** The route each rule writes. */
-const ROUTE_OF_RULE = { [BULLET_LINE_RULE]: "bullet-line", [PROSE_LINE_RULE]: "prose-line" } as const satisfies Record<(typeof RECOVERED_DEFINITION_RULES)[number], UnlistedRoute>;
-const ROUTES: ReadonlySet<string> = new Set(Object.values(ROUTE_OF_RULE));
-
-/** A definition one of the two rules reads. */
-export type UnlistedDefinition = RecoveredDefinition & { route: UnlistedRoute };
-
-const isUnlisted = (definition: RecoveredDefinition): definition is UnlistedDefinition => ROUTES.has(definition.route);
-
-/** An archive record a section matches and the definitions the two rules read for it, in page order. */
+/** An archive record a section matches and every definition a seed recovers for it, in the seed's order. */
 export interface FoundRecord {
   /** The record's 1-based line in the archive. */
   readonly lineNo: number;
   readonly word: string;
   readonly posTitle: string;
   readonly page: RawPage;
-  readonly definitions: readonly UnlistedDefinition[];
+  readonly definitions: readonly RecoveredDefinition[];
 }
 
+/** What the rules read off the master's dump and archive. */
+export interface FoundDefinitions {
+  /** One per archive record a seed recovers a definition for, in archive order. */
+  readonly records: readonly FoundRecord[];
+  /** The page-only entries a seed reads off the pages no archive record spells, by title and line. */
+  readonly entries: readonly RecoveredEntry[];
+}
+
+/** Whether a seed reads a recovered definition of some record off `page`: a line below a `#` line, or one outside the `#` list. */
+const hasRecoveredLines = (page: RawPage): boolean =>
+  readItalianSections(page).some((section) => section.unlisted.length > 0 || section.senseLines.some((line) => line.below.length > 0));
+
 /**
- * The pages of `pages` with a section that states a definition outside its
- * `#` list, by title. Reads each page once and keeps no other.
+ * Read `pages` once, as a seed reads them: the pages of a title `spelled` holds
+ * that give some record a recovered definition, by title, and the page-only
+ * entries of every other title, by title and line. Keeps no other page.
  */
-export async function pagesWithUnlistedLines(pages: AsyncIterable<RawPage> | Iterable<RawPage>): Promise<Map<string, RawPage>> {
-  const found = new Map<string, RawPage>();
+export async function readPagesForTheRules(
+  pages: AsyncIterable<RawPage> | Iterable<RawPage>,
+  spelled: ReadonlySet<string>,
+): Promise<{ pages: Map<string, RawPage>; entries: RecoveredEntry[] }> {
+  const recordPages = new Map<string, RawPage>();
+  const entries: RecoveredEntry[] = [];
   for await (const page of pages) {
-    if (readItalianSections(page).some((section) => section.unlisted.length > 0)) found.set(page.title, page);
+    if (spelled.has(page.title)) {
+      if (hasRecoveredLines(page)) recordPages.set(page.title, page);
+      continue;
+    }
+    const result = recoverPageEntry(page, spelled);
+    if (result.outcome === "recovered") entries.push(...result.entries);
   }
-  return found;
+  entries.sort((a, b) => (a.page.title < b.page.title ? -1 : a.page.title > b.page.title ? 1 : a.posRef.line - b.posRef.line));
+  return { pages: recordPages, entries };
 }
 
 /**
- * The records of the archive at `archive` the two rules recover a definition
- * for off `pages`, as the seed recovers it (`recoverDefinitions`): one per
- * record, in archive order. A definition the record carries as a gloss is not
- * one.
+ * The records of the archive at `archive` a seed recovers a definition for off
+ * `pages`, each with what it recovers (`recoverDefinitions`), in archive order.
  */
-export async function findUnlistedDefinitions(archive: string, pages: ReadonlyMap<string, RawPage>): Promise<FoundRecord[]> {
+export async function findRecoveredDefinitions(archive: string, pages: ReadonlyMap<string, RawPage>): Promise<FoundRecord[]> {
   const found: FoundRecord[] = [];
   await parseArchive({
     input: archive,
@@ -83,21 +117,48 @@ export async function findUnlistedDefinitions(archive: string, pages: ReadonlyMa
       const page = pages.get(record.word);
       if (page === undefined) return;
       const recovery = recoverDefinitions(recordText(record), page);
-      if (recovery.outcome !== "matched") return;
-      const definitions = recovery.recovered.filter(isUnlisted);
-      if (definitions.length > 0) found.push({ lineNo, word: record.word, posTitle: record.pos_title, page, definitions });
+      if (recovery.outcome === "matched" && recovery.recovered.length > 0) {
+        found.push({ lineNo, word: record.word, posTitle: record.pos_title, page, definitions: recovery.recovered });
+      }
     },
   });
   return found;
 }
 
-/** What a run does with one definition a rule read. */
+/**
+ * Whether writing the lacking definitions after the held ones keeps a fresh
+ * seed's order: `states` is each definition a seed writes, in its order, and no
+ * held one may follow one that is lacking. One not written either way, such as
+ * one a served record carries, sits anywhere.
+ */
+export function appendKeepsSeedOrder(states: readonly ("held" | "lacking" | "skipped")[]): boolean {
+  const firstLacking = states.indexOf("lacking");
+  return firstLacking === -1 || !states.slice(firstLacking).includes("held");
+}
+
+/** The definition a written recovered definition is listed under, as its row names it. */
+export type WrittenLeadIn = { readonly in: "sense"; readonly senseIndex: number } | { readonly in: "recovered"; readonly recoveredId: number } | null;
+
+/** What a run does with one definition a seed recovers for a record. */
 export type PlannedDefinition =
-  | { readonly state: "write"; readonly definition: UnlistedDefinition; readonly recoveredId: number; readonly definitionIndex: number }
+  | {
+      readonly state: "write";
+      readonly definition: RecoveredDefinition;
+      readonly recoveredId: number;
+      readonly definitionIndex: number;
+      readonly leadIn: WrittenLeadIn;
+    }
   /** The dictionary holds a recovered definition of this record read off this page line. */
-  | { readonly state: "already"; readonly definition: UnlistedDefinition }
+  | { readonly state: "already"; readonly definition: RecoveredDefinition; readonly recoveredId: number }
   /** A record a feed applied in its place carries it as a gloss, so the page shows it already. */
-  | { readonly state: "carried-by-served"; readonly definition: UnlistedDefinition; readonly servedRecordId: number };
+  | { readonly state: "carried-by-served"; readonly definition: RecoveredDefinition; readonly servedRecordId: number };
+
+/** A held row a fresh seed does not write as it is: read off a line the seed reads nothing for the record or entry off, or with other text. Reported, never changed. */
+export interface DifferingRow {
+  readonly pageLine: number;
+  readonly route: string;
+  readonly text: string;
+}
 
 /** One record's planned definitions. */
 export interface PlannedRecord {
@@ -107,11 +168,28 @@ export interface PlannedRecord {
   readonly found: FoundRecord;
   readonly pageId: number;
   readonly definitions: readonly PlannedDefinition[];
+  readonly differing: readonly DifferingRow[];
+}
+
+/** What a run does with one definition a seed reads for a page-only entry. */
+export type PlannedEntryDefinition =
+  | { readonly state: "write"; readonly definition: PageDefinition; readonly definitionIndex: number; readonly leadInIndex: number | null }
+  /** The entry holds a definition read off this page line. */
+  | { readonly state: "already"; readonly definition: PageDefinition; readonly definitionIndex: number };
+
+/** One held page-only entry's planned definitions. */
+export interface PlannedEntry {
+  readonly entryId: number;
+  readonly entry: RecoveredEntry;
+  readonly definitions: readonly PlannedEntryDefinition[];
+  readonly differing: readonly DifferingRow[];
 }
 
 export interface RecoveredDefinitionPlan {
   readonly masterReleaseId: string;
   readonly records: readonly PlannedRecord[];
+  /** The page-only entries the dictionary holds that a seed reads definitions for. */
+  readonly entries: readonly PlannedEntry[];
   /** Empty when there is nothing to write. */
   readonly sql: string;
   /** What `sql` writes; `PlanCounts.NONE` when it is empty. No record is added, changed or removed. */
@@ -154,19 +232,118 @@ function servedRecords(reader: MasterReader, recordIds: readonly number[]): Map<
   return new Map(rows.map((row) => [row.origin, { recordId: row.record_id, rawJson: row.raw_json }]));
 }
 
-/**
- * Plan writing `found`, the definitions the two rules read off the master's
- * dump for records of its archive. It reads the dictionary; it writes nothing,
- * and its SQL holds no DDL. Throws when a found record is not the master's
- * record at that line, or the dictionary holds the page from another revision
- * than the one read.
- */
-export function planRecoveredDefinitions(reader: MasterReader, found: readonly FoundRecord[]): RecoveredDefinitionPlan {
-  const master = readMasterRelease(reader);
-  const release = literal(master.releaseId);
-  const nothing: RecoveredDefinitionPlan = { masterReleaseId: master.releaseId, records: [], sql: "", counts: PlanCounts.NONE };
-  if (found.length === 0) return nothing;
+/** A held row as the plan compares it: its place, line and text. */
+interface HeldRow {
+  readonly id: number;
+  readonly definitionIndex: number;
+  readonly pageLine: number;
+  readonly route: string;
+  readonly text: string;
+}
 
+/** The held rows a fresh seed does not write as they are, against what it reads by page line. */
+const differingFrom = (held: readonly HeldRow[], read: ReadonlyMap<number, { text: string }>): DifferingRow[] =>
+  held.filter((row) => read.get(row.pageLine)?.text !== row.text).map(({ pageLine, route, text }) => ({ pageLine, route, text }));
+
+/** Throws, naming each, when a run would list a written definition before a held one a fresh seed lists after it. */
+function requireSeedOrder(unordered: readonly string[]): void {
+  if (unordered.length > 0) {
+    throw new Error(`a fresh seed lists a lacking definition before a held one of: ${unordered.join(", ")}; writing it after them would show these pages in another order`);
+  }
+}
+
+/**
+ * Plan writing what `found` reads that the dictionary lacks: the recovered
+ * definitions of the master's records and the definitions of the page-only
+ * entries it holds. It reads the dictionary; it writes nothing, and its SQL
+ * holds no DDL. Throws when a found record is not the master's record at that
+ * line, the dictionary holds a page or entry from another revision than the one
+ * read, or a written definition would be listed out of a fresh seed's order.
+ */
+export function planRecoveredDefinitions(reader: MasterReader, found: FoundDefinitions): RecoveredDefinitionPlan {
+  const master = readMasterRelease(reader);
+  const records = planRecords(reader, master.releaseId, found.records);
+  const entries = planEntries(reader, master.releaseId, found.entries);
+  const nothing: RecoveredDefinitionPlan = { masterReleaseId: master.releaseId, records: records.planned, entries, sql: "", counts: PlanCounts.NONE };
+
+  const writes = records.planned.flatMap((record) => record.definitions.flatMap((planned) => (planned.state === "write" ? [{ record, planned }] : [])));
+  const entryWrites = entries.flatMap((entry) => entry.definitions.flatMap((planned) => (planned.state === "write" ? [{ entry, planned }] : [])));
+  if (writes.length === 0 && entryWrites.length === 0) return nothing;
+
+  // Only the pages a written definition names: a record whose every definition is held or carried needs none.
+  const pagesUsed = new Set(writes.map(({ record }) => record.pageId));
+  const pageRows = records.newPages.filter(([pageId]) => pagesUsed.has(pageId as number));
+  const definitionRows = writes.map(({ record, planned: { definition, recoveredId, definitionIndex, leadIn } }) => [
+    recoveredId,
+    record.recordId,
+    master.releaseId,
+    record.pageId,
+    definitionIndex,
+    definition.route,
+    definition.route === "sub-term" ? definition.term : null,
+    definition.ref.line,
+    definition.wikitext,
+    definition.text,
+    definition.heldAsExample,
+    leadIn?.in === "sense" ? leadIn.senseIndex : null,
+    leadIn?.in === "recovered" ? leadIn.recoveredId : null,
+  ]);
+  const labelRows = writes.flatMap(({ planned: { definition, recoveredId } }) => definition.labels.map((label, index) => [recoveredId, index, label]));
+  const exampleRows = writes.flatMap(({ planned: { definition, recoveredId } }) =>
+    definition.examples.map((example, index) => [recoveredId, index, example.ref.line, example.wikitext, example.text]),
+  );
+  const entryDefinitionRows = entryWrites.map(({ entry, planned: { definition, definitionIndex, leadInIndex } }) => [
+    entry.entryId,
+    definitionIndex,
+    definition.route,
+    definition.route === "sub-term" ? definition.term : null,
+    definition.ref.line,
+    definition.wikitext,
+    definition.text,
+    leadInIndex,
+  ]);
+  const entryLabelRows = entryWrites.flatMap(({ entry, planned: { definition, definitionIndex } }) =>
+    definition.labels.map((label, index) => [entry.entryId, definitionIndex, index, label]),
+  );
+  const entryExampleRows = entryWrites.flatMap(({ entry, planned: { definition, definitionIndex } }) =>
+    definition.examples.map((example, index) => [entry.entryId, definitionIndex, index, example.ref.line, example.wikitext, example.text]),
+  );
+  const words = [...new Set(writes.map(({ record }) => record.found.word))];
+  const titles = [...new Set(entryWrites.map(({ entry }) => entry.entry.page.title))];
+  const sql = [
+    `-- Generated by src/import/loadRecoveredDefinitions.ts by ${RECOVERED_DEFINITION_RULES.join(", ")} over ${master.releaseId}.`,
+    ...(writes.length === 0 ? [] : [`-- ${writes.length} recovered definition(s) of records: ${words.join(", ")}.`]),
+    ...(entryWrites.length === 0 ? [] : [`-- ${entryWrites.length} definition(s) of held page-only entries: ${titles.join(", ")}.`]),
+    ...inserts("raw_page", pageRows),
+    ...inserts("recovered_definition", definitionRows),
+    ...inserts("recovered_label", labelRows),
+    ...inserts("recovered_example", exampleRows),
+    ...inserts("entry_definition", entryDefinitionRows),
+    ...inserts("entry_label", entryLabelRows),
+    ...inserts("entry_example", entryExampleRows),
+  ];
+  return {
+    ...nothing,
+    sql: `${sql.join("\n")}\n`,
+    counts: new PlanCounts(
+      { added: 0, changed: 0, removed: 0 },
+      {
+        raw_page: pageRows.length,
+        recovered_definition: definitionRows.length,
+        recovered_label: labelRows.length,
+        recovered_example: exampleRows.length,
+        entry_definition: entryDefinitionRows.length,
+        entry_label: entryLabelRows.length,
+        entry_example: entryExampleRows.length,
+      },
+    ),
+  };
+}
+
+/** Plan the record-backed definitions of `found`, with the `raw_page` rows a written one may need. */
+function planRecords(reader: MasterReader, releaseId: string, found: readonly FoundRecord[]): { planned: PlannedRecord[]; newPages: unknown[][] } {
+  if (found.length === 0) return { planned: [], newPages: [] };
+  const release = literal(releaseId);
   const atLine = new Map(
     select<{ record_id: number; line_no: number; word: string; pos_title: string }>(
       reader,
@@ -177,20 +354,21 @@ export function planRecoveredDefinitions(reader: MasterReader, found: readonly F
   const mismatched = found.filter(({ word, posTitle, lineNo }) => atLine.get(lineNo)?.word !== word || atLine.get(lineNo)?.pos_title !== posTitle);
   if (mismatched.length > 0) {
     throw new Error(
-      `the master ${master.releaseId} does not hold these records at the archive's lines: ` +
-        mismatched.map(({ word, lineNo }) => `${word} (line ${lineNo})`).join(", "),
+      `the master ${releaseId} does not hold these records at the archive's lines: ` + mismatched.map(({ word, lineNo }) => `${word} (line ${lineNo})`).join(", "),
     );
   }
   const recordIdOf = (record: FoundRecord): number => (atLine.get(record.lineNo) as { record_id: number }).record_id;
   const recordIds = found.map(recordIdOf);
-  const byRecord = `IN (SELECT value FROM json_each(${json(recordIds)}))`;
-  const held = select<{ record_id: number; page_line: number; definition_index: number }>(
+  const heldByRecord = new Map<number, HeldRow[]>();
+  for (const row of select<{ recovered_id: number; record_id: number; definition_index: number; page_line: number; route: string; text: string }>(
     reader,
-    `SELECT record_id, page_line, definition_index FROM recovered_definition WHERE record_id ${byRecord}`,
-  );
-  const heldLines = new Set(held.map((row) => `${row.record_id}:${row.page_line}`));
-  const nextIndex = new Map<number, number>();
-  for (const row of held) nextIndex.set(row.record_id, Math.max(nextIndex.get(row.record_id) ?? 0, row.definition_index + 1));
+    `SELECT recovered_id, record_id, definition_index, page_line, route, text FROM recovered_definition
+      WHERE record_id IN (SELECT value FROM json_each(${json(recordIds)})) ORDER BY record_id, definition_index`,
+  )) {
+    const rows = heldByRecord.get(row.record_id) ?? [];
+    rows.push({ id: row.recovered_id, definitionIndex: row.definition_index, pageLine: row.page_line, route: row.route, text: row.text });
+    heldByRecord.set(row.record_id, rows);
+  }
   const served = servedRecords(reader, recordIds);
 
   const titles = [...new Set(found.map(({ page }) => page.title))];
@@ -205,8 +383,9 @@ export function planRecoveredDefinitions(reader: MasterReader, found: readonly F
   let nextPage = (maxPage ?? 0) + 1;
   let nextRecovered = (maxRecovered ?? 0) + 1;
   const newPages: unknown[][] = [];
+  const unordered: string[] = [];
 
-  const records = found.map((record): PlannedRecord => {
+  const planned = found.map((record): PlannedRecord => {
     const recordId = recordIdOf(record);
     const { title, revisionId } = record.page;
     const heldPage = heldPages.get(title);
@@ -215,106 +394,203 @@ export function planRecoveredDefinitions(reader: MasterReader, found: readonly F
     }
     const pageId = heldPage?.page_id ?? nextPage++;
     if (heldPage === undefined) {
-      newPages.push([pageId, master.releaseId, record.page.wiki, title, revisionId, record.page.timestamp]);
+      newPages.push([pageId, releaseId, record.page.wiki, title, revisionId, record.page.timestamp]);
       heldPages.set(title, { page_id: pageId, title, revision_id: revisionId });
     }
+    const held = heldByRecord.get(recordId) ?? [];
+    const heldAt = new Map(held.map((row) => [row.pageLine, row]));
+    let nextIndex = held.reduce((next, row) => Math.max(next, row.definitionIndex + 1), 0);
     const servedRecord = served.get(recordId) ?? { recordId, rawJson: "{}" };
     const servedGlosses = servedRecord.recordId === recordId ? [] : recordGlosses((JSON.parse(servedRecord.rawJson) as { senses?: unknown }).senses);
-    const definitions = record.definitions.map((definition): PlannedDefinition => {
-      if (heldLines.has(`${recordId}:${definition.ref.line}`)) return { state: "already", definition };
-      if (servedGlosses.some((gloss) => carries(gloss.text, definition.text))) return { state: "carried-by-served", definition, servedRecordId: servedRecord.recordId };
-      const definitionIndex = nextIndex.get(recordId) ?? 0;
-      nextIndex.set(recordId, definitionIndex + 1);
-      return { state: "write", definition, recoveredId: nextRecovered++, definitionIndex };
-    });
-    return { recordId, servedRecordId: servedRecord.recordId, found: record, pageId, definitions };
+    const definitions: PlannedDefinition[] = [];
+    for (const definition of record.definitions) {
+      const heldRow = heldAt.get(definition.ref.line);
+      if (heldRow !== undefined) definitions.push({ state: "already", definition, recoveredId: heldRow.id });
+      else if (servedGlosses.some((gloss) => carries(gloss.text, definition.text))) {
+        definitions.push({ state: "carried-by-served", definition, servedRecordId: servedRecord.recordId });
+      } else {
+        definitions.push({ state: "write", definition, recoveredId: nextRecovered++, definitionIndex: nextIndex++, leadIn: leadInOf(definition, definitions) });
+      }
+    }
+    if (!appendKeepsSeedOrder(definitions.map(({ state }) => (state === "already" ? "held" : state === "write" ? "lacking" : "skipped")))) {
+      unordered.push(`${record.word} (${record.posTitle}, line ${record.lineNo})`);
+    }
+    const read = new Map(record.definitions.map((definition) => [definition.ref.line, definition]));
+    return { recordId, servedRecordId: servedRecord.recordId, found: record, pageId, definitions, differing: differingFrom(held, read) };
   });
+  requireSeedOrder(unordered);
+  return { planned, newPages };
+}
 
-  const writes = records.flatMap((record) =>
-    record.definitions.flatMap((planned) => (planned.state === "write" ? [{ record, planned }] : [])),
+/**
+ * The row a written recovered definition names as its lead-in, from what the
+ * seed placed it under: a sense of its record, or a definition recovered before
+ * it, held or written now. A lead-in a served record carries is not written, so
+ * an item under it is read at the top of the list, as the lookup reads one whose
+ * lead-in it drops.
+ */
+function leadInOf(definition: RecoveredDefinition, before: readonly PlannedDefinition[]): WrittenLeadIn {
+  const under = definition.listedUnder;
+  if (under === null) return null;
+  if (under.in === "sense") return { in: "sense", senseIndex: under.senseIndex };
+  const leadIn = before[under.index];
+  if (leadIn === undefined) throw new Error(`a recovered definition at line ${definition.ref.line} is listed under one not recovered before it`);
+  return leadIn.state === "carried-by-served" ? null : { in: "recovered", recoveredId: leadIn.recoveredId };
+}
+
+/** Plan the definitions of the page-only entries of `found` the dictionary holds. */
+function planEntries(reader: MasterReader, releaseId: string, found: readonly RecoveredEntry[]): PlannedEntry[] {
+  if (found.length === 0) return [];
+  const tables = new Set(
+    select<{ name: string }>(reader, `SELECT name FROM sqlite_schema WHERE type = 'table' AND name IN (SELECT value FROM json_each(${json(PAGE_ENTRY_TABLES)}))`).map((row) => row.name),
   );
-  if (writes.length === 0) return { ...nothing, records };
-  // Only the pages a written definition names: a record whose every definition is held or carried needs none.
-  const pagesUsed = new Set(writes.map(({ record }) => record.pageId));
-  const pageRows = newPages.filter(([pageId]) => pagesUsed.has(pageId as number));
-  const definitionRows = writes.map(({ record, planned: { definition, recoveredId, definitionIndex } }) => [
-    recoveredId,
-    record.recordId,
-    master.releaseId,
-    record.pageId,
-    definitionIndex,
-    definition.route,
-    null,
-    definition.ref.line,
-    definition.wikitext,
-    definition.text,
-    definition.heldAsExample,
-    null,
-    null,
-  ]);
-  const labelRows = writes.flatMap(({ planned: { definition, recoveredId } }) => definition.labels.map((label, index) => [recoveredId, index, label]));
-  const exampleRows = writes.flatMap(({ planned: { definition, recoveredId } }) =>
-    definition.examples.map((example, index) => [recoveredId, index, example.ref.line, example.wikitext, example.text]),
+  // A dictionary without the page-only tables holds no entry yet: `load:page-entries` writes them whole.
+  if (!PAGE_ENTRY_TABLES.every((name) => tables.has(name))) return [];
+  const titles = [...new Set(found.map((entry) => entry.page.title))];
+  const place = (word: string, line: number): string => `${word}\u0000${line}`;
+  const heldEntries = new Map(
+    select<{ entry_id: number; word: string; page_line: number; revision_id: number }>(
+      reader,
+      `SELECT e.entry_id, e.word, e.page_line, p.revision_id FROM recovered_entry e JOIN raw_page p ON p.page_id = e.page_id
+        WHERE e.release_id = ${literal(releaseId)} AND e.word IN (SELECT value FROM json_each(${json(titles)}))`,
+    ).map((row) => [place(row.word, row.page_line), row]),
   );
-  const words = [...new Set(writes.map(({ record }) => record.found.word))];
-  const sql = [
-    `-- Generated by src/import/loadRecoveredDefinitions.ts: ${writes.length} recovered definition(s) of ${master.releaseId} by ${RECOVERED_DEFINITION_RULES.join(", ")}: ${words.join(", ")}.`,
-    ...inserts("raw_page", pageRows),
-    ...inserts("recovered_definition", definitionRows),
-    ...inserts("recovered_label", labelRows),
-    ...inserts("recovered_example", exampleRows),
-  ];
-  return {
-    masterReleaseId: master.releaseId,
-    records,
-    sql: `${sql.join("\n")}\n`,
-    counts: new PlanCounts(
-      { added: 0, changed: 0, removed: 0 },
-      { raw_page: pageRows.length, recovered_definition: definitionRows.length, recovered_label: labelRows.length, recovered_example: exampleRows.length },
-    ),
-  };
+  const heldIds = [...heldEntries.values()].map((row) => row.entry_id);
+  const heldByEntry = new Map<number, HeldRow[]>();
+  for (const row of select<{ entry_id: number; definition_index: number; page_line: number; route: string; text: string }>(
+    reader,
+    `SELECT entry_id, definition_index, page_line, route, text FROM entry_definition
+      WHERE entry_id IN (SELECT value FROM json_each(${json(heldIds)})) ORDER BY entry_id, definition_index`,
+  )) {
+    const rows = heldByEntry.get(row.entry_id) ?? [];
+    rows.push({ id: row.entry_id, definitionIndex: row.definition_index, pageLine: row.page_line, route: row.route, text: row.text });
+    heldByEntry.set(row.entry_id, rows);
+  }
+
+  const unordered: string[] = [];
+  const planned = found.flatMap((entry): PlannedEntry[] => {
+    const heldEntry = heldEntries.get(place(entry.page.title, entry.posRef.line));
+    if (heldEntry === undefined) return [];
+    if (heldEntry.revision_id !== entry.page.revisionId) {
+      throw new Error(`the dictionary holds an entry of ${entry.page.title} read from revision ${heldEntry.revision_id}, the rule read revision ${entry.page.revisionId}`);
+    }
+    const held = heldByEntry.get(heldEntry.entry_id) ?? [];
+    const heldAt = new Map(held.map((row) => [row.pageLine, row]));
+    let nextIndex = held.reduce((next, row) => Math.max(next, row.definitionIndex + 1), 0);
+    const definitions: PlannedEntryDefinition[] = [];
+    for (const definition of entry.definitions) {
+      const heldRow = heldAt.get(definition.ref.line);
+      if (heldRow !== undefined) {
+        definitions.push({ state: "already", definition, definitionIndex: heldRow.definitionIndex });
+        continue;
+      }
+      // As the seed writes it (pageEntryRows.ts): the definition above it whose line its lead-in names.
+      const leadIn = definition.leadIn === null ? undefined : definitions.find((before) => before.definition.ref.line === definition.leadIn?.ref.line);
+      definitions.push({ state: "write", definition, definitionIndex: nextIndex++, leadInIndex: leadIn?.definitionIndex ?? null });
+    }
+    if (!appendKeepsSeedOrder(definitions.map(({ state }) => (state === "already" ? "held" : "lacking")))) {
+      unordered.push(`${entry.page.title} (entry ${heldEntry.entry_id}, line ${entry.posRef.line})`);
+    }
+    const read = new Map(entry.definitions.map((definition) => [definition.ref.line, definition]));
+    return [{ entryId: heldEntry.entry_id, entry, definitions, differing: differingFrom(held, read) }];
+  });
+  requireSeedOrder(unordered);
+  return planned;
 }
 
 /** The definitions the plan writes that the dictionary does not read back as planned: `word (line N)`. */
 export function unwrittenDefinitions(reader: MasterReader, plan: RecoveredDefinitionPlan): string[] {
   const writes = plan.records.flatMap((record) => record.definitions.flatMap((planned) => (planned.state === "write" ? [{ record, planned }] : [])));
-  if (writes.length === 0) return [];
-  const rows = new Map(
-    select<{ recovered_id: number; record_id: number; route: string; page_line: number; wikitext: string; text: string; labels: number }>(
-      reader,
-      `SELECT d.recovered_id, d.record_id, d.route, d.page_line, d.wikitext, d.text,
-              (SELECT count(*) FROM recovered_label l WHERE l.recovered_id = d.recovered_id) AS labels
-         FROM recovered_definition d WHERE d.recovered_id IN (SELECT value FROM json_each(${json(writes.map(({ planned }) => planned.recoveredId))}))`,
-    ).map((row) => [row.recovered_id, row]),
-  );
-  return writes
-    .filter(({ record, planned: { definition, recoveredId } }) => {
-      const row = rows.get(recoveredId);
-      return (
-        row === undefined ||
-        row.record_id !== record.recordId ||
-        row.route !== definition.route ||
-        row.page_line !== definition.ref.line ||
-        row.wikitext !== definition.wikitext ||
-        row.text !== definition.text ||
-        row.labels !== definition.labels.length
-      );
-    })
-    .map(({ record, planned }) => `${record.found.word} (line ${planned.definition.ref.line})`);
+  const entryWrites = plan.entries.flatMap((entry) => entry.definitions.flatMap((planned) => (planned.state === "write" ? [{ entry, planned }] : [])));
+  const rows =
+    writes.length === 0
+      ? new Map()
+      : new Map(
+          select<{ recovered_id: number; record_id: number; route: string; page_line: number; wikitext: string; text: string; labels: number; examples: number }>(
+            reader,
+            `SELECT d.recovered_id, d.record_id, d.route, d.page_line, d.wikitext, d.text,
+                    (SELECT count(*) FROM recovered_label l WHERE l.recovered_id = d.recovered_id) AS labels,
+                    (SELECT count(*) FROM recovered_example x WHERE x.recovered_id = d.recovered_id) AS examples
+               FROM recovered_definition d WHERE d.recovered_id IN (SELECT value FROM json_each(${json(writes.map(({ planned }) => planned.recoveredId))}))`,
+          ).map((row) => [row.recovered_id, row]),
+        );
+  const entryRows =
+    entryWrites.length === 0
+      ? new Map()
+      : new Map(
+          select<{ entry_id: number; definition_index: number; route: string; page_line: number; wikitext: string; text: string; labels: number; examples: number }>(
+            reader,
+            `SELECT d.entry_id, d.definition_index, d.route, d.page_line, d.wikitext, d.text,
+                    (SELECT count(*) FROM entry_label l WHERE l.entry_id = d.entry_id AND l.definition_index = d.definition_index) AS labels,
+                    (SELECT count(*) FROM entry_example x WHERE x.entry_id = d.entry_id AND x.definition_index = d.definition_index) AS examples
+               FROM entry_definition d WHERE d.entry_id IN (SELECT value FROM json_each(${json([...new Set(entryWrites.map(({ entry }) => entry.entryId))])}))`,
+          ).map((row) => [`${row.entry_id}:${row.definition_index}`, row]),
+        );
+  const differs = (row: { route: string; page_line: number; wikitext: string; text: string; labels: number; examples: number } | undefined, definition: PageDefinition): boolean =>
+    row === undefined ||
+    row.route !== definition.route ||
+    row.page_line !== definition.ref.line ||
+    row.wikitext !== definition.wikitext ||
+    row.text !== definition.text ||
+    row.labels !== definition.labels.length ||
+    row.examples !== definition.examples.length;
+  return [
+    ...writes
+      .filter(({ record, planned }) => {
+        const row = rows.get(planned.recoveredId);
+        return differs(row, planned.definition) || row.record_id !== record.recordId;
+      })
+      .map(({ record, planned }) => `${record.found.word} (line ${planned.definition.ref.line})`),
+    ...entryWrites
+      .filter(({ entry, planned }) => differs(entryRows.get(`${entry.entryId}:${planned.definitionIndex}`), planned.definition))
+      .map(({ entry, planned }) => `${entry.entry.page.title} (line ${planned.definition.ref.line})`),
+  ];
 }
+
+const labelled = (definition: PageDefinition): string => (definition.labels.length === 0 ? "" : ` [${definition.labels.join(", ")}]`);
 
 /** One line per definition, for the run's report: the word, its record, the page line, and what the run does with it. */
 export function describePlannedRecord(record: PlannedRecord): string[] {
-  const { word, posTitle, page } = record.found;
-  return record.definitions.map((planned) => {
-    const head = `${word} (${posTitle}, record ${record.recordId}, revision ${page.revisionId}, line ${planned.definition.ref.line}, ${planned.definition.route}): ${planned.definition.text}`;
-    switch (planned.state) {
-      case "write":
-        return `${head} — written as recovered ${planned.recoveredId}`;
-      case "already":
-        return `${head} — already written`;
-      case "carried-by-served":
-        return `${head} — not written; record ${planned.servedRecordId}, applied in its place, carries it`;
-    }
-  });
+  const { word, posTitle, page, lineNo } = record.found;
+  return [
+    ...record.definitions.map((planned) => {
+      const head = `${word} (${posTitle}, archive line ${lineNo}, record ${record.recordId}, revision ${page.revisionId}, line ${planned.definition.ref.line}, ${planned.definition.route}): ${planned.definition.text}${labelled(planned.definition)}`;
+      switch (planned.state) {
+        case "write":
+          return `${head} — written as recovered ${planned.recoveredId}`;
+        case "already":
+          return `${head} — already written`;
+        case "carried-by-served":
+          return `${head} — not written; record ${planned.servedRecordId}, applied in its place, carries it`;
+      }
+    }),
+    ...record.differing.map(
+      (row) => `${word} (${posTitle}, archive line ${lineNo}, record ${record.recordId}, line ${row.pageLine}, ${row.route}): ${row.text} — held, and a fresh seed does not write it so; left as it is`,
+    ),
+  ];
+}
+
+/** One line per definition of a held page-only entry, for the run's report. */
+export function describePlannedEntry(planned: PlannedEntry): string[] {
+  const { page, posRef, pos } = planned.entry;
+  const at = `${page.title} (page-only entry ${planned.entryId}, ${pos}, line ${posRef.line}, revision ${page.revisionId}`;
+  return [
+    ...planned.definitions.map((definition) => {
+      const head = `${at}, line ${definition.definition.ref.line}, ${definition.definition.route}): ${definition.definition.text}${labelled(definition.definition)}`;
+      return definition.state === "write" ? `${head} — written as definition ${definition.definitionIndex}` : `${head} — already written`;
+    }),
+    ...planned.differing.map((row) => `${at}, line ${row.pageLine}, ${row.route}): ${row.text} — held, and a fresh seed does not write it so; left as it is`),
+  ];
+}
+
+/** What the plan writes, one line per definition, and what it leaves: the list the pull request plan check prints. */
+export function planListing(plan: RecoveredDefinitionPlan): string[] {
+  const written = [...plan.records.flatMap(describePlannedRecord), ...plan.entries.flatMap(describePlannedEntry)].filter((line) => line.includes(" — written as "));
+  const differing = plan.records.reduce((total, record) => total + record.differing.length, 0) + plan.entries.reduce((total, entry) => total + entry.differing.length, 0);
+  const keys = new Set([...plan.records.flatMap((record) => (record.definitions.some((planned) => planned.state === "write") ? [record.found.word] : [])), ...plan.entries.flatMap((entry) => (entry.definitions.some((planned) => planned.state === "write") ? [entry.entry.page.title] : []))].map(normalizeItalianExact));
+  return [
+    ...written,
+    `${written.length} definition(s) written for ${keys.size} word(s); afterwards the dictionary lacks none a fresh seed writes for the records and held entries read.`,
+    `${differing} held definition(s) of those records and entries a fresh seed does not write as held; left as they are.`,
+  ];
 }
