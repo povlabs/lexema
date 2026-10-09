@@ -11,22 +11,29 @@
 // words nothing spells, the multi-word reading (src/lookup/phrase.ts), and for
 // words no phrase answers either, the essere agreement reading (rule
 // `it-essere-agreement/v1`, #676, #756): `sono andata` as the feminine of
-// andare's `sono andato`. The search and the agreement reading read a curated
-// table cell's corrected spelling beside the source's where the master keys
-// it (#748), as `lookup()` does.
+// andare's `sono andato`, and last, for words no compound form answers, the
+// article reading (rule `it-article-query/v1`, #738, #766): `una macchina` as
+// macchina, its readings the article agrees with first. The word after an
+// article is a key of the search itself, and the readings' articles are read
+// in one more wait for those words alone. The search and the agreement reading
+// read a curated table cell's corrected spelling beside the source's where the
+// master keys it (#748), as `lookup()` does.
 //
 // The answer is the full lookup's, made the same way: records grouped and put
 // in source order, a lemma the query also matched folded into the reading that
 // names it, a form-of reading answered with its lemmas of its own part of
 // speech (`lemmasOfPartOfSpeech`), each record once.
 
-import { keyedRead, readKeys, type DictionaryRead, type KeyedRead, type LookupDatabase } from "./database.js";
-import { queryInfoOf, rejectionOf, servableRelease } from "./lookup.js";
+import { readKeys, type DictionaryRead, type LookupDatabase } from "./database.js";
+import { partsOfSpeech, queryInfoOf, RECORD_SOURCE_LINE_SQL, rejectionOf, servableRelease, type RecordSourceLine } from "./lookup.js";
+import { articleFirst } from "./articles.js";
+import { entryPartsOfSpeech } from "./pageEntry.js";
+import { articleQuery, type ArticleQuery } from "../italian/articleQuery.js";
 import { phraseMatchesOf } from "./phrase.js";
 import { correctedEdgeServed, sourceEdgeServed } from "./correctedEdge.js";
 import { dictionaryTables, servedBy, type DictionaryTables } from "./served.js";
 import { readTranslations } from "./sourceRecord.js";
-import { lemmasOfPartOfSpeech, sourceTagsAt, type QueryInfo, type RejectedResult, type ReleaseInfo, type Translation } from "./types.js";
+import { lemmasOfPartOfSpeech, sourceTagsAt, type QueryInfo, type ReadingPartOfSpeech, type RejectedResult, type ReleaseInfo, type Translation } from "./types.js";
 import { agreeingQuery, agreementProbes, namesCell, type AgreeingQuery } from "../italian/essereAgreement.js";
 import { personOfItalianVerbForm } from "../italian/moods.js";
 import { prefixUpperBound } from "./keyRange.js";
@@ -443,26 +450,52 @@ const inSourceOrder = (matches: Iterable<Match>): Match[] =>
       (a.record.entryId ?? 0) - (b.record.entryId ?? 0),
   );
 
+/** The links a match is answered through: a record about the word's own, and none of a record matched through its table. */
+const linksOn = (match: Match, links: ReadonlyMap<number, readonly LightLink[]>): readonly LightLink[] =>
+  match.about && match.record.recordId !== undefined ? (links.get(match.record.recordId) ?? []) : [];
+
 /**
- * The candidates of a word something spells, as `found` and `candidatesOf`
- * make them: a record the word matched only through its table, and that a
+ * The readings of a word something spells, as `found` makes them: in source
+ * order, and a record the word matched only through its table, and that a
  * record about the word names as its lemma, is that reading's lemma and not a
- * candidate of its own; a record about the word that declares itself a form of
- * another is answered with its lemmas.
+ * reading of its own.
  */
-function surfaceCandidates(matches: Iterable<Match>, links: ReadonlyMap<number, readonly LightLink[]>): CandidateRecord[] {
+function readingsOf(matches: Iterable<Match>, links: ReadonlyMap<number, readonly LightLink[]>): Match[] {
   const ordered = inSourceOrder(matches);
-  const linksOn = (match: Match): readonly LightLink[] => (match.about ? (match.record.recordId === undefined ? [] : (links.get(match.record.recordId) ?? [])) : []);
   const lemmaIds = new Set(
-    ordered.flatMap((match) => linksOn(match).flatMap((link) => (link.kind === "candidates" ? link.candidates.map((lemma) => candidateKey(lemma)) : []))),
+    ordered.flatMap((match) => linksOn(match, links).flatMap((link) => (link.kind === "candidates" ? link.candidates.map((lemma) => candidateKey(lemma)) : []))),
   );
+  return ordered.filter((match) => match.about || !lemmaIds.has(candidateKey(match.record)));
+}
+
+/**
+ * The candidates of readings, as `candidatesOf` makes them: a record about the
+ * word that declares itself a form of another is answered with its lemmas.
+ */
+function candidatesOfReadings(readings: readonly Match[], links: ReadonlyMap<number, readonly LightLink[]>): CandidateRecord[] {
   return eachOnce(
-    ordered
-      .filter((match) => match.about || !lemmaIds.has(candidateKey(match.record)))
-      .flatMap((match) => {
-        const lemmas = lemmasOfPartOfSpeech(match.record.pos, linksOn(match));
-        return lemmas.length === 0 ? [match.record] : lemmas;
-      }),
+    readings.flatMap((match) => {
+      const lemmas = lemmasOfPartOfSpeech(match.record.pos, linksOn(match, links));
+      return lemmas.length === 0 ? [match.record] : lemmas;
+    }),
+  );
+}
+
+/**
+ * The part of speech of every reading of the words read by rule
+ * `it-article-query/v1`, as a full lookup gives the reading one, by candidate:
+ * a record's (`partsOfSpeech`) and a page-only entry's (`entryPartsOfSpeech`),
+ * read in one wait.
+ */
+async function partsOfSpeechOf(db: LookupDatabase, tables: DictionaryTables, readings: readonly Match[]): Promise<Map<string, ReadingPartOfSpeech>> {
+  const records = readings.flatMap(({ record }) => (record.recordId === undefined ? [] : [{ recordId: record.recordId, pos: record.pos, word: record.word }]));
+  const entries = readings.flatMap(({ record }) => (record.entryId === undefined ? [] : [{ entryId: record.entryId, pos: record.pos, word: record.word }]));
+  const [ofRecords, ofEntries] = await Promise.all([partsOfSpeech(db, records, tables), entryPartsOfSpeech(db, entries, tables)]);
+  return new Map(
+    readings.flatMap(({ record }) => {
+      const pos = record.recordId === undefined ? ofEntries.get(record.entryId) : ofRecords.get(record.recordId);
+      return pos === undefined ? [] : [[candidateKey(record), pos] as const];
+    }),
   );
 }
 
@@ -473,7 +506,10 @@ function surfaceCandidates(matches: Iterable<Match>, links: ReadonlyMap<number, 
  * the search, the lemma links and, when some word nothing
  * spells has several words, the multi-word reading, then for a word that is
  * no phrase either and has the shape of rule `it-essere-agreement/v1`, the
- * agreement read.
+ * agreement read, and last, for a word no compound form answers either and
+ * that is an article and a word by rule `it-article-query/v1`, the articles
+ * of that word's readings. The word after each article is searched with the
+ * words, so it costs no statement of its own.
  */
 export async function lookupBatch({
   db,
@@ -492,8 +528,16 @@ export async function lookupBatch({
     return rejection === undefined ? queryInfoOf(raw, release) : { outcome: "rejected", query: { raw }, rejection };
   });
   const keys = [...new Set(prepared.flatMap((query) => ("outcome" in query ? [] : [query.key])))];
+  // A word typed with its article (#738): its word is searched beside the
+  // words, and read as theirs only when no earlier route answers it.
+  const articles = new Map(
+    keys.flatMap((key): [string, ArticleQuery][] => {
+      const article = articleQuery(key);
+      return article === undefined ? [] : [[key, article]];
+    }),
+  );
 
-  const spelled = await search(db, reads, releaseId, keys);
+  const spelled = await search(db, reads, releaseId, [...new Set([...keys, ...[...articles.values()].map((article) => article.word)])]);
   const aboutIds = [...new Set([...spelled.values()].flatMap((matches) => [...matches.values()].filter((match) => match.about).flatMap((match) => match.record.recordId === undefined ? [] : [match.record.recordId])))];
 
   // A word nothing spells may still be a multi-word headword said the way a
@@ -506,9 +550,28 @@ export async function lookupBatch({
   const unphrased = unspelled.filter((key) => (phrases.get(key) ?? []).length === 0);
   const [headwords, agreements] = await Promise.all([search(db, reads, releaseId, probeKeys), agreementsOf(db, reads, releaseId, unphrased)]);
 
+  // Nor a compound form: it may be a word typed with its article. Its word's
+  // readings, as the search for the word finds them, those the article agrees
+  // with first, by the articles a full lookup derives for each (#766).
+  const articled = new Map(
+    unphrased.flatMap((key): [string, { article: ArticleQuery; readings: Match[] }][] => {
+      const article = articles.get(key);
+      const matches = article === undefined ? undefined : spelled.get(article.word);
+      if (article === undefined || matches === undefined || (agreements.get(key) ?? []).length > 0) return [];
+      return [[key, { article, readings: readingsOf(matches.values(), links) }]];
+    }),
+  );
+  const articleReadings = [...articled.values()].flatMap(({ readings }) => readings);
+  const posOf = await partsOfSpeechOf(db, tables, articleReadings);
+  const partOfSpeech = ({ record }: Match): ReadingPartOfSpeech => {
+    const pos = posOf.get(candidateKey(record));
+    if (pos === undefined) throw new Error(`no part of speech read for ${candidateKey(record)}`);
+    return pos;
+  };
+
   const candidatesOf = (key: string): CandidateRecord[] => {
     const matches = spelled.get(key);
-    if (matches !== undefined) return surfaceCandidates(matches.values(), links);
+    if (matches !== undefined) return candidatesOfReadings(readingsOf(matches.values(), links), links);
     const reached = (phrases.get(key) ?? []).flatMap((probe) => {
       const heads = [...(headwords.get(probe.key)?.values() ?? [])].filter((match) => match.about);
       // `phraseMatchesOf` answers only keys some record heads, so there is one.
@@ -516,7 +579,11 @@ export async function lookupBatch({
       return heads;
     });
     if (reached.length > 0) return eachOnce(inSourceOrder(reached).map((match) => match.record));
-    return agreements.get(key) ?? [];
+    const agreeing = agreements.get(key) ?? [];
+    if (agreeing.length > 0) return agreeing;
+    const article = articled.get(key);
+    if (article === undefined) return [];
+    return candidatesOfReadings(articleFirst(article.readings, article.article.article, partOfSpeech), links);
   };
 
   const answers = prepared.map((query): BatchAnswer => {
@@ -528,27 +595,14 @@ export async function lookupBatch({
 }
 
 /**
- * The lines of archive records, with the coordinates a translation's pointer
- * needs. Read only when a batch asks for translations (#739): one statement
- * for every candidate of every word.
- */
-export const BATCH_TRANSLATION_LINE_SQL: KeyedRead = keyedRead(`SELECT r.record_id AS set_key, r.release_id, r.line_no, r.line_sha256, j.raw_json
-       FROM source_record r
-       JOIN source_record_json j ON j.record_id = r.record_id
-      WHERE r.record_id IN (SELECT value FROM json_each(?1))`);
-
-/**
  * Each candidate's own `translations[]`, by record, read off its archive line
  * as a full lookup reads a reading's. A page-only entry has no line, so it has
  * none and is not asked about.
  */
 export async function translationsOf(db: LookupDatabase, candidates: readonly CandidateRecord[]): Promise<Map<number, Translation[]>> {
   const recordIds = candidates.flatMap((candidate) => (candidate.recordId === undefined ? [] : [candidate.recordId]));
-  const rows = await readKeys<{ set_key: number; release_id: string; line_no: number; line_sha256: string; raw_json: string }>(
-    db,
-    BATCH_TRANSLATION_LINE_SQL,
-    recordIds,
-  );
+  // One statement for every candidate of every word, read only when a batch asks for translations (#739).
+  const rows = await readKeys<RecordSourceLine>(db, RECORD_SOURCE_LINE_SQL, recordIds);
   return new Map(
     rows.map((row) => [
       row.set_key,
