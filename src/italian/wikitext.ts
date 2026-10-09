@@ -33,6 +33,7 @@
 
 import type { RawPage, RawPageRef } from "../source/rawPage.js";
 import type { PosTitle } from "./partOfSpeech.js";
+import { verbTypeOpenedBy, type VerbType } from "./verbType.js";
 
 // --- Page layout ------------------------------------------------------------
 
@@ -618,6 +619,28 @@ export interface PageSection {
    */
   unlisted: PageDefinition[];
   unrendered: UnrenderedLine[];
+  /**
+   * The verb-type parts the section is split into, in page order: each opens
+   * on a line that starts with its template (`{{Intransitivo|it}}`) and runs to
+   * the next one or the section's end (#775). Empty when the section names none.
+   */
+  verbParts: VerbPart[];
+}
+
+/** One verb-type part of a section, by the line its template opens it on. */
+export interface VerbPart {
+  verbType: VerbType;
+  /** The line holding the template, which is the part's first line. */
+  ref: RawPageRef;
+}
+
+/**
+ * The verb-type part of `section` that page line `line` sits in, or null when
+ * it sits before the first one or the section names none.
+ */
+export function verbTypeAt(section: Pick<PageSection, "verbParts">, line: number): VerbType | null {
+  const opened = section.verbParts.filter((part) => part.ref.line <= line);
+  return opened[opened.length - 1]?.verbType ?? null;
 }
 
 class SectionReader {
@@ -784,7 +807,14 @@ export function readItalianSections(page: RawPage): PageSection[] {
    * of speech: lines after it are not under the part-of-speech heading.
    * `bare` while no line but blank ones follows the heading.
    */
-  const sections: { posTemplate: string; list: Omit<ListLine, "children">[]; unlisted: UnlistedLine[]; headed: boolean; bare: boolean }[] = [];
+  const sections: {
+    posTemplate: string;
+    list: Omit<ListLine, "children">[];
+    unlisted: UnlistedLine[];
+    parts: { verbType: VerbType; line: number }[];
+    headed: boolean;
+    bare: boolean;
+  }[] = [];
   let inItalian = false;
   let current: (typeof sections)[number] | undefined;
   /** The `#` line on the physical line just read, which the next line may continue. */
@@ -806,7 +836,7 @@ export function readItalianSections(page: RawPage): PageSection[] {
       // `{{-card-|it}}`) opens no section of its own: the lower heading titles
       // the one section the two head.
       if (current?.bare === true) sections.pop();
-      current = { posTemplate: pos[1], list: [], unlisted: [], headed: false, bare: true };
+      current = { posTemplate: pos[1], list: [], unlisted: [], parts: [], headed: false, bare: true };
       sections.push(current);
       return;
     }
@@ -816,6 +846,8 @@ export function readItalianSections(page: RawPage): PageSection[] {
     }
     if (current === undefined) return;
     if (line.trim() !== "") current.bare = false;
+    const verbType = verbTypeOpenedBy(line);
+    if (verbType !== undefined) current.parts.push({ verbType, line: index + 1 });
     const item = LIST_LINE.exec(line);
     if (item !== null) {
       const entry: Omit<ListLine, "children"> = { line: index + 1, marker: item[1], body: item[2], wikitext: raw, wrapped: null };
@@ -831,7 +863,7 @@ export function readItalianSections(page: RawPage): PageSection[] {
     }
   });
 
-  return sections.map(({ posTemplate, list, unlisted }) => {
+  return sections.map(({ posTemplate, list, unlisted, parts }) => {
     const reader = new SectionReader(page);
     const senseLines = listTree(list)
       .filter((node) => isSenseMarker(node.marker))
@@ -850,6 +882,7 @@ export function readItalianSections(page: RawPage): PageSection[] {
             reader.definition({ line, marker: "", body, wikitext, wrapped: null, children: [] }, { route }, null),
           ),
       unrendered: reader.unrendered,
+      verbParts: parts.map(({ verbType, line }) => ({ verbType, ref: reader.ref(line) })),
     };
   });
 }

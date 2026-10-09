@@ -1,0 +1,49 @@
+<!-- it.wiktionary.org/wiki/transigere revision 4077345 (2026-05-09T14:57:54Z), CC BY-SA 4.0. Saved verbatim. -->
+== {{-it-}} ==
+{{-verb-|it}}
+{{Transitivo|it}}
+{{Pn|c}}
+#{{Term|diritto|it}} {{Nodef|it}}
+
+{{Intransitivo|it}}
+{{Pn|c}}
+# [[accomodare]] una [[lite]] rinunciando alle proprie [[pretese]] e [[addivenendo]] a un [[accordo]]
+#* '''non transigere''': essere [[inflessibile]] nel [[proposito]] o nell'esatta [[osservanza]] di una cosa, senza [[indulgere]] concessioni
+
+{{-sill-}}
+; tran | sì | ge | re
+
+{{-pron-}}
+{{IPA|/tranˈsid͡ʒere/}}
+
+{{-etim-}}
+dal {{la}} ''[[transigere#Latino|transigere]]'', formato da ''[[trans-]]'' ("al di là") e ''igere'' per ''[[agere]]'' ("[[spingere]], [[condurre]]"), quindi "spingere al di là, fino al suo termine"
+
+{{-sin-}}
+*[[accomodarsi]], [[accordarsi]],  [[patteggiare]], [[scendere a compromessi]], [[venire a]] compromessi,  venire a patti
+*[[accondiscendere]],  [[cedere]],  [[indulgere]], [[lasciarsi]] vincere, [[piegarsi]], [[subire]] 
+
+{{-ant-}}
+*[[discordare]],  [[litigare]], [[questionare]]
+* essere intransigente, [[irrigidirsi]], [[ostinarsi]] 
+
+{{-trad-}}
+{{Trad1|[[diritto]]}}
+:* {{en}}: to compound, to settle
+{{Trad2}}
+
+{{Trad1|accomodare una lite}}
+:* {{en}}: to reach an [[agreement]], to come to terms, to [[compromise]], to  settle a dispute
+{{Trad2}}
+
+{{Trad1|[[cedere]]}}
+:* {{en}}:  to yield, to give in, to compromise
+{{Trad2}}
+
+{{-ref-}}
+* {{Fonte|dizit}}
+* {{Fonte|trec}}
+* {{Fonte|eti}}}
+* {{Fonte|zin|1624|1922}}
+*{{Fonte|sin-co}}
+*[https://dizionario.internazionale.it/parola/scendere-a-compromessi] {{Fonte|dem}}

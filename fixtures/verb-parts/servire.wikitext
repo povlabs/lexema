@@ -1,0 +1,119 @@
+<!-- it.wiktionary.org/wiki/servire revision 4070800 (2026-04-15T21:00:35Z), CC BY-SA 4.0. Saved verbatim. -->
+== {{-it-}} ==
+{{-verb-|it}}
+{{Intransitivo|it}}
+{{Pn|c}}
+#{{Nodef|it}}
+
+{{Transitivo|it}}
+{{Pn|c}}
+#{{Term|sport|it}}, {{Term|tennis|it}} iniziare il gioco
+# {{Term|religione|it}} [[eseguire]] una [[funzione]] [[religiosa]]
+#* '''''servire''' la [[celebrazione]]''
+# [[dare]] ai [[clienti]] ciò di cui [[necessitano]] in una [[bottega]] o in un [[bar]] 
+#* ''{{Pn}} una [[pietanza]]/un [[piatto]]''
+# {{Term|gergale|it}} indica il [[bisogno]] di qualcosa per una o più [[azioni]] oppure specifica la [[pertinenza]] per una o più [[cose]] già [[compiute]]
+#* ''per questo [[motore]] mi '''servirebbe''' il [[bullone]] [[adatto]]''
+#* ''il tuo [[consiglio]] mi '''è servito''' tantissimo''
+# {{Est}} [[necessità]] di qualcosa
+#* ''"[[papà|Papà]], mi '''servono''' 10,00 euro: li hai?"''
+# [[adempimento]] dei propri [[doveri]] [[politici]] e/o [[civili]]
+#* '''servire lo Stato''' (''al servizio dello Stato e dei cittadini''): [[attinenze]] di [[diritto]] e [[legge]], [possibilmente] al di là degli [[interessi]] [[privati]] quindi con [[abnegazione]] al [[dovere]]
+# {{Term|gergale|it}} nel caso specifico, [[prendere]] la propria [[porzione]] da un [[piatto]] di [[portata]] più [[grande]] per più [[persone]]
+#* ''"'''Ti servi''' tu?"''
+
+{{-sill-}}
+; ser | vì | re
+
+{{-pron-}}
+{{IPA|/serˈvire/}}
+
+{{-etim-}}
+dal [[latino]] ''[[servire#Latino|servire]]'', infinito presente attivo di ''[[servio#Latino|servio]]'' ossia "[[essere]] [[schiavo]]"
+
+{{-quote-}}
+{{Quote
+|Figlio, se ti presenti per '''servire''' il Signore, preparati alla tentazione. Abbi un cuore retto e sii costante, non ti smarrire nel tempo della seduzione. Sta unito a lui senza separartene, perché  tu sia esaltato nei tuoi ultimi giorni.
+|[[w:Siracide|Siracide]], {{Passo biblico| Sir|2,1-3}}}}
+{{Quote
+|Per noi, servire è un privilegio [...]. Ci rendiamo conto che quello che facciamo è solo una goccia nell'oceano, ma l'oceano senza quella goccia sarebbe più piccolo
+|[[q:Madre Teresa di Calcutta|Madre Teresa di Calcutta]]}}
+
+{{-sin-}}
+*'''(verbo intransitivo)''' fare il cameriere
+*avere necessità, [[abbisognare]], [[bisognare]], [[necessitare ]], [[occorrere]], 
+*essere utile, [[svolgere]], [[assolvere]], [[collaborare]]
+*[[fungere]], fare le veci.
+*'''(verbo transitivo)'''  essere soggetto, essere schiavo, essere servo
+* {{Est}}prestare servizio, [[sottostare]], [[dipendere]], essere a disposizione, prendere ordini
+*''(i clienti)'' [[fornire]], [[rifornire]], [[procurare]], [[dare]], [[provvedere]], [[soddisfare]],  soddisfare le richieste
+*''(di servizio pubblico)'' essere utile, [[operare]]
+* ''(vivande)''  [[portare]] portare in tavola, mettere in tavola
+*{{Term|sport|it}} ''(calcio)'' [[passare]] il pallone
+*{{Term|sport|it}} ''(tennis)'' [[battere]]
+
+ 
+ 
+{{-ant-}}
+*{{Term|sport|it}}, {{Term|tennis|it}} [[risponere]]
+*'''(verbo transitivo)''' [[comandare]], [[dirigere]], [[dominare]], [[ordinare]]
+*[[danneggiare]], [[nuocere]], [[ostacolare]]
+*{{Term|familiare|it}} [[avanzare]], [[bastare]]
+   
+
+{{-der-}}
+*[[inserviente]],  [[serva]], [[servile]], [[servirsi]], [[servitore]], [[servitù]], [[servizio]], [[servito]]
+
+{{-prov-}}
+*''[[servire messa]]'':
+
+
+{{-trad-}}
+{{Trad1|essere necessario}}
+:* {{en}}: to be needed, to be necessary
+{{-}}
+:* {{pt}}: [[necessitar (de)]], [[precisar (de)]]
+{{Trad2}}
+
+{{Trad1|avere bisogno}}
+:* {{en}}:  to [[need]]
+{{-}}
+:* {{pt}}: [[necessitar (de)]], [[precisar (de)]]
+{{Trad2}}
+
+{{Trad1|fornire un servizio}}
+:* {{en}}:  to [[serve]]
+{{-}}
+:* {{pt}}: [[servir]]
+{{Trad2}}
+
+== {{-la-}} ==
+{{-verb form-|la}}
+{{Pn}}
+# infinito presente attivo di [[servio#Latino|serviō]]
+
+{{-sill-}}
+; sĕr | vī | rĕ
+
+{{-pron-}}
+* {{La-pronclass|nocat|}} {{IPA|/serˈwiː.re/}}
+* {{La-proneccl|nocat}} {{IPA|/serˈvi.re/}}
+
+{{-etim-}}
+vedi [[servio#Latino|serviō]]
+
+{{-uso-}}
+per antica convenzione, i verbi latini sono definiti in base alla prima persona singolare dell'indicativo presente; per la definizione, etimologia etc. del verbo si veda dunque '''''[[servio#Latino|serviō]]'''''
+
+{{-ref-}}
+* italiano
+** {{Fonte|dizit}}
+** {{Fonte|sape}}
+** {{Fonte|sabco}}
+**{{Fonte|sin-co}}
+** AA.VV., ''Dizionario Sinonimi e contrari'', Mariotti, 2006, pagina 522
+* latino
+** {{Ref-link|servio}}
+
+== Altri progetti ==
+{{Interprogetto|q|q_preposizione=sul}}

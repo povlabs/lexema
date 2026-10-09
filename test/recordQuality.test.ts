@@ -34,7 +34,7 @@ import {
   type QualityRecord,
 } from "../src/italian/recordQuality.js";
 import { isFurnitureGloss, readHeadwordLine, splitSenses } from "../src/italian/furniture.js";
-import { recordText, recoverDefinitions } from "../src/italian/recovery.js";
+import { ONLY_RECORD, recordText, recoverDefinitions } from "../src/italian/recovery.js";
 import { lookup } from "../src/lookup/lookup.js";
 import { readSavedPage } from "../src/source/rawPage.js";
 import { readOnlyDictionary } from "./databases.js";
@@ -75,7 +75,7 @@ test("casa: a non-empty gloss array with no meaning in it; the page shows the fu
   // With nothing else to show, the page shows the two headword lines verbatim.
   assert.equal(PageSenses.of(casa).definitionsShown(0), 2);
   const page = readSavedPage(readFileSync(resolve("fixtures/upstream-pages/casa.wikitext"), "utf8"), "casa.wikitext");
-  const recovery = recoverDefinitions(recordText(casa), page);
+  const recovery = recoverDefinitions(recordText(casa, ONLY_RECORD), page);
   assert.equal(recovery.outcome, "matched");
   const recovered = recovery.outcome === "matched" ? recovery.recovered.length : 0;
   // The seven recovered definitions replace them: the furniture is hidden.

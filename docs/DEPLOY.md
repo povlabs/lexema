@@ -773,15 +773,21 @@ dictionary seeded before the recovered layer read them
 Its two rules read a `*` bullet line (`recovered-bullet-line/v1`) and a plain
 line with no list mark (`recovered-prose-line/v1`) under an Italian
 part-of-speech heading, in a section no `#` line of which states a meaning,
-for the archive record of that section. A seed writes the same rows; the
-command brings a dictionary seeded earlier to them.
+for the archive record of that section. Its third rule,
+`recovered-verb-part/v1` (#775), keeps a definition of a Verbo section split
+into verb-type parts (`{{Transitivo|it}}`, `{{Intransitivo|it}}`…) on the
+record of the part it sits in: it deletes each recovered definition the
+dictionary holds for a record at a line of another record's part, with its
+`recovered_label` and `recovered_example` rows, whatever its route. A seed
+writes the same rows; the command brings a dictionary seeded earlier to them.
 
 It reads the master's archive, for its records, and the dump that archive was
 built from, for the pages. For each definition the rules read it writes one
 `recovered_definition` row, its `recovered_label` rows, and the page's
 `raw_page` row when the dictionary has none. It touches no record and no
-`source_record_json` line, changes no row the dictionary holds, and adds no
-other route's definition. A definition the dictionary already holds, by record
+`source_record_json` line, changes no row the dictionary holds, deletes none
+but the ones `recovered-verb-part/v1` names, and adds no other route's
+definition. A definition the dictionary already holds, by record
 and page line, is left alone, so a second run plans nothing. A record a feed
 replaced keeps the rows written for it, and the lookup reads them for the
 record that replaced it; a definition that record now carries as a gloss is not
@@ -799,13 +805,14 @@ pnpm run load:recovered-definitions
 ```
 
 `--plan-only` prints the counts and one line per definition, with its word,
-record, revision, line, route and text, and writes nothing. The shared
+record, revision, line, route and text and whether it is written or removed,
+and writes nothing. The shared
 dictionary changes only through a declaration:
 
 ```json
 {
   "command": "load:recovered-definitions",
-  "inputs": { "archive": "it-0c432803", "rules": ["recovered-bullet-line/v1", "recovered-prose-line/v1"] }
+  "inputs": { "archive": "it-0c432803", "rules": ["recovered-bullet-line/v1", "recovered-prose-line/v1", "recovered-verb-part/v1"] }
 }
 ```
 

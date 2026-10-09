@@ -8,8 +8,10 @@
 
 import type { RawPage } from "../source/rawPage.js";
 import { readHeadwordLine } from "./furniture.js";
+import { verbTypesTagged, type VerbType } from "./verbType.js";
 import {
   readItalianSections,
+  verbTypeAt,
   type LeadIn,
   type PageDefinition,
   type PageSection,
@@ -27,6 +29,41 @@ export interface RecordText {
   glosses: readonly RecordGloss[];
   /** Every `senses[].examples[].text` string, in source order, with its pointer. */
   examples: readonly RecordExample[];
+  /** The verb-type parts its `tags` name: `intransitive` is `intransitivo` (src/italian/verbType.ts). */
+  verbTypes: readonly VerbType[];
+  /** The other archive records of its word and part-of-speech title. */
+  siblings: Siblings;
+}
+
+/**
+ * The verb types each other archive record of a word and part-of-speech title
+ * names, one entry per record, in archive order. Empty when the record is the
+ * only one. Wiktextract makes one record of each verb-type part of a split
+ * section, so these are the records of the section's other parts.
+ */
+export type Siblings = readonly (readonly VerbType[])[];
+
+/** A record no other archive record shares a word and part-of-speech title with. */
+export const ONLY_RECORD: Siblings = [];
+
+/** Every archive record's verb types, by its word and part-of-speech title: what names a record's siblings. */
+export class SectionRecords {
+  private readonly byTitle = new Map<string, { lineNo: number; verbTypes: readonly VerbType[] }[]>();
+
+  /** Note the archive record at 1-based line `lineNo`. */
+  add(lineNo: number, record: { word: string; pos_title: string; tags?: unknown }): void {
+    const key = `${record.word}\u0000${record.pos_title}`;
+    const held = this.byTitle.get(key);
+    const entry = { lineNo, verbTypes: verbTypesTagged(record.tags) };
+    if (held === undefined) this.byTitle.set(key, [entry]);
+    else held.push(entry);
+  }
+
+  /** The siblings of the record at `lineNo`: every other record noted with its word and title. */
+  siblingsOf(lineNo: number, record: { word: string; pos_title: string }): Siblings {
+    const held = this.byTitle.get(`${record.word}\u0000${record.pos_title}`) ?? [];
+    return held.filter((entry) => entry.lineNo !== lineNo).map((entry) => entry.verbTypes);
+  }
 }
 
 /** One `senses[].glosses[]` string and the index of the sense that holds it. */
@@ -59,15 +96,25 @@ export function recordGlosses(senses: unknown): RecordGloss[] {
   );
 }
 
-/** Every string leaf of the record `recovery` reads, whatever else it holds. */
-export function recordText(record: {
-  word: string;
-  pos_title: string;
-  senses: readonly { glosses?: unknown; examples?: unknown }[];
-}): RecordText {
+/**
+ * Every string leaf of the record `recovery` reads, whatever else it holds,
+ * with the verb types its `tags` name and the `siblings` it shares its word and
+ * part-of-speech title with.
+ */
+export function recordText(
+  record: {
+    word: string;
+    pos_title: string;
+    tags?: unknown;
+    senses: readonly { glosses?: unknown; examples?: unknown }[];
+  },
+  siblings: Siblings,
+): RecordText {
   return {
     word: record.word,
     posTitle: record.pos_title,
+    verbTypes: verbTypesTagged(record.tags),
+    siblings,
     senseCount: record.senses.length,
     glosses: recordGlosses(record.senses),
     examples: record.senses.flatMap((sense, i) =>
@@ -132,6 +179,11 @@ export type RecordRecovery =
       alreadyGlossed: PageDefinition[];
       /** Lines the structure marks as definitions that could not be rendered. */
       unrendered: UnrenderedLine[];
+      /**
+       * Definitions the section states in a verb-type part another record of
+       * it was extracted from (`inRecordPart`): that record's, not this one's.
+       */
+      otherParts: PageDefinition[];
     };
 
 /** Lowercase, whitespace collapsed, for comparing page text to record text. */
@@ -237,13 +289,45 @@ function placeUnder(
   return { in: "sense", senseIndex };
 }
 
+/**
+ * Whether a line in verb-type part `part` of a record's section is the
+ * record's (#775). Wiktextract makes one record of each part of a split
+ * section, tagged with the part's type, so a line in a part belongs to the
+ * records whose tags name that type. It belongs to every record of the
+ * section, as before #775, when it sits in no part, when the record has no
+ * sibling, or when no record of the section names the part's type: then no
+ * record says which part it was read from.
+ */
+function inRecordPart(record: RecordText, part: VerbType | null): boolean {
+  if (part === null || record.siblings.length === 0 || record.verbTypes.includes(part)) return true;
+  return !record.siblings.some((verbTypes) => verbTypes.includes(part));
+}
+
+/**
+ * The lines of `section` that are `record`'s, each judged by the part it sits
+ * in, and the definitions that sit in a part that is another record's.
+ */
+function recordPart(section: PageSection, record: RecordText): { part: PageSection; otherParts: PageDefinition[] } {
+  const ours = (line: { ref: { line: number } }): boolean => inRecordPart(record, verbTypeAt(section, line.ref.line));
+  const part: PageSection = {
+    ...section,
+    senseLines: section.senseLines.filter(ours).map((line) => ({ ...line, below: line.below.filter(ours) })),
+    unlisted: section.unlisted.filter(ours),
+    unrendered: section.unrendered.filter(ours),
+  };
+  const kept = new Set([...part.senseLines.flatMap((line) => line.below), ...part.unlisted]);
+  const definitions = [...section.senseLines.flatMap((line) => line.below), ...section.unlisted];
+  return { part, otherParts: definitions.filter((definition) => !kept.has(definition)) };
+}
+
 /** Recover what `record` lost from the page it was extracted from. */
 export function recoverDefinitions(record: RecordText, page: RawPage): RecordRecovery {
   if (page.title !== record.word) {
     throw new Error(`page ${JSON.stringify(page.title)} is not the page of ${JSON.stringify(record.word)}`);
   }
-  const section = sectionFor(readItalianSections(page), record.posTitle);
-  if ("outcome" in section) return section;
+  const whole = sectionFor(readItalianSections(page), record.posTitle);
+  if ("outcome" in whole) return whole;
+  const { part: section, otherParts } = recordPart(whole, record);
 
   const recovered: RecoveredDefinition[] = [];
   const alreadyGlossed: PageDefinition[] = [];
@@ -261,5 +345,5 @@ export function recoverDefinitions(record: RecordText, page: RawPage): RecordRec
 
   const keepsASense = section.senseLines.some((line) => line.kind === "sense");
   const loss: Loss = recovered.length === 0 ? "none" : keepsASense ? "partial" : "full";
-  return { outcome: "matched", loss, recovered, alreadyGlossed, unrendered: section.unrendered };
+  return { outcome: "matched", loss, recovered, alreadyGlossed, unrendered: section.unrendered, otherParts };
 }

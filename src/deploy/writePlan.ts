@@ -10,7 +10,7 @@ import { planCorrections, unwritten } from "../import/correctRecords.js";
 import { readRulePass, findHiddenRecords } from "../import/hiddenLayer.js";
 import { planHide, unhidden } from "../import/hideRecords.js";
 import { archiveWords, findPageEntries, planPageEntries, unloaded } from "../import/loadPageEntries.js";
-import { findUnlistedDefinitions, pagesWithUnlistedLines, planRecoveredDefinitions, unwrittenDefinitions } from "../import/loadRecoveredDefinitions.js";
+import { findRuledDefinitions, pagesForTheRules, planRecoveredDefinitions, unwrittenDefinitions } from "../import/loadRecoveredDefinitions.js";
 import { planSourceText } from "../import/normalizeSourceText.js";
 import { CURATED_CORRECTIONS, type CuratedCorrection } from "../italian/curatedCorrections.js";
 import { HAND_KEPT_READINGS, type HandKeptReading } from "../italian/handKeptReadings.js";
@@ -184,11 +184,11 @@ export async function planWrite(ready: ReadyChange, reader: MasterReader, applie
     const dump = await openMasterDump(files.dump, change.inputs.archive, sha256, catalog, dumps);
     let pages;
     try {
-      pages = await pagesWithUnlistedLines(dump.pages());
+      pages = await pagesForTheRules(dump.pages());
     } finally {
       await dump.close();
     }
-    const plan = planRecoveredDefinitions(reader, await findUnlistedDefinitions(files.archive, pages));
+    const plan = planRecoveredDefinitions(reader, await findRuledDefinitions(files.archive, pages));
     return {
       run: planOnlyRun(change.command, plan.counts, reader),
       sql: plan.sql,

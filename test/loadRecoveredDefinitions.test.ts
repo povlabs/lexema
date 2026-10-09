@@ -18,8 +18,8 @@ import { wordsOfRecoveredDefinitions } from "../src/deploy/touchedWords.js";
 import {
   changedForLoad,
   describePlannedRecord,
-  findUnlistedDefinitions,
-  pagesWithUnlistedLines,
+  findRuledDefinitions,
+  pagesForTheRules,
   planRecoveredDefinitions,
   RECOVERED_DEFINITION_RULES,
   unwrittenDefinitions,
@@ -40,6 +40,8 @@ import { PlanCounts } from "../src/update/planCounts.js";
 const RELEASE = "it-unlisted";
 const SCHEMA = "src/db/schema.sql";
 const DIR = resolve("fixtures/unlisted-definitions");
+/** `servire` and `transigere`, whose verb sections are split into parts (#775). */
+const VERB_PARTS = resolve("fixtures/verb-parts");
 
 const fixturePages = await loadFixturePages(resolve("fixtures"));
 const casa = fixturePages.page("casa");
@@ -47,7 +49,13 @@ assert.ok(casa);
 const PAGES: RawPage[] = [
   // `casa` has definitions the seed recovered below its page controls; the load leaves them as they are.
   casa,
-  ...(await Promise.all((await readdir(DIR)).filter((name) => name.endsWith(".wikitext")).sort().map(async (name) => readSavedPage(await readFile(join(DIR, name), "utf8"), name)))),
+  ...(
+    await Promise.all(
+      [DIR, VERB_PARTS].map(async (at) =>
+        Promise.all((await readdir(at)).filter((name) => name.endsWith(".wikitext")).sort().map(async (name) => readSavedPage(await readFile(join(at, name), "utf8"), name))),
+      ),
+    )
+  ).flat(),
 ];
 
 const lines = async (path: string): Promise<string[]> => (await readFile(path, "utf8")).trimEnd().split("\n");
@@ -65,7 +73,7 @@ const withSense = (line: string, gloss: string): string => {
 
 before(async () => {
   dir = await mkdtemp(join(tmpdir(), "lexema-recovered-definitions-"));
-  master = [...(await lines("fixtures/dev-seed.jsonl")), ...(await lines(join(DIR, "archive-lines.jsonl")))];
+  master = [...(await lines("fixtures/dev-seed.jsonl")), ...(await lines(join(DIR, "archive-lines.jsonl"))), ...(await lines(join(VERB_PARTS, "archive-lines.jsonl")))];
   archive = join(dir, "master.jsonl.gz");
   await writeFile(archive, gzipSync(`${master.join("\n")}\n`));
   // The feed: `bavaglio` now carries its page's definition as a gloss, and `decrepito` a gloss of its own.
@@ -177,9 +185,9 @@ test("a dictionary seeded before the rules, with a feed applied, gains their def
   try {
     const reader = readerOf(db);
     const before = snapshot(db);
-    const pages = await pagesWithUnlistedLines(PAGES);
-    assert.deepEqual([...pages.keys()].sort(), ["Consap", "bavaglio", "centouno", "cinquantadue", "decrepito", "esterofilo", "furbo", "museruola", "urgere"]);
-    const found = await findUnlistedDefinitions(archive, pages);
+    const pages = await pagesForTheRules(PAGES);
+    assert.deepEqual([...pages.keys()].sort(), ["Consap", "bavaglio", "centouno", "cinquantadue", "decrepito", "esterofilo", "furbo", "museruola", "servire", "transigere", "urgere"]);
+    const found = await findRuledDefinitions(archive, pages);
     const plan = planRecoveredDefinitions(reader, found);
     assert.deepEqual(
       plan.records.map((record) => [record.found.word, record.found.posTitle, record.definitions.map((planned) => planned.state)]).sort(),
@@ -191,9 +199,13 @@ test("a dictionary seeded before the rules, with a feed applied, gains their def
         ["centouno", "Aggettivo numerale", ["write"]],
         ["furbo", "Aggettivo", ["write", "write", "write", "write"]],
         ["furbo", "Sostantivo", ["write", "write", "write"]],
-        // Both of `urgere`'s records, intransitive and transitive, match its one Verbo section.
+        // `urgere`'s line 3 sits in the intransitive part of its Verbo section: its intransitive record takes it, and the
+        // transitive record is found for the line it does not take, which a fresh seed did not write it either (#775).
         ["urgere", "Verbo", ["write"]],
-        ["urgere", "Verbo", ["write"]],
+        ["urgere", "Verbo", []],
+        // So are `servire`'s intransitive and `transigere`'s transitive record, for the sub-term of the other part.
+        ["servire", "Verbo", []],
+        ["transigere", "Verbo", []],
         ["esterofilo", "Aggettivo", ["write"]],
         ["esterofilo", "Sostantivo", ["write"]],
         ["Consap", "Acronimo / Abbreviazione", ["write"]],
@@ -205,7 +217,7 @@ test("a dictionary seeded before the rules, with a feed applied, gains their def
     assert.equal(replaced.get("decrepito"), true);
     assert.equal(replaced.get("bavaglio"), true);
     assert.equal(replaced.get("centouno"), false);
-    assert.deepEqual(plan.counts.toJSON(), new PlanCounts({ added: 0, changed: 0, removed: 0 }, { raw_page: 8, recovered_definition: 17, recovered_label: 11 }).toJSON());
+    assert.deepEqual(plan.counts.toJSON(), new PlanCounts({ added: 0, changed: 0, removed: 0 }, { raw_page: 8, recovered_definition: 16, recovered_label: 10 }).toJSON());
     assert.deepEqual(plan.counts.deleted, {});
     // Data only: the upgrade is what changes a table (#507).
     assert.doesNotMatch(plan.sql, /\b(CREATE|DROP|DELETE|UPDATE|ALTER)\b/i);
@@ -250,10 +262,106 @@ test("a dictionary seeded before the rules, with a feed applied, gains their def
     assert.deepEqual(await shown("bavaglio"), []);
 
     // A second run plans nothing.
-    const again = planRecoveredDefinitions(reader, await findUnlistedDefinitions(archive, await pagesWithUnlistedLines(PAGES)));
+    const again = planRecoveredDefinitions(reader, await findRuledDefinitions(archive, await pagesForTheRules(PAGES)));
     assert.equal(again.sql, "");
     assert.equal(again.counts, PlanCounts.NONE);
     assert.ok(again.records.every((record) => record.definitions.every((planned) => planned.state !== "write")));
+  } finally {
+    db.close();
+    fresh.close();
+  }
+});
+
+/** The class of #775: each record a seed before it gave a definition of its sibling's verb-type part, and that line. */
+const MISATTRIBUTED: readonly { word: string; tag: string; line: number }[] = [
+  { word: "urgere", tag: "transitive", line: 3 },
+  { word: "servire", tag: "intransitive", line: 20 },
+  { word: "transigere", tag: "transitive", line: 10 },
+];
+
+/**
+ * A dictionary seeded before #775: each record of `MISATTRIBUTED` also holds
+ * its sibling's recovered definition at that line, with its labels, as a seed
+ * that matched records to sections by title alone wrote it.
+ */
+async function seededBeforeVerbParts(name: string): Promise<DatabaseSync> {
+  const db = await seeded(name);
+  const recordOf = (word: string, tag: string): number =>
+    (db.prepare("SELECT r.record_id FROM source_record r JOIN source_record_json j USING (record_id) WHERE r.word = ? AND j.raw_json LIKE ?").get(word, `%"tags": ["${tag}"]%`) as { record_id: number }).record_id;
+  execute(
+    db,
+    MISATTRIBUTED.map(({ word, tag, line }) => {
+      const recordId = recordOf(word, tag);
+      return `INSERT INTO recovered_definition (recovered_id, record_id, release_id, page_id, definition_index, route, term, page_line, wikitext, text, held_as_example, lead_in_sense_index, lead_in_recovered_id)
+                SELECT (SELECT max(recovered_id) + 1 FROM recovered_definition), ${recordId}, d.release_id, d.page_id,
+                       (SELECT count(*) FROM recovered_definition WHERE record_id = ${recordId}), d.route, d.term, d.page_line, d.wikitext, d.text, d.held_as_example, NULL, NULL
+                  FROM recovered_definition d JOIN source_record r USING (record_id) WHERE r.word = '${word}' AND d.page_line = ${line};
+              INSERT INTO recovered_label (recovered_id, label_index, label)
+                SELECT (SELECT max(recovered_id) FROM recovered_definition), l.label_index, l.label
+                  FROM recovered_label l JOIN recovered_definition d USING (recovered_id) JOIN source_record r USING (record_id)
+                 WHERE r.word = '${word}' AND d.page_line = ${line} AND d.record_id <> ${recordId};`;
+    }).join("\n"),
+  );
+  return db;
+}
+
+test("a dictionary seeded before #775 loses each recovered definition a record holds from its sibling's verb-type part, and nothing else", async () => {
+  const db = await seededBeforeVerbParts("before-verb-parts");
+  const fresh = await seeded("fresh-verb-parts");
+  try {
+    const reader = readerOf(db);
+    const lines = (word: string): number[] =>
+      (db.prepare("SELECT d.page_line FROM recovered_definition d JOIN source_record r USING (record_id) WHERE r.word = ? ORDER BY d.page_line").all(word) as { page_line: number }[]).map((row) => row.page_line);
+    // Before: each line is held twice, once on each of the word's two records.
+    assert.deepEqual([lines("urgere"), lines("servire"), lines("transigere")], [[3, 3], [20, 20], [10, 10]]);
+    const before = snapshot(db);
+
+    const plan = planRecoveredDefinitions(reader, await findRuledDefinitions(archive, await pagesForTheRules(PAGES)));
+    assert.deepEqual(
+      plan.records.flatMap((record) => record.removals.map((removal) => [record.found.word, removal.route, removal.pageLine, removal.labels])),
+      [
+        ["urgere", "prose-line", 3, 1],
+        ["servire", "sub-term", 20, 0],
+        ["transigere", "sub-term", 10, 0],
+      ],
+    );
+    assert.deepEqual(plan.counts.toJSON(), new PlanCounts({ added: 0, changed: 0, removed: 0 }, {}, { recovered_definition: 3, recovered_label: 1 }).toJSON());
+    assert.match(
+      describePlannedRecord(plan.records.find((record) => record.removals.length > 0) ?? assert.fail()).join("\n"),
+      /urgere \(Verbo, record \d+, revision 3936244, line 3, prose-line\): occorrere nell'immediato, necessario al più presto\. — removed as recovered \d+/,
+    );
+    assert.deepEqual(wordsOfRecoveredDefinitions(plan), { kind: "words", words: ["servire", "transigere", "urgere"] });
+    assert.doesNotMatch(plan.sql, /\b(CREATE|DROP|UPDATE|ALTER|INSERT)\b/i);
+
+    execute(db, plan.sql);
+    assert.deepEqual(unwrittenDefinitions(reader, plan), []);
+    assert.deepEqual(db.prepare("PRAGMA foreign_key_check").all(), []);
+    // Only the three rows and their label are gone; every other row of every table is as it was.
+    const after = snapshot(db);
+    for (const [table, rows] of before) {
+      const now = new Set(after.get(table));
+      const gone = rows.filter((row) => !now.has(row));
+      assert.equal(gone.length, table === "recovered_definition" ? 3 : table === "recovered_label" ? 1 : 0, `${table} lost ${gone.length} row(s)`);
+      assert.equal(after.get(table)?.length, rows.length - gone.length, `${table} gained a row`);
+    }
+    // Each word's records now hold what a fresh seed writes for them.
+    for (const word of ["urgere", "servire", "transigere"]) {
+      assert.deepEqual(lines(word), [{ urgere: 3, servire: 20, transigere: 10 }[word]], word);
+      for (const record of db.prepare("SELECT DISTINCT pos_title FROM source_record WHERE word = ?").all(word) as { pos_title: string }[]) {
+        assert.deepEqual(recoveredRows(db, word, record.pos_title), recoveredRows(fresh, word, record.pos_title), word);
+      }
+    }
+    // The word page shows `urgere`'s line 3 once.
+    const result = await lookup({ db: fromNodeSqlite(db), releaseId: RELEASE, query: "urgere" });
+    assert.ok(result.outcome === "found");
+    assert.deepEqual(result.readings.flatMap((reading) => everyRecovered(reading).map((definition) => [definition.text, definition.labels])), [
+      ["occorrere nell'immediato, necessario al più presto.", ["intransitivo"]],
+    ]);
+
+    // A second run plans nothing.
+    const again = planRecoveredDefinitions(reader, await findRuledDefinitions(archive, await pagesForTheRules(PAGES)));
+    assert.equal(again.sql, "");
+    assert.equal(again.counts, PlanCounts.NONE);
   } finally {
     db.close();
     fresh.close();
@@ -264,7 +372,7 @@ test("a record the archive does not hold at the found line is refused, and a pag
   const db = await liveShaped("refusals");
   try {
     const reader = readerOf(db);
-    const found = await findUnlistedDefinitions(archive, await pagesWithUnlistedLines(PAGES));
+    const found = await findRuledDefinitions(archive, await pagesForTheRules(PAGES));
     const centouno = found.find((record) => record.word === "centouno") ?? assert.fail();
     assert.throws(() => planRecoveredDefinitions(reader, [{ ...centouno, lineNo: 1 }]), /does not hold these records at the archive's lines: centouno/);
     // `casa`'s page row names the revision the seed read; a dump of another revision is not that page.
@@ -308,7 +416,7 @@ test("update:upgrade rebuilds recovered_definition stored before the two routes 
     const held = tables.map((table) => (db.prepare(`SELECT count(*) AS n FROM ${table}`).get() as { n: number }).n);
     assert.ok(held[0] > 0, "the seed recovered `casa`'s definitions");
 
-    const found = await findUnlistedDefinitions(archive, await pagesWithUnlistedLines(PAGES));
+    const found = await findRuledDefinitions(archive, await pagesForTheRules(PAGES));
     const plan = planRecoveredDefinitions(reader, found);
     // The live table refuses the two routes, so the load names it for the upgrade and writes nothing.
     assert.deepEqual(changedForLoad(reader, schema), ["recovered_definition"]);
@@ -352,7 +460,7 @@ test("a declared load:recovered-definitions is planned by the deploy from the ma
     const releaseId = `it-${archiveSha.slice(0, 8)}`;
     const change = parseChange("test", JSON.stringify({ command: "load:recovered-definitions", inputs: { archive: releaseId, rules: [...RECOVERED_DEFINITION_RULES] } }));
     const plan = await planWrite(readyChange(change, { archive, dump }), reader, "2026-10-07T00:00:00Z", { catalog, dumps });
-    const expected = planRecoveredDefinitions(reader, await findUnlistedDefinitions(archive, await pagesWithUnlistedLines(PAGES)));
+    const expected = planRecoveredDefinitions(reader, await findRuledDefinitions(archive, await pagesForTheRules(PAGES)));
     assert.deepEqual(plan.run.counts.toJSON(), expected.counts.toJSON());
     assert.equal(plan.sql, expected.sql);
     assert.deepEqual(plan.touched, wordsOfRecoveredDefinitions(expected));
