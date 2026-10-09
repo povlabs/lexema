@@ -32,6 +32,7 @@ import { mkdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { checkPlan, passes, type ChangeDeclaration, type DeclaredChange } from "../update/declaration.js";
 import { planUpgrade, type Rebuild, upgradeShortfall, type MasterReader } from "../update/master.js";
+import type { TakenCounts } from "../update/automatic.js";
 import type { PlanCounts } from "../update/planCounts.js";
 import { D1Batch } from "./d1Batch.js";
 import { type DataFetcher, type DumpCatalog, fetchVerified, filesFor } from "./dataFiles.js";
@@ -230,6 +231,8 @@ export interface PlanOnlyAnswer {
   readonly limitBreaches: readonly string[];
   /** The tables `update:upgrade` drops and creates again, with the rows each holds; empty for every other command. */
   readonly rebuilds: readonly Rebuild[];
+  /** What `update:auto`'s selection took, per take reason; absent for every other command. */
+  readonly taken?: TakenCounts;
 }
 
 /** What planning one change reads: the dictionary, and where its files come from and go. */
@@ -251,8 +254,15 @@ export async function planDeclared(change: DeclaredChange, deps: PlanDeps): Prom
  * dictionary and moves no branch.
  */
 export async function planOnly(change: DeclaredChange, deps: PlanDeps): Promise<PlanOnlyAnswer> {
-  const { run, rebuilds = [] } = await planDeclared(change, deps);
-  return { command: run.command, counts: run.counts, dictionaryRecords: run.dictionaryRecords, limitBreaches: run.counts.limitBreaches(run.dictionaryRecords), rebuilds };
+  const { run, rebuilds = [], taken } = await planDeclared(change, deps);
+  return {
+    command: run.command,
+    counts: run.counts,
+    dictionaryRecords: run.dictionaryRecords,
+    limitBreaches: run.counts.limitBreaches(run.dictionaryRecords),
+    rebuilds,
+    ...(taken === undefined ? {} : { taken }),
+  };
 }
 
 /** The command that restores the dictionary to `bookmark`, run from the repository root. */

@@ -1,0 +1,13 @@
+{
+  "command": "update:auto",
+  "inputs": {
+    "feedRelease": "it-78385b62"
+  },
+  "expected": {
+    "records": {
+      "added": 0,
+      "changed": 1450,
+      "removed": 0
+    }
+  }
+}

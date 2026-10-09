@@ -18,7 +18,7 @@ import { readLanguageHeadings } from "../italian/sectionLanguage.js";
 import { ARCHIVE_FACTS, archiveFactsFor, type ArchiveFactsCatalog } from "../source/archiveFacts.js";
 import { type DumpIdentity, KNOWN_DUMPS, VerifiedDump } from "../source/wiktionaryDump.js";
 import { checkApplied } from "../update/apply.js";
-import { automaticPlan } from "../update/automatic.js";
+import { automaticUpdate, type TakenCounts } from "../update/automatic.js";
 import type { DeclaredChange, PlanOnlyRun } from "../update/declaration.js";
 import { diffAgainstMaster } from "../update/diff.js";
 import { planUpgrade, readMasterRelease, type Rebuild, rebuildsOf, upgradeShortfall, type MasterReader } from "../update/master.js";
@@ -41,6 +41,8 @@ export interface WritePlan {
   readBack(reader: MasterReader): string[];
   /** The tables `update:upgrade` drops and creates again, with their rows; absent for every other command. */
   readonly rebuilds?: readonly Rebuild[];
+  /** What `update:auto`'s selection took, per take reason; absent for every other command. */
+  readonly taken?: TakenCounts;
   /** The words the file writes, read off the plan (touchedWords.ts): what a Preview's dictionary slice holds (#447). */
   readonly touched: TouchedWords;
 }
@@ -137,9 +139,10 @@ export async function planWrite(ready: ReadyChange, reader: MasterReader, applie
     if (found.feed.releaseId !== change.inputs.feedRelease) {
       throw new DataRefused([`${files.archive} is release ${found.feed.releaseId}; ${change.file} declares ${change.inputs.feedRelease}`]);
     }
-    const plan = await withFeedDump(found.feed, files.dump, LANGUAGES, (pages) => automaticPlan(reader, found, pages, { appliedAt, catalog }), { catalog, dumps });
+    const { taken, apply: plan } = await withFeedDump(found.feed, files.dump, LANGUAGES, (pages) => automaticUpdate(reader, found, pages, { appliedAt, catalog }), { catalog, dumps });
     return {
       run: planOnlyRun(change.command, plan?.counts ?? PlanCounts.NONE, reader),
+      taken,
       sql: plan?.sql ?? "",
       readBack: (after) => {
         if (plan === null) return [];

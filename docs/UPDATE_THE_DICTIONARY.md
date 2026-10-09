@@ -75,7 +75,7 @@ pnpm run update:auto <later.jsonl.gz> --pages <its-dump.xml.bz2>
 Only the deploy workflow runs it with `SEED_REMOTE=lexema-dictionary`. No
 person supplies word ids or inspects old/new reports. The command compares
 against currently served records, verifies source ordering and the language
-dump, selects with `feed-selection/v5`, and plans through the existing importer.
+dump, selects with `feed-selection/v6`, and plans through the existing importer.
 Ambiguous groups, hidden/non-Italian exclusions, new-word form-of checks and
 whole-record disappearance remain safeguarded.
 

@@ -1,9 +1,9 @@
-// feed-selection/v5 implements ADR 0025: safely matched newer definitions
+// feed-selection/v6 implements ADR 0025: safely matched newer definitions
 // replace older ones, including corrections and removals. Matching and source
 // ordering are checked by callers. Formatting and non-definition changes
-// remain skipped. A removal whose later record puts a blank where ours has a
-// real definition is an extraction loss, not an edit, so ours keeps serving
-// whole (#442).
+// remain skipped, except changed translations (v6, below). A removal whose
+// later record puts a blank where ours has a real definition is an
+// extraction loss, not an edit, so ours keeps serving whole (#442).
 //
 // v5 changes what counts as a real gloss (#422). A sense is real when the word
 // page shows a definition for it: the page reads the text the seed stores and
@@ -15,6 +15,14 @@
 // of ours lost to one is `hidden-replaces-definition`, which keeps ours (Huey's
 // ruling on #422 widens the one on #442).
 //
+// v6 adds one take reason, `replaces-translations` (#781). A changed record
+// whose senses are the same and whose translations differ is taken, so the
+// API serves the later translations. Hidden master records and the language
+// rule skip it as they skip any changed record. A senses-same record whose
+// differing fields do not include translations stays skipped, and so does a
+// record whose senses changed and that the rule above skips (Huey's ruling on
+// #781).
+//
 // Nothing here reads a database or a file; the caller hands in what the page,
 // the dump and the master say.
 
@@ -23,10 +31,10 @@ import { withoutPlaceholder } from "../italian/placeholder.js";
 import { PageSenses, type QualityRecord, type SenseKind } from "../italian/recordQuality.js";
 
 /** The rule's name and version, written into every selection it makes. */
-export const SELECTION_RULE = "feed-selection/v5" as const;
+export const SELECTION_RULE = "feed-selection/v6" as const;
 
 /** Why a change is taken. */
-export type TakeReason = "new-word" | "fills-gloss" | "adds-sense" | "replaces-definitions" | "removes-definitions";
+export type TakeReason = "new-word" | "fills-gloss" | "adds-sense" | "replaces-definitions" | "removes-definitions" | "replaces-translations";
 
 /** Why a change is skipped. */
 export type SkipReason =
@@ -65,7 +73,7 @@ const SHOWN: ReadonlySet<SenseKind> = new Set(["meaning", "form-of"]);
  */
 export type DefinitionLoss = "blank" | "hidden";
 
-/** A record's senses as `feed-selection/v5` reads them. */
+/** A record's senses as `feed-selection/v5` and later read them. */
 export class ReadSenses {
   private constructor(
     /** Senses the word page shows a definition for (a meaning or a form-of), in order. */
@@ -203,4 +211,19 @@ export function selectChanged({ before, after, beforeHidden, italian }: ChangedC
   }
   if (sameList(sorted(was.keys), sorted(now.keys))) return skip(sameList(was.shown, now.shown) ? "glosses-same" : "formatting-only");
   return take("replaces-definitions");
+}
+
+/** A record of the master and the later record of its word and part of speech, whose senses are the same and whose translations differ. */
+export interface TranslationsCandidate {
+  /** Whether the master record is hidden as another language. */
+  beforeHidden: boolean;
+  /** Whether #29's rule, run on the later release's dump, keeps the later record Italian. */
+  italian: boolean;
+}
+
+/** The verdict on a record whose translations changed and whose senses did not (#781). */
+export function selectTranslations({ beforeHidden, italian }: TranslationsCandidate): Verdict {
+  if (beforeHidden) return skip("master-hidden");
+  if (!italian) return skip("not-italian");
+  return take("replaces-translations");
 }

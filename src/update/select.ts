@@ -18,22 +18,30 @@ import { verifyFeedOrdering } from "./ordering.js";
 import { reportOf, type MasterDiff, type ReportedLine } from "./diff.js";
 import { feedLines } from "./feed.js";
 import { select, type MasterReader } from "./master.js";
-import { selectChanged, selectNew, SELECTION_RULE, type SkipReason, type TakeReason, type TargetStatus, type Verdict } from "./selection.js";
+import { selectChanged, selectNew, selectTranslations, SELECTION_RULE, type SkipReason, type TakeReason, type TargetStatus, type Verdict } from "./selection.js";
 
-/** One new or changed record and the bucket the rule put it in. */
-export interface SelectedChange {
+/** One new or changed record, before the rule gives it a reason. */
+type Unjudged = {
   id: ChangeId;
-  kind: "new" | "changed";
   word: string;
   pos: string;
-  reason: TakeReason | SkipReason;
   feed: ReportedLine;
-  master?: ReportedLine;
-  /** The glosses of each sense, as the source has them: ours, for a changed record. */
-  before?: string[];
   /** The glosses of each sense of the later record. */
   after: string[];
-}
+} & (
+  | { kind: "new" }
+  | {
+      kind: "changed";
+      master: ReportedLine;
+      /** The glosses of each sense of ours, as the source has them. */
+      before: string[];
+      /** The record's top-level read fields whose content differs, in name order. */
+      fields: readonly string[];
+    }
+);
+
+/** One new or changed record and the bucket the rule put it in. */
+export type SelectedChange = Unjudged & { reason: TakeReason | SkipReason };
 
 /** Why an ambiguous group could not be paired. */
 export type AmbiguousShape = "more-later-records" | "more-of-ours" | "as-many-each-side";
@@ -45,8 +53,10 @@ export interface Selection {
   feed: { releaseId: string; archiveSha256: string; dump: string };
   counts: {
     taken: Record<TakeReason, number>;
+    /** Of the `replaces-translations` records, those whose only differing read field is `translations`. */
+    translationsOnly: number;
     skipped: Record<SkipReason, number>;
-    /** Changed records whose senses are the same: no meaning changed. */
+    /** Changed records whose senses and translations are the same: no meaning and no translation changed. */
     sensesTheSame: number;
     lost: number;
     ambiguous: Record<AmbiguousShape, number>;
@@ -54,13 +64,13 @@ export interface Selection {
   };
   taken: SelectedChange[];
   skipped: SelectedChange[];
-  /** The first changed records, by word, whose senses are the same; the rest are only counted. */
+  /** The first changed records, by word, whose senses and translations are the same; the rest are only counted. */
   sensesTheSame: { id: ChangeId; word: string; pos: string; fields: string[]; master: ReportedLine; feed: ReportedLine }[];
   lost: { id: ChangeId; word: string; pos: string; master: ReportedLine }[];
   ambiguous: { word: string; pos: string; shape: AmbiguousShape; master: ReportedLine[]; feed: ReportedLine[] }[];
 }
 
-const TAKE_REASONS: readonly TakeReason[] = ["new-word", "fills-gloss", "adds-sense", "replaces-definitions", "removes-definitions"];
+const TAKE_REASONS: readonly TakeReason[] = ["new-word", "fills-gloss", "adds-sense", "replaces-definitions", "removes-definitions", "replaces-translations"];
 const SKIP_REASONS: readonly SkipReason[] = [
   "not-italian",
   "no-real-gloss",
@@ -154,7 +164,15 @@ export async function selectChanges(reader: MasterReader, found: MasterDiff, jud
   const report = await reportOf(found);
   const byId = new Map<string, Change>(found.diff.changes.map((change) => [change.id, change]));
   const news = report.new.map((reported) => byId.get(reported.id) as Extract<Change, { kind: "new" }>);
-  const changed = report.changedSenses.map((reported) => byId.get(reported.id) as Extract<Change, { kind: "changed" }>);
+  const changedOf = (reported: { id: ChangeId }) => byId.get(reported.id) as Extract<Change, { kind: "changed" }>;
+  // A senses-same record is judged when its translations differ (v6, #781); the rest are only counted.
+  const translated = report.changedElsewhere.filter((reported) => reported.fields.includes("translations"));
+  const elsewhere = report.changedElsewhere.filter((reported) => !reported.fields.includes("translations"));
+  const judged = [
+    ...report.changedSenses.map((reported) => ({ reported, change: changedOf(reported), senses: true })),
+    ...translated.map((reported) => ({ reported, change: changedOf(reported), senses: false })),
+  ];
+  const changed = judged.map(({ change }) => change);
 
   const lines: Map<number, ArchiveRecord> = await feedLines(feed, new Set([...news, ...changed].map((change) => change.feed.lineNo)));
   const after = (change: Change & { feed: { lineNo: number } }): QualityRecord => {
@@ -202,7 +220,7 @@ export async function selectChanges(reader: MasterReader, found: MasterDiff, jud
 
   const taken: SelectedChange[] = [];
   const skipped: SelectedChange[] = [];
-  const file = (verdict: Verdict, entry: Omit<SelectedChange, "reason">): void => {
+  const file = (verdict: Verdict, entry: Unjudged): void => {
     (verdict.take ? taken : skipped).push({ ...entry, reason: verdict.reason });
   };
   for (const change of news) {
@@ -216,29 +234,24 @@ export async function selectChanges(reader: MasterReader, found: MasterDiff, jud
       after: glossesOf(record),
     });
   }
-  for (const change of changed) {
+  for (const { reported, change, senses } of judged) {
     const line = found.masterLines.get(change.master.recordId);
     if (line === undefined) throw new Error(`no master line read for record ${change.master.recordId}`);
     const before = recordOf(line, `record ${change.master.recordId}`);
     const record = after(change);
-    file(
-      selectChanged({
-        before,
-        after: record,
-        beforeHidden: hiddenIds.has(change.master.recordId),
-        italian: !foreign.has(change.feed.lineNo),
-      }),
-      {
-        id: change.id,
-        kind: "changed",
-        word: change.word,
-        pos: change.pos,
-        feed: { releaseId: feed.releaseId, lineNo: change.feed.lineNo },
-        master: { releaseId: change.master.releaseId, lineNo: change.master.lineNo },
-        before: glossesOf(before),
-        after: glossesOf(record),
-      },
-    );
+    const beforeHidden = hiddenIds.has(change.master.recordId);
+    const italian = !foreign.has(change.feed.lineNo);
+    file(senses ? selectChanged({ before, after: record, beforeHidden, italian }) : selectTranslations({ beforeHidden, italian }), {
+      id: change.id,
+      kind: "changed",
+      word: change.word,
+      pos: change.pos,
+      feed: { releaseId: feed.releaseId, lineNo: change.feed.lineNo },
+      master: { releaseId: change.master.releaseId, lineNo: change.master.lineNo },
+      before: glossesOf(before),
+      after: glossesOf(record),
+      fields: reported.fields,
+    });
   }
 
   const tally = <Key extends string>(keys: readonly Key[], of: readonly Key[]): Record<Key, number> =>
@@ -260,15 +273,16 @@ export async function selectChanges(reader: MasterReader, found: MasterDiff, jud
     feed: { releaseId: feed.releaseId, archiveSha256: feed.archiveSha256, dump },
     counts: {
       taken: tally(TAKE_REASONS, taken.map((entry) => entry.reason as TakeReason)),
+      translationsOnly: taken.filter((entry) => entry.reason === "replaces-translations" && entry.kind === "changed" && entry.fields.length === 1).length,
       skipped: tally(SKIP_REASONS, skipped.map((entry) => entry.reason as SkipReason)),
-      sensesTheSame: report.counts.changedElsewhere,
+      sensesTheSame: elsewhere.length,
       lost: report.counts.lost,
       ambiguous: tally(SHAPES, ambiguous.map((group) => group.shape)),
       unchanged: report.counts.unchanged,
     },
     taken,
     skipped,
-    sensesTheSame: report.changedElsewhere.slice(0, EXAMPLES).map(({ id, word, pos, fields, master: before, feed: after }) => ({ id, word, pos, fields, master: before, feed: after })),
+    sensesTheSame: elsewhere.slice(0, EXAMPLES).map(({ id, word, pos, fields, master: before, feed: after }) => ({ id, word, pos, fields, master: before, feed: after })),
     lost: report.lost.map(({ id, word, pos, master: line }) => ({ id, word, pos, master: line })),
     ambiguous,
   };
@@ -288,6 +302,7 @@ const MEANING: Readonly<Record<TakeReason | SkipReason, string>> = {
   "adds-sense": "the later record has more real senses and a new gloss key",
   "replaces-definitions": "the later record corrects or rewrites definition text",
   "removes-definitions": "the matched later record removes some or all real definitions",
+  "replaces-translations": "the senses are the same and the translations differ; the later record serves its translations",
   "not-italian": "the page puts the record under another language (section-language/v1, on the later release's dump)",
   "no-real-gloss": "no sense of the later record has a real gloss",
   "blank-replaces-definition": "the later record loses real definitions to empty or placeholder senses; ours keeps serving",
@@ -324,7 +339,7 @@ export function selectionMarkdown(selection: Selection): string {
       changed ? "|---|---|---|---|---|" : "|---|---|---|---|",
       ...examples.map((entry) =>
         changed
-          ? `| ${entry.id} | ${cell(entry.word)} | ${cell(entry.pos)} | ${cell(senses(entry.before))} | ${cell(senses(entry.after))} |`
+          ? `| ${entry.id} | ${cell(entry.word)} | ${cell(entry.pos)} | ${cell(senses(entry.kind === "changed" ? entry.before : undefined))} | ${cell(senses(entry.after))} |`
           : `| ${entry.id} | ${cell(entry.word)} | ${cell(entry.pos)} | ${cell(senses(entry.after))} |`,
       ),
       "",
@@ -340,9 +355,10 @@ export function selectionMarkdown(selection: Selection): string {
     "|---|---|---:|",
     ...TAKE_REASONS.map((reason) => `| Applied | ${reason} | ${counts.taken[reason]} |`),
     `| Applied | **total** | **${takenTotal}** |`,
-    ...SKIP_REASONS.filter((reason) => counts.skipped[reason] > 0).map((reason) => `| Skipped, new or changed senses | ${reason} | ${counts.skipped[reason]} |`),
-    `| Skipped, new or changed senses | **total** | **${skippedTotal}** |`,
-    `| Skipped | senses the same (other fields changed) | ${counts.sensesTheSame} |`,
+    `| Applied | of replaces-translations, translations only | ${counts.translationsOnly} |`,
+    ...SKIP_REASONS.filter((reason) => counts.skipped[reason] > 0).map((reason) => `| Skipped, changed senses or translations | ${reason} | ${counts.skipped[reason]} |`),
+    `| Skipped, changed senses or translations | **total** | **${skippedTotal}** |`,
+    `| Skipped | senses and translations the same (other fields changed) | ${counts.sensesTheSame} |`,
     `| Skipped | lost word, kept | ${counts.lost} |`,
     ...SHAPES.map((shape) => `| Skipped | ambiguous group, ${SHAPE_MEANING[shape]} | ${counts.ambiguous[shape]} |`),
     `| Unchanged | | ${counts.unchanged} |`,
@@ -353,9 +369,9 @@ export function selectionMarkdown(selection: Selection): string {
     "## Skipped",
     "",
     ...SKIP_REASONS.flatMap((reason) => bucket(reason, counts.skipped[reason])),
-    `### Senses the same (${counts.sensesTheSame})`,
+    `### Senses and translations the same (${counts.sensesTheSame})`,
     "",
-    `Another field changed and no sense did, so no meaning changed. The first ${EXAMPLES} by word:`,
+    `Another field changed and no sense or translation did, so no meaning changed. The first ${EXAMPLES} by word:`,
     "",
     "| Id | Word | Part of speech | Fields that differ | Our line | Later line |",
     "|---|---|---|---|---|---|",
