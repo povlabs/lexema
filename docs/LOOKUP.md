@@ -473,22 +473,27 @@ the offer finds: every offer is read back the way `lookup()` reads it (see
 headwords, none twice, and the two together stay within `SUGGESTION_LIMIT`
 (`offered()` is the list the field shows).
 
-What it costs, per keystroke. A prefix of one word, and a prefix whose own
-headwords already fill ten, read nothing more. Otherwise, after the prefix
-read:
+What it costs, per keystroke. A prefix of one word reads no phrase and no
+schema. A prefix of several words also reads which optional tables the master has
+(`OPTIONAL_TABLES_SQL`, `src/lookup/served.ts`), in the same call as the
+release read, since the tables say how its lemmas are read (#759). A prefix
+whose own headwords already fill ten reads nothing past that. Otherwise, after
+the prefix read:
 
 | Read | Index | Rows | Round trips |
 |---|---|---|---|
-| `WORD_LEMMAS_SQL`: the lemmas of every word but the last, sent as one JSON array | `lookup_form_headword_by_key`, one equality probe per word, then `form_of_edge_by_record` | a few per word | 1 |
+| `WORD_LEMMAS_SQL`, or `CORRECTED_WORD_LEMMAS_SQL` on a master with `corrected_edge`: the lemmas of every word but the last, sent as one JSON array | `lookup_form_headword_by_key`, one equality probe per word, then `form_of_edge_by_record`; the corrected read also probes `corrected_edge` by record (`sqlite_autoindex_corrected_edge_1`) | a few per word | 1 |
 | `PAST_PARTICIPLE_SQL`, only for a word after an auxiliary (`sono andati v`) | `lookup_form_by_key`, then `grammar_claim_by_record` | a few per spelling | 1, its reads side by side |
 | `HEADWORD_PREFIX_SQL`: one range probe per lemma sequence other than the typed words, at most `MAX_PHRASE_PREFIX_PROBES` (16) | `lookup_form_headword_by_key` range, in key order, no sort | at most the room left in the list | 1, its reads side by side |
 | Only when some phrase is offered: `EXACT_KEY_SQL`, which of the offers the index spells exactly, sent as one JSON array, and `WORD_LEMMAS_SQL` again for the offers' words not read yet | `lookup_form_by_key`, one equality probe per offer; the lemma read as above | one per offer the index spells | 1, the two side by side |
 | `PAST_PARTICIPLE_SQL` again, only for an offer's word after an auxiliary not read yet | as above | a few per spelling | 1, its reads side by side |
 
-`vado v` costs four reads more than `vado`: two lemma reads, one range probe
-and one exact read. A prefix that completes nothing (`vado f`) costs one lemma
-read and its range probes, and reads nothing back. `test/phrase.test.ts`
-asserts those counts and each read's query plan.
+`vado v` sends eight statements: the release row, the served releases, the
+schema read, the prefix read, two lemma reads, one range probe and one exact
+read; `vado` sends none of the last four, nor the schema read. A prefix that
+completes nothing (`vado f`) costs one lemma read and its range probes, and
+reads nothing back. `test/phrase.test.ts` asserts those counts and each read's
+query plan.
 
 **Every offer is searchable.** Every phrase the field or "Did you mean"
 offers (see "When nothing is found") is read back before it
