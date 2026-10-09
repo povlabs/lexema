@@ -85,6 +85,17 @@ export function hiddenRecordBefore389(reader: MasterReader): boolean {
 }
 
 /**
+ * Whether the master's `corrected_edge` is #722's, whose every row names a
+ * word: one from before an edge could be removed (#755) refuses a row that
+ * names none. Its stored definition then differs from schema.sql's, so
+ * `changedUpgrade` lists it and the upgrade rebuilds it; a master without the
+ * table has nothing to rebuild.
+ */
+export function correctedEdgeBefore755(reader: MasterReader): boolean {
+  return select<{ notnull: number }>(reader, "SELECT \"notnull\" FROM pragma_table_info('corrected_edge') WHERE name = 'target_word'").some((row) => row.notnull === 1);
+}
+
+/**
  * Whether the master has `table` without its keyed column (`keyedColumnOf`):
  * a `corrected_form` from before #743, with no `surface_key`. Its stored
  * definition then differs from schema.sql's, so the upgrade rebuilds it, keying
@@ -134,13 +145,15 @@ export function changedViews(reader: MasterReader, schema: string): ServingView[
 
 /**
  * The upgrade names among `names` the master lacks, or holds as the upgrade
- * still rebuilds them (`hidden_record` from before #389), in the order of
+ * still rebuilds them (`hidden_record` from before #389, `corrected_edge` from
+ * before #755, a table without its keyed column), in the order of
  * `names`. A command whose SQL writes into them refuses to write while any is
  * listed: its SQL holds no DDL, and `update:upgrade` is what clears them.
  */
 export function upgradeNeededFor(reader: MasterReader, names: readonly string[]): string[] {
   const needed = new Set(missingUpgrade(reader));
   if (names.includes("hidden_record") && hiddenRecordBefore389(reader)) needed.add("hidden_record");
+  if (names.includes("corrected_edge") && correctedEdgeBefore755(reader)) needed.add("corrected_edge");
   for (const name of names) if (lacksKeyedColumn(reader, name)) needed.add(name);
   return names.filter((name) => needed.has(name));
 }

@@ -30,6 +30,7 @@ import {
   type ScannedSense,
 } from "../src/italian/formOfGlossEdge.js";
 import { FORM_OF_GLOSS_EDGE_EVIDENCE } from "../src/italian/formOfGlossEdgeEvidence.js";
+import { FORM_OF_MEANING_EDGE_RULE } from "../src/italian/formOfMeaningEdge.js";
 import { CorrectedLayer } from "../src/import/correctedLayer.js";
 import { describeEntry, planCorrections, unwritten } from "../src/import/correctRecords.js";
 import type { ImportStatement } from "../src/import/importRelease.js";
@@ -277,7 +278,7 @@ test("v2 makes every correction v1 makes on the pinned scan, identically, and re
   assert.deepEqual(changes(v1), { added: 1939, "replaced-reflexive": 0, "replaced-other-word": 0 });
   assert.deepEqual(changes(v2), { added: 1939, "replaced-reflexive": 665, "replaced-other-word": 78 });
   // The committed list is made with v2.
-  assert.deepEqual(edgeCorrections(CURATED_CORRECTIONS).filter((correction) => "rule" in correction), v2);
+  assert.deepEqual(edgeCorrections(CURATED_CORRECTIONS).filter((correction) => "rule" in correction && correction.rule === FORM_OF_GLOSS_EDGE_RULE), v2);
 });
 
 // The committed list ---------------------------------------------------------------
@@ -292,7 +293,13 @@ test("the committed edges: aerei's and costruttori's from the rule, parti's two 
   // v2 (#733): an edge to the reflexive form of the gloss's verb, and edges to another word.
   assert.deepEqual(at(34206), ["0 svestirsi -> svestire (svestito@3661196 svestire@3888372)"]);
   assert.deepEqual(at(41348), ["1 presente -> portare (porta@4056732 portare@4044036)", "2 presente -> portare (porta@4056732 portare@4044036)"]);
-  assert.deepEqual(at(42264), ["0 melo -> mela (mele@3869166 mela@4023986)"]);
+  // Senses 1 to 3 gloss meanings, and rule it-form-of-meaning-edge/v1 points their edges at mele's base word (#755).
+  assert.deepEqual(at(42264), [
+    "0 melo -> mela (mele@3869166 mela@4023986)",
+    "1 bambini -> mela (mele@3869166 mela@4023986)",
+    "2 tondeggianti -> mela (mele@3869166 mela@4023986)",
+    "3 percosse -> mela (mele@3869166 mela@4023986)",
+  ]);
   assert.deepEqual(at(81297), ["0 Grecia -> greco (greci@3967967 greco@3958426)"]);
   assert.deepEqual(edgeCorrections(HAND_CORRECTIONS).map(correctionId), ["it-0c432803:77162/senses/1", "it-0c432803:77162/senses/2"]);
 
@@ -306,7 +313,10 @@ test("the committed edges: aerei's and costruttori's from the rule, parti's two 
     // The record's own page shows the gloss that names the target, and the target's page lists the word.
     const { form, base } = correction.evidence;
     assert.equal(glossBase(correction.edge.gloss.text)?.base, correction.edge.target, id);
-    assert.equal(correction.edge.gloss.pointer, `/senses/${correction.edge.sense}/glosses/0`, id);
+    // A meaning sense's edge pointed at its record's base word cites the record's form sense's gloss (#755).
+    const meaning = "rule" in correction && correction.rule === FORM_OF_MEANING_EDGE_RULE;
+    if (meaning) assert.match(correction.edge.gloss.pointer, /^\/senses\/\d+\/glosses\/0$/, id);
+    else assert.equal(correction.edge.gloss.pointer, `/senses/${correction.edge.sense}/glosses/0`, id);
     assert.deepEqual([form.wiki, form.title, form.shows], ["it.wiktionary.org", correction.record.word, correction.edge.gloss.text], id);
     assert.deepEqual([base.wiki, base.title, base.shows], ["it.wiktionary.org", correction.edge.target, correction.record.word], id);
     assert.ok(Number.isInteger(form.revisionId) && form.revisionId > 0 && Number.isInteger(base.revisionId) && base.revisionId > 0, id);
@@ -381,6 +391,10 @@ test("a lookup reads a replaced edge in place of the source's: porta under porta
     "porta 2 presente -> portare",
     "mele 0 melo -> mela",
     "greci 0 Grecia -> greco",
+    // Rule it-form-of-meaning-edge/v1's, after v2's in the list (#755).
+    "mele 1 bambini -> mela",
+    "mele 2 tondeggianti -> mela",
+    "mele 3 percosse -> mela",
   ]);
   const [plain, corrected] = [await seeded([], lines), await seeded(corrections, lines)];
   /** Each link of `word`'s `pos` reading: the word it names and where it was read. */
@@ -398,10 +412,9 @@ test("a lookup reads a replaced edge in place of the source's: porta under porta
     assert.deepEqual(await links(corrected, "porta", "verb"), ["porgere /senses/0/form_of/0/word", "portare /senses/1/glosses/0", "portare /senses/2/glosses/0"]);
     assert.deepEqual(await links(plain, "svestito", "verb"), ["svestirsi /senses/0/form_of/0/word"]);
     assert.deepEqual(await links(corrected, "svestito", "verb"), ["svestire /senses/0/glosses/0"]);
-    // Senses 1 to 3 gloss no form ("guance, soprattutto nei bambini:"), so their edges stay as the source states them.
-    const sourceRest = ["bambini /senses/1/form_of/0/word", "tondeggianti /senses/2/form_of/0/word", "percosse /senses/3/form_of/0/word"];
-    assert.deepEqual(await links(plain, "mele", "noun"), ["melo /senses/0/form_of/0/word", ...sourceRest]);
-    assert.deepEqual(await links(corrected, "mele", "noun"), ["mela /senses/0/glosses/0", ...sourceRest]);
+    // Senses 1 to 3 gloss meanings ("guance, soprattutto nei bambini:"), and read mele's base word, from sense 0's gloss (#755).
+    assert.deepEqual(await links(plain, "mele", "noun"), ["melo /senses/0/form_of/0/word", "bambini /senses/1/form_of/0/word", "tondeggianti /senses/2/form_of/0/word", "percosse /senses/3/form_of/0/word"]);
+    assert.deepEqual(await links(corrected, "mele", "noun"), ["mela /senses/0/glosses/0", "mela /senses/0/glosses/0", "mela /senses/0/glosses/0", "mela /senses/0/glosses/0"]);
     assert.deepEqual(await links(plain, "greci", "noun"), ["Grecia /senses/0/form_of/0/word"]);
     assert.deepEqual(await links(corrected, "greci", "noun"), ["greco /senses/0/glosses/0"]);
     // The base word lists the form, and the word the source named no longer does.
@@ -409,7 +422,7 @@ test("a lookup reads a replaced edge in place of the source's: porta under porta
     assert.ok(!(await inflections(corrected, "presente")).some((one) => one.startsWith("porta ")));
     assert.ok((await inflections(plain, "presente")).some((one) => one.startsWith("porta ")));
     assert.ok((await inflections(corrected, "svestire")).includes("svestito verb /senses/0/glosses/0"));
-    assert.ok((await inflections(corrected, "mela")).includes("mele noun /senses/0/glosses/0"));
+    assert.deepEqual((await inflections(corrected, "mela")).filter((one) => one.startsWith("mele ")), ["mele noun /senses/0/glosses/0 /senses/0/glosses/0 /senses/0/glosses/0 /senses/0/glosses/0"]);
     assert.ok(!(await inflections(corrected, "melo")).some((one) => one.startsWith("mele ")));
     assert.ok((await inflections(corrected, "greco")).includes("greci noun /senses/0/glosses/0"));
   } finally {

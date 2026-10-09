@@ -16,13 +16,14 @@ import {
   cellCorrections,
   correctedFacts,
   correctionId,
-  edgeCorrections,
   evidenceUrl,
+  isEdgeRemoval,
   recordCorrections,
+  senseEdgeCorrections,
   type CellCorrection,
   type CuratedCorrection,
-  type EdgeCorrection,
   type RecordCorrection,
+  type SenseEdgeCorrection,
 } from "../italian/curatedCorrections.js";
 import type { ImportStatement } from "./importRelease.js";
 
@@ -46,12 +47,19 @@ export function misquotedCells(correction: CellCorrection, line: string): number
   return correction.cells.filter((cell) => forms[cell.index]?.form !== cell.replaces).map((cell) => cell.index);
 }
 
-/** One `corrected_edge` row's values after its record id and release, in `COLUMNS` order. */
+/**
+ * One `corrected_edge` row's values after its record id and release, in
+ * `COLUMNS` order. A removal (#755) names no word, so its target, key and
+ * target's page are NULL.
+ */
 export function correctedEdgeValues(
-  correction: EdgeCorrection,
-): [senseIndex: number, jsonPointer: string, targetWord: string, targetWordKey: string, correctionId: string, evidenceUrl: string, baseEvidenceUrl: string] {
+  correction: SenseEdgeCorrection,
+): [senseIndex: number, jsonPointer: string, targetWord: string | null, targetWordKey: string | null, correctionId: string, evidenceUrl: string, baseEvidenceUrl: string | null] {
   const { edge, evidence } = correction;
-  return [edge.sense, edge.gloss.pointer, edge.target, normalizeItalianExact(edge.target), correctionId(correction), evidenceUrl(evidence.form), evidenceUrl(evidence.base)];
+  const id = correctionId(correction);
+  if (isEdgeRemoval(correction)) return [edge.sense, edge.gloss.pointer, null, null, id, evidenceUrl(evidence.form), null];
+  const { target } = correction.edge;
+  return [edge.sense, edge.gloss.pointer, target, normalizeItalianExact(target), id, evidenceUrl(evidence.form), evidenceUrl(correction.evidence.base)];
 }
 
 /** Why an entry keyed to the seeded release was not written. */
@@ -71,11 +79,11 @@ export interface CorrectionSummary {
 interface EntriesOfLine {
   facts?: RecordCorrection;
   cells?: CellCorrection;
-  edges: EdgeCorrection[];
+  edges: SenseEdgeCorrection[];
 }
 
 /** Every entry of a record's line: facts, then cells, then edges. */
-const allOf = ({ facts, cells, edges }: EntriesOfLine): (RecordCorrection | CellCorrection | EdgeCorrection)[] => [
+const allOf = ({ facts, cells, edges }: EntriesOfLine): (RecordCorrection | CellCorrection | SenseEdgeCorrection)[] => [
   ...(facts === undefined ? [] : [facts]),
   ...(cells === undefined ? [] : [cells]),
   ...edges,
@@ -92,7 +100,7 @@ export class CorrectedLayer {
     private readonly insert: { claim: ImportStatement; form: ImportStatement; edge: ImportStatement },
     private readonly rows: { corrected_claim: number; corrected_form: number; corrected_edge: number },
   ) {
-    const entriesOf = (correction: RecordCorrection | CellCorrection | EdgeCorrection): EntriesOfLine => {
+    const entriesOf = (correction: RecordCorrection | CellCorrection | SenseEdgeCorrection): EntriesOfLine => {
       const key = `${correction.record.releaseId}:${correction.record.lineNo}`;
       const entries = this.byLine.get(key) ?? { edges: [] };
       this.byLine.set(key, entries);
@@ -100,7 +108,7 @@ export class CorrectedLayer {
     };
     for (const correction of recordCorrections(corrections)) entriesOf(correction).facts = correction;
     for (const correction of cellCorrections(corrections)) entriesOf(correction).cells = correction;
-    for (const correction of edgeCorrections(corrections)) entriesOf(correction).edges.push(correction);
+    for (const correction of senseEdgeCorrections(corrections)) entriesOf(correction).edges.push(correction);
   }
 
   /** Write the corrections keyed to this record's line, when its digest is the one they were checked against. */

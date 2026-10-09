@@ -624,7 +624,7 @@ test("no table outside the rebuilt tables, or outside a rebuilt group, points at
       .filter((table) => !rebuilt.has(table))
       .flatMap((table) => db.prepare("SELECT \"table\" AS parent FROM pragma_foreign_key_list(?)").all(table).map((row) => `${table} -> ${String(row.parent)}`))
       .filter((edge) => rebuilt.has(edge.split(" -> ")[1]));
-  assert.deepEqual(REBUILT_TABLES, [...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_FACT_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES, "recovered_definition", "recovered_label", "recovered_example", "hidden_record", "corrected_form"]);
+  assert.deepEqual(REBUILT_TABLES, [...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_FACT_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES, "recovered_definition", "recovered_label", "recovered_example", "hidden_record", "corrected_form", "corrected_edge"]);
   assert.deepEqual(pointingInto(new Set<string>(REBUILT_TABLES)), []);
   for (const group of REBUILT_GROUPS) {
     assert.deepEqual(pointingInto(new Set<string>(group.tables)), [], group.tables.join(", "));

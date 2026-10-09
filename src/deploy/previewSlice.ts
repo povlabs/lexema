@@ -166,8 +166,13 @@ function recordsFor(reader: MasterReader, keys: readonly string[], tables: Reado
       }`,
     ).map(({ record_id }) => record_id),
   );
+  // A corrected edge that removes its sense's edges (#755) names no word.
   const targets = [
-    ...new Set(edgeTables.flatMap((table) => rowsWhere(reader, table, inList("record_id"), spelling).map((row) => String(row.target_word_key)))),
+    ...new Set(
+      edgeTables.flatMap((table) =>
+        rowsWhere(reader, table, inList("record_id"), spelling).flatMap((row) => (row.target_word_key === null ? [] : [String(row.target_word_key)])),
+      ),
+    ),
   ].sort();
   const lemmas = chunks(targets).flatMap((chunk) =>
     select<{ record_id: number }>(

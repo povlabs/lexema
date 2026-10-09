@@ -188,7 +188,7 @@ export interface RuleMadeEdgeCorrection extends EdgeCorrection {
 }
 
 /** The first Italian record of `base` among `lemmas`, in archive order, whose forms list `word`, and where. */
-function listing(base: string, word: string, lemmas: readonly ScannedLemma[]): ListingLemma | undefined {
+export function listing(base: string, word: string, lemmas: readonly ScannedLemma[]): ListingLemma | undefined {
   for (const lemma of [...lemmas].sort((a, b) => a.lineNo - b.lineNo)) {
     if (lemma.word !== base || lemma.langCode !== "it") continue;
     const formIndex = lemma.forms.indexOf(word);

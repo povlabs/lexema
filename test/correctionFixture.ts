@@ -27,8 +27,10 @@ import {
   CURATED_CORRECTIONS,
   edgeCorrections,
   recordCorrections,
+  senseEdgeCorrections,
   type EdgeCorrection,
   type RecordCorrection,
+  type SenseEdgeCorrection,
 } from "../src/italian/curatedCorrections.js";
 
 export const CORRECTION_FIXTURE = new URL("../fixtures/curated-corrections.jsonl", import.meta.url);
@@ -79,4 +81,13 @@ export function atFixtureLines<Correction extends RecordKeyedCorrection = Record
  */
 export function edgeCorrectionsAt(lines: readonly string[], releaseId: string): EdgeCorrection[] {
   return FixtureLines.of(lines, releaseId).key(edgeCorrections(CURATED_CORRECTIONS)).held;
+}
+
+/**
+ * The committed list's corrections of a sense's edge, set or removed (#722,
+ * #755), of the records `lines` holds, keyed to `releaseId` at their fixture
+ * lines, in list order.
+ */
+export function senseEdgeCorrectionsAt(lines: readonly string[], releaseId: string): SenseEdgeCorrection[] {
+  return FixtureLines.of(lines, releaseId).key(senseEdgeCorrections(CURATED_CORRECTIONS)).held;
 }

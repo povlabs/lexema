@@ -13,6 +13,8 @@ import { gzipSync } from "node:zlib";
 import { CURATED_CORRECTIONS, correctedFacts, edgeCorrections, evidenceUrl, HAND_CORRECTIONS, recordCorrections, type CuratedCorrection } from "../src/italian/curatedCorrections.js";
 import { formOfGlossEdgeCorrections } from "../src/italian/formOfGlossEdge.js";
 import { FORM_OF_GLOSS_EDGE_EVIDENCE } from "../src/italian/formOfGlossEdgeEvidence.js";
+import { formOfMeaningEdgeCorrections } from "../src/italian/formOfMeaningEdge.js";
+import { FORM_OF_MEANING_EDGE_EVIDENCE } from "../src/italian/formOfMeaningEdgeEvidence.js";
 import { readPluralGloss } from "../src/italian/pluralGloss.js";
 import { PLURAL_GLOSS_EVIDENCE } from "../src/italian/pluralGlossEvidence.js";
 import { glossLemma, pluralGlossCorrections } from "../src/italian/pluralGlossNumber.js";
@@ -88,10 +90,11 @@ test("the hand entries correct the twelve cases Huey ruled wrong, and of the fou
   }
 });
 
-test("the committed list is the hand entries, then what the rule makes of its pinned evidence, and the two never name one record (#483)", () => {
+test("the committed list is the hand entries, then what each rule makes of its pinned evidence, and the plural rule never names a hand entry's record (#483)", () => {
   const made = pluralGlossCorrections(PLURAL_GLOSS_EVIDENCE, HAND);
   const edges = formOfGlossEdgeCorrections(FORM_OF_GLOSS_EDGE_EVIDENCE, edgeCorrections(HAND_CORRECTIONS));
-  assert.deepEqual(CURATED_CORRECTIONS, [...HAND_CORRECTIONS, ...made, ...edges]);
+  const meanings = formOfMeaningEdgeCorrections(FORM_OF_MEANING_EDGE_EVIDENCE, [...edgeCorrections(HAND_CORRECTIONS), ...edges]);
+  assert.deepEqual(CURATED_CORRECTIONS, [...HAND_CORRECTIONS, ...made, ...edges, ...meanings]);
   assert.equal(made.length, 232);
   const hand = new Set(HAND.map((correction) => `${correction.record.releaseId}:${correction.record.lineNo}`));
   for (const correction of made) {

@@ -295,9 +295,16 @@ the missing edges v1 added
 ([report](../reports/2026-10-08-form-of-gloss-edges.md)), and replaces each
 edge that names another word, `porta`'s `presente` with `portare`
 ([#733](https://github.com/povlabs/lexema/issues/733),
-[report](../reports/2026-10-09-form-of-gloss-edges-v2.md)). The seed writes each
-as a `corrected_edge` row with both links, and a lookup reads it in place of
-the sense's own edges. A hidden record gets none. A database seeded
+[report](../reports/2026-10-09-form-of-gloss-edges-v2.md)). Rule
+`it-form-of-meaning-edge/v1` removes the edge of a meaning sense, whose gloss
+names no form, citing the record's own page, or points it at the record's own
+base word where a real form sense names one: `mele`'s "percosse" reads
+`mela`, and `scandinava`'s "relativa alla Scandinavia" no edge
+([#755](https://github.com/povlabs/lexema/issues/755),
+[report](../reports/2026-10-09-form-of-meaning-edges.md)). The seed writes each
+as a `corrected_edge` row with its links, a removal's naming no word, and a
+lookup reads it in place of the sense's own edges. A hidden record gets none. A
+database seeded
 before an entry gets it by a one-off update, with no reseed and no archive:
 
 ```sh
