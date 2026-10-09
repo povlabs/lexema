@@ -1,0 +1,31 @@
+<!-- it.wiktionary.org/wiki/travet revision 3651838 (2019-12-25T19:39:56Z), CC BY-SA 4.0. Saved verbatim. -->
+{{-it-}}
+{{-sost-|it}}
+{{Pn}} ''m'' e ''f inv'' 
+#{{Term|dialettale|it}}, {{Term|regionale|it}} impiegato diligente e puntuale, specialmente con valore ironico o dispregiativo
+
+{{-sill-}}
+; tra | vèt
+
+{{-pron-}}
+{{IPA|/traˈvɛt/}}
+
+{{-etim-}}
+dal nome  di un personaggio della commedia ''Le miserie d’monssù Travet'' 
+
+{{-sin-}}
+*''(ironico)''  [[statale]], [[burocrate]], [[impiegato]], [[imnpiegatuccio]], [[mezzemaniche]]
+
+{{-var-}}
+*{{Term|raro|it}} [[travetto]]
+
+{{-trad-}}
+{{Trad1|}}
+:* {{en}}
+{{Trad2}}
+
+{{-ref-}}
+*{{Fonte|dizit}}
+*{{Fonte|trec}}
+*{{Fonte|sin-co}}
+*AA.VV., ''Dizionario  Sinonimi e contrari'', Mariotti, 2006, pagina 591

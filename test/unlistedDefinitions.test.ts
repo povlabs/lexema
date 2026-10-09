@@ -113,9 +113,19 @@ test("a part-of-speech heading stacked directly on another titles one section: `
   const sections = readItalianSections(page("cinquantadue"));
   assert.deepEqual(sections.map((section) => [section.posTemplate, section.posTitle]), [["card", "Aggettivo numerale"]]);
   assert.deepEqual(recovered("cinquantadue", "Aggettivo numerale"), [
-    // The comma between its two labels stays, as on a `#` line the renderer prints.
-    ["bullet-line", 7, ", numero che viene dopo il cinquantuno e prima del cinquantatré; è tredici volte il quadrato di due"],
+    ["bullet-line", 7, "numero che viene dopo il cinquantuno e prima del cinquantatré; è tredici volte il quadrato di due"],
   ]);
+});
+
+test("the comma between two labels goes with them, and the labels are kept: `cinquantadue` line 7 (#712)", () => {
+  // `* {{Term|matematica|it}}, {{Term|aritmetica|it}} [[numero]] che viene…`: each
+  // `{{Term}}` prints `(''label'')`, so the comma only separates the labels.
+  const result = recovery("cinquantadue", "Aggettivo numerale");
+  assert.ok(result.outcome === "matched");
+  assert.deepEqual(
+    result.recovered.map((definition) => [definition.ref.line, definition.text, definition.labels]),
+    [[7, "numero che viene dopo il cinquantuno e prima del cinquantatré; è tredici volte il quadrato di due", ["matematica", "aritmetica"]]],
+  );
 });
 
 test("the `agg num` title reaches only the recovered layer: `section-language/v1` and the page-entry rules read the shared table as before", () => {
