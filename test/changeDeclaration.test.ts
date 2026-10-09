@@ -227,6 +227,11 @@ test("every declaration already in dictionary-changes parses as before, with no 
       );
       continue;
     }
+    // The lines fixed usage-label templates unblock (#711): a word of each template the issue names.
+    if (name === "2026-10-09-load-recovered-label-template-lines-it-0c432803.json") {
+      assert.deepEqual(parseDraft(path, text).lookups?.map((item) => item.word), ["furbo", "urgere"]);
+      continue;
+    }
     for (const parsed of [parseDeclaration(path, text), parseDraft(path, text)]) {
       assert.deepEqual(Object.keys(parsed).sort(), ["command", "expected", "file", "inputs"], path);
     }

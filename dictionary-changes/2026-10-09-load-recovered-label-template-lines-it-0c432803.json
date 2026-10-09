@@ -1,0 +1,13 @@
+{
+  "command": "load:recovered-definitions",
+  "inputs": { "archive": "it-0c432803", "rules": ["recovered-bullet-line/v1", "recovered-prose-line/v1"] },
+  "lookups": [
+    { "word": "furbo", "gloss": "che strumentalizza" },
+    { "word": "urgere", "gloss": "occorrere nell'immediato" }
+  ],
+  "expected": {
+    "records": { "added": 0, "changed": 0, "removed": 0 },
+    "written": { "raw_page": 2, "recovered_definition": 7, "recovered_label": 8 },
+    "deleted": {}
+  }
+}
