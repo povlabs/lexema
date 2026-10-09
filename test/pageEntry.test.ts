@@ -206,8 +206,8 @@ test("isolated seed finds page entries and resolves real form records without in
       const batch = await lookupBatch({ db: { all: (sql, params) => { statements.push(sql); return read.all(sql, params); } },
         releaseId: options.releaseId, queries });
       assert.deepEqual(batch.answers.map((answer) => answer.outcome), queries.map(() => "found"));
-      // The release and the optional tables (one D1 call), the search, the links.
-      assert.equal(statements.length, 4);
+      // The release and the optional tables (one D1 call), the search, the hand-kept readings (#776), the links.
+      assert.equal(statements.length, 5);
       for (const answer of batch.answers) {
         assert.ok(answer.outcome === "found");
         assert.ok(answer.candidates[0].entryId !== undefined);
