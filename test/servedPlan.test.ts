@@ -67,6 +67,9 @@ test("no served-release lookup probes lookup_form or form_of_edge on the release
     "CORRECTED_DECLARED_LEMMA_SQL",
     "FORM_ENTRY_SQL",
     "PARTICIPLE_FORM_ENTRY_SQL",
+    "CORRECTED_WORD_LEMMAS_SQL",
+    "CORRECTED_FORM_ENTRY_SQL",
+    "CORRECTED_PARTICIPLE_FORM_ENTRY_SQL",
   ]) {
     assert.ok(statements.has(name), `${name} is no longer an exported servedBy statement`);
   }

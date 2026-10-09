@@ -372,7 +372,7 @@ export async function lookupBatch({
   // A word nothing spells may still be a multi-word headword said the way a
   // speaker says it (#214). Each headword it reaches is a candidate as it is.
   const unspelled = keys.filter((key) => !spelled.has(key));
-  const [links, phrases] = await Promise.all([linksOf(db, reads, releaseId, aboutIds), phraseMatchesOf(db, releaseId, unspelled)]);
+  const [links, phrases] = await Promise.all([linksOf(db, reads, releaseId, aboutIds), phraseMatchesOf(db, releaseId, tables, unspelled)]);
   const probeKeys = [...new Set([...phrases.values()].flatMap((probes) => probes.map((probe) => probe.key)))];
   const headwords = await search(db, reads, releaseId, probeKeys);
 

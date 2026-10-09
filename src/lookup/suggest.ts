@@ -16,7 +16,7 @@ import type { LookupDatabase } from "./database.js";
 import { HEADWORD_PREFIX_SQL, prefixUpperBound } from "./keyRange.js";
 import { MAX_QUERY_LENGTH, readRelease } from "./lookup.js";
 import { phraseCompletions, type PhraseOffer } from "./phrase.js";
-import { inKeyOrder, servedReleases } from "./served.js";
+import { dictionaryTables, inKeyOrder, servedReleases } from "./served.js";
 import type { ReleaseInfo } from "./types.js";
 
 /**
@@ -179,8 +179,15 @@ export async function suggest({ db, prefix, ...of }: SuggestOptions): Promise<Su
   // would be probed with the wrong prefix. A release row is only ever read
   // when complete, so one handed in has passed the first. The served releases
   // are read in the same wait, one D1 call instead of two (#663), and used
-  // only once both checks pass.
-  const [release, releases] = await Promise.all([of.release ?? readRelease(db, releaseId), servedReleases(db, releaseId)]);
+  // only once both checks pass. A prefix of several words may be completed as
+  // a phrase, whose reads depend on the tables the master has (#759), so for
+  // one the schema is read in that same call too; a prefix of one word reads
+  // no phrase and nothing more.
+  const [release, releases, tables] = await Promise.all([
+    of.release ?? readRelease(db, releaseId),
+    servedReleases(db, releaseId),
+    /\s/u.test(key) ? dictionaryTables(db) : undefined,
+  ]);
   if (release === undefined) throw new Error(`no complete release '${releaseId}'`);
   if (release.normalizer !== IT_NORMALIZER_VERSION) {
     throw new Error(
@@ -196,13 +203,13 @@ export async function suggest({ db, prefix, ...of }: SuggestOptions): Promise<Su
     // Enough spellings, or the prefix holds no more rows to read.
     if (suggestions.length === SUGGESTION_LIMIT || rows.length < scan) break;
   }
-  // Only while the list has room, and only for a prefix of several words:
-  // `phraseCompletions` reads nothing for one word.
+  // Only while the list has room, and only for a prefix of several words, the
+  // only one whose tables were read.
   const room = SUGGESTION_LIMIT - suggestions.length;
   const listed = new Set(suggestions.map(normalizeItalianExact));
   const phrases =
-    room > 0
-      ? (await phraseCompletions(db, releaseId, releases, key, SUGGESTION_LIMIT)).filter((offer) => !listed.has(offer.phrase)).slice(0, room)
+    room > 0 && tables !== undefined
+      ? (await phraseCompletions(db, releaseId, releases, tables, key, SUGGESTION_LIMIT)).filter((offer) => !listed.has(offer.phrase)).slice(0, room)
       : [];
   return { outcome: "suggested", prefix: { raw: prefix, key }, suggestions, phrases };
 }
