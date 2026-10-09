@@ -1,0 +1,11 @@
+<!-- it.wiktionary.org/wiki/magrebina revision 3643453 (2019-12-19T00:04:33Z), CC BY-SA 4.0. Saved verbatim. -->
+{{Trasfen}}
+== {{-it-}} ==
+{{-agg form-|it}}
+'''magrebina''' ''f''
+
+# ''Femminile singolare di '''[[magrebino]]'''.''
+• aggettivo: Del Magreb, riferito al Magreb, cioè ai Paesi arabi dell'Africa nordoccidentale
+• s.m. (f. -na) Nativo del Magreb, abitante del Magreb
+
+{{Noetim|it}}

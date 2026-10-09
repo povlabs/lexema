@@ -108,7 +108,12 @@ const CLASS: readonly { word: string; line: number; route: string }[] = [
   { word: "pantomima", line: 6, route: "wrapped-prose" },
   { word: "centouno", line: 4, route: "bullet-line" },
   { word: "bavaglio", line: 4, route: "prose-line" },
+  // A wrapped-prose line above a prose line the dictionary holds (archive line 59503).
+  { word: "magrebina", line: 7, route: "wrapped-prose" },
 ];
+
+/** magrebina's prose line as a dictionary that read it alone holds it: its record's first definition. */
+const MAGREBINA_PROSE = `SELECT d.* FROM recovered_definition d JOIN source_record r ON r.record_id = d.record_id WHERE r.word = 'magrebina' AND d.page_line = 8`;
 
 /** A correction of `new age`'s first definition, as `correct:records` writes one beside a held entry. */
 const NEW_AGE_CORRECTION = `INSERT INTO corrected_definition (entry_id, definition_index, text, correction_id, evidence_url)
@@ -137,7 +142,8 @@ async function lacking(name: string): Promise<DatabaseSync> {
      DELETE FROM raw_page WHERE page_id NOT IN (SELECT page_id FROM recovered_definition)
        AND page_id NOT IN (SELECT page_id FROM hidden_record WHERE page_id IS NOT NULL)
        AND page_id NOT IN (SELECT page_id FROM recovered_entry);
-     ${NEW_AGE_CORRECTION};`,
+     ${NEW_AGE_CORRECTION};
+     UPDATE recovered_definition SET definition_index = 0 WHERE recovered_id = (SELECT recovered_id FROM (${MAGREBINA_PROSE}));`,
   );
   return db;
 }
@@ -191,7 +197,17 @@ test("a dictionary lacking a definition on each route a seed writes, and a held 
       ["bavaglio", 4, "prose-line", []],
       ["progetto", 7, "sub-term", ["diritto", "politica"]],
       ["quadro", 14, "lead-in-item", ["spregiativo"]],
+      ["magrebina", 7, "wrapped-prose", []],
     ]);
+    // A fresh seed lists magrebina's wrapped-prose line first, so the prose line it holds moves after it, and nothing else of it changes.
+    const magrebina = plan.records.find((record) => record.found.word === "magrebina") ?? assert.fail();
+    const prose = db.prepare(MAGREBINA_PROSE).get() as { recovered_id: number };
+    assert.deepEqual(magrebina.definitions.map((planned) => [planned.state, planned.definition.ref.line, planned.state === "write" ? planned.definitionIndex : null]), [
+      ["write", 7, 0],
+      ["already", 8, null],
+    ]);
+    assert.deepEqual(magrebina.moves, [{ recoveredId: prose.recovered_id, pageLine: 8, from: 0, to: 1 }]);
+    assert.deepEqual(plan.records.filter((record) => record.found.word !== "magrebina").flatMap((record) => record.moves), []);
     const progetto = plan.records.find((record) => record.found.word === "progetto") ?? assert.fail();
     assert.equal(progetto.found.lineNo, 5, "progetto is the fixture archive's fifth line, archive line 24370 of it-0c432803");
     const subTerm = progetto.definitions[0];
@@ -221,17 +237,23 @@ test("a dictionary lacking a definition on each route a seed writes, and a held 
       plan.counts.toJSON(),
       new PlanCounts(
         { added: 0, changed: 0, removed: 0 },
-        { raw_page: 4, recovered_definition: 6, recovered_label: 6, recovered_example: 1, entry_definition: 1, entry_label: 2, entry_example: 1 },
+        // Seven written and magrebina's held prose line moved.
+        { raw_page: 4, recovered_definition: 8, recovered_label: 6, recovered_example: 1, entry_definition: 1, entry_label: 2, entry_example: 1 },
       ).toJSON(),
     );
-    // Data only, and no row the dictionary holds is changed or deleted.
-    assert.doesNotMatch(plan.sql, /\b(CREATE|DROP|DELETE|UPDATE|ALTER)\b/i);
+    // Data only: no row the dictionary holds is deleted, and the one held row changed is the one moved.
+    assert.doesNotMatch(plan.sql, /\b(CREATE|DROP|DELETE|ALTER)\b/i);
+    assert.deepEqual(plan.sql.match(/^UPDATE .*$/gm), [
+      `UPDATE recovered_definition SET definition_index = definition_index + 1000000 WHERE recovered_id IN (SELECT value FROM json_each('[${prose.recovered_id}]'));`,
+      `UPDATE recovered_definition SET definition_index = 1 WHERE recovered_id = ${prose.recovered_id};`,
+    ]);
     assert.deepEqual(plan.records.flatMap((record) => record.differing), []);
     const listing = planListing(plan);
-    assert.equal(listing.filter((line) => line.includes(" — written as ")).length, 7);
+    assert.equal(listing.filter((line) => line.includes(" — written as ")).length, 8);
+    assert.ok(listing.some((line) => line.startsWith("magrebina (") && line.includes("line 8): held as recovered") && line.includes("moved from index 0 to 1")), listing.join("\n"));
     assert.ok(listing.some((line) => line.startsWith("progetto (Sostantivo, archive line 5,") && line.includes("line 7, sub-term") && line.includes("[diritto, politica]")), listing.join("\n"));
     assert.ok(listing.some((line) => line.startsWith("new age (page-only entry") && line.includes("line 5, sense-line") && line.includes("[gergale, spregiativo]")), listing.join("\n"));
-    assert.match(listing.at(-2) ?? "", /^7 definition\(s\) written for 7 word\(s\)/);
+    assert.match(listing.at(-2) ?? "", /^8 definition\(s\) written for 8 word\(s\), and 1 held one\(s\) moved/);
     assert.match(listing.at(-1) ?? "", /^0 held definition/);
 
     execute(db, plan.sql);
@@ -247,15 +269,20 @@ test("a dictionary lacking a definition on each route a seed writes, and a held 
       after.get("raw_page")?.map((row) => JSON.parse(row) as { title: string; revision_id: number }).map(({ title, revision_id }) => `${title}@${revision_id}`).sort(),
       seed.get("raw_page")?.map((row) => JSON.parse(row) as { title: string; revision_id: number }).map(({ title, revision_id }) => `${title}@${revision_id}`).sort(),
     );
-    // Every row held before is held after, unchanged, and every other table is as it was: records, `source_record_json` and the corrected definition included.
+    // Every row held before is held after, unchanged but for the moved row's index, and every other table is as it was: records, `source_record_json` and the corrected definition included.
+    const movedRow = (row: string): boolean => (JSON.parse(row) as { recovered_id?: number }).recovered_id === prose.recovered_id;
     for (const [table, rows] of before) {
       const now = new Set(after.get(table));
-      assert.deepEqual(rows.filter((row) => !now.has(row)), [], `${table} lost or changed a row`);
+      const lost = rows.filter((row) => !now.has(row));
+      if (table === "recovered_definition") {
+        assert.deepEqual(lost.map((row) => ({ ...(JSON.parse(row) as object), definition_index: 1 })), [db.prepare(MAGREBINA_PROSE).get()].map((row) => ({ ...row })), "only the moved row changed, and only its index");
+        assert.ok(lost.every(movedRow));
+      } else assert.deepEqual(lost, [], `${table} lost or changed a row`);
       if (PRESERVED(table)) assert.deepEqual(after.get(table), rows, `${table} changed`);
     }
 
     // Each word's page reads as a fresh seed's does, in its order; new age's first definition still corrected.
-    for (const word of ["casa", "pantomima", "centouno", "bavaglio", "progetto", "quadro", "new age"]) {
+    for (const word of ["casa", "pantomima", "centouno", "bavaglio", "progetto", "quadro", "magrebina", "new age"]) {
       const shown = await lookup({ db: fromNodeSqlite(db), releaseId: RELEASE, query: word });
       assert.equal(shown.outcome, "found", word);
       assert.deepEqual(shown, await lookup({ db: fromNodeSqlite(fresh), releaseId: RELEASE, query: word }), word);
@@ -288,12 +315,15 @@ test("a dictionary lacking a definition on each route a seed writes, and a held 
   }
 });
 
-test("a lacking definition a fresh seed lists before a held one is refused, naming it, rather than shown out of order", async () => {
+test("a page-only entry lacking a definition a fresh seed lists before a held one is refused, naming it, rather than shown out of order", async () => {
   const db = await seeded("unordered");
   try {
-    // quadro holds its line 14 and lacks line 13, which a fresh seed lists first.
-    execute(db, `DELETE FROM recovered_definition WHERE page_line = 13 AND record_id = (SELECT record_id FROM source_record WHERE word = 'quadro');`);
-    await assert.rejects(async () => planRecoveredDefinitions(readerOf(db), await found()), /lists a lacking definition before a held one of: quadro \(Aggettivo, line 6\)/);
+    // new age holds its line-5 definition and lacks its line-3 one, which a fresh seed lists first.
+    execute(
+      db,
+      ["entry_label", "entry_example", "entry_definition"].map((table) => `DELETE FROM ${table} WHERE definition_index = 0 AND entry_id = (SELECT entry_id FROM recovered_entry WHERE word = 'new age');`).join("\n"),
+    );
+    await assert.rejects(async () => planRecoveredDefinitions(readerOf(db), await found()), /lists a lacking definition before a held one of: new age \(entry \d+, line 1\)/);
   } finally {
     db.close();
   }

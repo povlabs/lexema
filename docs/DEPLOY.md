@@ -791,17 +791,20 @@ definition it writes one `recovered_definition` row, its `recovered_label` and
 `recovered_example` rows, and the page's `raw_page` row when the dictionary has
 none; for each page-only one, an `entry_definition` row and its `entry_label`
 and `entry_example` rows. It touches no record and no `source_record_json`
-line, and changes no row the dictionary holds. A definition the dictionary
-already holds, by its record or entry and page line, is left alone, so a second
-run plans nothing; one held with other text than a fresh seed's is reported and
-left (text changes are `normalize:source-text`'s). A record a feed replaced
+line. A definition the dictionary already holds, by its record or entry and
+page line, keeps its text, labels and examples, so a second run plans nothing;
+one held with other text than a fresh seed's is reported and left (text changes
+are `normalize:source-text`'s). A record a feed replaced
 keeps the rows written for it, and the lookup reads them for the record that
 replaced it; a definition that record now carries as a gloss is not written.
 
 A written definition takes the next free index of its record or entry, so the
 page lists it after the held ones, where a fresh seed lists it. When a fresh
-seed lists a lacking definition before a held one of the same record or entry,
-the plan is refused, naming it, rather than showing that page in another order.
+seed lists a lacking definition of a record before a held one, the record's
+definitions take a fresh seed's indexes: each held one whose index changes
+moves, and nothing else of it changes. A page-only entry's index keys its
+labels, examples, facts and corrections, so there the plan is refused, naming
+the entry, rather than showing that page in another order.
 
 Its SQL holds no DDL. `recovered_definition`'s `route` CHECK admits the bullet
 and prose routes only after `update:upgrade` rebuilds the recovered tables with
