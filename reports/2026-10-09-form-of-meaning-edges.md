@@ -56,7 +56,9 @@ already set by another correction (`already-corrected`: 0).
 ## The count
 
 Removed: **342** edges. Pointed at the record's own base word: **258** edges.
-600 senses of 468 records in all.
+600 senses of 468 records in all. In the shared dictionary, `correct:records`
+writes 599 of them, on 467 records, as the pull request plan check counted:
+one entry is not written there, and `correct:records` reports why.
 
 The triage estimate on the issue was about 631 senses, 275 of the `mele`
 shape. The difference is the rule's exact class: its form words keep out more

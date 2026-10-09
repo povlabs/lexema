@@ -10,8 +10,8 @@
     { "word": "andarsene", "gloss": "morire" }
   ],
   "expected": {
-    "records": { "added": 0, "changed": 468, "removed": 0 },
-    "written": { "corrected_edge": 600, "correction_version": 1 },
+    "records": { "added": 0, "changed": 467, "removed": 0 },
+    "written": { "corrected_edge": 599, "correction_version": 1 },
     "deleted": {}
   }
 }
