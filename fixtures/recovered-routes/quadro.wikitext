@@ -1,0 +1,137 @@
+<!-- it.wiktionary.org/wiki/quadro revision 4038884 (2025-07-09T09:49:09Z), CC BY-SA 4.0. Saved verbatim. -->
+{{Vedi|quadrò}}
+== {{-it-}} ==
+{{-agg-|it}} 
+{{Pn }} ''m  sing'' {{Tabs|quadro|quadri|quadra|quadre}}
+# {{Term|geometria|it}} che ha [[quattro]] [[lato|lati]], che è di [[forma]] [[squadrato|squadrata]]
+# {{Term|matematica|it}} numero [[elevazione|elevato]] alla seconda [[potenza]]: ''<math>x^2</math> si legge "x quadro" o anche "x quadrato" o "x al quadrato"
+#* [[unità]] di [[misura]] lineari elevate al quadrato: ''metro {{Pn}}, centimetro {{Pn}}, ecc. (abbreviate in m², cm²)''
+# {{Term|matematica|it}} [[parentesi]] quadra, formata da una [[linea]] [[verticale]] con alle [[estremità]] due [[trattino|trattini]] ad [[angolo]] [[retto]]
+# {{Term|marina|it}} ogni [[vela]] di [[forma]] più o meno [[quadrato|quadrata]] fissata al [[pennone]]
+# punto {{Pn}}: [[punto]] di [[ricamo]] che forma piccoli quadrati in [[rilievo]]
+# {{Fig}} robusto, solido: ''petto {{Pn}}'' 
+# {{Fig}} testa '''quadra''':
+#* detto di persona [[ponderato|ponderata]] e [[raziocinante]]
+#* {{Spreg}} detto di chi è [[lento]] nel [[comprendere]]
+
+{{-sost-|it}}
+{{Pn|w}} ''m sing'' {{Linkp|quadri}}
+[[File:Christ's Entry into Brussels in 1889.jpg|thumb|quadro raffigurante l'entrata di Cristo a Bruxelles nel 1889]]
+[[File:Quadro Maggiori.jpg|thumb| un {{Pn}}]]
+[[File:Copia di un dipinto di Amedeo Modigliani.jpg|280px|thumb|copia di un {{Pn}} di [[w:Amedeo Modigliani|Amedeo Modigliani]]]]
+# oggetto, pezzo, spazio di [[forma]] [[quadrato|quadrata]]
+# {{Term|matematica|it}} numero quadro
+# {{Term|arte|it}} {{Term|pittura|it}} [[dipinto]] su [[tavola]] o su tela di varia forma, generalmente  quadrangolare, racchiuso da una [[cornice]]: ''la Gioconda è il {{Pn}} più famoso di Leonardo da Vinci''
+# [[descrizione]] organizzata e complessiva, anche se non approfondita di una scena, figura, o situazione: ''fare il {{Pn}} della situazione''
+#* {{Term|politica|it}} {{Pn}} politico, la situazione politica in atto
+#* {{Term|medicina|it}} {{Pn}} clinico, descrizione della condizione di un [[paziente]]
+# {{Term|diritto|it}} [[insieme]] coerente di [[norma|norme]] che racchiude le direttive fondamentali in merito alla regolamentazione di una [[materia]] specifica: ''legge {{Pn}}''
+# {{Term|economia|it}} [[lavoratore]] [[dipendente]] [[qualificato]]
+# [[tabella]] contenente dati o informazioni in forma riassuntiva: ''{{Pn}} sinottico''
+#* tabellone che nelle scuole si appende alle pareti come [[sussidio]] [[visivo]]
+# al plurale, il complesso dei [[dirigente|dirigenti]] di un'organizzazione
+#* il [[personale]] di una [[azienda]] che ha [[mansione|mansioni]] tecniche ed organizzative ad elevati livelli di [[responsabilità]]
+#* {{Term|militare|it}} l'insieme di ufficiali e sottoufficiali che ha il compito di [[inquadrare]] i [[reparto|reparti]]
+# {{Term|elettrotecnica|it}} {{Term|elettronica|it}} {{Term|tecnologia|it}} {{Term|ingegneria|it}} {{Pn}} comandi: [[pannello]] contenente [[dispositivo|dispositivi]] di misurazione, di comando e sim., spec. per la manovra di macchinari complessi o per la distribuzione della corrente elettrica
+#{{pn}} elettrico: [[insieme]] [[interconnesso]] di [[elementi]] [[tecnici]] col [[fine]] di [[dirigere]] e [[coordinare]] il [[funzionamento]] di un [[impianto]] di [[produzione]] e [[distribuzione]] di [[elettricità]]
+# {{Term|sport|it}} {{Pn}} svedese, [[attrezzo]] [[ginnico]] fissato al muro e sospeso da terra, composto da [[asta|aste]] di legno [[parallelo|parallele]] disposte [[verticalmente]] e [[orizzontalmente]] a formare un complesso di quadrati
+# {{Term|marina|it}} {{Pn}} di poppa, parte estrema piana superiore della [[poppa]], sulla quale è scritto il nome della [[nave]]
+# {{Term|teatro|it}} ogni parte in cui può essere suddiviso un [[atto]], coincidentemente con il cambiamento della [[scena]] e dei [[personaggio|personaggi]]
+# al plurale, uno dei quattro [[seme|semi]] delle [[carta|carte]] da gioco francesi
+
+{{-verb form-|it}}
+{{Pn}}
+#prima persona singolare dell'indicativo presente di [[quadrare]]
+
+{{-sill-}} 
+; quà | dro
+
+{{-pron-}}
+{{IPA|/ˈkwadro/}}
+
+{{-etim-}}
+dal {{la}} ''[[quadrum]]'' da ''[[quattuor]]'' ossia "[[quattro]]"
+
+{{-sin-}}
+*'''(aggettivo)''' di forma quadrata, [[quadrato]],  [[squadrato]]
+* {{Fig}} ''(di individuo)'' [[forte]], [[grosso]], [[largo]], [[massiccio]],   [[robusto]], [[saldo]], [[solido]], [[tarchiato]]
+*[[accorto]], [[giudizioso]],  [[prudente]], [[saggio]]
+* {{Term|raro|it}} [[quadriforme]]
+*'''(sostantivo)''' [[quadrato]], spazio quadrato, [[riquadro]]
+* ''(di pittura)'' [[acquerello]],  [[dipinto]], [[guazzo]], [[incisione]], [[olio]], [[pala]], [[pittura]], [[tavola]], [[tela]],  [[tempra]], 
+* {{Fig}} ''(di situazione)'' [[descrizione]], [[panorama]], [[profilo]], [[rappresentazione]], [[relazione]], [[resoconto]], [[scenario]], [[spaccato]]
+* {{Fig}} [[compendio]], [[foglio]],[[modulo]],  [[prospetto]], [[schema]],  [[sintesi]], [[specchietto]], [[tabella]],
+* {{Fig}} [[immagine]],  [[paesaggio]], [[veduta]], [[vista]],  
+* ''(tecnica)'' [[comando]], [[console]] , [[cruscotto]], [[pannello]], quadro di comando],  tavolo dei comandi
+* ''(teatro)'' [[atto]], [[parte]], [[scena]], [[scenetta]], [[situazione]],[[sketch]],  [[spettacolo]]
+* ''(di nave)'' [[poppa]]
+* {{Fig}} ''(di una situazione)'' [[rappresentazione]], [[descrizione]], [[illustrazione]]
+* ''(politico, economico ecc.)'' [[situazione]], [[condizione]], 
+*  
+
+{{-ant-}}
+*[[tondo]]
+* {{Fig}} ''(di corporatura)'' [[debole]],  [[esile]], [[fragile ]]
+* {{Fig}} ''(di individuo)'' [[magro]], [[mingherlino]], [[snello]], [[sottile]]
+* [[avventato]], [[imprudente]]
+* {{Fig}} [[dettaglio]], [[particolare]]
+* [[spiovente]]
+
+{{-der-}}
+* [[quadrotta]], [[riquadrare]], [[riquadro]], [[sottoquadro]]
+
+{{-prov-}}
+*''fare il quadro della situazione''
+*''legge quadro ''
+
+
+
+{{-alter-}}
+* {{Dim}} [[quadretto]]
+* {{Accr}}  [[quadrone]]
+* {{Pegg}} [[quadraccio]]
+
+{{-trad-}}
+{{Trad1|dipinto su tela quadrata}}
+:*{{fr}}: <!-- dopo i : inserisci le traduzioni nelle altre lingue -->
+:*{{en}}:  [[painting]], [[canvas]], [[picture]]
+:*{{es}}:  
+:*{{de}}:    
+{{Trad2}}
+
+{{Trad1|spazio, elemento quadrato}}
+:* {{en}}: [[square]]
+{{Trad2}}
+
+{{Trad1|spettacolo, vista, scena}}
+:* {{en}}: [[vignette]], [[scene]]
+{{Trad2}}
+
+{{Trad1| {{Fig}} [[ambito]], [[contesto]]}}
+:*{{en}}: [[context]], [[framework]] 
+{{Trad2}}
+
+{{Trad1|prina persona singolare dell'indicativo presente di quadrare}}
+:* {{en}}
+{{Trad2}}
+
+== {{-la-}} ==
+{{-verb form-|la}}
+{{Pn}}
+# [[squadro]], rendo quadrato
+# {{Fig}}  metto bene insieme, do simmetria, dispongo armoniosamente, completo perfettamente
+
+{{-ref-}}
+*italiano
+** {{Fonte|sabco}}
+** {{Fonte|sin-co|1}}
+** {{Fonte|sin-co|2}}
+** {{Fonte|trec}}
+** {{Fonte|dizit}}
+** {{Fonte|sape}}
+** {{Fonte|writen}}
+** {{Fonte|dem}}
+** {{Fonte|eti}}
+** {{Fonte|gar}}
+*latimo
+** {{Fonte|dizla}}

@@ -15,14 +15,16 @@ import { after, before, test } from "node:test";
 import { gzipSync } from "node:zlib";
 import { planWrite, readyChange } from "../src/deploy/writePlan.js";
 import { wordsOfRecoveredDefinitions } from "../src/deploy/touchedWords.js";
+import { archiveWords } from "../src/import/loadPageEntries.js";
 import {
   changedForLoad,
   describePlannedRecord,
-  findRuledDefinitions,
-  pagesForTheRules,
+  findRecoveredDefinitions,
   planRecoveredDefinitions,
+  readPagesForTheRules,
   RECOVERED_DEFINITION_RULES,
   unwrittenDefinitions,
+  type FoundDefinitions,
 } from "../src/import/loadRecoveredDefinitions.js";
 import { seedSql } from "../src/import/seedSql.js";
 import { fromNodeSqlite } from "../src/lookup/database.js";
@@ -88,6 +90,12 @@ before(async () => {
 after(async () => {
   await rm(dir, { recursive: true, force: true });
 });
+
+/** What the rules read off `PAGES` for the master's archive. */
+async function foundOf(path: string): Promise<FoundDefinitions> {
+  const read = await readPagesForTheRules(PAGES, await archiveWords(path));
+  return { records: await findRecoveredDefinitions(path, read.pages), entries: read.entries };
+}
 
 const readerOf = (db: DatabaseSync): MasterReader => ({ query: <Row>(sql: string) => db.prepare(sql).all() as Row[] });
 
@@ -185,9 +193,7 @@ test("a dictionary seeded before the rules, with a feed applied, gains their def
   try {
     const reader = readerOf(db);
     const before = snapshot(db);
-    const pages = await pagesForTheRules(PAGES);
-    assert.deepEqual([...pages.keys()].sort(), ["Consap", "bavaglio", "centouno", "cinquantadue", "decrepito", "esterofilo", "furbo", "museruola", "servire", "transigere", "urgere"]);
-    const found = await findRuledDefinitions(archive, pages);
+    const found = await foundOf(archive);
     const plan = planRecoveredDefinitions(reader, found);
     assert.deepEqual(
       plan.records.map((record) => [record.found.word, record.found.posTitle, record.definitions.map((planned) => planned.state)]).sort(),
@@ -196,6 +202,8 @@ test("a dictionary seeded before the rules, with a feed applied, gains their def
         // The feed's record in its place carries the definition as a gloss now, so the page shows it once.
         ["bavaglio", "Sostantivo", ["carried-by-served"]],
         ["museruola", "Sostantivo", ["write"]],
+        // `casa`'s definitions below its page controls, which the seed wrote, are read on their own route and held.
+        ["casa", "Sostantivo", Array(7).fill("already")],
         ["centouno", "Aggettivo numerale", ["write"]],
         ["furbo", "Aggettivo", ["write", "write", "write", "write"]],
         ["furbo", "Sostantivo", ["write", "write", "write"]],
@@ -203,9 +211,12 @@ test("a dictionary seeded before the rules, with a feed applied, gains their def
         // transitive record is found for the line it does not take, which a fresh seed did not write it either (#775).
         ["urgere", "Verbo", ["write"]],
         ["urgere", "Verbo", []],
-        // So are `servire`'s intransitive and `transigere`'s transitive record, for the sub-term of the other part.
+        // So are `servire`'s intransitive and `transigere`'s transitive record, for the sub-term of the other part,
+        // which the record of that part holds already (#770 reads every route).
         ["servire", "Verbo", []],
+        ["servire", "Verbo", ["already"]],
         ["transigere", "Verbo", []],
+        ["transigere", "Verbo", ["already"]],
         ["esterofilo", "Aggettivo", ["write"]],
         ["esterofilo", "Sostantivo", ["write"]],
         ["Consap", "Acronimo / Abbreviazione", ["write"]],
@@ -262,7 +273,7 @@ test("a dictionary seeded before the rules, with a feed applied, gains their def
     assert.deepEqual(await shown("bavaglio"), []);
 
     // A second run plans nothing.
-    const again = planRecoveredDefinitions(reader, await findRuledDefinitions(archive, await pagesForTheRules(PAGES)));
+    const again = planRecoveredDefinitions(reader, await foundOf(archive));
     assert.equal(again.sql, "");
     assert.equal(again.counts, PlanCounts.NONE);
     assert.ok(again.records.every((record) => record.definitions.every((planned) => planned.state !== "write")));
@@ -316,7 +327,7 @@ test("a dictionary seeded before #775 loses each recovered definition a record h
     assert.deepEqual([lines("urgere"), lines("servire"), lines("transigere")], [[3, 3], [20, 20], [10, 10]]);
     const before = snapshot(db);
 
-    const plan = planRecoveredDefinitions(reader, await findRuledDefinitions(archive, await pagesForTheRules(PAGES)));
+    const plan = planRecoveredDefinitions(reader, await foundOf(archive));
     assert.deepEqual(
       plan.records.flatMap((record) => record.removals.map((removal) => [record.found.word, removal.route, removal.pageLine, removal.labels])),
       [
@@ -328,7 +339,7 @@ test("a dictionary seeded before #775 loses each recovered definition a record h
     assert.deepEqual(plan.counts.toJSON(), new PlanCounts({ added: 0, changed: 0, removed: 0 }, {}, { recovered_definition: 3, recovered_label: 1 }).toJSON());
     assert.match(
       describePlannedRecord(plan.records.find((record) => record.removals.length > 0) ?? assert.fail()).join("\n"),
-      /urgere \(Verbo, record \d+, revision 3936244, line 3, prose-line\): occorrere nell'immediato, necessario al più presto\. — removed as recovered \d+/,
+      /urgere \(Verbo, archive line \d+, record \d+, revision 3936244, line 3, prose-line\): occorrere nell'immediato, necessario al più presto\. — removed as recovered \d+/,
     );
     assert.deepEqual(wordsOfRecoveredDefinitions(plan), { kind: "words", words: ["servire", "transigere", "urgere"] });
     assert.doesNotMatch(plan.sql, /\b(CREATE|DROP|UPDATE|ALTER|INSERT)\b/i);
@@ -359,7 +370,7 @@ test("a dictionary seeded before #775 loses each recovered definition a record h
     ]);
 
     // A second run plans nothing.
-    const again = planRecoveredDefinitions(reader, await findRuledDefinitions(archive, await pagesForTheRules(PAGES)));
+    const again = planRecoveredDefinitions(reader, await foundOf(archive));
     assert.equal(again.sql, "");
     assert.equal(again.counts, PlanCounts.NONE);
   } finally {
@@ -372,13 +383,13 @@ test("a record the archive does not hold at the found line is refused, and a pag
   const db = await liveShaped("refusals");
   try {
     const reader = readerOf(db);
-    const found = await findRuledDefinitions(archive, await pagesForTheRules(PAGES));
+    const { records: found } = await foundOf(archive);
     const centouno = found.find((record) => record.word === "centouno") ?? assert.fail();
-    assert.throws(() => planRecoveredDefinitions(reader, [{ ...centouno, lineNo: 1 }]), /does not hold these records at the archive's lines: centouno/);
+    assert.throws(() => planRecoveredDefinitions(reader, { records: [{ ...centouno, lineNo: 1 }], entries: [] }), /does not hold these records at the archive's lines: centouno/);
     // `casa`'s page row names the revision the seed read; a dump of another revision is not that page.
     const casaRecord = found.find((record) => record.word === "decrepito") ?? assert.fail();
     execute(db, `INSERT INTO raw_page (page_id, release_id, wiki, title, revision_id, revision_timestamp) VALUES (999, '${RELEASE}', 'it.wiktionary.org', 'decrepito', 1, '2020-01-01T00:00:00Z')`);
-    assert.throws(() => planRecoveredDefinitions(reader, [casaRecord]), /holds revision 1 of decrepito/);
+    assert.throws(() => planRecoveredDefinitions(reader, { records: [casaRecord], entries: [] }), /holds revision 1 of decrepito/);
   } finally {
     db.close();
   }
@@ -416,7 +427,7 @@ test("update:upgrade rebuilds recovered_definition stored before the two routes 
     const held = tables.map((table) => (db.prepare(`SELECT count(*) AS n FROM ${table}`).get() as { n: number }).n);
     assert.ok(held[0] > 0, "the seed recovered `casa`'s definitions");
 
-    const found = await findRuledDefinitions(archive, await pagesForTheRules(PAGES));
+    const found = await foundOf(archive);
     const plan = planRecoveredDefinitions(reader, found);
     // The live table refuses the two routes, so the load names it for the upgrade and writes nothing.
     assert.deepEqual(changedForLoad(reader, schema), ["recovered_definition"]);
@@ -460,7 +471,7 @@ test("a declared load:recovered-definitions is planned by the deploy from the ma
     const releaseId = `it-${archiveSha.slice(0, 8)}`;
     const change = parseChange("test", JSON.stringify({ command: "load:recovered-definitions", inputs: { archive: releaseId, rules: [...RECOVERED_DEFINITION_RULES] } }));
     const plan = await planWrite(readyChange(change, { archive, dump }), reader, "2026-10-07T00:00:00Z", { catalog, dumps });
-    const expected = planRecoveredDefinitions(reader, await findRuledDefinitions(archive, await pagesForTheRules(PAGES)));
+    const expected = planRecoveredDefinitions(reader, await foundOf(archive));
     assert.deepEqual(plan.run.counts.toJSON(), expected.counts.toJSON());
     assert.equal(plan.sql, expected.sql);
     assert.deepEqual(plan.touched, wordsOfRecoveredDefinitions(expected));

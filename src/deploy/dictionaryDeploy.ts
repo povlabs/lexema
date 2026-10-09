@@ -233,6 +233,8 @@ export interface PlanOnlyAnswer {
   readonly rebuilds: readonly Rebuild[];
   /** What `update:auto`'s selection took, per take reason; absent for every other command. */
   readonly taken?: TakenCounts;
+  /** What the plan writes, one line per row, when its command lists it (`WritePlan.listing`). */
+  readonly listing?: readonly string[];
 }
 
 /** What planning one change reads: the dictionary, and where its files come from and go. */
@@ -254,7 +256,7 @@ export async function planDeclared(change: DeclaredChange, deps: PlanDeps): Prom
  * dictionary and moves no branch.
  */
 export async function planOnly(change: DeclaredChange, deps: PlanDeps): Promise<PlanOnlyAnswer> {
-  const { run, rebuilds = [], taken } = await planDeclared(change, deps);
+  const { run, rebuilds = [], taken, listing } = await planDeclared(change, deps);
   return {
     command: run.command,
     counts: run.counts,
@@ -262,6 +264,7 @@ export async function planOnly(change: DeclaredChange, deps: PlanDeps): Promise<
     limitBreaches: run.counts.limitBreaches(run.dictionaryRecords),
     rebuilds,
     ...(taken === undefined ? {} : { taken }),
+    ...(listing === undefined ? {} : { listing }),
   };
 }
 

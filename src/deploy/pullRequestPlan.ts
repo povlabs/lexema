@@ -131,9 +131,13 @@ function outcomeLines(outcome: DeclarationOutcome): string[] {
           ? []
           : ["", "The plan rebuilds these tables, dropping each and copying its rows back:", "", "| Table | Rows |", "|---|---|", ...answer.rebuilds.map(({ table, rows }) => `| \`${table}\` | ${rows} |`)];
       const taken = answer.taken === undefined ? [] : takenLines(answer.taken);
+      const listing =
+        answer.listing === undefined || answer.listing.length === 0
+          ? []
+          : ["", "<details><summary>What the plan writes</summary>", "", "```text", ...answer.listing, "```", "", "</details>"];
       const counts = ["", "Put this in the file, with `expected` set to the plan's counts:", "", ...fenced(declarationWith(outcome.declaration, answer.counts))];
-      if (check === null) return [heading, "", "It has no `expected` yet.", ...counts, ...breaches, ...rebuilds, ...taken];
-      if (check.differences.length === 0) return [heading, "", "The plan's counts match `expected`.", ...breaches, ...rebuilds, ...taken];
+      if (check === null) return [heading, "", "It has no `expected` yet.", ...counts, ...breaches, ...rebuilds, ...taken, ...listing];
+      if (check.differences.length === 0) return [heading, "", "The plan's counts match `expected`.", ...breaches, ...rebuilds, ...taken, ...listing];
       return [
         heading,
         "",
@@ -143,6 +147,7 @@ function outcomeLines(outcome: DeclarationOutcome): string[] {
         ...breaches,
         ...rebuilds,
         ...taken,
+        ...listing,
       ];
     }
   }

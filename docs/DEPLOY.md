@@ -767,35 +767,55 @@ its `ARCHIVE_FACTS` entry names; `hide:records`, `load:page-entries` and
 ### Load recovered definitions
 
 `load:recovered-definitions` ([src/import/loadRecoveredDefinitionsCli.ts](../src/import/loadRecoveredDefinitionsCli.ts),
-#706) writes the definitions a word's page states outside its `#` list into a
-dictionary seeded before the recovered layer read them
+#706, #770) writes into a seeded dictionary every definition a fresh seed now
+recovers off the master's dump that the dictionary lacks
 ([ADR 0029](../.decisions/0029-recovered-layer-reads-bullet-prose-lines.md)).
-Its two rules read a `*` bullet line (`recovered-bullet-line/v1`) and a plain
-line with no list mark (`recovered-prose-line/v1`) under an Italian
-part-of-speech heading, in a section no `#` line of which states a meaning,
-for the archive record of that section. Its third rule,
-`recovered-verb-part/v1` (#775), keeps a definition of a Verbo section split
-into verb-type parts (`{{Transitivo|it}}`, `{{Intransitivo|it}}`…) on the
-record of the part it sits in: it deletes each recovered definition the
-dictionary holds for a record at a line of another record's part, with its
-`recovered_label` and `recovered_example` rows, whatever its route. A seed
-writes the same rows; the command brings a dictionary seeded earlier to them.
+A renderer change that makes more lines readable gives a fresh seed rows the
+shared dictionary only gets this way. Its rules:
+
+- `recovered-bullet-line/v1` and `recovered-prose-line/v1` read a `*` bullet
+  line and a plain line with no list mark under an Italian part-of-speech
+  heading, in a section no `#` line of which states a meaning.
+- `recovered-verb-part/v1` (#775) keeps a definition of a Verbo section split
+  into verb-type parts (`{{Transitivo|it}}`, `{{Intransitivo|it}}`…) on the
+  record of the part it sits in: it deletes each recovered definition the
+  dictionary holds for a record at a line of another record's part, with its
+  `recovered_label` and `recovered_example` rows, whatever its route. Every
+  other rule reads a record's definitions in its own part only, so none writes
+  such a row back.
+- `recovered-every-route/v1` writes a record's lacking recovered definition on
+  every route a seed writes: `below-page-control`, `sub-term`, `lead-in-item`,
+  `wrapped-prose`, `bullet-line` and `prose-line` (`progetto`'s sub-term
+  "progetto di legge").
+- `page-entry-definitions/v1` writes a lacking definition of a page-only entry
+  the dictionary holds (`new age`'s second sense). An entry the dictionary
+  lacks is `load:page-entries`' to write, and a curated correction of a
+  definition `correct:records`'.
 
 It reads the master's archive, for its records, and the dump that archive was
-built from, for the pages. For each definition the rules read it writes one
-`recovered_definition` row, its `recovered_label` rows, and the page's
-`raw_page` row when the dictionary has none. It touches no record and no
-`source_record_json` line, changes no row the dictionary holds, deletes none
-but the ones `recovered-verb-part/v1` names, and adds no other route's
-definition. A definition the dictionary already holds, by record
-and page line, is left alone, so a second run plans nothing. A record a feed
-replaced keeps the rows written for it, and the lookup reads them for the
-record that replaced it; a definition that record now carries as a gloss is not
-written.
+built from, for the pages, as a seed reads them. For each record-backed
+definition it writes one `recovered_definition` row, its `recovered_label` and
+`recovered_example` rows, and the page's `raw_page` row when the dictionary has
+none; for each page-only one, an `entry_definition` row and its `entry_label`
+and `entry_example` rows. It touches no record and no `source_record_json`
+line, and deletes no row but the ones `recovered-verb-part/v1` names. A definition the dictionary already holds, by its record or entry and
+page line, keeps its text, labels and examples, so a second run plans nothing;
+one held with other text than a fresh seed's is reported and left (text changes
+are `normalize:source-text`'s). A record a feed replaced
+keeps the rows written for it, and the lookup reads them for the record that
+replaced it; a definition that record now carries as a gloss is not written.
 
-Its SQL holds no DDL. `recovered_definition`'s `route` CHECK admits the two
-routes only after `update:upgrade` rebuilds the recovered tables with their
-rows, so the command refuses to write before it has; the deploy runs the
+A written definition takes the next free index of its record or entry, so the
+page lists it after the held ones, where a fresh seed lists it. When a fresh
+seed lists a lacking definition of a record before a held one, the record's
+definitions take a fresh seed's indexes: each held one whose index changes
+moves, and nothing else of it changes. A page-only entry's index keys its
+labels, examples, facts and corrections, so there the plan is refused, naming
+the entry, rather than showing that page in another order.
+
+Its SQL holds no DDL. `recovered_definition`'s `route` CHECK admits the bullet
+and prose routes only after `update:upgrade` rebuilds the recovered tables with
+their rows, so the command refuses to write before it has; the deploy runs the
 upgrade first. Against the local D1:
 
 ```sh
@@ -805,14 +825,19 @@ pnpm run load:recovered-definitions
 ```
 
 `--plan-only` prints the counts and one line per definition, with its word,
-record, revision, line, route and text and whether it is written or removed,
-and writes nothing. The shared
-dictionary changes only through a declaration:
+archive line or entry, revision, page line, route, text and labels, and whether
+it is written, moved or removed, and writes nothing. The
+[pull request plan check](#the-pull-request-plan-check) prints the lines of the
+definitions it writes, moves and removes. The shared dictionary changes only through
+a declaration:
 
 ```json
 {
   "command": "load:recovered-definitions",
-  "inputs": { "archive": "it-0c432803", "rules": ["recovered-bullet-line/v1", "recovered-prose-line/v1", "recovered-verb-part/v1"] }
+  "inputs": {
+    "archive": "it-0c432803",
+    "rules": ["recovered-bullet-line/v1", "recovered-prose-line/v1", "recovered-verb-part/v1", "recovered-every-route/v1", "page-entry-definitions/v1"]
+  }
 }
 ```
 
@@ -886,6 +911,8 @@ running.
 
    It also lists each word a declaration names in `lookups`, and the file it
    prints keeps them. It does not look them up: the change is not written yet.
+   A `load:recovered-definitions` plan also prints what it writes, one line
+   per definition ([Load recovered definitions](#load-recovered-definitions)).
 
 It writes nothing: no bookmark, no SQL file run on the dictionary, no branch
 moved. Its job has `contents: read`, and `actions: read` to read this

@@ -1,0 +1,17 @@
+{
+  "command": "load:recovered-definitions",
+  "inputs": {
+    "archive": "it-0c432803",
+    "rules": ["recovered-bullet-line/v1", "recovered-prose-line/v1", "recovered-verb-part/v1", "recovered-every-route/v1", "page-entry-definitions/v1"]
+  },
+  "lookups": [
+    { "word": "progetto", "gloss": "nella repubblica italiana proposta che" },
+    { "word": "quadro", "gloss": "detto di chi è lento nel comprendere" },
+    { "word": "new age", "gloss": "persona trasognante che conclude poco e si impone come moralista" }
+  ],
+  "expected": {
+    "records": { "added": 0, "changed": 0, "removed": 0 },
+    "written": { "raw_page": 4, "recovered_definition": 7, "recovered_label": 4, "entry_definition": 1, "entry_label": 2, "entry_example": 1 },
+    "deleted": {}
+  }
+}

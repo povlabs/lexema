@@ -168,8 +168,11 @@ test("every declaration already in dictionary-changes parses as before, with no 
     const outgrownRules: Record<string, string> = {
       "2026-10-03-load-page-entries-it-0c432803.json": "italian-page-entry/v2, italian-page-facts/v1",
       "2026-10-03-load-page-entries-v2-it-0c432803.json": "italian-page-facts/v1",
-      "2026-10-07-load-recovered-definitions-it-0c432803.json": "recovered-verb-part/v1",
-      "2026-10-09-load-recovered-label-template-lines-it-0c432803.json": "recovered-verb-part/v1",
+      // The bullet and prose lines (#706) and the lines fixed usage-label templates unblock (#711), before split verb sections (#775) and every route (#770).
+      "2026-10-07-load-recovered-definitions-it-0c432803.json": "recovered-verb-part/v1, recovered-every-route/v1, page-entry-definitions/v1",
+      "2026-10-09-load-recovered-label-template-lines-it-0c432803.json": "recovered-verb-part/v1, recovered-every-route/v1, page-entry-definitions/v1",
+      // The recovered lines of split verb sections (#775), before every route (#770).
+      "2026-10-09-load-recovered-verb-parts-it-0c432803.json": "recovered-every-route/v1, page-entry-definitions/v1",
     };
     if (name in outgrownRules) {
       assert.equal(refusal(text, path), `inputs.rules must name every rule the command applies; it lacks ${outgrownRules[name]}`);
@@ -189,15 +192,6 @@ test("every declaration already in dictionary-changes parses as before, with no 
         parseDeclaration(path, text).lookups?.map((item) => item.word),
         ["informatica", "stonare", "console"],
       );
-      continue;
-    }
-    // The recovered lines of split verb sections (#775) name each word whose other record loses one, with the line its own part keeps.
-    if (name === "2026-10-09-load-recovered-verb-parts-it-0c432803.json") {
-      assert.deepEqual(parseDraft(path, text).lookups?.map((item) => [item.word, item.gloss]), [
-        ["urgere", "occorrere nell'immediato"],
-        ["servire", "servire lo Stato"],
-        ["transigere", "non transigere"],
-      ]);
       continue;
     }
     // assorbire's corrected table cells (#723) name the verb.
@@ -244,6 +238,15 @@ test("every declaration already in dictionary-changes parses as before, with no 
     // The hidden recovered line (#773) names the word whose page it changes.
     if (name === "2026-10-09-correct-diplomatizzare-recovered-line.json") {
       assert.deepEqual(parseDeclaration(path, text).lookups?.map((item) => item.word), ["diplomatizzare"]);
+      continue;
+    }
+    // Every definition a fresh seed recovers that the dictionary lacks (#770) names the words the issue names, with their glosses.
+    if (name === "2026-10-09-load-recovered-every-route-it-0c432803.json") {
+      assert.deepEqual(parseDraft(path, text).lookups?.map((item) => [item.word, item.gloss]), [
+        ["progetto", "nella repubblica italiana proposta che"],
+        ["quadro", "detto di chi è lento nel comprendere"],
+        ["new age", "persona trasognante che conclude poco e si impone come moralista"],
+      ]);
       continue;
     }
     for (const parsed of [parseDeclaration(path, text), parseDraft(path, text)]) {
