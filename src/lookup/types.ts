@@ -171,14 +171,22 @@ export interface SourceForm {
 
 /** A form's own tags and raw tags, recovered from its claims by pointer. */
 export function sourceTagsOf(form: SourceForm): { tags: string[]; rawTags: string[] } {
+  return sourceTagsAt(
+    form.claims.flatMap((claim) => (claim.status === "missing" ? [] : [{ pointer: sourcePointerOf(claim.ref), text: claim.sourceText }])),
+  );
+}
+
+/**
+ * `sourceTagsOf`, from a form's claims as the source wrote them: each one's
+ * pointer and text, a `missing` claim already left out.
+ */
+export function sourceTagsAt(claims: Iterable<{ pointer: string | undefined; text: string }>): { tags: string[]; rawTags: string[] } {
   const tags: string[] = [];
   const rawTags: string[] = [];
-  for (const claim of form.claims) {
-    if (claim.status === "missing") continue;
+  for (const { pointer, text } of claims) {
     // A form a raw page writes out states its tags and nothing else (src/italian/pageFacts.ts).
-    const pointer = sourcePointerOf(claim.ref);
-    if (pointer === undefined || /\/tags\/\d+$/.test(pointer)) tags.push(claim.sourceText);
-    else if (/\/raw_tags\/\d+$/.test(pointer)) rawTags.push(claim.sourceText);
+    if (pointer === undefined || /\/tags\/\d+$/.test(pointer)) tags.push(text);
+    else if (/\/raw_tags\/\d+$/.test(pointer)) rawTags.push(text);
   }
   return { tags, rawTags };
 }

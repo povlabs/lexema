@@ -17,7 +17,7 @@ import { dictionaryTables, lineagesOf, servedBy, type DictionaryTables } from ".
 import { readSourceRecord, type SourceRecordFields } from "./sourceRecord.js";
 import { correctionOf, correctionsByRecord, type CorrectionRow } from "./correctedClaim.js";
 import { correctedEdgeServed, sourceEdgeServed } from "./correctedEdge.js";
-import { agreeingQuery, essereAgreement } from "../italian/essereAgreement.js";
+import { agreeingQuery, agreementProbes, namesCell } from "../italian/essereAgreement.js";
 import { prefixUpperBound } from "./keyRange.js";
 import { personOfItalianVerbForm } from "../italian/moods.js";
 import { correctRecordClaims, pluralDeclaration, sourcePointerOf, sourceTagsOf } from "./types.js";
@@ -374,9 +374,7 @@ async function agreementHits(
       cells.map(async (row) => {
         const form = (await tables.get(row.record_id))?.forms.find((one) => sourcePointerOf(one.ref) === row.json_pointer);
         const place = form === undefined ? undefined : personOfItalianVerbForm(sourceTagsOf(form));
-        if (place?.number !== spelling.number) return false;
-        const read = essereAgreement(row.surface, place.number);
-        return read.kind === "agrees" && normalizeItalianExact(read.spelling.first) === spelling.first;
+        return namesCell(query, row.surface, place?.number);
       }),
     );
     return cells.filter((_, i) => kept[i]);
@@ -389,8 +387,9 @@ async function agreementHits(
     ]);
     return withCells(rows, cellRows);
   };
-  const exact = query.spelled === "feminine" ? await agreeing(await spelled(SEARCH_SQL, CORRECTED_CELL_SEARCH_SQL, spelling.first)) : [];
-  const prefix = `${spelling.first}, `;
+  const probes = agreementProbes(query);
+  const exact = probes.exact !== undefined ? await agreeing(await spelled(SEARCH_SQL, CORRECTED_CELL_SEARCH_SQL, probes.exact)) : [];
+  const prefix = probes.laterSpellings;
   const [first, ...rest] =
     exact.length > 0 ? exact : await agreeing(await spelled(FIRST_SPELLING_SQL, CORRECTED_CELL_FIRST_SPELLING_SQL, prefix, prefixUpperBound(prefix)));
   if (first === undefined) return undefined;

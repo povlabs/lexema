@@ -36,6 +36,7 @@ import {
   nearPhrases,
   PARTICIPLE_FORM_ENTRY_SQL,
   PAST_PARTICIPLE_SQL,
+  PAST_PARTICIPLES_SQL,
   WORD_LEMMAS_SQL,
   type PhraseOffer,
 } from "../src/lookup/phrase.js";
@@ -270,6 +271,7 @@ test("every phrase query stays on indexes rather than scanning", () => {
     [WORD_LEMMAS_SQL, [RELEASE, JSON.stringify(["vado", "via", ...oneEditSpellings("vadp")])]],
     [CORRECTED_WORD_LEMMAS_SQL, [RELEASE, JSON.stringify(["vado", "via", ...oneEditSpellings("vadp")])]],
     [PAST_PARTICIPLE_SQL, [RELEASE, "andato"]],
+    [PAST_PARTICIPLES_SQL, [RELEASE, JSON.stringify(["andato", "fatte"])]],
     [HEADWORD_SPELLING_SQL, [RELEASE, JSON.stringify(["andare via", "tirare fuori"])]],
     [HEADWORD_PREFIX_SQL, [RELEASE, "tirare fuo", "tirare fup", 8]],
     [EXACT_KEY_SQL, [RELEASE, JSON.stringify(["vado via", "aerei a reazione"])]],
