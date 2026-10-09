@@ -13,6 +13,7 @@ import { archiveWords, findPageEntries, planPageEntries, unloaded } from "../imp
 import { findUnlistedDefinitions, pagesWithUnlistedLines, planRecoveredDefinitions, unwrittenDefinitions } from "../import/loadRecoveredDefinitions.js";
 import { planSourceText } from "../import/normalizeSourceText.js";
 import { CURATED_CORRECTIONS, type CuratedCorrection } from "../italian/curatedCorrections.js";
+import { HAND_KEPT_READINGS, type HandKeptReading } from "../italian/handKeptReadings.js";
 import { readLanguageHeadings } from "../italian/sectionLanguage.js";
 import { ARCHIVE_FACTS, archiveFactsFor, type ArchiveFactsCatalog } from "../source/archiveFacts.js";
 import { type DumpIdentity, KNOWN_DUMPS, VerifiedDump } from "../source/wiktionaryDump.js";
@@ -51,11 +52,12 @@ export type ReadyChange =
 
 /**
  * What a plan reads besides the dictionary and the files: the archive facts
- * and dumps, and the curated corrections. Each is the committed one unless
- * given, so a test can plan against a fixture's own.
+ * and dumps, the curated corrections and the hand-kept readings. Each is the
+ * committed one unless given, so a test can plan against a fixture's own.
  */
 export interface PlanSources extends SourceCatalogs {
   readonly corrections?: readonly CuratedCorrection[];
+  readonly handKeptReadings?: readonly HandKeptReading[];
 }
 
 /** The dump the master's archive was built from, opened at `path` and held to its size and SHA-1. */
@@ -90,7 +92,7 @@ export function readyChange(change: DeclaredChange, files: FetchedFiles | null):
  * committed.
  */
 export async function planWrite(ready: ReadyChange, reader: MasterReader, appliedAt: string, sources: PlanSources = {}): Promise<WritePlan> {
-  const { catalog = ARCHIVE_FACTS, dumps = KNOWN_DUMPS, corrections = CURATED_CORRECTIONS } = sources;
+  const { catalog = ARCHIVE_FACTS, dumps = KNOWN_DUMPS, corrections = CURATED_CORRECTIONS, handKeptReadings = HAND_KEPT_READINGS } = sources;
   if (!("files" in ready)) {
     const { change } = ready;
     switch (change.command) {
@@ -118,7 +120,7 @@ export async function planWrite(ready: ReadyChange, reader: MasterReader, applie
         };
       }
       case "correct:records": {
-        const plan = planCorrections(reader, corrections);
+        const plan = planCorrections(reader, corrections, handKeptReadings);
         return {
           run: planOnlyRun(change.command, plan.counts, reader),
           sql: plan.sql,

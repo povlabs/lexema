@@ -385,7 +385,9 @@ export type RecoveredRoute =
   | { route: "lead-in-item" }
   | { route: "wrapped-prose" }
   | { route: "bullet-line" }
-  | { route: "prose-line" };
+  | { route: "prose-line" }
+  /** Not read from a page: a hand-kept reading's definition (ADR 0031), whose ref is the cited revision's sense line it paraphrases. */
+  | { route: "hand-kept" };
 
 /**
  * A definition the raw page states and the extraction dropped (#28), read back
@@ -431,15 +433,22 @@ export function everyRecovered(reading: Pick<Reading, "senses" | "recovered">): 
 }
 
 /**
- * What an entry is: a source record, pointed at by its archive line, or a
- * page-only entry (ADR 0024, #403), pointed at by its page revision. Exactly
- * one of the two.
+ * What an entry is: a source record, pointed at by its archive line; a
+ * page-only entry (ADR 0024, #403), pointed at by its page revision; or a
+ * hand-kept reading (ADR 0031, #745), pointed at by the en.wiktionary revision
+ * it cites. Exactly one of the three.
  */
 export type EntryIdentity =
-  | { recordId: number; entryId?: never; ref: SourceRef }
-  | { entryId: number; recordId?: never; ref: PageEntryRef };
+  | { recordId: number; entryId?: never; handKeptId?: never; ref: SourceRef }
+  | { entryId: number; recordId?: never; handKeptId?: never; ref: PageEntryRef }
+  | { handKeptId: string; recordId?: never; entryId?: never; ref: PageEntryRef };
 
-/** Where a page-only entry was read: its page revision and the line that names its part of speech, verbatim. */
+/**
+ * Where a page-only entry was read: its page revision and the line that names
+ * its part of speech, verbatim. A hand-kept reading's names the en.wiktionary
+ * revision it cites and the heading of its section there, under the release
+ * the lookup serves, since it belongs to no release.
+ */
 export interface PageEntryRef {
   releaseId: string;
   wiki: string;
@@ -806,9 +815,10 @@ export type OtherReading = ReadingFacts & OtherPartOfSpeech;
 /** One source record that matched the query. */
 export type Reading = NounReading | OtherReading;
 
-/** Stable within one seeded database, without conflating page entries with source records. */
+/** Stable within one seeded database, without conflating page entries or hand-kept readings with source records. */
 export function entryKey(entry: EntryIdentity): string {
-  return entry.recordId === undefined ? `page-${entry.entryId}` : String(entry.recordId);
+  if (entry.recordId !== undefined) return String(entry.recordId);
+  return entry.entryId !== undefined ? `page-${entry.entryId}` : `kept-${entry.handKeptId}`;
 }
 
 /**

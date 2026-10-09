@@ -40,6 +40,7 @@ import { type ReadyChange, planWrite, readyChange, SCHEMA, type WritePlan } from
 import { lookUpDeclaredWords, lookUpWords, WORD_LIST } from "./wordCheck.js";
 import type { ArchiveFactsCatalog } from "../source/archiveFacts.js";
 import type { CuratedCorrection } from "../italian/curatedCorrections.js";
+import type { HandKeptReading } from "../italian/handKeptReadings.js";
 
 /** The steps of a run, in the order a run that writes takes them. */
 export const DEPLOY_STEPS = ["pending", "fetch", "bookmark", "upgrade", "plan", "apply", "read-back", "word-lookup", "production"] as const;
@@ -67,6 +68,8 @@ export interface DeployDeps {
   readonly dumps?: DumpCatalog;
   /** The curated corrections `correct:records` writes; the committed list unless given. */
   readonly corrections?: readonly CuratedCorrection[];
+  /** The hand-kept readings `correct:records` writes; the committed list unless given. */
+  readonly handKeptReadings?: readonly HandKeptReading[];
   readonly words?: readonly string[];
   readonly now?: () => string;
   /** Told each step as it starts. */
@@ -230,7 +233,7 @@ export interface PlanOnlyAnswer {
 }
 
 /** What planning one change reads: the dictionary, and where its files come from and go. */
-export type PlanDeps = Pick<DeployDeps, "reader" | "fetcher" | "workDir" | "catalog" | "dumps" | "corrections" | "now">;
+export type PlanDeps = Pick<DeployDeps, "reader" | "fetcher" | "workDir" | "catalog" | "dumps" | "corrections" | "handKeptReadings" | "now">;
 
 /**
  * Fetch and check the files `change` reads, and plan it against the

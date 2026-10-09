@@ -237,6 +237,9 @@ function rowsToCopy(reader: MasterReader, keys: readonly string[]): Map<string, 
   const entries = numbers(rows.get("recovered_entry") ?? [], "entry_id");
   for (const table of ["entry_definition", "entry_label", "entry_example", "entry_fact", "corrected_definition"]) read(table, () => rowsWhere(reader, table, inList("entry_id"), entries));
 
+  // Hand-kept readings of each word (ADR 0031): they key to no record or page.
+  read("hand_kept_definition", () => rowsWhere(reader, "hand_kept_definition", inList("word_key"), keys));
+
   const pages = ["recovered_definition", "hidden_record", "recovered_entry"].flatMap((table) => numbers(rows.get(table) ?? [], "page_id"));
   read("raw_page", () => rowsWhere(reader, "raw_page", inList("page_id"), pages));
 

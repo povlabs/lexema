@@ -10,6 +10,7 @@ import { articleFirst, readingPartOfSpeech } from "./articles.js";
 import { articleQuery } from "../italian/articleQuery.js";
 import { keyedRead, readKeys, type DictionaryRead, type KeyedRead, type LookupDatabase } from "./database.js";
 import { phraseForms, phraseMatches } from "./phrase.js";
+import { handKeptReadingsOf } from "./handKept.js";
 import { pageEntriesOf, type PageEntries } from "./pageEntry.js";
 import { readExpressions } from "./expressions.js";
 import { placeRecovered, type RecoveredOfRecord, type StoredRecovered } from "./recovered.js";
@@ -306,12 +307,13 @@ interface Spelled {
 /**
  * The readings of everything that spells `key`, as found as typed: the
  * source's rows `hits`, `SEARCH_SQL`'s answer for `key`, the curated table
- * cells that spell it (#743), and the page entries. Undefined when none does.
+ * cells that spell it (#743), the page entries, and the hand-kept readings
+ * (ADR 0031, #745), last. Undefined when none does.
  */
 async function spelledResult({ db, releaseId, pages, query, release, tables }: Spelled, key: string, hits: readonly HitRow[]): Promise<FoundResult | undefined> {
   const corrected: Corrected = tables;
   const edges = tables.edgeCorrections;
-  const pageReadings = pages.readings(key);
+  const pageReadings = Promise.all([pages.readings(key), handKeptReadingsOf(db, releaseId, tables).readings(key)]).then(([page, kept]) => [...page, ...kept]);
   // A curated table cell spelled as the query (#743) is read once the tables
   // say the master keys them, beside the page entries. A lookup the source's
   // spellings already found builds its readings meanwhile, and builds them

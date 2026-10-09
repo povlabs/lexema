@@ -188,6 +188,13 @@ const DEFINITIONS_READ_STATEMENTS = 4;
 const CELL_SEARCH_STATEMENTS = 1;
 
 /**
+ * The statement every lookup sends for the hand-kept readings spelled as the
+ * query (`HAND_KEPT_SQL`, ADR 0031, #745). It goes in the same call as the
+ * page-only entries' read, so it adds no call.
+ */
+const HAND_KEPT_STATEMENTS = 1;
+
+/**
  * What #705 cut: the lemmas' own expressions, which no page shows since #700.
  * Every lookup no longer sends the lines of the lemmas its readings' links
  * name (`LEMMA_LINE_SQL`), which went beside the links, so no call is saved.
@@ -213,7 +220,7 @@ const EXTRA: Record<string, number> = {
 for (const [word, then] of Object.entries(VERB_FORMS_BEFORE)) {
   const cut = LEMMA_EXPRESSIONS_CUT[word] ?? { statements: 0, calls: 0 };
   const now = {
-    statements: then.statements + (EXTRA[word] ?? 0) + (LOOKUPS[word] ?? 1) * (CELL_SEARCH_STATEMENTS - LEMMA_LINE_STATEMENTS) - cut.statements,
+    statements: then.statements + (EXTRA[word] ?? 0) + (LOOKUPS[word] ?? 1) * (CELL_SEARCH_STATEMENTS + HAND_KEPT_STATEMENTS - LEMMA_LINE_STATEMENTS) - cut.statements,
     calls: then.calls - cut.calls,
   };
   test(`the page for '${word}' sends ${now.statements} statements in ${now.calls} calls, and reads the page SQLite reads`, async () => {
@@ -266,7 +273,7 @@ const CUT: Record<string, { statements: number; calls: number }> = {
 
 for (const [word, then] of Object.entries(DEFINITIONS_PAGES_BEFORE)) {
   const now = {
-    statements: then.statements - CUT[word].statements + CELL_SEARCH_STATEMENTS - LEMMA_LINE_STATEMENTS,
+    statements: then.statements - CUT[word].statements + CELL_SEARCH_STATEMENTS + HAND_KEPT_STATEMENTS - LEMMA_LINE_STATEMENTS,
     calls: then.calls - CUT[word].calls,
   };
   test(`the page for '${word}' sends ${now.statements} statements in ${now.calls} calls, and reads the page SQLite reads`, async () => {
@@ -357,7 +364,7 @@ const NOT_FOUND: Record<string, { kind: string; statements: number; calls: numbe
 };
 
 for (const [word, then] of Object.entries(NOT_FOUND)) {
-  const ceiling = { ...then, statements: then.statements + CELL_SEARCH_STATEMENTS };
+  const ceiling = { ...then, statements: then.statements + CELL_SEARCH_STATEMENTS + HAND_KEPT_STATEMENTS };
   test(`the not-found page for '${word}' sends at most ${ceiling.statements} statements in at most ${ceiling.calls} calls, and reads the page SQLite reads`, async () => {
     const sent = nothingSent();
     const db = fromD1(countingD1(sqlite, sent));

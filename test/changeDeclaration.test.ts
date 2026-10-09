@@ -219,6 +219,11 @@ test("every declaration already in dictionary-changes parses as before, with no 
       assert.deepEqual(parseDraft(path, text).lookups?.map((item) => item.word), ["mele", "scandinave", "fermi", "pampini", "scandinava", "andarsene"]);
       continue;
     }
+    // The hand-kept readings (#745) name each word they give a reading, with a definition of it.
+    if (name === "2026-10-09-hand-kept-readings-si-come.json") {
+      assert.deepEqual(parseDeclaration(path, text).lookups?.map((item) => [item.word, item.gloss]), [["si", "pronome riflessivo di terza persona"], ["come", "non appena"]]);
+      continue;
+    }
     // The label punctuation rule (#712) names words whose page text it rewrites.
     if (name === "2026-10-09-normalize-label-punctuation.json") {
       assert.deepEqual(parseDraft(path, text).lookups?.map((item) => item.word), ["cinquantadue", "ozelot", "travet"]);

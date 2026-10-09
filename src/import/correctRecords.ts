@@ -27,6 +27,10 @@
 // so it is written on a record a later release replaced too: the definition
 // stays beside it and is still read for the replacing record
 // (src/lookup/recovered.ts).
+//
+// It also writes the hand-kept readings (src/italian/handKeptReadings.ts, ADR
+// 0031, #745), which key to no record: each reading the master does not hold
+// exactly gets its `hand_kept_definition` rows, replaced whole.
 
 import {
   correctionId,
@@ -48,13 +52,15 @@ import {
   type RecoveredDefinitionHide,
   type RecoveredLine,
 } from "../italian/curatedCorrections.js";
+import { handKeptId, type HandKeptReading } from "../italian/handKeptReadings.js";
 import { boundedInserts } from "../update/apply.js";
 import { PAGE_ENTRY_TABLES } from "../lookup/served.js";
-import { CORRECTION_TABLES, keyedColumnOf, PAGE_ENTRY_CORRECTION_TABLES } from "../update/masterUpgrade.js";
+import { CORRECTION_TABLES, HAND_KEPT_INDEXES, HAND_KEPT_TABLES, keyedColumnOf, PAGE_ENTRY_CORRECTION_TABLES } from "../update/masterUpgrade.js";
 import { lacksKeyedColumn, readMasterRelease, select, upgradeNeededFor, type MasterReader } from "../update/master.js";
 import { PlanCounts } from "../update/planCounts.js";
 import { correctedDefinitionValues } from "./correctedDefinitions.js";
 import { correctedClaimValues, correctedEdgeValues, correctedFormValues, hiddenRecoveredValues } from "./correctedLayer.js";
+import { handKeptRows } from "./handKeptRows.js";
 import { COLUMNS, literal, tupleOf } from "./seedSql.js";
 
 /** What a run does with one record entry of the list: a gender or number correction, or cells of a table. */
@@ -99,6 +105,11 @@ export type PlannedHide =
   /** Keyed to a release this master was not seeded from. */
   | { state: "other-release"; correction: RecoveredDefinitionHide };
 
+/** What a run does with one hand-kept reading: write its rows in place of the `held` ones, or leave the ones the master holds exactly. */
+export type PlannedHandKeptReading =
+  | { state: "write"; reading: HandKeptReading; held: number }
+  | { state: "already"; reading: HandKeptReading };
+
 export interface CorrectionPlan {
   masterReleaseId: string;
   /** Every record entry of the list, in list order. */
@@ -109,6 +120,8 @@ export interface CorrectionPlan {
   hides: PlannedHide[];
   /** Every definition entry of the list, in list order. */
   definitions: PlannedDefinitionCorrection[];
+  /** Every hand-kept reading given, in list order. */
+  readings: PlannedHandKeptReading[];
   /** Empty when there is nothing to write. */
   sql: string;
   /** What `sql` writes, counted (#490); `PlanCounts.NONE` when it is empty. */
@@ -138,19 +151,21 @@ const tablesIn = (reader: MasterReader, names: readonly string[]): Set<string> =
   new Set(select<{ name: string }>(reader, `SELECT name FROM sqlite_schema WHERE type = 'table' AND name IN (SELECT value FROM json_each(${json(names)}))`).map((row) => row.name));
 
 /** What the upgrade creates for the corrections to write into: the record facts and cells, their cache revision, and the definition corrections. */
-const CORRECTION_UPGRADE: readonly string[] = [...CORRECTION_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES];
+const CORRECTION_UPGRADE: readonly string[] = [...CORRECTION_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES, ...HAND_KEPT_TABLES, ...HAND_KEPT_INDEXES];
 
 /** The upgrade names the corrections write into that the master lacks: run `update:upgrade` before the plan's SQL while any is listed. */
 export const missingForCorrections = (reader: MasterReader): string[] => upgradeNeededFor(reader, CORRECTION_UPGRADE);
 
 /**
- * Plan writing `corrections` into the master. It reads the master; it writes
- * nothing. A master without the tables it writes into is read as holding no
- * correction yet, so the plan counts the same before the upgrade as after it.
+ * Plan writing `corrections` and the hand-kept `readings` into the master;
+ * the command passes both committed lists, a test the entries it means. It
+ * reads the master; it writes nothing. A master without the tables it writes
+ * into is read as holding no correction or reading yet, so the plan counts the
+ * same before the upgrade as after it.
  */
-export function planCorrections(reader: MasterReader, corrections: readonly CuratedCorrection[]): CorrectionPlan {
+export function planCorrections(reader: MasterReader, corrections: readonly CuratedCorrection[], readings: readonly HandKeptReading[] = []): CorrectionPlan {
   const master = readMasterRelease(reader);
-  const tables = tablesIn(reader, ["corrected_claim", "corrected_form", "corrected_edge", "corrected_definition", "hidden_record", "hidden_recovered_definition", ...PAGE_ENTRY_TABLES]);
+  const tables = tablesIn(reader, ["corrected_claim", "corrected_form", "corrected_edge", "corrected_definition", "hand_kept_definition", "hidden_record", "hidden_recovered_definition", ...PAGE_ENTRY_TABLES]);
   const records = lineCorrections(corrections);
   const edgeEntries = senseEdgeCorrections(corrections);
   const hideEntries = recoveredHides(corrections);
@@ -164,6 +179,7 @@ export function planCorrections(reader: MasterReader, corrections: readonly Cura
   const edges = planEdges(reader, master.releaseId, keyed, edgeEntries, tables);
   const hides = planHides(reader, master.releaseId, keyed, hideEntries, tables);
   const definitions = planDefinitions(reader, master.releaseId, definitionCorrections(corrections), tables);
+  const kept = planReadings(reader, readings, tables);
 
   const writes = entries.flatMap((entry) => (entry.state === "write" ? [entry] : []));
   const claimWrites = writes.filter(isClaimWrite);
@@ -171,10 +187,14 @@ export function planCorrections(reader: MasterReader, corrections: readonly Cura
   const edgeWrites = edges.flatMap((entry) => (entry.state === "write" ? [entry] : []));
   const hideWrites = hides.flatMap((entry) => (entry.state === "write" ? [entry] : []));
   const definitionWrites = definitions.flatMap((entry) => (entry.state === "write" ? [entry] : []));
-  if (writes.length + edgeWrites.length + hideWrites.length + definitionWrites.length === 0) {
-    return { masterReleaseId: master.releaseId, entries, edges, hides, definitions, sql: "", counts: PlanCounts.NONE };
+  const readingWrites = kept.flatMap((entry) => (entry.state === "write" ? [entry] : []));
+  if (writes.length + edgeWrites.length + hideWrites.length + definitionWrites.length + readingWrites.length === 0) {
+    return { masterReleaseId: master.releaseId, entries, edges, hides, definitions, readings: kept, sql: "", counts: PlanCounts.NONE };
   }
-  const written = [...writes, ...edgeWrites, ...hideWrites, ...definitionWrites].map((entry) => correctionId(entry.correction));
+  const written = [
+    ...[...writes, ...edgeWrites, ...hideWrites, ...definitionWrites].map((entry) => correctionId(entry.correction)),
+    ...readingWrites.map((entry) => `kept:${handKeptId(entry.reading)}`),
+  ];
   const sql = [
     `-- Generated by src/import/correctRecords.ts: ${written.length} curated correction(s) of ${master.releaseId}: ${written.join(", ")}.`,
     `INSERT INTO correction_version (singleton, revision) VALUES (1, 1)
@@ -219,9 +239,17 @@ export function planCorrections(reader: MasterReader, corrections: readonly Cura
       `INSERT INTO corrected_definition (${COLUMNS.corrected_definition}) VALUES\n  ${definitionTuples.join(",\n  ")};`,
     );
   }
+  if (readingWrites.length > 0) {
+    // A reading's rows are replaced whole, so a definition the list no longer gives goes with the rest.
+    sql.push(
+      `DELETE FROM hand_kept_definition WHERE reading_id IN (SELECT value FROM json_each(${json(readingWrites.map((entry) => handKeptId(entry.reading)))}));`,
+      ...boundedInserts("hand_kept_definition", readingWrites.flatMap((entry) => handKeptRows(entry.reading).map((values) => tupleOf("hand_kept_definition", values)))),
+    );
+  }
   // Each written record changes in place: its rows already held go with the DELETE, and the INSERT writes them anew.
   // A record that more than one kind writes (facts, cells, edges, hides) changes once.
   // A definition entry changes no record, so it counts in rows only: the row it replaces, if held, and the row it writes.
+  // So does a hand-kept reading, which keys to no record.
   const held = heldRows(reader, tables, writes.map((entry) => entry.recordId));
   const heldEdgeRows = tables.has("corrected_edge") && edgeWrites.length > 0 ? heldEdges(reader, edgeWrites.map((entry) => entry.recordId)) : new Map<string, string>();
   const heldHideRows = tables.has("hidden_recovered_definition") && hideWrites.length > 0 ? heldHides(reader, hideWrites.map((entry) => entry.recordId)) : new Map<string, string>();
@@ -237,6 +265,7 @@ export function planCorrections(reader: MasterReader, corrections: readonly Cura
       corrected_edge: edgeTuples.length,
       hidden_recovered_definition: hideTuples.length,
       corrected_definition: definitionTuples.length,
+      hand_kept_definition: readingWrites.reduce((rows, entry) => rows + entry.reading.definitions.length, 0),
       correction_version: 1,
     },
     {
@@ -245,9 +274,10 @@ export function planCorrections(reader: MasterReader, corrections: readonly Cura
       corrected_edge: edgeWrites.filter((entry) => heldEdgeRows.has(`${entry.recordId}:${entry.correction.edge.sense}`)).length,
       hidden_recovered_definition: hideWrites.filter((entry) => heldHideRows.has(`${entry.recordId}:${entry.correction.hides.line}`)).length,
       corrected_definition: definitionWrites.filter((entry) => heldDefinitionRows.has(`${entry.entryId}:${entry.correction.replaces.index}`)).length,
+      hand_kept_definition: readingWrites.reduce((rows, entry) => rows + entry.held, 0),
     },
   );
-  return { masterReleaseId: master.releaseId, entries, edges, hides, definitions, sql: `${sql.join("\n")}\n`, counts };
+  return { masterReleaseId: master.releaseId, entries, edges, hides, definitions, readings: kept, sql: `${sql.join("\n")}\n`, counts };
 }
 
 /** What the master holds at the archive lines the list keys to its release. */
@@ -500,6 +530,38 @@ function planDefinitions(
   });
 }
 
+/** The `hand_kept_definition` rows the master holds of each of `ids`, each as a comparable string, in definition order. */
+function heldReadings(reader: MasterReader, ids: readonly string[]): Map<string, string[]> {
+  const held = new Map<string, string[]>();
+  if (ids.length === 0) return held;
+  const columns = COLUMNS.hand_kept_definition.split(",");
+  for (const row of select<Record<string, unknown> & { reading_id: string }>(
+    reader,
+    `SELECT ${columns.join(", ")} FROM hand_kept_definition
+      WHERE reading_id IN (SELECT value FROM json_each(${json(ids)})) ORDER BY reading_id, definition_index`,
+  )) {
+    held.set(row.reading_id, [...(held.get(row.reading_id) ?? []), JSON.stringify(columns.map((column) => row[column]))]);
+  }
+  return held;
+}
+
+/** Whether the master holds exactly `reading`'s rows. */
+const holds = (held: ReadonlyMap<string, readonly string[]>, reading: HandKeptReading): boolean =>
+  JSON.stringify(held.get(handKeptId(reading)) ?? []) === JSON.stringify(handKeptRows(reading).map((values) => JSON.stringify(values)));
+
+function planReadings(reader: MasterReader, readings: readonly HandKeptReading[], tables: ReadonlySet<string>): PlannedHandKeptReading[] {
+  const held = tables.has("hand_kept_definition") ? heldReadings(reader, readings.map(handKeptId)) : new Map<string, string[]>();
+  return readings.map((reading): PlannedHandKeptReading =>
+    holds(held, reading) ? { state: "already", reading } : { state: "write", reading, held: held.get(handKeptId(reading))?.length ?? 0 },
+  );
+}
+
+/** One line per hand-kept reading, for the run's report. */
+export function describeReading(entry: PlannedHandKeptReading): string {
+  const head = `  kept:${handKeptId(entry.reading)}`;
+  return entry.state === "write" ? `${head}: written, ${entry.reading.definitions.length} definition(s)` : `${head}: already written`;
+}
+
 /** Entries the plan writes whose rows the master does not read back exactly. */
 export function unwritten(reader: MasterReader, plan: CorrectionPlan): string[] {
   const writes = plan.entries.flatMap((entry) => (entry.state === "write" ? [entry] : []));
@@ -510,6 +572,8 @@ export function unwritten(reader: MasterReader, plan: CorrectionPlan): string[] 
   const heldHide = hideWrites.length === 0 ? new Map<string, string>() : heldHides(reader, hideWrites.map((entry) => entry.recordId));
   const heldEdge = edgeWrites.length === 0 ? new Map<string, string>() : heldEdges(reader, edgeWrites.map((entry) => entry.recordId));
   const heldDefinition = definitionWrites.length === 0 ? new Map<string, string>() : heldDefinitions(reader, definitionWrites.map((entry) => entry.entryId));
+  const readingWrites = plan.readings.flatMap((entry) => (entry.state === "write" ? [entry] : []));
+  const heldReading = heldReadings(reader, readingWrites.map((entry) => handKeptId(entry.reading)));
   return [
     ...writes
       .filter((entry) => rowKey(heldOf(held, entry.correction, entry.recordId)) !== rowKey(rowsOf(entry.correction)))
@@ -523,6 +587,7 @@ export function unwritten(reader: MasterReader, plan: CorrectionPlan): string[] 
     ...definitionWrites
       .filter((entry) => heldDefinition.get(`${entry.entryId}:${entry.correction.replaces.index}`) !== JSON.stringify(correctedDefinitionValues(entry.correction)))
       .map((entry) => correctionId(entry.correction)),
+    ...readingWrites.filter((entry) => !holds(heldReading, entry.reading)).map((entry) => `kept:${handKeptId(entry.reading)}`),
   ];
 }
 

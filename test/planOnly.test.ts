@@ -220,7 +220,9 @@ test("correct:records --plan-only counts what the list writes and leaves the loc
     assert.equal(answer.planOnly, true);
     assert.deepEqual(answer.counts, { records: { added: 0, changed: 25, removed: 0 }, written: { corrected_claim: 29, correction_version: 1 }, deleted: {} });
     assert.equal(answer.dictionaryRecords, lines.length);
-    assert.equal(answer.entries.length, 25);
+    // The 25 corrections, then the two hand-kept readings the seed already wrote (#745).
+    assert.equal(answer.entries.length, 27);
+    assert.deepEqual(answer.entries.slice(25), ["kept:si:pron: already written", "kept:come:conj: already written"]);
     assert.match(answer.entries[0], /: written$/);
     assert.ok(typeof answer.sql === "string" && (await readFile(answer.sql, "utf8")).includes("INSERT INTO corrected_claim"));
     assert.equal(d1.sha256(), before);
