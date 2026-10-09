@@ -315,7 +315,15 @@ base word where a real form sense names one: `mele`'s "percosse" reads
 ([#755](https://github.com/povlabs/lexema/issues/755),
 [report](../reports/2026-10-09-form-of-meaning-edges.md)). The seed writes each
 as a `corrected_edge` row with its links, a removal's naming no word, and a
-lookup reads it in place of the sense's own edges. A hidden record gets none. A
+lookup reads it in place of the sense's own edges. A hidden record gets none.
+An entry may also hide one recovered definition whose line states no
+dictionary word, `diplomatizzare`'s keyboard test text `hhhhhhhh`
+([#773](https://github.com/povlabs/lexema/issues/773)): it names the line by
+its place on the record's own page, with its wikitext and text, and cites that
+page's revision and Huey's ruling. The seed writes it as a
+`hidden_recovered_definition` row only where the record's recovered definition
+at that line, from that revision, is the one it quotes, and reports it
+otherwise; a lookup then reads the record as having no such definition. A
 database seeded
 before an entry gets it by a one-off update, with no reseed and no archive:
 
@@ -328,10 +336,11 @@ It picks its database the way the seed does: the local D1 under `SEED_STATE`
 one SQL file under `.data/updates/` and runs it as one transaction: it writes
 each entry's rows, and increments the correction revision, so card and
 suggestion addresses move ([cache identity](DEPLOY.md#card-and-suggestion-cache-identity)).
-`source_record_json`, `grammar_claim`, `lookup_form` and `form_of_edge` are not
-touched. The file holds no DDL: on a master without `corrected_claim`,
-`corrected_form`, `corrected_edge`, `correction_version`,
-`corrected_definition` or `hand_kept_definition`, or with a `corrected_form` from before its
+`source_record_json`, `grammar_claim`, `lookup_form`, `form_of_edge` and the
+`recovered_*` rows are not touched. The file holds no DDL: on a master without
+`corrected_claim`, `corrected_form`, `corrected_edge`,
+`hidden_recovered_definition`, `correction_version`, `corrected_definition` or
+`hand_kept_definition`, or with a `corrected_form` from before its
 `surface_key`, the command refuses to write and names
 `pnpm run update:upgrade`, which creates them and keys the cells. It then reads the rows
 back and fails if one differs. It prints one line per entry: written, already

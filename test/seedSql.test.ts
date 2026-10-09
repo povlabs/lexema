@@ -314,6 +314,8 @@ test("the fifty-word dev seed is one part with the same rows", async () => {
       corrected_claim: 7,
       corrected_form: 0,
       corrected_edge: 99,
+      // The one hide's line, `diplomatizzare`'s (#773), is not in the fixture either.
+      hidden_recovered_definition: 0,
       // Only the fixture pages on the committed list of it-0c432803's
       // record-less titles are page-only candidates (#499): 20 of them, of
       // which 17 recover (`lungo` as two entries), `grufolare` and `tremare`
@@ -325,7 +327,7 @@ test("the fifty-word dev seed is one part with the same rows", async () => {
       // The committed hand-kept readings, whatever the fixture holds (ADR
       // 0031, #745): si's pronoun's four definitions and come's conjunction's one.
       hand_kept_definition: 5,
-      release_table_rows: 25,
+      release_table_rows: 26,
     });
     // 36 of the fixture's records have a raw page under fixtures/. Three pages
     // state definitions their record does not carry: `casa`'s seven and

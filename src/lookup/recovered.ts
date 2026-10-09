@@ -4,7 +4,9 @@
 // change from a later release replaces that record, the lookup still reads the
 // definition for the record that replaced it (src/lookup/served.ts). The seed
 // checked it against the old record only, so here it is checked again against
-// the record served now, by the seed's own rule (`carries`).
+// the record served now, by the seed's own rule (`carries`). A definition a
+// curated correction hides (#773) is read, so the items listed under it are
+// still placed, and never shown.
 
 import { carries, type RecordGloss } from "../italian/recovery.js";
 import type { RecoveredDefinition } from "./types.js";
@@ -30,7 +32,16 @@ interface RecoveredLeadIn {
  * written for a record the served one replaced keeps that sense's glosses
  * instead: the served record may hold its senses in another order or count.
  */
-export type StoredRecovered = { id: number; definition: RecoveredDefinition } & (
+export type StoredRecovered = {
+  id: number;
+  definition: RecoveredDefinition;
+  /**
+   * A curated correction hides it (`hidden_recovered_definition`): it states no
+   * dictionary word. Only on the record it was recovered for; read for a record
+   * that replaced that one, it is shown (ADR 0027).
+   */
+  hidden: boolean;
+} & (
   | {
       writtenFor: "served";
       leadIn: { in: "sense"; senseIndex: number } | RecoveredLeadIn | null;
@@ -52,7 +63,8 @@ export type StoredRecovered = { id: number; definition: RecoveredDefinition } & 
  * goes under the one served sense with a gloss that carries a gloss of the old
  * sense, and at the top of the list when no sense or more than one does. An
  * item whose recovered lead-in was dropped is found the same way, by that
- * lead-in's text.
+ * lead-in's text. A hidden definition is dropped like one a served gloss
+ * carries.
  */
 export function placeRecovered(rows: readonly StoredRecovered[], served: readonly RecordGloss[]): RecoveredOfRecord {
   const placed: RecoveredOfRecord = { topLevel: [], underSense: new Map() };
@@ -79,7 +91,7 @@ export function placeRecovered(rows: readonly StoredRecovered[], served: readonl
   const dropped = new Map<number, string>();
   for (const row of rows) {
     const { definition, leadIn } = row;
-    if (row.writtenFor === "replaced" && served.some((gloss) => carries(gloss.text, definition.text))) {
+    if (row.hidden || (row.writtenFor === "replaced" && served.some((gloss) => carries(gloss.text, definition.text)))) {
       dropped.set(row.id, definition.text);
       continue;
     }

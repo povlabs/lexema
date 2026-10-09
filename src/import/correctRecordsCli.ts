@@ -18,7 +18,7 @@ import { HAND_KEPT_READINGS, type HandKeptReading } from "../italian/handKeptRea
 import { planOnlyAnswer, planOnlyFlag, planOnlyRun } from "../update/planOnly.js";
 import { upgradeFirst } from "../update/master.js";
 import { masterReaderOf } from "../update/updateCli.js";
-import { describeDefinition, describeEntry, describeReading, missingForCorrections, planCorrections, unwritten } from "./correctRecords.js";
+import { describeDefinition, describeEntry, describeHide, describeReading, missingForCorrections, planCorrections, unwritten } from "./correctRecords.js";
 import { seedTargetFrom, webWrangler, type Wrangler } from "./seedTarget.js";
 
 const USAGE = "usage: pnpm run correct:records [--out <dir>] [--plan-only]";
@@ -41,14 +41,20 @@ export async function main(
   const reader = masterReaderOf(target);
   const plan = planCorrections(reader, corrections, readings);
   log(`planning ${corrections.length} curated correction(s) and ${readings.length} hand-kept reading(s) for the master ${plan.masterReleaseId} in ${target.dictionary}`);
-  const lines = [...plan.entries.map(describeEntry), ...plan.edges.map(describeEntry), ...plan.definitions.map(describeDefinition), ...plan.readings.map(describeReading)];
+  const lines = [
+    ...plan.entries.map(describeEntry),
+    ...plan.edges.map(describeEntry),
+    ...plan.hides.map(describeHide),
+    ...plan.definitions.map(describeDefinition),
+    ...plan.readings.map(describeReading),
+  ];
   const out = resolve(options.get("out") ?? ".data/updates");
   if (planOnly) {
     return planOnlyAnswer(planOnlyRun("correct:records", plan.counts, reader), plan.sql, out, `correct-${plan.masterReleaseId}`, {
       entries: lines.map((line) => line.trim()),
     });
   }
-  const writes = [...plan.entries, ...plan.edges, ...plan.definitions, ...plan.readings].filter((entry) => entry.state === "write").length;
+  const writes = [...plan.entries, ...plan.edges, ...plan.hides, ...plan.definitions, ...plan.readings].filter((entry) => entry.state === "write").length;
   if (plan.sql === "") return { out: [`nothing to write in ${target.dictionary}`, ...lines].join("\n"), status: 0 };
   const needed = missingForCorrections(reader);
   if (needed.length > 0) return { out: upgradeFirst(target.dictionary, needed), status: 1 };

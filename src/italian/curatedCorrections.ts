@@ -105,6 +105,25 @@
 // cell (src/import/correctedLayer.ts), `pnpm run correct:records` writes them
 // into a master seeded before it, and a lookup reads the cell in place of the
 // source's spelling (`formsOf` in src/lookup/lookup.ts).
+//
+// A fourth kind hides one recovered definition that states no dictionary word
+// (#773). Rule `recovered-prose-line/v1` reads `diplomatizzare`'s Verbo line 3,
+// `{{Transitivo|it}}hhhhhhhh`, as a definition by layout alone (ADR 0029), so
+// the page showed the keyboard test text `hhhhhhhh`. Huey ruled on 2026-10-09
+// (https://github.com/povlabs/lexema/issues/773#issuecomment-6082693102; ADR
+// 0030's amendment of that day) to hide it with a cited correction. Such an
+// entry names the record as the other kinds do, and the line by its place on
+// the record's own page, with its wikitext and text verbatim; it cites that
+// page at the revision the line was read from, and the ruling. The seed writes
+// it as a `hidden_recovered_definition` row beside the record
+// (src/import/correctedLayer.ts), `pnpm run correct:records` writes it into a
+// master seeded before it, and a lookup reads the record as having no such
+// definition (`placeRecovered` in src/lookup/recovered.ts). The
+// `recovered_definition` row and its labels stay as the rule wrote them. A
+// line read from another revision, another text, or no longer read at all
+// does not get it: the seed and the run report it instead (ADR 0025). Like
+// every correction, it is not carried onto a record that replaces its record:
+// the replacing record shows the definition, and the update reports the hide.
 
 import { FORM_OF_GLOSS_EDGE_EVIDENCE } from "./formOfGlossEdgeEvidence.js";
 import { formOfGlossEdgeCorrections } from "./formOfGlossEdge.js";
@@ -166,6 +185,7 @@ export interface RecordCorrection {
   entry?: never;
   edge?: never;
   cells?: never;
+  hides?: never;
 }
 
 /** One cell of a verb's table, set right: the `forms[]` entry at `index`, whose `form` the line spells `replaces`. */
@@ -188,6 +208,7 @@ export interface CellCorrection {
   facts?: never;
   entry?: never;
   edge?: never;
+  hides?: never;
 }
 
 /** An it.wiktionary page at one revision, and what it shows that settles the fact. */
@@ -241,6 +262,7 @@ export interface EdgeCorrection {
   facts?: never;
   entry?: never;
   cells?: never;
+  hides?: never;
 }
 
 /** The `form_of` edge a correction removes from one sense, whose gloss states a meaning, not a form (ADR 0030's 2026-10-09 amendment, #755). */
@@ -274,6 +296,7 @@ export interface EdgeRemoval {
   facts?: never;
   entry?: never;
   cells?: never;
+  hides?: never;
 }
 
 /** A correction of one sense's `form_of` edge: one that sets it, or one that removes it. Each is one `corrected_edge` row. */
@@ -310,10 +333,49 @@ export interface DefinitionCorrection {
   facts?: never;
   edge?: never;
   cells?: never;
+  hides?: never;
 }
 
-/** One entry of the curated list: a record's gender or number, cells of its table, a sense's `form_of` edge set or removed, or a page-only entry's definition. */
-export type CuratedCorrection = RecordCorrection | CellCorrection | EdgeCorrection | EdgeRemoval | DefinitionCorrection;
+/** A ruling comment on a Lexema issue, by its permanent link. */
+export type RulingUrl = `https://github.com/povlabs/lexema/issues/${number}#issuecomment-${number}`;
+
+/** One Wiktionary page at one revision, cited as a whole. */
+export type WiktionaryPage = Omit<ItWiktionaryEvidence, "shows">;
+
+/** The recovered definition a hide names: one line of the record's own page, as the cited revision states it. */
+export interface HiddenRecoveredLine {
+  /** Its 1-based page line (`recovered_definition.page_line`), and that line's wikitext, verbatim. */
+  line: number;
+  wikitext: string;
+  /** The text the recovered layer reads off that line, verbatim: the text the hide keeps off the page. */
+  text: string;
+}
+
+/** What a hide cites: the record's own page at the revision the line was read from, which shows it, and the ruling that hides it. */
+export interface HideEvidence {
+  page: WiktionaryPage;
+  ruling: RulingUrl;
+}
+
+/**
+ * One recovered definition, hidden: its line states no dictionary word, only
+ * keyboard test text (#773, ADR 0030's amendment of 2026-10-09). It names the
+ * record the definition was recovered for, and the line by its place on the
+ * cited page revision with its wikitext and text verbatim. A lookup reads the
+ * record as having no such definition; the `recovered_definition` row stays.
+ */
+export interface RecoveredDefinitionHide {
+  record: CorrectedRecord;
+  hides: HiddenRecoveredLine;
+  evidence: HideEvidence;
+  facts?: never;
+  entry?: never;
+  edge?: never;
+  cells?: never;
+}
+
+/** One entry of the curated list: a record's gender or number, cells of its table, a sense's `form_of` edge set or removed, a page-only entry's definition, or a recovered definition hidden. */
+export type CuratedCorrection = RecordCorrection | CellCorrection | EdgeCorrection | EdgeRemoval | DefinitionCorrection | RecoveredDefinitionHide;
 
 /** An entry keyed to one archive line as a whole: a record's gender or number, or cells of its table. */
 export type LineCorrection = RecordCorrection | CellCorrection;
@@ -329,6 +391,8 @@ export const isEdgeCorrection = (correction: CuratedCorrection): correction is E
 export const isEdgeRemoval = (correction: CuratedCorrection): correction is EdgeRemoval => correction.edge?.removes !== undefined;
 
 const isSenseEdgeCorrection = (correction: CuratedCorrection): correction is SenseEdgeCorrection => correction.edge !== undefined;
+
+export const isRecoveredHide = (correction: CuratedCorrection): correction is RecoveredDefinitionHide => correction.hides !== undefined;
 
 /** The entries of `corrections` that correct a record's gender or number. */
 export const recordCorrections = (corrections: readonly CuratedCorrection[]): RecordCorrection[] =>
@@ -354,6 +418,37 @@ export const senseEdgeCorrections = (corrections: readonly CuratedCorrection[]):
 /** The entries of `corrections` that correct a page-only entry's definition. */
 export const definitionCorrections = (corrections: readonly CuratedCorrection[]): DefinitionCorrection[] =>
   corrections.filter(isDefinitionCorrection);
+
+/** The entries of `corrections` that hide a recovered definition (#773). */
+export const recoveredHides = (corrections: readonly CuratedCorrection[]): RecoveredDefinitionHide[] => corrections.filter(isRecoveredHide);
+
+/** One recovered definition of a record as a dictionary holds it: the page revision it was read from, its line, and that line's wikitext and text. */
+export interface RecoveredLine extends HiddenRecoveredLine {
+  revisionId: number;
+}
+
+/** Why a hide does not reach a record's recovered definitions. */
+export type HideMismatch =
+  /** The record's definitions were read from another revision of its page: a later dump changed it. */
+  | "revision-differs"
+  /** Same revision and line, but not the wikitext or text the hide quotes. */
+  | "line-differs"
+  /** No recovered definition at that line: the rule no longer reads it, or the record has none. */
+  | "row-gone";
+
+/**
+ * Whether `hide` reaches `recovered`, the recovered definitions of its
+ * record: only the line it names, read from the revision it cites, with the
+ * very wikitext and text it quotes. Anything else is a line the hide was never
+ * checked against, which may state a real definition (ADR 0025).
+ */
+export function hideMismatch(hide: RecoveredDefinitionHide, recovered: readonly RecoveredLine[]): HideMismatch | undefined {
+  const { revisionId } = hide.evidence.page;
+  const { line, wikitext, text } = hide.hides;
+  const named = recovered.find((definition) => definition.revisionId === revisionId && definition.line === line);
+  if (named !== undefined) return named.wikitext === wikitext && named.text === text ? undefined : "line-differs";
+  return recovered.some((definition) => definition.revisionId !== revisionId) ? "revision-differs" : "row-gone";
+}
 
 /** A page-only entry as a dictionary holds it: its page revision and its definitions, in place order. */
 export interface PageEntryDefinitions {
@@ -386,18 +481,22 @@ export function definitionMismatch(correction: DefinitionCorrection, entry: Page
  * A correction's id, stored on each of its rows: a record's release and
  * archive line, `it-0c432803:449969`; the same and `:cells` for cells of its
  * table, `it-0c432803:113784:cells`, so one record may carry both kinds; for
- * an edge set or removed, also its sense, `it-0c432803:77162/senses/1`; or
- * a definition's page revision and place, `page:3906191:0`.
+ * an edge set or removed, also its sense, `it-0c432803:77162/senses/1`;
+ * for a recovered definition hidden, also its page line,
+ * `it-0c432803:573791/page-line/3`; or a definition's page revision and
+ * place, `page:3906191:0`.
  */
 export const correctionId = (correction: CuratedCorrection): string =>
   isDefinitionCorrection(correction)
     ? `page:${correction.entry.revisionId}:${correction.replaces.index}`
     : isSenseEdgeCorrection(correction)
       ? `${correction.record.releaseId}:${correction.record.lineNo}/senses/${correction.edge.sense}`
-      : `${correction.record.releaseId}:${correction.record.lineNo}${isCellCorrection(correction) ? ":cells" : ""}`;
+      : isRecoveredHide(correction)
+        ? `${correction.record.releaseId}:${correction.record.lineNo}/page-line/${correction.hides.line}`
+        : `${correction.record.releaseId}:${correction.record.lineNo}${isCellCorrection(correction) ? ":cells" : ""}`;
 
 /** A permanent link to the revision, which stays as it was whatever the page says later. */
-export const evidenceUrl = (evidence: Evidence): string =>
+export const evidenceUrl = (evidence: Omit<Evidence, "shows">): string =>
   `https://${evidence.wiki}/w/index.php?title=${encodeURIComponent(evidence.title)}&oldid=${evidence.revisionId}`;
 
 /** One fact a correction sets, flattened: what a `corrected_claim` row stores. */
@@ -680,6 +779,15 @@ export const HAND_CORRECTIONS: readonly CuratedCorrection[] = [
         shows: "{{It-conj|assorb|ire|essere o avere |pp2 = assorto}}",
       },
     ],
+  },
+  // Huey's ruling on #773, 2026-10-09: hide diplomatizzare's Verbo line 3, keyboard test text.
+  {
+    record: { releaseId: IT, lineNo: 573791, lineSha256: "7a098fb60ee87155211d80eb3a9ef39d982af2ad242f5d8e5651d451720c3488", word: "diplomatizzare", pos: "verb" },
+    hides: { line: 3, wikitext: "{{Transitivo|it}}hhhhhhhh", text: "hhhhhhhh" },
+    evidence: {
+      page: { wiki: "it.wiktionary.org", title: "diplomatizzare", revisionId: 3978915 },
+      ruling: "https://github.com/povlabs/lexema/issues/773#issuecomment-6082693102",
+    },
   },
 ];
 

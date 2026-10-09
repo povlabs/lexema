@@ -31,7 +31,7 @@ import { seedSql } from "../../src/import/seedSql.js";
 import { rawPageSource, readSavedPage } from "../../src/source/rawPage.js";
 import { fromD1, fromNodeSqlite, type D1Like, type D1StatementLike, type SqlValue } from "../../src/lookup/database.js";
 import { lookup, withVerbDefinitions } from "../../src/lookup/lookup.js";
-import { servedVersion } from "../../src/lookup/served.js";
+import { dictionaryTables, servedVersion } from "../../src/lookup/served.js";
 import { searchAttempt } from "@/lib/dictionary/searchAttempt.ts";
 import { PAGE_SOURCE_HEADER, withPageCache, withSharedPageCache } from "@/worker/dictionary/pageCache.ts";
 import { CSP_HEADER } from "@/worker/shared/securityHeaders.ts";
@@ -304,7 +304,7 @@ for (const [word, cost] of Object.entries(DEFINITIONS_ALONE)) {
     const found = await lookup({ db: fromNodeSqlite(sqlite), releaseId: RELEASE, query: word });
     assert.ok(found.outcome === "found", `${word}: expected a found page`);
     const sent = nothingSent();
-    const readings = await withVerbDefinitions(fromD1(countingD1(sqlite, sent)), found.readings);
+    const readings = await withVerbDefinitions(fromD1(countingD1(sqlite, sent)), found.readings, await dictionaryTables(fromNodeSqlite(sqlite)));
     assert.deepEqual({ statements: sent.statements, calls: sent.calls }, cost);
     const verbs = new Set(
       readings.flatMap((reading) =>
@@ -320,7 +320,7 @@ for (const [word, cost] of Object.entries(DEFINITIONS_ALONE)) {
 test("a verb that is a reading on its page lends its block the definitions it shows as that reading", async () => {
   const found = await lookup({ db: fromNodeSqlite(sqlite), releaseId: RELEASE, query: "sfocato" });
   assert.ok(found.outcome === "found");
-  const readings = await withVerbDefinitions(fromNodeSqlite(sqlite), found.readings);
+  const readings = await withVerbDefinitions(fromNodeSqlite(sqlite), found.readings, await dictionaryTables(fromNodeSqlite(sqlite)));
   const verb = readings.find((reading) => reading.pos === "verb");
   assert.ok(verb !== undefined);
   const [link] = verb.lemmaLinks;
@@ -334,7 +334,7 @@ test("a verb that is a reading on its page lends its block the definitions it sh
 test("a verb's recovered definitions reach its block: fiaccando's fiaccare carries 'fiaccare le corna a uno'", async () => {
   const found = await lookup({ db: fromNodeSqlite(sqlite), releaseId: RELEASE, query: "fiaccando" });
   assert.ok(found.outcome === "found");
-  const readings = await withVerbDefinitions(fromD1(countingD1(sqlite, nothingSent())), found.readings);
+  const readings = await withVerbDefinitions(fromD1(countingD1(sqlite, nothingSent())), found.readings, await dictionaryTables(fromNodeSqlite(sqlite)));
   const terms = readings.flatMap((reading) =>
     reading.lemmaLinks.flatMap((link) =>
       link.kind === "candidates" ? link.candidates.flatMap((candidate) => candidate.definitions?.recovered ?? []) : [],

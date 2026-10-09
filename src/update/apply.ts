@@ -13,14 +13,17 @@
 //   form_of_edge rows go, so no search reaches it, and nothing else of it is
 //   touched, the rows written by hand beside it least of all: its curated
 //   corrections stay, no lookup reads them (`correctedEdgeServed`,
-//   src/lookup/correctedEdge.ts), and the update reports them;
+//   src/lookup/correctedEdge.ts, and the recovered read of
+//   src/lookup/lookup.ts for a hidden recovered definition, #773), and the
+//   update reports them;
 // - recomputes the `accent_fold` and `typo_key` rows of every key those
 //   records spell, with the seed's own rules, writing only rows that change;
 // - records the later release ('partial', with its checksum), the master it
 //   feeds, and each change under its id.
 //
 // It never deletes a record, never touches a table written by hand beside the
-// records (raw_page, recovered_*, claim_review, corrected_claim, corrected_form, corrected_edge), and never applies a lost
+// records (raw_page, recovered_*, claim_review, corrected_claim, corrected_form, corrected_edge,
+// hidden_recovered_definition), and never applies a lost
 // word: removing a record is not ruled.
 //
 // The file holds no DDL and changes no schema (#509): it writes into the
@@ -446,9 +449,16 @@ export interface NearbyEdits {
 /** Nothing to recompute: no key moved. */
 export const NO_NEARBY_EDITS: NearbyEdits = { deletes: [], accent: [], typo: [], replaced: { accent_fold: 0, typo_key: 0 } };
 
-/** Which of the tables a record's curated corrections are written to the master has: `corrected_claim` (#420), `corrected_edge` (#722), `corrected_form` (#723). */
+/**
+ * Which of the tables a record's curated corrections are written to the master
+ * has: `corrected_claim` (#420), `corrected_edge` (#722), `corrected_form`
+ * (#723), `hidden_recovered_definition` (#773).
+ */
 const correctionTablesIn = (reader: MasterReader): string[] =>
-  select<{ name: string }>(reader, "SELECT name FROM sqlite_schema WHERE type = 'table' AND name IN ('corrected_claim', 'corrected_edge', 'corrected_form') ORDER BY name").map((row) => row.name);
+  select<{ name: string }>(
+    reader,
+    "SELECT name FROM sqlite_schema WHERE type = 'table' AND name IN ('corrected_claim', 'corrected_edge', 'corrected_form', 'hidden_recovered_definition') ORDER BY name",
+  ).map((row) => row.name);
 
 /** The curated corrections on the records `planned` changes retire, read where the master holds them. */
 function correctionsOn(reader: MasterReader, planned: readonly PlannedChange[]): RetiredCorrection[] {
@@ -456,7 +466,7 @@ function correctionsOn(reader: MasterReader, planned: readonly PlannedChange[]):
     planned.flatMap(({ change, recordId }) => (change.kind === "changed" ? [[change.master.recordId, { recordId, changeId: change.id }] as const] : [])),
   );
   if (replacing.size === 0) return [];
-  // A master seeded before #420, #722 or #723 holds none of that kind until `correct:records` writes some.
+  // A master seeded before #420, #722, #723 or #773 holds none of that kind until `correct:records` writes some.
   const tables = correctionTablesIn(reader);
   if (tables.length === 0) return [];
   return select<{ record_id: number; correction_id: string }>(

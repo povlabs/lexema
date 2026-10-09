@@ -237,6 +237,11 @@ test("every declaration already in dictionary-changes parses as before, with no 
       );
       continue;
     }
+    // The hidden recovered line (#773) names the word whose page it changes.
+    if (name === "2026-10-09-correct-diplomatizzare-recovered-line.json") {
+      assert.deepEqual(parseDeclaration(path, text).lookups?.map((item) => item.word), ["diplomatizzare"]);
+      continue;
+    }
     // The lines fixed usage-label templates unblock (#711): a word of each template the issue names.
     if (name === "2026-10-09-load-recovered-label-template-lines-it-0c432803.json") {
       assert.deepEqual(parseDraft(path, text).lookups?.map((item) => item.word), ["furbo", "urgere"]);

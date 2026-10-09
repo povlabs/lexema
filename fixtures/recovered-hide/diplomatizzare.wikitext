@@ -1,0 +1,29 @@
+<!-- it.wiktionary.org/wiki/diplomatizzare revision 3978915 (2024-04-14T14:38:30Z), CC BY-SA 4.0. Saved verbatim. -->
+== {{-it-}} ==
+{{-verb-|it}}
+{{Transitivo|it}}hhhhhhhh
+
+
+
+#{{Nodef|it}}
+
+{{-sill-}}
+; di | plo | ma | tiz | zà | re
+
+{{-pron-}}
+{{IPA|/diplomatidˈdzare/}}
+
+{{-etim-}}
+deriva da [[diplomatico]]
+
+{{-der-}}
+*[[diplomatizzazione]]
+
+{{-trad-}}
+{{Trad1|}}
+:*j {{en}}:
+{{Trad2}}
+
+{{-ref-}}
+*{{Fonte|dizit}}
+*{{Fonte|trec}}

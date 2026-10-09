@@ -1,9 +1,10 @@
 // The one-off update that writes the curated corrections (#420, #450, #722,
-// #723) into a master seeded before them, or before an entry was added: each
-// record entry keyed to the master's release gets the `corrected_claim` or
-// `corrected_form` rows a seed now writes for it
+// #723, #773) into a master seeded before them, or before an entry was added:
+// each record entry keyed to the master's release gets the `corrected_claim`
+// or `corrected_form` rows a seed now writes for it
 // (src/import/correctedLayer.ts), each edge entry its `corrected_edge` row,
-// and each definition entry the `corrected_definition` row
+// each hide its `hidden_recovered_definition` row, and each definition entry
+// the `corrected_definition` row
 // (src/import/correctedDefinitions.ts). Nothing else is touched, the record's
 // line in `source_record_json`, its own `grammar_claim`, `lookup_form` and
 // `form_of_edge` rows and the entry's own `entry_definition` rows least of
@@ -20,7 +21,10 @@
 // the run reports that entry instead of applying it to the replacement. A
 // definition entry is written only to the master's page-only entry read from
 // the revision it names, quoting its definition; an entry read from another
-// revision, or none, is reported the same way (ADR 0025).
+// revision, or none, is reported the same way (ADR 0025). So is a hide whose
+// record's recovered definition at its line is not the one it quotes, from
+// the revision it cites, and a hide whose record a later release replaced, as
+// for a record entry: the replacing record does not take it (ADR 0027).
 //
 // It also writes the hand-kept readings (src/italian/handKeptReadings.ts, ADR
 // 0031, #745), which key to no record: each reading the master does not hold
@@ -30,16 +34,21 @@ import {
   correctionId,
   definitionCorrections,
   definitionMismatch,
+  hideMismatch,
   senseEdgeCorrections,
   isCellCorrection,
   lineCorrections,
+  recoveredHides,
   type CellCorrection,
   type CuratedCorrection,
   type DefinitionCorrection,
   type DefinitionMismatch,
+  type HideMismatch,
   type SenseEdgeCorrection,
   type LineCorrection,
   type RecordCorrection,
+  type RecoveredDefinitionHide,
+  type RecoveredLine,
 } from "../italian/curatedCorrections.js";
 import { handKeptId, type HandKeptReading } from "../italian/handKeptReadings.js";
 import { boundedInserts } from "../update/apply.js";
@@ -48,7 +57,7 @@ import { CORRECTION_TABLES, HAND_KEPT_INDEXES, HAND_KEPT_TABLES, keyedColumnOf, 
 import { lacksKeyedColumn, readMasterRelease, select, upgradeNeededFor, type MasterReader } from "../update/master.js";
 import { PlanCounts } from "../update/planCounts.js";
 import { correctedDefinitionValues } from "./correctedDefinitions.js";
-import { correctedClaimValues, correctedEdgeValues, correctedFormValues } from "./correctedLayer.js";
+import { correctedClaimValues, correctedEdgeValues, correctedFormValues, hiddenRecoveredValues } from "./correctedLayer.js";
 import { handKeptRows } from "./handKeptRows.js";
 import { COLUMNS, literal, tupleOf } from "./seedSql.js";
 
@@ -85,6 +94,17 @@ export type PlannedDefinitionCorrection =
   /** The master holds no page-only entry of the title, or not the one the entry was checked against: reported, never applied. */
   | { state: "not-in-master"; correction: DefinitionCorrection; why: "no-entry" | DefinitionMismatch };
 
+/** What a run does with one hide of a recovered definition (#773). */
+export type PlannedHide =
+  | { state: "write"; correction: RecoveredDefinitionHide; recordId: number }
+  | { state: "already"; correction: RecoveredDefinitionHide; recordId: number }
+  /** The master holds no record at its line, another line there, or not the recovered definition it quotes: reported, never applied. */
+  | { state: "not-in-master"; correction: RecoveredDefinitionHide; why: "no-record-at-line" | "line-digest-differs" | HideMismatch }
+  /** A later release's change replaced the record: reported, never carried over. */
+  | { state: "retired"; correction: RecoveredDefinitionHide; recordId: number; replacedBy: { recordId: number; changeId: string } }
+  /** Keyed to a release this master was not seeded from. */
+  | { state: "other-release"; correction: RecoveredDefinitionHide };
+
 /** What a run does with one hand-kept reading: write its rows in place of the `held` ones, or leave the ones the master holds exactly. */
 export type PlannedHandKeptReading =
   | { state: "write"; reading: HandKeptReading; held: number }
@@ -96,6 +116,8 @@ export interface CorrectionPlan {
   entries: PlannedCorrection[];
   /** Every edge entry of the list, in list order. */
   edges: PlannedEdgeCorrection[];
+  /** Every hide of a recovered definition, in list order. */
+  hides: PlannedHide[];
   /** Every definition entry of the list, in list order. */
   definitions: PlannedDefinitionCorrection[];
   /** Every hand-kept reading given, in list order. */
@@ -143,12 +165,19 @@ export const missingForCorrections = (reader: MasterReader): string[] => upgrade
  */
 export function planCorrections(reader: MasterReader, corrections: readonly CuratedCorrection[], readings: readonly HandKeptReading[] = []): CorrectionPlan {
   const master = readMasterRelease(reader);
-  const tables = tablesIn(reader, ["corrected_claim", "corrected_form", "corrected_edge", "corrected_definition", "hand_kept_definition", "hidden_record", ...PAGE_ENTRY_TABLES]);
+  const tables = tablesIn(reader, ["corrected_claim", "corrected_form", "corrected_edge", "corrected_definition", "hand_kept_definition", "hidden_record", "hidden_recovered_definition", ...PAGE_ENTRY_TABLES]);
   const records = lineCorrections(corrections);
   const edgeEntries = senseEdgeCorrections(corrections);
-  const keyed = recordsAt(reader, master, [...records, ...edgeEntries].filter((correction) => correction.record.releaseId === master.releaseId).map((correction) => correction.record.lineNo), tables);
+  const hideEntries = recoveredHides(corrections);
+  const keyed = recordsAt(
+    reader,
+    master,
+    [...records, ...edgeEntries, ...hideEntries].filter((correction) => correction.record.releaseId === master.releaseId).map((correction) => correction.record.lineNo),
+    tables,
+  );
   const entries = planRecords(reader, master.releaseId, keyed, records, tables);
   const edges = planEdges(reader, master.releaseId, keyed, edgeEntries, tables);
+  const hides = planHides(reader, master.releaseId, keyed, hideEntries, tables);
   const definitions = planDefinitions(reader, master.releaseId, definitionCorrections(corrections), tables);
   const kept = planReadings(reader, readings, tables);
 
@@ -156,13 +185,14 @@ export function planCorrections(reader: MasterReader, corrections: readonly Cura
   const claimWrites = writes.filter(isClaimWrite);
   const formWrites = writes.filter(isFormWrite);
   const edgeWrites = edges.flatMap((entry) => (entry.state === "write" ? [entry] : []));
+  const hideWrites = hides.flatMap((entry) => (entry.state === "write" ? [entry] : []));
   const definitionWrites = definitions.flatMap((entry) => (entry.state === "write" ? [entry] : []));
   const readingWrites = kept.flatMap((entry) => (entry.state === "write" ? [entry] : []));
-  if (writes.length + edgeWrites.length + definitionWrites.length + readingWrites.length === 0) {
-    return { masterReleaseId: master.releaseId, entries, edges, definitions, readings: kept, sql: "", counts: PlanCounts.NONE };
+  if (writes.length + edgeWrites.length + hideWrites.length + definitionWrites.length + readingWrites.length === 0) {
+    return { masterReleaseId: master.releaseId, entries, edges, hides, definitions, readings: kept, sql: "", counts: PlanCounts.NONE };
   }
   const written = [
-    ...[...writes, ...edgeWrites, ...definitionWrites].map((entry) => correctionId(entry.correction)),
+    ...[...writes, ...edgeWrites, ...hideWrites, ...definitionWrites].map((entry) => correctionId(entry.correction)),
     ...readingWrites.map((entry) => `kept:${handKeptId(entry.reading)}`),
   ];
   const sql = [
@@ -195,6 +225,14 @@ export function planCorrections(reader: MasterReader, corrections: readonly Cura
       ...boundedInserts("corrected_edge", edgeTuples),
     );
   }
+  const hideTuples = hideWrites.map((entry) => tupleOf("hidden_recovered_definition", [entry.recordId, master.releaseId, ...hiddenRecoveredValues(entry.correction)]));
+  if (hideWrites.length > 0) {
+    sql.push(
+      // A hide replaces the row its record and page line hold, if any.
+      `DELETE FROM hidden_recovered_definition WHERE (record_id, page_line) IN (SELECT json_extract(value, '$[0]'), json_extract(value, '$[1]') FROM json_each(${json(hideWrites.map((entry) => [entry.recordId, entry.correction.hides.line]))}));`,
+      `INSERT INTO hidden_recovered_definition (${COLUMNS.hidden_recovered_definition}) VALUES\n  ${hideTuples.join(",\n  ")};`,
+    );
+  }
   if (definitionWrites.length > 0) {
     sql.push(
       ...definitionWrites.map((entry) => `DELETE FROM corrected_definition WHERE entry_id = ${entry.entryId} AND definition_index = ${entry.correction.replaces.index};`),
@@ -209,21 +247,23 @@ export function planCorrections(reader: MasterReader, corrections: readonly Cura
     );
   }
   // Each written record changes in place: its rows already held go with the DELETE, and the INSERT writes them anew.
-  // A record that more than one kind writes (facts, cells, edges) changes once.
+  // A record that more than one kind writes (facts, cells, edges, hides) changes once.
   // A definition entry changes no record, so it counts in rows only: the row it replaces, if held, and the row it writes.
   // So does a hand-kept reading, which keys to no record.
   const held = heldRows(reader, tables, writes.map((entry) => entry.recordId));
   const heldEdgeRows = tables.has("corrected_edge") && edgeWrites.length > 0 ? heldEdges(reader, edgeWrites.map((entry) => entry.recordId)) : new Map<string, string>();
+  const heldHideRows = tables.has("hidden_recovered_definition") && hideWrites.length > 0 ? heldHides(reader, hideWrites.map((entry) => entry.recordId)) : new Map<string, string>();
   const heldDefinitionRows = tables.has("corrected_definition") && definitionWrites.length > 0
     ? heldDefinitions(reader, definitionWrites.map((entry) => entry.entryId))
     : new Map<string, string>();
   const heldCount = (tableWrites: readonly Write[]): number => tableWrites.reduce((rows, entry) => rows + heldOf(held, entry.correction, entry.recordId).length, 0);
   const counts = new PlanCounts(
-    { added: 0, changed: new Set([...writes, ...edgeWrites].map((entry) => entry.recordId)).size, removed: 0 },
+    { added: 0, changed: new Set([...writes, ...edgeWrites, ...hideWrites].map((entry) => entry.recordId)).size, removed: 0 },
     {
       corrected_claim: claimTuples.length,
       corrected_form: formTuples.length,
       corrected_edge: edgeTuples.length,
+      hidden_recovered_definition: hideTuples.length,
       corrected_definition: definitionTuples.length,
       hand_kept_definition: readingWrites.reduce((rows, entry) => rows + entry.reading.definitions.length, 0),
       correction_version: 1,
@@ -232,11 +272,12 @@ export function planCorrections(reader: MasterReader, corrections: readonly Cura
       corrected_claim: heldCount(claimWrites),
       corrected_form: heldCount(formWrites),
       corrected_edge: edgeWrites.filter((entry) => heldEdgeRows.has(`${entry.recordId}:${entry.correction.edge.sense}`)).length,
+      hidden_recovered_definition: hideWrites.filter((entry) => heldHideRows.has(`${entry.recordId}:${entry.correction.hides.line}`)).length,
       corrected_definition: definitionWrites.filter((entry) => heldDefinitionRows.has(`${entry.entryId}:${entry.correction.replaces.index}`)).length,
       hand_kept_definition: readingWrites.reduce((rows, entry) => rows + entry.held, 0),
     },
   );
-  return { masterReleaseId: master.releaseId, entries, edges, definitions, readings: kept, sql: `${sql.join("\n")}\n`, counts };
+  return { masterReleaseId: master.releaseId, entries, edges, hides, definitions, readings: kept, sql: `${sql.join("\n")}\n`, counts };
 }
 
 /** What the master holds at the archive lines the list keys to its release. */
@@ -278,7 +319,7 @@ function recordsAt(reader: MasterReader, master: ReturnType<typeof readMasterRel
 
 /** Where `correction`'s record stands in the master, before what it holds of the correction is read. */
 function standing(
-  correction: LineCorrection | SenseEdgeCorrection,
+  correction: LineCorrection | SenseEdgeCorrection | RecoveredDefinitionHide,
   releaseId: string,
   keyed: KeyedRecords,
 ):
@@ -383,6 +424,50 @@ function heldEdges(reader: MasterReader, ids: readonly number[]): Map<string, st
   );
 }
 
+/** The recovered definitions the master holds on `ids`, by record, each with the revision of the page it was read from. */
+function recoveredOn(reader: MasterReader, ids: readonly number[]): Map<number, RecoveredLine[]> {
+  const held = new Map<number, RecoveredLine[]>();
+  for (const row of select<{ record_id: number; revision_id: number; page_line: number; wikitext: string; text: string }>(
+    reader,
+    `SELECT d.record_id, p.revision_id, d.page_line, d.wikitext, d.text FROM recovered_definition d JOIN raw_page p ON p.page_id = d.page_id
+      WHERE d.record_id IN (SELECT value FROM json_each(${json([...new Set(ids)])})) ORDER BY d.record_id, d.definition_index`,
+  )) {
+    held.set(row.record_id, [...(held.get(row.record_id) ?? []), { revisionId: row.revision_id, line: row.page_line, wikitext: row.wikitext, text: row.text }]);
+  }
+  return held;
+}
+
+/** The `hidden_recovered_definition` rows the master holds on `ids`, by record and page line, as comparable strings. */
+function heldHides(reader: MasterReader, ids: readonly number[]): Map<string, string> {
+  return new Map(
+    select<{ record_id: number; page_line: number; correction_id: string; evidence_url: string }>(
+      reader,
+      `SELECT record_id, page_line, correction_id, evidence_url FROM hidden_recovered_definition WHERE record_id IN (SELECT value FROM json_each(${json([...new Set(ids)])}))`,
+    ).map((row) => [`${row.record_id}:${row.page_line}`, JSON.stringify([row.page_line, row.correction_id, row.evidence_url])]),
+  );
+}
+
+function planHides(
+  reader: MasterReader,
+  releaseId: string,
+  keyed: KeyedRecords,
+  corrections: readonly RecoveredDefinitionHide[],
+  tables: ReadonlySet<string>,
+): PlannedHide[] {
+  const ids = corrections.length === 0 ? [] : [...keyed.atLine.values()].map((row) => row.record_id);
+  const recovered = ids.length === 0 ? new Map<number, RecoveredLine[]>() : recoveredOn(reader, ids);
+  const held = tables.has("hidden_recovered_definition") && ids.length > 0 ? heldHides(reader, ids) : new Map<string, string>();
+  return corrections.map((correction): PlannedHide => {
+    const stands = standing(correction, releaseId, keyed);
+    if (stands.state !== "served") return { ...stands, correction };
+    const { recordId } = stands;
+    const mismatch = hideMismatch(correction, recovered.get(recordId) ?? []);
+    if (mismatch !== undefined) return { state: "not-in-master", correction, why: mismatch };
+    const same = held.get(`${recordId}:${correction.hides.line}`) === JSON.stringify(hiddenRecoveredValues(correction));
+    return { state: same ? "already" : "write", correction, recordId };
+  });
+}
+
 interface HeldEntry {
   entryId: number;
   revisionId: number;
@@ -480,8 +565,10 @@ export function describeReading(entry: PlannedHandKeptReading): string {
 export function unwritten(reader: MasterReader, plan: CorrectionPlan): string[] {
   const writes = plan.entries.flatMap((entry) => (entry.state === "write" ? [entry] : []));
   const edgeWrites = plan.edges.flatMap((entry) => (entry.state === "write" ? [entry] : []));
+  const hideWrites = plan.hides.flatMap((entry) => (entry.state === "write" ? [entry] : []));
   const definitionWrites = plan.definitions.flatMap((entry) => (entry.state === "write" ? [entry] : []));
   const held = heldRows(reader, new Set<string>(["corrected_claim", "corrected_form"]), writes.map((entry) => entry.recordId));
+  const heldHide = hideWrites.length === 0 ? new Map<string, string>() : heldHides(reader, hideWrites.map((entry) => entry.recordId));
   const heldEdge = edgeWrites.length === 0 ? new Map<string, string>() : heldEdges(reader, edgeWrites.map((entry) => entry.recordId));
   const heldDefinition = definitionWrites.length === 0 ? new Map<string, string>() : heldDefinitions(reader, definitionWrites.map((entry) => entry.entryId));
   const readingWrites = plan.readings.flatMap((entry) => (entry.state === "write" ? [entry] : []));
@@ -492,6 +579,9 @@ export function unwritten(reader: MasterReader, plan: CorrectionPlan): string[] 
       .map((entry) => correctionId(entry.correction)),
     ...edgeWrites
       .filter((entry) => heldEdge.get(`${entry.recordId}:${entry.correction.edge.sense}`) !== JSON.stringify(correctedEdgeValues(entry.correction)))
+      .map((entry) => correctionId(entry.correction)),
+    ...hideWrites
+      .filter((entry) => heldHide.get(`${entry.recordId}:${entry.correction.hides.line}`) !== JSON.stringify(hiddenRecoveredValues(entry.correction)))
       .map((entry) => correctionId(entry.correction)),
     ...definitionWrites
       .filter((entry) => heldDefinition.get(`${entry.entryId}:${entry.correction.replaces.index}`) !== JSON.stringify(correctedDefinitionValues(entry.correction)))
@@ -517,6 +607,35 @@ export function describeEntry(entry: PlannedCorrection | PlannedEdgeCorrection):
       return `${head}: not written; ${entry.why === "no-record-at-line" ? `the master holds no record at line ${lineNo}` : `the record at line ${lineNo} is not the line the entry names`}`;
     case "other-release":
       return `${head}: keyed to ${releaseId}, not this master`;
+  }
+}
+
+/** One line per hide of a recovered definition, for the run's report. */
+export function describeHide(entry: PlannedHide): string {
+  const { record, hides, evidence } = entry.correction;
+  const head = `  ${correctionId(entry.correction)} ${record.word}`;
+  switch (entry.state) {
+    case "write":
+      return `${head} (record ${entry.recordId}): written`;
+    case "already":
+      return `${head} (record ${entry.recordId}): already written`;
+    case "retired":
+      return `${head} (record ${entry.recordId}): not written; change ${entry.replacedBy.changeId} replaced the record with record ${entry.replacedBy.recordId}, which the hide does not reach. Check the newer record against the entry's evidence.`;
+    case "other-release":
+      return `${head}: keyed to ${record.releaseId}, not this master`;
+    case "not-in-master":
+      switch (entry.why) {
+        case "no-record-at-line":
+          return `${head}: not written; the master holds no record at line ${record.lineNo}`;
+        case "line-digest-differs":
+          return `${head}: not written; the record at line ${record.lineNo} is not the line the entry names`;
+        case "revision-differs":
+          return `${head}: not written; the master's recovered definitions of ${record.word} were read from another revision than ${evidence.page.revisionId}, which the hide does not reach. Check the newer page against the entry's evidence.`;
+        case "line-differs":
+          return `${head}: not written; the master's recovered definition at page line ${hides.line} is not the line the entry quotes`;
+        case "row-gone":
+          return `${head}: not written; the master holds no recovered definition of ${record.word} at page line ${hides.line}`;
+      }
   }
 }
 

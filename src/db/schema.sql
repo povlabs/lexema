@@ -802,6 +802,37 @@ CREATE TABLE corrected_edge (
 CREATE INDEX corrected_edge_by_target
   ON corrected_edge (release_id, target_word_key);
 
+-- One recovered definition hidden beside its record (#773, ADR 0030): a line
+-- the recovered layer reads by layout that states no dictionary word, only
+-- keyboard test text (`diplomatizzare`'s Verbo line 3,
+-- `{{Transitivo|it}}hhhhhhhh`). The committed list names the record as for
+-- corrected_claim, and the line by its place on the cited page revision, with
+-- its wikitext and text; the seed and `correct:records` write the row only
+-- where the record's recovered definition at that line is the one it quotes.
+-- recovered_definition, its labels and the raw page stay as imported; a
+-- lookup reads the record as having no definition at `page_line`. The hide
+-- takes effect only on the record it names: a lookup that reads the recovered
+-- definition for a record that replaced that one shows it there, and the
+-- update reports the hide instead of carrying it over; hiding it on the
+-- replacing record is a new ruling (ADR 0027, src/lookup/lookup.ts,
+-- src/update/apply.ts). Absent on a master seeded
+-- before it until `update:upgrade` creates it; a lookup reads an absent one
+-- as empty.
+CREATE TABLE hidden_recovered_definition (
+  record_id     INTEGER NOT NULL REFERENCES source_record(record_id) ON DELETE CASCADE,
+  release_id    TEXT    NOT NULL,
+  page_line     INTEGER NOT NULL CHECK (page_line > 0),  -- recovered_definition.page_line
+  -- The list entry it was written from: release, archive line and page line, `it-0c432803:573791/page-line/3`.
+  correction_id TEXT    NOT NULL,
+  -- The record's own page at the revision the line was read from, as a
+  -- permanent link. Split as corrected_claim's is, for D1's 50-byte pattern limit (#489).
+  evidence_url  TEXT    NOT NULL CHECK (evidence_url GLOB 'https://*'
+                                        AND evidence_url GLOB '*.wiktionary.org/w/index.php?title=*&oldid=*'),
+  PRIMARY KEY (record_id, page_line),
+  FOREIGN KEY (record_id, release_id)
+    REFERENCES source_record(record_id, release_id) ON DELETE CASCADE
+) STRICT;
+
 -- Live-correction cache revision, like hide_version: a nonempty
 -- `correct:records` transaction increments it, so card and suggestion
 -- addresses move with the corrected facts. Older masters acquire this table

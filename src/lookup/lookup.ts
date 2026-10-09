@@ -744,7 +744,10 @@ function releaseDump(row: {
 }
 
 /** Which curated-correction tables the dictionary has, so a lookup reads none that is absent. */
-type Corrected = Pick<DictionaryTables, "corrections" | "cellCorrections">;
+type Corrected = Pick<DictionaryTables, "corrections" | "cellCorrections" | "recoveredHides">;
+
+/** Whether the dictionary has `hidden_recovered_definition` (#773), so the recovered read names it only where it is. */
+export type Hides = Pick<DictionaryTables, "recoveredHides">;
 
 /** A record's grammar and the forms it lists, which the grammar is keyed into. */
 interface RecordTable {
@@ -825,7 +828,7 @@ function startReadingReads(
   record: Promise<RecordLine>,
 ): ReadingReads {
   return {
-    recovered: handled(readRecovered(db, first.record_id, record)),
+    recovered: handled(readRecovered(db, first.record_id, record, corrected)),
     senseRows: handled(readSenseRows(db, first.record_id)),
     inflections: handled(readInflections(db, releaseId, first.record_id, first.record_word, corrected, edges)),
     reviews: handled(readReviews(db, first.record_id)),
@@ -898,9 +901,11 @@ async function buildReading(
  * once however many links name it: its line, its senses and its recovered
  * definitions, sent together. A page sends this beside the reads it makes
  * after the lookup (web/lib/dictionary/searchAttempt.ts), so it adds
- * statements and no call.
+ * statements and no call. `hides` says whether the dictionary has
+ * `hidden_recovered_definition` (#773); the page reads it beside the lookup,
+ * whose own read of it is the same statement in the same call (`fromD1`).
  */
-export async function withVerbDefinitions(db: LookupDatabase, readings: readonly [Reading, ...Reading[]]): Promise<[Reading, ...Reading[]]> {
+export async function withVerbDefinitions(db: LookupDatabase, readings: readonly [Reading, ...Reading[]], hides: Hides): Promise<[Reading, ...Reading[]]> {
   const onPage = new Map(readings.map((reading) => [reading.recordId, reading] as const));
   const reads = new Map<number, Promise<LemmaDefinitions>>();
   for (const reading of readings) {
@@ -914,7 +919,7 @@ export async function withVerbDefinitions(db: LookupDatabase, readings: readonly
         reads.set(
           recordId,
           read === undefined
-            ? handled(readDefinitions(db, recordId, candidate.word, (pointer) => ({ ...candidate.ref, jsonPointer: pointer })))
+            ? handled(readDefinitions(db, recordId, candidate.word, (pointer) => ({ ...candidate.ref, jsonPointer: pointer }), hides))
             : Promise.resolve({ senses: read.senses, recovered: read.recovered }),
         );
       }
@@ -944,9 +949,10 @@ async function readDefinitions(
   recordId: number,
   word: string,
   ref: (pointer: string) => SourceRef,
+  hides: Hides,
 ): Promise<LemmaDefinitions> {
   const record = handled(readRecord(db, recordId));
-  const [senseRows, recovered, line] = await Promise.all([readSenseRows(db, recordId), readRecovered(db, recordId, record), record]);
+  const [senseRows, recovered, line] = await Promise.all([readSenseRows(db, recordId), readRecovered(db, recordId, record, hides), record]);
   return {
     senses: sensesOf(senseRows, word, ref, readSourceRecord(line.rawJson, ref), recovered.underSense),
     recovered: recovered.topLevel,
@@ -1705,11 +1711,17 @@ async function readReviews(db: LookupDatabase, recordId: number): Promise<Review
  * no aggregate's order off SQLite. A definition recovered for a record this one
  * replaced, under one of that record's senses, also carries that sense's
  * glosses off its line (`replaced_glosses`), which is how its lead-in is found
- * again. Exported so a test can hold the query to its plan.
+ * again. Each row says whether a curated correction hides it (#773), where the
+ * master has `hidden_recovered_definition`: one probe of its key. A hide takes
+ * effect only on the record it names: read for a record that replaced that
+ * one, the definition is shown, as no correction is carried onto a replacing
+ * record (ADR 0027) and the update reports it.
  */
-export const RECOVERED_SQL: KeyedRead = keyedRead(`SELECT l.set_key AS set_key, d.recovered_id, d.record_id, d.route, d.term, d.page_line, d.text, d.held_as_example,
+const recoveredRead = (hides: boolean): KeyedRead =>
+  keyedRead(`SELECT l.set_key AS set_key, d.recovered_id, d.record_id, d.route, d.term, d.page_line, d.text, d.held_as_example,
             d.lead_in_sense_index, d.lead_in_recovered_id, p.wiki, p.title, p.revision_id,
             h.release_id, h.line_no, h.line_sha256,
+            ${hides ? "(d.record_id = l.set_key AND EXISTS (SELECT 1 FROM hidden_recovered_definition hr WHERE hr.record_id = d.record_id AND hr.page_line = d.page_line))" : "0"} AS hidden,
             (SELECT json_group_array(json_array(x.label_index, x.label))
                FROM recovered_label x WHERE x.recovered_id = d.recovered_id) AS labels_json,
             (SELECT json_group_array(json_array(x.example_index, x.page_line, x.text))
@@ -1724,6 +1736,11 @@ export const RECOVERED_SQL: KeyedRead = keyedRead(`SELECT l.set_key AS set_key, 
          ON o.record_id = d.record_id AND d.record_id <> l.set_key AND d.lead_in_sense_index IS NOT NULL
       ORDER BY d.record_id, d.definition_index`);
 
+/** The recovered read of a master without `hidden_recovered_definition`. Exported, as the next, so a test can hold the query to its plan. */
+export const RECOVERED_SQL: KeyedRead = recoveredRead(false);
+/** The recovered read of a master with `hidden_recovered_definition`. */
+export const HIDING_RECOVERED_SQL: KeyedRead = recoveredRead(true);
+
 /** `[index, …rest]` rows of a JSON array, put in index order, without the index. */
 function inIndexOrder<T extends unknown[]>(json: string): T[] {
   return (JSON.parse(json) as [number, ...T][]).sort((a, b) => a[0] - b[0]).map(([, ...rest]) => rest as T);
@@ -1735,7 +1752,7 @@ function inIndexOrder<T extends unknown[]>(json: string): T[] {
  * recovered for, and the page reads them for the record that replaced it,
  * checked against its own line (`placeRecovered`).
  */
-async function readRecovered(db: LookupDatabase, recordId: number, record: Promise<RecordLine>): Promise<RecoveredOfRecord> {
+async function readRecovered(db: LookupDatabase, recordId: number, record: Promise<RecordLine>, hides: Hides): Promise<RecoveredOfRecord> {
   const [rows, served] = await Promise.all([
     readKeys<{
       recovered_id: number;
@@ -1757,7 +1774,8 @@ async function readRecovered(db: LookupDatabase, recordId: number, record: Promi
       examples_json: string;
       replaced_line_id: number | null;
       replaced_glosses: string | null;
-    }>(db, RECOVERED_SQL, [recordId]),
+      hidden: number;
+    }>(db, hides.recoveredHides ? HIDING_RECOVERED_SQL : RECOVERED_SQL, [recordId]),
     record,
   ]);
   if (rows.length === 0) return { topLevel: [], underSense: new Map() };
@@ -1782,15 +1800,16 @@ async function readRecovered(db: LookupDatabase, recordId: number, record: Promi
       items: [],
     };
     const id = row.recovered_id;
+    const hidden = row.hidden === 1;
     const recovered = row.lead_in_recovered_id === null ? null : { in: "recovered" as const, id: row.lead_in_recovered_id };
     const sense = row.lead_in_sense_index;
     if (row.record_id === recordId) {
-      stored.push({ id, definition, writtenFor: "served", leadIn: recovered ?? (sense === null ? null : { in: "sense", senseIndex: sense }) });
+      stored.push({ id, definition, hidden, writtenFor: "served", leadIn: recovered ?? (sense === null ? null : { in: "sense", senseIndex: sense }) });
     } else {
       if (sense !== null && row.replaced_line_id === null) throw new Error(`record ${row.record_id} vanished mid-lookup`);
       // The glosses `recordGlosses` reads off the whole line, for the one sense.
       const glosses = recordGlosses([{ glosses: JSON.parse(row.replaced_glosses ?? "null") }]).map((gloss) => gloss.text);
-      stored.push({ id, definition, writtenFor: "replaced", leadIn: recovered ?? (sense === null ? null : { in: "sense", glosses }) });
+      stored.push({ id, definition, hidden, writtenFor: "replaced", leadIn: recovered ?? (sense === null ? null : { in: "sense", glosses }) });
     }
   }
   return placeRecovered(stored, glossesOf(served.rawJson));
