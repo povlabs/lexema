@@ -21,7 +21,7 @@ import { getScriptNonceFromHeaders } from "../node_modules/vinext/dist/server/cs
 import { createInlineScriptTag } from "../node_modules/vinext/dist/server/html.js";
 import { SITE_LIMITS } from "./siteLimits.ts";
 
-/** What vinext 1.0.0-beta.10 marks a dynamic page with (`NO_STORE_CACHE_CONTROL`). */
+/** What vinext 1.1.0 marks a dynamic page with (`NO_STORE_CACHE_CONTROL`). */
 const VINEXT_DYNAMIC = "no-store, must-revalidate";
 const LEXEMA = "https://lexema.fyi";
 /** The word whose lookup fails, as during a database outage (#642). */
