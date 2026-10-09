@@ -6,8 +6,7 @@ import { IT_NORMALIZER_VERSION, normalizeItalianExact } from "../italian/normali
 import { shownGloss } from "../italian/headwordEcho.js";
 import { recordGlosses, type RecordGloss } from "../italian/recovery.js";
 import { readPluralGloss, type PluralGlossGender } from "../italian/pluralGloss.js";
-import { articleFirst, readingPartOfSpeech } from "./articles.js";
-import { articleQuery } from "../italian/articleQuery.js";
+import { readingPartOfSpeech } from "./articles.js";
 import { keyedRead, readKeys, type DictionaryRead, type KeyedRead, type LookupDatabase } from "./database.js";
 import { phraseForms, phraseMatches } from "./phrase.js";
 import { handKeptReadingsOf } from "./handKept.js";
@@ -40,7 +39,6 @@ import type {
   PluralDeclaration,
   QueryInfo,
   Reading,
-  ReadingPartOfSpeech,
   RecoveredDefinition,
   RecoveredRoute,
   ReleaseDump,
@@ -197,20 +195,12 @@ export async function exists({ db, releaseId, query }: LookupOptions): Promise<E
   if (prepared.outcome === "rejected") return prepared;
   const [first] = prepared.probed;
   const { key } = prepared.query;
-  /** The record of the first row spelling `spelled`, `row` being the source's first, as `spelledResult` reads them. */
-  const spelledWord = async (spelled: string, row: HitRow | undefined): Promise<string | undefined> =>
-    row?.record_word ?? (await correctedCellHits(db, releaseId, spelled, tables))[0]?.record_word ?? (await pages.candidates(spelled))[0]?.word;
-  const articleWord = async (): Promise<string | undefined> => {
-    const article = articleQuery(key);
-    if (article === undefined) return undefined;
-    const [row] = await queryAll<HitRow>(db, `${SEARCH_SQL}\n      LIMIT 1`, releaseId, article.word);
-    return spelledWord(article.word, row);
-  };
   const word =
-    (await spelledWord(key, first)) ??
+    first?.record_word ??
+    (await correctedCellHits(db, releaseId, key, tables))[0]?.record_word ??
+    (await pages.candidates(key))[0]?.word ??
     (await phraseHits(db, releaseId, tables, key))?.hits[0].record_word ??
-    (await agreementHits(db, releaseId, key, tables))?.hits[0].record_word ??
-    (await articleWord());
+    (await agreementHits(db, releaseId, key, tables))?.hits[0].record_word;
   return word === undefined
     ? { outcome: "absent", query: prepared.query, release: prepared.release }
     : { outcome: "present", query: prepared.query, release: prepared.release, word };
@@ -277,21 +267,8 @@ export async function lookup({ db, releaseId, query }: LookupOptions): Promise<L
   // spellings one cell holds, `mi sono arreso` of `mi sono arreso, arresosi`
   // (#676).
   const agreement = await agreementHits(db, releaseId, key, tables);
-  if (agreement !== undefined) {
-    return found(db, releaseId, pages, queryInfo, release, agreement.hits, agreement.route, corrected, edges, agreement.tables);
-  }
-
-  // Nor a compound form. It may be a word typed with its article, `una
-  // macchina` or `l'acqua` (#738): the word's readings, as a search for the
-  // word finds them, the readings the article agrees with first.
-  const article = articleQuery(key);
-  if (article === undefined) return { outcome: "not-found", query: queryInfo, release };
-  const word = await spelledResult(asTyped, article.word, await queryAll<HitRow>(db, SEARCH_SQL, releaseId, article.word));
-  if (word === undefined) return { outcome: "not-found", query: queryInfo, release };
-  const [first, ...rest] = articleFirst(word.readings, article.article, (reading) => reading);
-  // Every reading is kept, and there is at least one.
-  if (first === undefined) throw new Error("no reading to order by its article");
-  return { ...word, route: { kind: "article", query: article }, readings: [first, ...rest] };
+  if (agreement === undefined) return { outcome: "not-found", query: queryInfo, release };
+  return found(db, releaseId, pages, queryInfo, release, agreement.hits, agreement.route, corrected, edges, agreement.tables);
 }
 
 /** What `spelledResult` reads with: the lookup's database, release and tables, and the query as typed. */
@@ -981,68 +958,6 @@ async function readRecord(db: LookupDatabase, recordId: number): Promise<RecordL
   return { posTitle: row.pos_title, rawJson: row.raw_json };
 }
 
-/**
- * Records' verbatim lines, with the coordinates a ref on each needs: a batch
- * reads them for a candidate's translations (#739) and a noun's articles.
- */
-export const RECORD_SOURCE_LINE_SQL: KeyedRead = keyedRead(`SELECT r.record_id AS set_key, r.release_id, r.line_no, r.line_sha256, j.raw_json
-       FROM source_record r
-       JOIN source_record_json j ON j.record_id = r.record_id
-      WHERE r.record_id IN (SELECT value FROM json_each(?1))`);
-
-/** One row of `RECORD_SOURCE_LINE_SQL`. */
-export interface RecordSourceLine {
-  set_key: number;
-  release_id: string;
-  line_no: number;
-  line_sha256: string;
-  raw_json: string;
-}
-
-/** Rows of a keyed read, by the key each answers. */
-function byKey<T extends { set_key: number }>(rows: readonly T[]): Map<number, T[]> {
-  const grouped = new Map<number, T[]>();
-  for (const row of rows) grouped.set(row.set_key, [...(grouped.get(row.set_key) ?? []), row]);
-  return grouped;
-}
-
-/**
- * Each archive record's part of speech, with its articles where it is a noun,
- * as `buildReading` gives the reading of that record one: off the record's
- * own word, its grammar with its curated corrections, its forms with their
- * curated cells, and its IPA. Many records in one wait: no statement when
- * none is a noun, else the nouns' lines, grammar, corrections and forms, one
- * statement each however many there are. A batch orders a word typed with
- * its article by it (rule `it-article-query/v1`, src/lookup/batch.ts).
- */
-export async function partsOfSpeech(
-  db: LookupDatabase,
-  records: readonly { recordId: number; pos: string; word: string }[],
-  corrected: Corrected,
-): Promise<Map<number, ReadingPartOfSpeech>> {
-  const nouns = [...new Set(records.filter((record) => record.pos === "noun").map((record) => record.recordId))];
-  const [lines, claims, corrections, forms] = await Promise.all([
-    readKeys<RecordSourceLine>(db, RECORD_SOURCE_LINE_SQL, nouns),
-    readKeys<GrammarRow & { set_key: number }>(db, GRAMMAR_CLAIM_SQL, nouns),
-    corrected.corrections ? readKeys<CorrectionRow & { set_key: number }>(db, CORRECTED_CLAIM_SQL, nouns) : Promise.resolve([]),
-    readKeys<FormRow & { set_key: number }>(db, formRead(corrected), nouns),
-  ]);
-  const lineOf = new Map(lines.map((line) => [line.set_key, line]));
-  const [claimsOf, correctionsOf, formsOfRecord] = [byKey(claims), byKey(corrections), byKey(forms)];
-  return new Map(
-    records.map(({ recordId, pos, word }) => {
-      // Only a noun has articles, and only a noun's are read.
-      if (pos !== "noun") return [recordId, readingPartOfSpeech(pos, word, [])];
-      const line = lineOf.get(recordId);
-      if (line === undefined) throw new Error(`record ${recordId} vanished mid-lookup`);
-      const ref = refOn(line);
-      const grammar = grammarOf(claimsOf.get(recordId) ?? [], correctionsOf.get(recordId) ?? [], ref);
-      const { pronunciations } = readSourceRecord(line.raw_json, ref).wordFacts;
-      return [recordId, readingPartOfSpeech(pos, word, grammar.record, formsOf(formsOfRecord.get(recordId) ?? [], ref, grammar), pronunciations)];
-    }),
-  );
-}
-
 /** A record's senses as the database holds them: each gloss, and each label. */
 interface SenseRows {
   glosses: { sense_index: number; sense_pointer: string; text: string | null; json_pointer: string | null }[];
@@ -1157,10 +1072,8 @@ interface FormRow {
   evidence_url?: string | null;
 }
 
-/** The read of a record's forms: with their curated cells where the dictionary has `corrected_form`. */
-const formRead = (corrected: Corrected): KeyedRead => (corrected.cellCorrections ? CORRECTED_RECORD_FORM_SQL : RECORD_FORM_SQL);
-
-const readFormRows = (db: LookupDatabase, recordId: number, corrected: Corrected): Promise<FormRow[]> => readKeys<FormRow>(db, formRead(corrected), [recordId]);
+const readFormRows = (db: LookupDatabase, recordId: number, corrected: Corrected): Promise<FormRow[]> =>
+  readKeys<FormRow>(db, corrected.cellCorrections ? CORRECTED_RECORD_FORM_SQL : RECORD_FORM_SQL, [recordId]);
 
 /** The spelling a curated correction sets a row's cell to, and the correction, when one does. */
 function correctedCellOf(row: FormRow): { surface: string; corrected: CorrectedSurface } | undefined {
@@ -1211,17 +1124,6 @@ export const GRAMMAR_CLAIM_SQL: KeyedRead = keyedRead(`SELECT record_id AS set_k
       WHERE record_id IN (SELECT value FROM json_each(?1))
       ORDER BY record_id, scope, scope_index, json_pointer`);
 
-/** One of a record's grammar claims, as `GRAMMAR_CLAIM_SQL` returns it. */
-interface GrammarRow {
-  scope: "record" | "sense" | "form";
-  scope_index: number | null;
-  status: "stated" | "unclassified" | "missing";
-  dimension: string | null;
-  value: string | null;
-  source_text: string | null;
-  json_pointer: string;
-}
-
 async function readGrammar(
   db: LookupDatabase,
   recordId: number,
@@ -1229,12 +1131,16 @@ async function readGrammar(
   corrected: Corrected,
 ): Promise<Grammar> {
   const corrections = handled(corrected.corrections ? readKeys<CorrectionRow>(db, CORRECTED_CLAIM_SQL, [recordId]) : Promise.resolve([]));
-  const rows = await readKeys<GrammarRow>(db, GRAMMAR_CLAIM_SQL, [recordId]);
-  return grammarOf(rows, await corrections, ref);
-}
+  const rows = await readKeys<{
+    scope: "record" | "sense" | "form";
+    scope_index: number | null;
+    status: "stated" | "unclassified" | "missing";
+    dimension: string | null;
+    value: string | null;
+    source_text: string | null;
+    json_pointer: string;
+  }>(db, GRAMMAR_CLAIM_SQL, [recordId]);
 
-/** One record's grammar, from its `GRAMMAR_CLAIM_SQL` rows and its curated corrections. */
-function grammarOf(rows: readonly GrammarRow[], corrections: readonly CorrectionRow[], ref: (pointer: string) => SourceRef): Grammar {
   const grammar: { record: ArchiveClaim[]; byForm: Map<number, ArchiveClaim[]>; bySense: Map<number, ArchiveClaim[]> } = {
     record: [],
     byForm: new Map(),
@@ -1286,7 +1192,7 @@ function grammarOf(rows: readonly GrammarRow[], corrections: readonly Correction
   for (const claims of grammar.byForm.values()) claims.sort(byPointer);
   for (const claims of grammar.bySense.values()) claims.sort(byPointer);
 
-  return { ...grammar, record: correctRecordClaims(grammar.record, corrections.map(correctionOf)) };
+  return { ...grammar, record: correctRecordClaims(grammar.record, (await corrections).map(correctionOf)) };
 }
 
 /**

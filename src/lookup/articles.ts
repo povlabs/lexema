@@ -13,7 +13,6 @@
 // records spelled alike each get the articles of their own gender and number.
 
 import { articlesFor, spokenOpening, type ArticleGender, type ArticleNumber } from "../italian/articles.js";
-import type { QueryArticle } from "../italian/articleQuery.js";
 import { asserts } from "./types.js";
 import type {
   ArticleWithholding,
@@ -144,29 +143,4 @@ function deriveArticles(
     status: "derived",
     articles: pluralArticles?.status === "derived" ? [...own.articles, ...pluralArticles.articles] : own.articles,
   };
-}
-
-/**
- * Whether a reading's own articles include `article`, as rule
- * `it-article-query/v1` (#738) asks of each reading of the word after it:
- * `una macchina` agrees with macchina's feminine singular noun. A reading of
- * another part of speech, or a noun whose articles are withheld, agrees with
- * none.
- */
-export function agreesWithArticle(reading: ReadingPartOfSpeech, article: QueryArticle): boolean {
-  // Only a noun carries articles.
-  const { articles } = reading;
-  return articles?.status === "derived" && articles.articles.some((one) => one.article === article);
-}
-
-/**
- * `items` in the order rule `it-article-query/v1` (#738) answers a word typed
- * with `article`: those whose part of speech agrees with it first, each part
- * otherwise in the order it had. Nothing is dropped: `un macchina` still opens
- * macchina. A full lookup orders its readings by it, and a batch its
- * candidates (src/lookup/batch.ts), so the two answer in one order.
- */
-export function articleFirst<T>(items: readonly T[], article: QueryArticle, partOfSpeechOf: (item: T) => ReadingPartOfSpeech): T[] {
-  const agrees = (item: T): boolean => agreesWithArticle(partOfSpeechOf(item), article);
-  return [...items.filter(agrees), ...items.filter((item) => !agrees(item))];
 }

@@ -25,19 +25,11 @@ import {
 } from "../../src/lookup/batch.js";
 import { CURATED_CORRECTIONS, cellCorrections, type CellCorrection } from "../../src/italian/curatedCorrections.js";
 import { fromNodeSqlite, type DictionaryRead, type LookupDatabase } from "../../src/lookup/database.js";
-import {
-  CORRECTED_CLAIM_SQL,
-  CORRECTED_RECORD_FORM_SQL,
-  GRAMMAR_CLAIM_SQL,
-  lookup,
-  RECORD_FORM_SQL,
-  RECORD_SOURCE_LINE_SQL,
-} from "../../src/lookup/lookup.js";
-import { ENTRY_AGREEMENT_FACT_SQL } from "../../src/lookup/pageFacts.js";
+import { lookup } from "../../src/lookup/lookup.js";
 import { HAND_KEPT_HEADS_SQL } from "../../src/lookup/handKept.js";
 import { OPTIONAL_TABLES_SQL } from "../../src/lookup/served.js";
 import { entryKey, publicEntryId, type LemmaTarget } from "../../src/lookup/types.js";
-import { loadFixturePages, rawPageSource, readSavedPage } from "../../src/source/rawPage.js";
+import { loadFixturePages, rawPageSource } from "../../src/source/rawPage.js";
 import { candidatesOf, idOf } from "@/worker/api/lookupAnswer.ts";
 import { atFixtureLines } from "../../test/correctionFixture.js";
 
@@ -449,27 +441,6 @@ test("the batch's agreement read stays on indexes rather than scanning (#756)", 
   assert.ok(cells.some((step) => /^SEARCH c USING INDEX corrected_form_by_key \(release_id=\? AND surface_key>\? AND surface_key<\?\)/.test(step)), cells.join("\n"));
 });
 
-/** The statements the batch reads a word typed with its article with (#766): its readings' lines, grammar, corrections and forms, and its page entries' facts. */
-const ARTICLE_READS: readonly string[] = [RECORD_SOURCE_LINE_SQL, GRAMMAR_CLAIM_SQL, CORRECTED_CLAIM_SQL, RECORD_FORM_SQL, CORRECTED_RECORD_FORM_SQL, ENTRY_AGREEMENT_FACT_SQL];
-const readsArticles = (sql: string): boolean => ARTICLE_READS.includes(sql);
-
-/**
- * `fixtures/article-query.jsonl`, the verbatim lines of release it-0c432803
- * test/articleLookup.test.ts reads (macchina, acqua, riso, porta, ancora,
- * zaini, `una volta`, ...), seeded the way `pnpm run seed:dev` seeds D1.
- */
-const ARTICLE_RELEASE = "it-batch-article";
-let articleSqlite: DatabaseSync;
-let articleDb: LookupDatabase;
-
-before(async () => {
-  const lines = (await readFile(join(REPO, "fixtures/article-query.jsonl"), "utf8")).trimEnd().split("\n");
-  articleSqlite = await seededWith(lines, ARTICLE_RELEASE, []);
-  articleDb = fromNodeSqlite(articleSqlite);
-});
-
-after(() => articleSqlite.close());
-
 /** Each word's route through the single lookup, or its outcome when nothing finds it. */
 const routesOf = (words: readonly string[], on: LookupDatabase, releaseId: string): Promise<string[]> =>
   Promise.all(
@@ -478,126 +449,6 @@ const routesOf = (words: readonly string[], on: LookupDatabase, releaseId: strin
       return result.outcome === "found" ? result.route.kind : result.outcome;
     }),
   );
-
-test("the batch reads a word typed with its article by rule it-article-query/v1, in the single lookup's order (#766)", async () => {
-  const words = ["una macchina", "la macchina", "un macchina", "le macchine", "l'acqua", "l’acqua", "un'auto", "gli zaini", "il riso", "la porta", "l'ancora", "lo porta"];
-  assert.deepEqual(await routesOf(words, articleDb, ARTICLE_RELEASE), words.map(() => "article"));
-
-  const { answers } = await lookupBatch({ db: articleDb, releaseId: ARTICLE_RELEASE, queries: [...words, "porta", "riso"] });
-  const on = { db: articleDb, releaseId: ARTICLE_RELEASE };
-  for (const [at, word] of words.entries()) assert.deepEqual(light(answers[at]), await throughCandidatesOf(word, on), word);
-
-  const shapes = (at: number) => light(answers[at]).map((candidate) => candidate !== "not found" && `${candidate.lemma} ${candidate.pos}`);
-  assert.deepEqual(shapes(words.indexOf("una macchina")), ["macchina noun", "macchinare verb"]);
-  assert.deepEqual(shapes(words.indexOf("l'acqua")), ["acqua noun"]);
-  assert.deepEqual(shapes(words.indexOf("l’acqua")), ["acqua noun"]);
-  // The article puts the reading that takes it first: porta's adjective, then
-  // its noun, alone; `la porta` the noun. riso's first noun is stated
-  // invariable and takes no article, so `il riso` is the second noun's.
-  assert.deepEqual(shapes(words.length), ["porta adj", "porta noun", "porta verb"]);
-  assert.deepEqual(shapes(words.indexOf("la porta")), ["porta noun", "porta adj", "porta verb"]);
-  const riso = light(answers[words.length + 1]);
-  const ilRiso = light(answers[words.indexOf("il riso")]);
-  assert.deepEqual(ilRiso, [riso[1], riso[0], ...riso.slice(2)]);
-});
-
-test("a batch of words the article route does not answer sends no article read and keeps its answers (#766)", async () => {
-  // Without the rule's shape, then a headword and a phrase of its shape, which earlier routes answer.
-  const words = ["della macchina", "la", "la macchina rossa", "una volta", "una volte", "macchina", "qqqqqq"];
-  assert.deepEqual(await routesOf(words, articleDb, ARTICLE_RELEASE), ["not-found", "not-found", "not-found", "surface", "phrase", "surface", "not-found"]);
-  const asked = recording(articleDb);
-  const { answers } = await lookupBatch({ db: asked.db, releaseId: ARTICLE_RELEASE, queries: words });
-  assert.ok(!asked.asked.some(readsArticles), asked.asked.join("\n---\n"));
-  const on = { db: articleDb, releaseId: ARTICLE_RELEASE };
-  for (const [at, word] of words.entries()) assert.deepEqual(light(answers[at]), await throughCandidatesOf(word, on), word);
-});
-
-test("a batch with article-route words runs the same statements for a few words or a hundred, each article read once (#766)", async () => {
-  const surfaces = (sql: string) => (articleSqlite.prepare(sql).all() as { surface: string }[]).map((row) => row.surface);
-  const spellings = surfaces("SELECT DISTINCT surface FROM lookup_form ORDER BY surface LIMIT 30");
-  const headwords = surfaces("SELECT DISTINCT surface FROM lookup_form WHERE origin = 'headword' AND surface NOT LIKE '% %' ORDER BY surface");
-  const few = recording(articleDb);
-  await lookupBatch({ db: few.db, releaseId: ARTICLE_RELEASE, queries: ["la porta", "l'acqua", "porta"] });
-  // Spellings, and each headword with every article: most agree with nothing, and none is a statement of its own.
-  const articled = headwords.flatMap((word) => ["il", "lo", "la", "i", "gli", "le", "un", "uno", "una"].map((article) => `${article} ${word}`));
-  const words = [...spellings, ...articled].slice(0, 100);
-  assert.equal(words.length, 100);
-  const many = recording(articleDb);
-  const { answers } = await lookupBatch({ db: many.db, releaseId: ARTICLE_RELEASE, queries: words });
-  assert.ok(answers.filter((answer, at) => answer.outcome === "found" && words[at].includes(" ")).length > 10);
-  const on = { db: articleDb, releaseId: ARTICLE_RELEASE };
-  for (const [at, word] of words.entries()) assert.deepEqual(light(answers[at]), await throughCandidatesOf(word, on), word);
-
-  for (const { asked } of [few, many]) {
-    // A schema.sql seed has `corrected_claim` and `corrected_form`, so the corrected reads are the ones sent.
-    for (const sql of [RECORD_SOURCE_LINE_SQL, GRAMMAR_CLAIM_SQL, CORRECTED_CLAIM_SQL, CORRECTED_RECORD_FORM_SQL]) {
-      assert.equal(asked.filter((one) => one === sql).length, 1, asked.join("\n---\n"));
-    }
-    assert.equal(asked.filter((sql) => sql === CORRECTED_CELL_BATCH_SEARCH_SQL).length, 1, asked.join("\n---\n"));
-  }
-  assert.deepEqual([...many.asked].sort(), [...few.asked].sort());
-});
-
-test("the batch orders a page-only entry by the articles its page facts give, as the single lookup does (#766)", async () => {
-  // mastoide (fixtures/upstream-pages) is a page-only feminine noun;
-  // avventurieri (fixtures/page-facts) gives an adjective, then a masculine plural noun.
-  const pageDir = await mkdtemp(join(tmpdir(), "lexema-batch-article-pages-"));
-  const pageDb = new DatabaseSync(":memory:");
-  try {
-    const releaseId = "it-batch-article-pages";
-    const mastoide = (await loadFixturePages(join(REPO, "fixtures"))).page("mastoide");
-    assert.ok(mastoide);
-    const avventurieri = readSavedPage(await readFile(join(REPO, "fixtures/page-facts/avventurieri.wikitext"), "utf8"), "avventurieri.wikitext");
-    const { parts } = await seedSql({
-      input: join(REPO, "fixtures/page-entry-forms.jsonl"),
-      outputDir: join(pageDir, "sql"),
-      schema: join(REPO, "src/db/schema.sql"),
-      releaseId,
-      rawPages: rawPageSource([mastoide, avventurieri]),
-    });
-    for (const part of parts) pageDb.exec(await readFile(part, "utf8"));
-    const read = fromNodeSqlite(pageDb);
-
-    const words = ["la mastoide", "gli avventurieri", "un avventurieri", "avventurieri"];
-    assert.deepEqual(await routesOf(words, read, releaseId), ["article", "article", "article", "surface"]);
-    const single = async (word: string): Promise<string[]> => {
-      const result = await lookup({ db: read, releaseId, query: word });
-      assert.ok(result.outcome === "found", word);
-      return (await candidatesOf(result, async () => undefined)).map(({ reading }) => `${entryKey(reading)} ${reading.pos}`);
-    };
-    const asked = recording(read);
-    const { answers } = await lookupBatch({ db: asked.db, releaseId, queries: words });
-    const batch = answers.map((answer) => {
-      assert.ok(answer.outcome === "found");
-      // As `entryKey` names a reading.
-      return answer.candidates.map((candidate) => `${candidate.recordId === undefined ? `page-${candidate.entryId}` : candidate.recordId} ${candidate.pos}`);
-    });
-    for (const [at, word] of words.entries()) assert.deepEqual(batch[at], await single(word), word);
-    const [glAvventurieri, unAvventurieri, alone] = batch.slice(1);
-    assert.deepEqual(alone.map((candidate) => candidate.split(" ")[1]), ["adj", "noun"]);
-    assert.deepEqual(glAvventurieri, [alone[1], alone[0]]);
-    assert.deepEqual(unAvventurieri, alone);
-    assert.equal(asked.asked.filter((sql) => sql === ENTRY_AGREEMENT_FACT_SQL).length, 1, asked.asked.join("\n---\n"));
-  } finally {
-    pageDb.close();
-    await rm(pageDir, { recursive: true, force: true });
-  }
-});
-
-test("the batch's article reads stay on indexes rather than scanning (#766)", () => {
-  const plan = (sql: string, ...params: string[]) =>
-    (sqlite.prepare(`EXPLAIN QUERY PLAN ${sql}`).all(...params) as { detail: string }[]).map((row) => row.detail);
-  const keys = JSON.stringify([1, 2]);
-  for (const sql of ARTICLE_READS) {
-    const steps = plan(sql, keys);
-    assert.ok(
-      !steps.some((step) => /SCAN (source_record|source_record_json|grammar_claim|corrected_claim|lookup_form|corrected_form|entry_fact|recovered_entry|raw_page|r|j|f|c|e|p)\b/.test(step)),
-      `${sql}\n${steps.join("\n")}`,
-    );
-  }
-  const facts = plan(ENTRY_AGREEMENT_FACT_SQL, keys);
-  assert.ok(facts.some((step) => /^SEARCH f USING (PRIMARY KEY|INDEX sqlite_autoindex_entry_fact_1) \(entry_id=\?\)/.test(step)), facts.join("\n"));
-});
 
 /** Whether a statement names `hand_kept_definition` at all. */
 const namesHandKept = (sql: string): boolean => sql.includes("hand_kept_definition");
@@ -636,7 +487,7 @@ async function namedByLookup(word: string, on: { db: LookupDatabase; releaseId: 
 /** Part of speech and identity, without the id. */
 const shapes = (candidates: readonly string[]): string[] => candidates.map((candidate) => candidate.split(" ").slice(1).join(" "));
 
-const HAND_KEPT_WORDS = ["si", "come", "Come", "il si", "la come", "qqqqqq"];
+const HAND_KEPT_WORDS = ["si", "come", "Come", "qqqqqq"];
 
 test("the batch answers a word with its hand-kept readings after the source's, with the ids the single lookup gives them (#776)", async () => {
   const releaseId = "it-batch-hand-kept";

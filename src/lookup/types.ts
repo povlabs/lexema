@@ -5,7 +5,6 @@
 import type { ArticleDisplay } from "../core/types.js";
 import type { SurfaceWithholding } from "../italian/articles.js";
 import type { AgreeingSpelling } from "../italian/essereAgreement.js";
-import type { ArticleQuery } from "../italian/articleQuery.js";
 import type { PhraseGloss } from "../italian/phrase.js";
 import type { VerbFormGloss } from "../italian/verbFormGloss.js";
 
@@ -1148,17 +1147,12 @@ export interface PhraseForm {
  * evidence is only the cells of that spelling that agree. `first-spelling`:
  * it is none, and it is, as typed, the agreeing first spelling of cells that
  * hold more than one (`mi sono arreso` of `mi sono arreso, arresosi`).
- * `article`: it is none of these, and it is an article and one word (`una
- * macchina`, `l'acqua`; rule `it-article-query/v1`, #738); the readings are
- * the word's, as a search for the word finds them, with those whose own
- * articles include the typed one first.
  */
 export type FoundRoute =
   | { kind: "surface" }
   | { kind: "phrase"; phrases: [PhraseMatch, ...PhraseMatch[]]; forms: PhraseForm[] }
   | { kind: "feminine"; agreement: AgreeingSpelling }
-  | { kind: "first-spelling"; agreement: AgreeingSpelling }
-  | { kind: "article"; query: ArticleQuery };
+  | { kind: "first-spelling"; agreement: AgreeingSpelling };
 
 /**
  * The index was probed and at least one record matched. The readings are a
