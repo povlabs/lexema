@@ -383,7 +383,7 @@ const GUIDE_TOPICS: Readonly<Record<Guide, (origins: SiteOrigins, signUp: SignUp
           Lexema&rsquo;s Licence page
         </a>
         {" has the full credit; "}
-        <ExternalLink className={LINK} href="https://creativecommons.org/licenses/by-sa/4.0/">
+        <ExternalLink language="en" className={LINK} href="https://creativecommons.org/licenses/by-sa/4.0/">
           CC BY-SA 4.0
         </ExternalLink>{" "}
         has the licence.

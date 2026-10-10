@@ -87,6 +87,14 @@ export const DEVELOPERS_SEGMENT = "developer-site";
  */
 const RETIRED_API_SEGMENTS = ["api", "v1"] as const;
 
+/**
+ * The plain 404 a lexema.fyi address the app never sees is answered with, in
+ * the site's Italian (#791). The same words as the site's own not-found page
+ * (`PAGE_NOT_FOUND` in web/lib/dictionary/siteText.ts, which this shared file
+ * may not import); a test holds the two equal.
+ */
+export const SITE_NOT_FOUND = "Pagina non trovata";
+
 /** Dictionary pages that moved, by their old path: each answers a permanent redirect to its new one (#139). */
 const MOVED_PAGES: Readonly<Record<string, string>> = { "/attribution": "/licence" };
 
@@ -271,7 +279,7 @@ export function byHost<E>(handlers: SiteHandlers<E>): FetchHandler<E> {
       case "not-found":
         return destination.site === "api"
           ? handlers.apiNotFound(url)
-          : new Response("Not Found", { status: 404, headers: { "content-type": "text/plain; charset=utf-8" } });
+          : new Response(SITE_NOT_FOUND, { status: 404, headers: { "content-type": "text/plain; charset=utf-8" } });
     }
   };
 }

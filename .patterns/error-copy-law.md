@@ -8,7 +8,7 @@ Adapted from phoenix's [error-copy-law](https://github.com/kamp-us/phoenix/blob/
 
 ## The shape
 
-The site calls itself *a simple dictionary* (`SITE_TAGLINE` in
+The site calls itself *un dizionario semplice*, a simple dictionary (`SITE_TAGLINE` in
 [`web/lib/dictionary/params.ts`](../web/lib/dictionary/params.ts)), and its error
 copy is written to match: short sentences, everyday words, no filler. Five rules,
 each visible in the source:

@@ -42,7 +42,8 @@ export function readingIndex(tops: readonly number[], scrolledToEnd: boolean): n
   return index;
 }
 
-export function LegalContents({ sections }: { sections: readonly ContentsEntry[] }) {
+/** `label` names the column in its site's language: *Indice*, *Contents*. */
+export function LegalContents({ label, sections }: { label: string; sections: readonly ContentsEntry[] }) {
   const [current, setCurrent] = useState(0);
   const ids = sections.map((section) => section.id).join(" ");
 
@@ -84,7 +85,7 @@ export function LegalContents({ sections }: { sections: readonly ContentsEntry[]
       <div className={LEGAL_CONTENTS_INNER}>
         {/* A label, not a heading, so the page's first heading is its title. */}
         <p className={LEGAL_CONTENTS_LABEL} id="contents">
-          Contents
+          {label}
         </p>
         <ol className={LEGAL_CONTENTS_LIST}>
           {sections.map((section, i) => (

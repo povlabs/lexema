@@ -795,7 +795,7 @@ test("the developer legal pages: a Contents column on a wide screen only, read a
 test("lexema.fyi keeps no /developers route, and its footer links to the developer site", async () => {
   await assert.rejects(access(join(REPO, "web/app/(lexema)/developers")), { code: "ENOENT" });
   const footer = renderToStaticMarkup(<SiteFooter origins={ORIGIN} current="/" />);
-  assert.match(footer, /<a class="[^"]*" href="https:\/\/developers\.lexema\.fyi">Developers<\/a>/);
+  assert.match(footer, /<a class="[^"]*" href="https:\/\/developers\.lexema\.fyi">Sviluppatori<\/a>/);
 });
 
 test("rendered for a Preview, every link to another site and every API address names that Preview's sibling host (#266)", () => {
@@ -811,7 +811,7 @@ test("rendered for a Preview, every link to another site and every API address n
   const hosts = new Set([...html.matchAll(/https?:\/\/([a-z0-9.-]*lexema\.fyi)/g)].map((match) => match[1]));
   assert.deepEqual([...hosts].sort(), [`${name}.api-preview.lexema.fyi`, `${name}.developers-preview.lexema.fyi`, `${name}.preview.lexema.fyi`]);
 
-  assert.match(renderToStaticMarkup(<SiteFooter origins={preview} current="/" />), new RegExp(`href="https://${name}\\.developers-preview\\.lexema\\.fyi">Developers</a>`));
+  assert.match(renderToStaticMarkup(<SiteFooter origins={preview} current="/" />), new RegExp(`href="https://${name}\\.developers-preview\\.lexema\\.fyi">Sviluppatori</a>`));
   assert.match(renderToStaticMarkup(<DeveloperFooter origins={preview} />), new RegExp(`href="https://${name}\\.preview\\.lexema\\.fyi">Lexema\\.fyi</a>`));
   const attribution = renderToStaticMarkup(<DeveloperDocs page={{ kind: "guide", guide: "attribution" }} signUp="open" origins={preview} />);
   assert.match(attribution, new RegExp(`href="https://${name}\\.preview\\.lexema\\.fyi/licence"`));

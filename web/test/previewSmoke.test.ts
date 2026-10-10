@@ -40,7 +40,7 @@ const title = (word: string) => `${word[0].toUpperCase()}${word.slice(1)} — Le
  * what https://lexema.fyi/?q=casa sent a `Discordbot/2.0` User-Agent on 2026-10-01 (#337).
  */
 const head = (word: string) =>
-  `<head><meta charSet="utf-8"/><title>${title(word)}</title><meta name="description" content="a simple dictionary"/><meta property="og:title" content="${title(word)}"/></head>`;
+  `<head><meta charSet="utf-8"/><title>${title(word)}</title><meta name="description" content="un dizionario semplice"/><meta property="og:title" content="${title(word)}"/></head>`;
 /** A found word's page: its head and a reading article, as the Preview renders them. */
 const found = (word: string): Page => ({
   status: 200,
@@ -53,7 +53,7 @@ const notFound = (word: string): Page => ({
   status: 200,
   robotsTag: "noindex",
   contentType: "text/html; charset=utf-8",
-  body: `<title>No entry for "${word}" — Lexema</title><h1 lang="it">Nessuna voce per “${word}”</h1>`,
+  body: `<title>Nessuna voce per “${word}” — Lexema</title><h1 lang="it">Nessuna voce per “${word}”</h1>`,
 });
 /**
  * A found word's page as the Preview of PR #328 sent it on 2026-10-01, before

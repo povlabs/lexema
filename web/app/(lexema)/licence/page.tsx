@@ -7,11 +7,13 @@
 // page always shows it and follows each new release with no edit here.
 import type { ServedRelease } from "@lexema/source/servedRelease.ts";
 import { Licence } from "@/components/dictionary/Licence";
+import { SITE_NAME } from "@/lib/dictionary/params.ts";
+import { LEGAL_TITLE } from "@/lib/dictionary/siteText.ts";
 
 /** Put in place by Vite's `define` at build time. */
 declare const __LEXEMA_SERVED_RELEASE__: ServedRelease;
 
-export const metadata = { title: "Licence — Lexema" };
+export const metadata = { title: `${LEGAL_TITLE.licence} — ${SITE_NAME}` };
 
 export default function Page() {
   return <Licence release={__LEXEMA_SERVED_RELEASE__} />;

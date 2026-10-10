@@ -2,7 +2,8 @@
 //
 // The words are Huey's, approved on 2026-10-04
 // (https://github.com/povlabs/lexema/issues/139#issuecomment-5978972736), and
-// are kept exactly. What section 4 says about retention is what the code does
+// are kept exactly in meaning, in Italian since #791: the same claims, none
+// added or dropped. What section 4 says about retention is what the code does
 // since #570: a report's visitor code is erased an hour after it is sent
 // (worker/dictionary/reportSweep.ts), and its note when it is answered
 // (`pnpm run report answer`).
@@ -10,34 +11,35 @@
 import { LEGAL_ADDRESS, LEGAL_ITEMS, LEGAL_PARAGRAPH, LEGAL_UNBROKEN, LINK } from "@/components/shared/styles.ts";
 import { PRIVACY_EMAIL } from "@/components/shared/contact.ts";
 import { LegalItem } from "@/components/shared/LegalPage";
-import { DictionaryLegalPage } from "./DictionaryLegalPage";
+import { LEGAL_TITLE } from "@/lib/dictionary/siteText.ts";
+import { DictionaryLegalPage, KICKER } from "./DictionaryLegalPage";
 
 export function Privacy() {
   return (
     <DictionaryLegalPage
-      kicker="LEXEMA · LEGAL"
-      title="Privacy"
+      kicker={KICKER}
+      title={LEGAL_TITLE.privacy}
       effective="2026-10-04"
-      lede="This notice explains what information Lexema processes when you use lexema.fyi, why, and for how long."
+      lede="Questa informativa spiega quali informazioni Lexema tratta quando usi lexema.fyi, perché e per quanto tempo."
       sections={[
         {
           id: "information",
-          title: "Information we process",
+          title: "Informazioni che trattiamo",
           body: (
             <>
               <p className={LEGAL_PARAGRAPH}>
-                Lexema has no user accounts and does not use advertising, analytics or tracking cookies. We process
-                only:
+                Lexema non ha account utente e non usa pubblicità, strumenti di analisi né cookie di tracciamento.
+                Trattiamo soltanto:
               </p>
               <ul className={LEGAL_ITEMS}>
                 <LegalItem mark="a">
-                  your IP address, transiently, to limit the number of requests a single visitor can make. It is
-                  not stored;
+                  il tuo indirizzo IP, in modo transitorio, per limitare il numero di richieste che un singolo
+                  visitatore può fare. Non viene conservato;
                 </LegalItem>
                 <LegalItem mark="b">
-                  when you report a mistake or suggest a correction: the entry, the option you selected, any note
-                  you write, and, for one hour, a <span className={LEGAL_UNBROKEN}>one-way</span> code derived from your IP address, used only to limit the
-                  number of reports per hour.
+                  quando segnali un errore o suggerisci una correzione: la voce, l’opzione che hai scelto,
+                  l’eventuale nota che scrivi e, per un’ora, un codice <span className={LEGAL_UNBROKEN}>non reversibile</span> derivato dal tuo
+                  indirizzo IP, usato solo per limitare il numero di segnalazioni all’ora.
                 </LegalItem>
               </ul>
             </>
@@ -45,62 +47,66 @@ export function Privacy() {
         },
         {
           id: "purpose",
-          title: "Purpose and legal basis",
+          title: "Finalità e base giuridica",
           body: (
             <p className={LEGAL_PARAGRAPH}>
-              We process this information to operate the service, protect it from abuse and review reported errors.
-              The legal basis is our legitimate interest in providing a reliable dictionary (Article 6(1)(f) GDPR).
+              Trattiamo queste informazioni per far funzionare il servizio, proteggerlo dagli abusi ed esaminare gli
+              errori segnalati. La base giuridica è il nostro legittimo interesse a offrire un dizionario affidabile
+              (articolo 6, paragrafo 1, lettera f, del GDPR).
             </p>
           ),
         },
         {
           id: "providers",
-          title: "Service providers",
+          title: "Fornitori di servizi",
           body: (
             <p className={LEGAL_PARAGRAPH}>
-              Lexema is hosted by Cloudflare, Inc., which processes requests on our behalf and may keep short-lived
-              security logs. Report forms are protected by Cloudflare Turnstile. We do not sell or share information
-              with anyone else.
+              Lexema è ospitato da Cloudflare, Inc., che tratta le richieste per nostro conto e può conservare log di
+              sicurezza di breve durata. I moduli di segnalazione sono protetti da Cloudflare Turnstile. Non vendiamo
+              né condividiamo informazioni con nessun altro.
             </p>
           ),
         },
         {
           id: "retention",
-          title: "Retention",
+          title: "Conservazione",
           body: (
             <p className={LEGAL_PARAGRAPH}>
-              Request counts expire within minutes. The code derived from your IP address is erased one hour after a
-              report is sent. Reports themselves are kept as a record of corrections to the dictionary; any note you
-              wrote is erased as soon as the report is resolved.
+              I conteggi delle richieste scadono entro pochi minuti. Il codice derivato dal tuo indirizzo IP viene
+              cancellato un’ora dopo l’invio di una segnalazione. Le segnalazioni stesse sono conservate come
+              registro delle correzioni al dizionario; l’eventuale nota che hai scritto viene cancellata non appena la
+              segnalazione è risolta.
             </p>
           ),
         },
         {
           id: "rights",
-          title: "Your rights",
+          title: "I tuoi diritti",
           body: (
             <p className={LEGAL_PARAGRAPH}>
-              Because Lexema does not store your IP address or any account, we generally cannot link stored
-              information to you. Until a report is resolved, you may ask us to remove a note you wrote, using the
-              address below. You also have the right to lodge a complaint with your data protection authority.
+              Poiché Lexema non conserva il tuo indirizzo IP né alcun account, in genere non possiamo collegare a te
+              le informazioni conservate. Finché una segnalazione non è risolta, puoi chiederci di rimuovere una nota
+              che hai scritto, usando l’indirizzo qui sotto. Hai anche il diritto di proporre reclamo alla tua
+              autorità per la protezione dei dati.
             </p>
           ),
         },
         {
           id: "changes",
-          title: "Changes",
+          title: "Modifiche",
           body: (
             <p className={LEGAL_PARAGRAPH}>
-              We may update this notice. The effective date above shows when it last changed.
+              Possiamo aggiornare questa informativa. La data di entrata in vigore indicata sopra mostra quando è
+              cambiata l’ultima volta.
             </p>
           ),
         },
         {
           id: "contact",
-          title: "Contact",
+          title: "Contatti",
           body: (
             <>
-              <p className={LEGAL_PARAGRAPH}>For any question about this notice, write to:</p>
+              <p className={LEGAL_PARAGRAPH}>Per qualsiasi domanda su questa informativa, scrivi a:</p>
               <p className={LEGAL_ADDRESS}>
                 <a className={LINK} href={`mailto:${PRIVACY_EMAIL}`}>
                   {PRIVACY_EMAIL}
