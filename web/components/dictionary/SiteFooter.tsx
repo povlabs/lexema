@@ -7,8 +7,8 @@
 //
 // Four links (#139, #614), in Italian (#791): the Licence page, which carries the credit ADR 0009
 // asks for, the Privacy notice, Contact, a mail to the address the developer
-// site gives too, and Developers, the one way from the dictionary to the
-// developer site (#159). Developers is on the host `origins` names, so a
+// site gives too, and API (named Developers until #796), the one way from the
+// dictionary to the developer site (#159). API is on the host `origins` names, so a
 // Preview's footer stays on that Preview (#266). The link to the page being
 // shown is marked `aria-current` and drawn highlighted; only Licence and
 // Privacy are pages of this site, so only they can be.
