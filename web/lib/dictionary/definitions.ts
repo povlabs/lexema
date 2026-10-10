@@ -3,6 +3,7 @@
 // API returns them (web/worker/api/lookupAnswer.ts), so both read one list.
 
 import { splitSenses, type SenseShape } from "@lexema/italian/furniture.ts";
+import { italianSenseLabels } from "@lexema/italian/senseTagLabels.ts";
 import { everyRecovered, isSourceRef } from "@lexema/lookup/types.ts";
 import type { FactRef, Reading, RecoveredDefinition, Sense } from "@lexema/lookup/types.ts";
 
@@ -80,10 +81,17 @@ export function hasDefinitions(reading: Reading): boolean {
   return definitionsOf(reading).items.length > 0;
 }
 
-/** The labels the source put on a sense — `figurato`, `scuola` — as a definition shows them. */
+/** The labels the source put on a sense — `figurato`, `scuola` — as the developer API returns them. */
 export function senseLabels(labels: readonly string[]): string[] {
   return labels.filter((label) => label !== "form-of");
 }
+
+/**
+ * The labels the source put on a sense as the word page shows them: in the
+ * Italian the page wrote, `antico` where the extraction stored `archaic`
+ * (#799, `it-sense-tag-label/v1`).
+ */
+export const shownSenseLabels = (sense: Pick<Sense, "labels">): string[] => italianSenseLabels(sense.labels);
 
 /**
  * What a definition reads as, without its examples: equal for two records'

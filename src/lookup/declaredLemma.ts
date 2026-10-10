@@ -9,6 +9,12 @@
 // itself, so it cannot run in place of the search or the phrase rule. The page
 // runs it (web/lib/dictionary/searchAttempt.ts); the developer API does not.
 //
+// A verb whose own record has no table reads the same edges (#799): `bellare`
+// has a record, with no conjugation, and some thirty form records say "… di
+// bellare". `declaredVerbForms` gives the verb forms those edges place, read
+// exactly as a declared lemma's, and the page builds the verb's table from
+// them. The page asks only for a verb none of whose records draws a table.
+//
 // Each edge's gloss is read by a closed rule: `it-verb-form-gloss/v1` for a
 // verb record, `it-plural-gloss/v1` for a noun or adjective record. A gloss the
 // rule refuses gives no form. Nothing is written: the rules read at lookup time.
@@ -174,7 +180,30 @@ export async function declaredLemma(
   releaseId: string,
   notFound: NotFoundResult,
 ): Promise<DeclaredLemmaResult | undefined> {
-  const { key } = notFound.query;
+  const [first, ...rest] = await declaredReadings(db, releaseId, notFound.query.key);
+  if (first === undefined) return undefined;
+  return { outcome: "declared-lemma", query: notFound.query, release: notFound.release, readings: [first, ...rest] };
+}
+
+/**
+ * The verb forms the served edges naming `key` declare, each where its gloss
+ * places it, as a declared lemma's verb reading holds them; undefined when no
+ * gloss places one (#799).
+ */
+export async function declaredVerbForms(
+  db: LookupDatabase,
+  releaseId: string,
+  key: string,
+): Promise<[DeclaredVerbForm, ...DeclaredVerbForm[]] | undefined> {
+  return (await declaredReadings(db, releaseId, key)).find((reading) => reading.pos === "verb")?.forms;
+}
+
+/**
+ * One reading per part of speech whose forms the served edges naming `key`
+ * declare, in the order the source first places a form of it; none when no
+ * gloss on those edges places a form.
+ */
+async function declaredReadings(db: LookupDatabase, releaseId: string, key: string): Promise<DeclaredLemmaReading[]> {
   // Which reads to send depends on the tables, so they wait on that one statement.
   const { corrections: corrected, edgeCorrections } = await dictionaryTables(db);
   const [edges, grammarRows, correctionRows] = await Promise.all([
@@ -219,7 +248,7 @@ export async function declaredLemma(
     if (!words.has(row.pos)) words.set(row.pos, row.target_word);
   }
 
-  const readings = [...words].flatMap(([pos, word]): DeclaredLemmaReading[] => {
+  return [...words].flatMap(([pos, word]): DeclaredLemmaReading[] => {
     const posTitle = POS_TITLE_BY_TEMPLATE[TEMPLATE[pos]];
     if (pos === "verb") {
       const forms = nonEmpty(verbs);
@@ -228,7 +257,4 @@ export async function declaredLemma(
     const forms = nonEmpty(plurals[pos]);
     return forms === undefined ? [] : [{ pos, posTitle, word, forms }];
   });
-  const [first, ...rest] = readings;
-  if (first === undefined) return undefined;
-  return { outcome: "declared-lemma", query: notFound.query, release: notFound.release, readings: [first, ...rest] };
 }

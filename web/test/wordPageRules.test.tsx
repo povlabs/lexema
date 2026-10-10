@@ -189,7 +189,7 @@ function tablesOf(page: WordPage): string[] {
     if (entry.kind !== "source") continue;
     for (const part of entry.parts) {
       if (part.kind === "own-forms") {
-        names.push(part.forms.kind === "conjugation" ? `conjugation ${entry.reading.word}` : `grid ${entry.reading.word} ${JSON.stringify(part.forms.agreement.grid)}`);
+        names.push(part.forms.kind === "grid" ? `grid ${entry.reading.word} ${JSON.stringify(part.forms.agreement.grid)}` : `conjugation ${entry.reading.word}`);
       }
       if (part.kind === "lemma-forms") {
         for (const table of part.tables) {

@@ -79,7 +79,7 @@ exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
 <span class="w-5 shrink-0 pt-1 font-mono text-[0.85rem] text-text-muted sm:pt-0 sm:leading-[1.125rem]" aria-hidden="true">3.</span>
 <div class="min-w-0 flex-1">
 <p class="m-0 max-w-[48rem] font-serif text-[1.0625rem] leading-[1.625rem] text-text-strong wrap-anywhere sm:py-px sm:text-[1.1875rem] sm:leading-7" lang="it">
-<span class="italic text-text-muted">(broadly) </span>gradito, con tratti somatici e quindi estetici apprezzati</p>
+<span class="italic text-text-muted">(per estensione) </span>gradito, con tratti somatici e quindi estetici apprezzati</p>
 <p class="m-0 mt-1 max-w-[48rem] font-serif text-[0.9375rem] italic text-text-muted sm:mt-[0.3125rem] sm:text-base">
 <span lang="it">&quot;Ha una faccia bella. Una domanda: ma è anche saggio?&quot;</span>
 </p>
@@ -98,7 +98,7 @@ exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
 <span class="w-5 shrink-0 pt-1 font-mono text-[0.85rem] text-text-muted sm:pt-0 sm:leading-[1.125rem]" aria-hidden="true">5.</span>
 <div class="min-w-0 flex-1">
 <p class="m-0 max-w-[48rem] font-serif text-[1.0625rem] leading-[1.625rem] text-text-strong wrap-anywhere sm:py-px sm:text-[1.1875rem] sm:leading-7" lang="it">
-<span class="italic text-text-muted">(figuratively) </span>che suscita sentimenti positivi ed entusiasmo</p>
+<span class="italic text-text-muted">(senso figurato) </span>che suscita sentimenti positivi ed entusiasmo</p>
 <p class="m-0 mt-1 max-w-[48rem] font-serif text-[0.9375rem] italic text-text-muted sm:mt-[0.3125rem] sm:text-base">
 <span lang="it">è bello vedere tanti giovani ballare assieme</span>
 </p>
