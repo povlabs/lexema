@@ -7,7 +7,7 @@
 // instead keeps the rendering half free of it.
 
 import type { Nearby } from "@lexema/lookup/nearby.ts";
-import type { DeclaredLemmaResult, FoundResult, NotFoundResult, Reading, RejectedResult } from "@lexema/lookup/types.ts";
+import type { DeclaredLemmaResult, DeclaredVerbForm, FoundResult, NotFoundResult, Reading, RejectedResult } from "@lexema/lookup/types.ts";
 import type { DeclaredLemmaPage } from "./declaredLemmaPage.ts";
 
 /**
@@ -30,12 +30,16 @@ import type { DeclaredLemmaPage } from "./declaredLemmaPage.ts";
  * noun and adjective forms name, read so the page can draw *Forme di bello*
  * under `bella` (#626, `gridLemmaWords` in wordPage.ts). Empty when it has none.
  *
+ * A verb found whose records draw no conjugation also carries the verb forms
+ * its form records declare (#799, `wantsDeclaredConjugation` in wordPage.ts):
+ * `bellare`'s table is built from them. Empty for any other word.
+ *
  * The failure is a value rather than a thrown error so the page has to render
  * it. It carries no detail on purpose: the reason is a database message meant
  * for whoever runs the Worker, and it goes to the log, not to the reader.
  */
 export type Attempt =
-  | (FoundResult & { written: string[]; lemmas: Reading[] })
+  | (FoundResult & { written: string[]; lemmas: Reading[]; declared: DeclaredVerbForm[] })
   | (DeclaredLemmaResult & { page: DeclaredLemmaPage; written: string[] })
   | RejectedResult
   | (NotFoundResult & { nearby: Nearby })

@@ -2,31 +2,34 @@
 // word only form-of records name (#453); and when that has no table either,
 // what to offer instead. A word found also carries the headwords that write it
 // with an accent or apostrophe it lacks (#478), the records of the lemmas
-// whose grids its noun and adjective forms show (#626), and the definitions of
-// the verbs its verb forms name (#686), all in one wait. Free of the Workers runtime, so the page test runs the
+// whose grids its noun and adjective forms show (#626), the definitions of
+// the verbs its verb forms name (#686), and, for a verb whose records draw no
+// conjugation, the verb forms its form records declare (#799), all in one
+// wait. Free of the Workers runtime, so the page test runs the
 // same code over a local database.
 
 import type { LookupDatabase } from "@lexema/lookup/database.ts";
 import type { Reading } from "@lexema/lookup/types.ts";
-import { declaredLemma } from "@lexema/lookup/declaredLemma.ts";
+import { declaredLemma, declaredVerbForms } from "@lexema/lookup/declaredLemma.ts";
 import { lookup, withVerbDefinitions } from "@lexema/lookup/lookup.ts";
 import { findNearby, writtenSpellings } from "@lexema/lookup/nearby.ts";
 import { dictionaryTables } from "@lexema/lookup/served.ts";
 import type { Attempt } from "./attempt.ts";
 import { declaredLemmaPage } from "./declaredLemmaPage.ts";
-import { gridLemmaWords } from "./wordPage.ts";
+import { gridLemmaWords, wantsDeclaredConjugation } from "./wordPage.ts";
 
 export async function searchAttempt(db: LookupDatabase, releaseId: string, query: string): Promise<Attempt> {
   // The tables are read beside the lookup, which reads them too: one statement in its first call.
   const [result, tables] = await Promise.all([lookup({ db, releaseId, query }), dictionaryTables(db)]);
   const written = () => writtenSpellings({ db, releaseId, query: result.query.raw });
   if (result.outcome === "found") {
-    const [spellings, lemmas, readings] = await Promise.all([
+    const [spellings, lemmas, readings, declared] = await Promise.all([
       written(),
       lemmaRecords(db, releaseId, result.readings),
       withVerbDefinitions(db, result.readings, tables),
+      wantsDeclaredConjugation(result.readings) ? declaredVerbForms(db, releaseId, result.query.key) : undefined,
     ]);
-    return { ...result, readings, written: spellings, lemmas };
+    return { ...result, readings, written: spellings, lemmas, declared: declared ?? [] };
   }
   if (result.outcome !== "not-found") return result;
   const declared = await declaredLemma(db, releaseId, result);

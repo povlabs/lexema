@@ -14,7 +14,7 @@ import { Fragment, type ReactNode } from "react";
 import { entryKey, factRefKey } from "@lexema/lookup/types.ts";
 import type { RecoveredDefinition, Reading } from "@lexema/lookup/types.ts";
 import { conjugationOf } from "@/lib/dictionary/conjugation.ts";
-import { definitionsOf, senseLabels, type DefinitionItem } from "@/lib/dictionary/definitions.ts";
+import { definitionsOf, shownSenseLabels, type DefinitionItem } from "@/lib/dictionary/definitions.ts";
 import { headingGrammar, placesGrammar } from "@/lib/dictionary/genderGrid.ts";
 import { lemmaMatches, lemmaWordsOf, unlinkedLemmas, type LinksOf } from "@/lib/dictionary/lemmaLines.ts";
 import { ConjugationView, GridView, SuperlativeGrid, searchHref } from "./Forms";
@@ -150,7 +150,7 @@ function DefinitionText({ item, reading, gloss = GLOSS }: { item: DefinitionItem
     );
   }
   const { sense } = item;
-  const labels = senseLabels(sense.labels.map((label) => label.label));
+  const labels = shownSenseLabels(sense);
   const lemmas = lemmaWordsOf(reading, { sense: sense.index });
   return (
     <>
@@ -358,12 +358,17 @@ function LemmaLineList({ words }: { words: readonly string[] }) {
   );
 }
 
+/** Nothing in a declared conjugation is searched but the verb itself, which no cell holds (#799). */
+const NOTHING_SEARCHED: ReadonlySet<string> = new Set();
+
 /** A reading's own *Forms*, in the shape they have. */
 function OwnFormsView({ owner, forms }: { owner: Reading; forms: OwnForms }) {
   return (
     <Block id={`forms-${entryKey(owner)}`} label={SECTION_LABEL.forms}>
       {forms.kind === "conjugation" ? (
         <ConjugationView conjugation={forms.conjugation} searchedPointers={forms.searchedPointers} word={owner.word} />
+      ) : forms.kind === "declared-conjugation" ? (
+        <ConjugationView conjugation={forms.conjugation} searchedPointers={NOTHING_SEARCHED} word={owner.word} />
       ) : (
         <>
           {forms.agreement.grid !== undefined && <GridView grid={forms.agreement.grid} label={formsOf(owner.word)} />}

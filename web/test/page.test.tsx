@@ -68,6 +68,7 @@ import {
   shownRecords,
   showsJumpLinks,
   SURFACE_ROUTE,
+  wantsDeclaredConjugation,
   wordPage,
   type FormOfPart,
   type LemmaPart,
@@ -822,7 +823,7 @@ test("a verb reading whose own forms fill no cell shows no Forms block, so never
   await withLines(lines, async ({ db }) => {
     const html = await render(db, "sditalinare");
     assert.deepEqual(headingsOf(html), ["1·Verbo"]);
-    assert.deepEqual(definitionLines(html), ["(vulgar) fare un ditalino"]);
+    assert.deepEqual(definitionLines(html), ["(volgare) fare un ditalino"]);
     assert.doesNotMatch(html, /id="forms-/, "sditalinare: shows a Forms block");
     assert.doesNotMatch(textOf(html), /gerundio|ausiliare/, "sditalinare: a non-finite row");
   });
@@ -855,7 +856,7 @@ test("a searched compound form is one block: Voce verbale · its verb, the line 
     assert.ok(definitions.all.length > 1 && definitions.closed.length === 1);
     assert.deepEqual(lemmaDefinitions(html), [{ lemma: "andare", ...definitions }]);
     // A definition keeps the labels its sense has, as the verb's own page shows them.
-    assert.match(block, /\(rare\) <\/span>necessità fisiche naturali/);
+    assert.match(block, /\(raro\) <\/span>necessità fisiche naturali/);
     const [first = ""] = definitions.all;
     assert.equal(occurrencesOf(textOf(withoutLemmaDefinitions(html)), first), 0, "andare's definitions show nowhere else");
     const definitionsBlock = block.slice(block.indexOf('aria-labelledby="definitions-'), block.indexOf("</section>"));
@@ -1615,11 +1616,11 @@ test("an inflected expression opens a short page: its words, each form entry wit
     // *andare via*'s meanings as its own page writes them, labels and examples included.
     const andareVia = [
       "(familiare) lasciare un luogo: un'abitazione, una città, un posto qualsiasi",
-      "(figuratively) morire",
+      "(senso figurato) morire",
       "(familiare) con riferimento ad un amore, d'affetto e/o passionale, significa lasciarsi" +
         "\"Ne ricordo ancora la voce: ormai è andata via dal mio cuore\"",
     ];
-    const tirareFuori = ["levare fuori", "(figuratively) far raccontare", "(figuratively) esplicitare il proprio parere"];
+    const tirareFuori = ["levare fuori", "(senso figurato) far raccontare", "(senso figurato) esplicitare il proprio parere"];
     for (const [query, heading, meanings, forms] of [
       ["vado via", "1·Voce verbale", andareVia, ["prima persona singolare del presente semplice indicativo di andare via"]],
       ["tiro fuori", "1·Voce verbale", tirareFuori, ["prima persona singolare dell'indicativo presente di tirare fuori"]],
@@ -1679,7 +1680,7 @@ test("an inflected expression opens a short page: its words, each form entry wit
     ]);
     assert.deepEqual(definitionLines(volto), [
       "particolrmente in un convegno, in un comitiva, non essere di fronte a qualcuno, ritenuto come comportamento disdicevole",
-      "(figuratively) lasciare qualcuno senza il proprio sostegno",
+      "(senso figurato) lasciare qualcuno senza il proprio sostegno",
       "correre via",
       "disinteressarsi in modo intenzionale",
     ]);
@@ -3721,6 +3722,86 @@ test("a word a record heads or lists answers exactly as it did: the declared pro
     const outcomes: string[] = [];
     for (const query of ["casa", "andare", "andavano", "vado via", "xqzt"]) outcomes.push((await attempt(db, query)).outcome);
     assert.deepEqual(outcomes, ["found", "found", "found", "found", "not-found"]);
+  });
+});
+
+// Verbs whose own record has no table (#799) ----------------------------------
+//
+// `fixtures/declared-verb-tables.jsonl` holds real lines of it-0c432803:
+// `bellare`, `eliminare` and `svendere` (two records), whose records list no
+// form, with every Italian verb form record that names them; and `lodare`, whose
+// record has its own table, with three of its form records.
+
+const VERB_TABLE_LINES = (await readFile(join(REPO, "fixtures/declared-verb-tables.jsonl"), "utf8")).trimEnd().split("\n");
+const withVerbTables = (run: (f: Fixture) => Promise<void>) => withLines(VERB_TABLE_LINES, run);
+
+/** The archive line of a record in that fixture, which its forms' refs name. */
+const verbTableLine = (word: string): number =>
+  VERB_TABLE_LINES.findIndex((line) => (JSON.parse(line) as { word: string }).word === word) + 1;
+
+test("a verb whose own record has no table shows the conjugation its form records declare, as a declared lemma's (#799)", async () => {
+  await withVerbTables(async ({ db }) => {
+    for (const word of ["bellare", "eliminare", "svendere"]) {
+      const html = await render(db, word);
+      assert.equal(occurrencesOf(html, ">Forme<"), 1, word);
+      // Nothing was searched but the verb, which no cell holds.
+      assert.doesNotMatch(html, /data-searched=""/, word);
+      assert.doesNotMatch(textOf(html), /mancan|missing|nessuna voce|nessun dato/i, word);
+    }
+    const bellare = await render(db, "bellare");
+    const indicativo = panel(bellare, "Indicativo");
+    // `bello`'s page is the adjective, so no record says it is bellare's: its
+    // cell is a dash, as any gap in a declared lemma's table is.
+    assert.equal(textOf(firstCell(indicativo, "io") ?? ""), "—");
+    assert.equal(textOf(firstCell(indicativo, "noi") ?? ""), "belliamo");
+    assert.equal(textOf(firstCell(panel(bellare, "Condizionale"), "io") ?? ""), "bellerei");
+    // Each form links to its search and names the record it came from.
+    assert.match(bellare, new RegExp(`href="/\\?q=bellerei" lang="it" data-line="${verbTableLine("bellerei")}">bellerei</a>`));
+    const eliminare = await render(db, "eliminare");
+    assert.equal(textOf(firstCell(panel(eliminare, "Indicativo"), "io") ?? ""), "elimino");
+    assert.equal(textOf(nonFinite(eliminare, "gerundio") ?? ""), "eliminando");
+  });
+});
+
+test("a verb's declared conjugation shows once, under its first record, however many of its records have no table (#799)", async () => {
+  await withVerbTables(async ({ db }) => {
+    const svendere = await render(db, "svendere");
+    const readings = readingsOfPage(svendere);
+    assert.equal(readings.length, 2);
+    assert.match(readings[0], />Forme</);
+    assert.doesNotMatch(readings[1], />Forme</);
+  });
+});
+
+test("a verb whose record has a table of its own renders exactly as it did: the search reads no declared form for it (#799)", async () => {
+  const lodare = VERB_TABLE_LINES.filter((line) => (JSON.parse(line) as { word: string }).word === "lodare");
+  assert.equal(lodare.length, 1);
+  let alone = "";
+  await withLines(lodare, async ({ db }) => {
+    alone = await render(db, "lodare");
+  });
+  await withVerbTables(async ({ db }) => {
+    const answer = await attempt(db, "lodare");
+    assert.ok(answer.outcome === "found");
+    assert.equal(wantsDeclaredConjugation(answer.readings), false);
+    assert.deepEqual(answer.declared, []);
+    // Its own table, with its form records beside it or not.
+    assert.equal(await render(db, "lodare"), alone);
+  });
+});
+
+test("a sense label shows in the Italian the page wrote, not the extraction's English tag (#799)", async () => {
+  await withVerbTables(async ({ db }) => {
+    // bellare: {{Term|antico|it}}; svendere: {{Term|gergale|it}}; lodare: {{Est}}.
+    for (const [word, label, tag] of [
+      ["bellare", "antico", "archaic"],
+      ["svendere", "gergale", "slang"],
+      ["lodare", "per estensione", "broadly"],
+    ]) {
+      const text = textOf(await render(db, word));
+      assert.match(text, new RegExp(`\\(${esc(label)}\\) `), word);
+      assert.doesNotMatch(text, new RegExp(`\\b${tag}\\b`), word);
+    }
   });
 });
 

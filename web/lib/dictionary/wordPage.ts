@@ -123,13 +123,14 @@ import {
   type SourceRef,
 } from "@lexema/lookup/types.ts";
 import { definitionTextKey, definitionsOf, placeOf, readAt, type DefinitionItem } from "./definitions.ts";
-import { conjugates, conjugationOf, placesAny, type Conjugation } from "./conjugation.ts";
+import { conjugates, conjugationOf, declaredConjugationOf, placesAny, type Conjugation } from "./conjugation.ts";
 import { agreementOf, placesOf, type Agreement, type GridPlace, type Spelling } from "./genderGrid.ts";
 import { GRID_FORM_LINE_RULE, gridFormLine } from "./gridFormLine.ts";
 import { unlinkedLemmas } from "./lemmaLines.ts";
 import { labelParts, readingsNamed, splitLabel } from "./readingLabels.ts";
 import { relatedItems, type RelatedItem } from "./relatedList.ts";
 import type {
+  DeclaredVerbForm,
   EntryIdentity,
   Expression,
   LemmaCandidate,
@@ -240,19 +241,50 @@ function ownTextOf(reading: Reading): OwnText | undefined {
  * A reading's own *Forms*: a verb's conjugation, when its forms fill a cell
  * (forms that fill none would draw only a row of dashes, #674), or a noun's or
  * adjective's gender and number grid, superlatives included.
+ *
+ * A verb whose records draw no conjugation takes the one its form records
+ * declare instead (#799), built as a declared lemma's is (#453): `bellare`'s
+ * record has no table, and some thirty records say "… di bellare". The query
+ * is the verb itself, which no cell holds, so no cell is marked.
  */
 export type OwnForms =
   | { kind: "conjugation"; conjugation: Conjugation; searchedPointers: ReadonlySet<string> }
+  | { kind: "declared-conjugation"; conjugation: Conjugation<DeclaredVerbForm> }
   | { kind: "grid"; agreement: Agreement };
 
-function ownFormsOf(reading: Reading): OwnForms | undefined {
+function ownFormsOf(reading: Reading, declared: DeclaredConjugation | undefined): OwnForms | undefined {
   if (isVerbReading(reading)) {
     const searched = searchedSpellings(reading);
     const conjugation = conjugationOf(reading.forms, searched);
-    return placesAny(conjugation) ? { kind: "conjugation", conjugation, searchedPointers: searched.formPointers } : undefined;
+    if (placesAny(conjugation)) return { kind: "conjugation", conjugation, searchedPointers: searched.formPointers };
+    return declared === undefined || !takesDeclaredConjugation(reading) ? undefined : { kind: "declared-conjugation", conjugation: declared };
   }
   const agreement = agreementOf(reading);
   return agreement.grid === undefined && agreement.superlative === undefined ? undefined : { kind: "grid", agreement };
+}
+
+/** A conjugation built from the form records that name the query (#799), which only a page with no conjugation of its own draws. */
+type DeclaredConjugation = Conjugation<DeclaredVerbForm>;
+
+/**
+ * Whether a reading may draw its verb's declared conjugation (#799): an
+ * archive record about the query, a verb and not a form. A recovered or
+ * hand-kept reading shows only what its own raw page gives (ADR 0026, ADR
+ * 0031), so it never takes forms other records declare.
+ */
+const takesDeclaredConjugation = (reading: Reading): boolean =>
+  reading.isAboutQuery && isVerbReading(reading) && !isFormOfReading(reading) && reading.recordId !== undefined;
+
+/**
+ * Whether the query is a verb whose records draw no conjugation, so the page
+ * takes the one its form records declare (#799): a reading that may take it,
+ * and no such reading whose forms fill a cell. A page that draws a
+ * conjugation of its own is left as it is. The search reads the declared
+ * forms only when this holds (searchAttempt.ts).
+ */
+export function wantsDeclaredConjugation(readings: readonly Reading[]): boolean {
+  const verbs = readings.filter(takesDeclaredConjugation);
+  return verbs.length > 0 && !verbs.some((verb) => conjugates(verb.forms));
 }
 
 /** What any source reading may show after its own text, in this order on the page. */
@@ -1010,6 +1042,8 @@ function drawnKey(table: LemmaTable | { kind: "own"; reading: Reading; forms: Ow
   // `bella`'s noun record shows no second *Forme di bello* (rule 1, #695).
   if (table.kind === "grid") return `lemma-grid\u0000${table.lemma.word}`;
   const { reading, forms } = table;
+  // The declared conjugation is the query's one table, whichever of its verb records draws it.
+  if (forms.kind === "declared-conjugation") return `declared-conjugation\u0000${reading.word}`;
   return forms.kind === "grid"
     ? `grid\u0000${reading.word}\u0000${gridKey(forms.agreement)}`
     : `conjugation\u0000${reading.word}\u0000${tableKey(reading)}`;
@@ -1031,10 +1065,19 @@ function drawsHere(table: LemmaTable, drawn: Drawn): boolean {
  * `gridLemmaWords(readings)` names, as the lookup reads them; a lemma grid is
  * drawn only from one of them. `route` is how the lookup reached the readings:
  * a feminine compound form (`sono andata`, #676) names the gender in its
- * verbs' lines.
+ * verbs' lines. `declared` are the verb forms the query's form records declare
+ * (#799), drawn only when `wantsDeclaredConjugation(readings)` holds.
  */
-export function wordPage(query: string, readings: readonly [Reading, ...Reading[]], lemmas: readonly Reading[], route: WordRoute): WordPage {
+export function wordPage(
+  query: string,
+  readings: readonly [Reading, ...Reading[]],
+  lemmas: readonly Reading[],
+  route: WordRoute,
+  declared: readonly DeclaredVerbForm[] = [],
+): WordPage {
   const gender: SpelledGender = route.kind === "feminine" ? "feminine" : "as-listed";
+  const conjugation = wantsDeclaredConjugation(readings) ? declaredConjugationOf(declared) : undefined;
+  const declaredTable = conjugation !== undefined && placesAny(conjugation) ? conjugation : undefined;
   const forms = formsOfQueryReadings(readings);
   const siblings = otherFormsOfQueryLemmas(readings);
   const ordered = pageOrder(readings.filter((reading) => !forms.has(reading) && !siblings.has(reading)));
@@ -1048,7 +1091,7 @@ export function wordPage(query: string, readings: readonly [Reading, ...Reading[
   const ownRecords = about.filter((reading) => !isFormOfReading(reading));
   const merged = mergeWordFacts(about, ownRecords);
   const placed = placeWordFacts(about, ownRecords, merged);
-  const page: PageParts = { ordered, about, own: ownKeysOf(readings), lemmas, placed, gender };
+  const page: PageParts = { ordered, about, own: ownKeysOf(readings), lemmas, placed, gender, declared: declaredTable };
 
   // Only records about the searched word are readings (rule 2 of Huey's ruling
   // of 2026-10-06, #695): a record that only lists the query in its table is
@@ -1103,6 +1146,8 @@ interface PageParts {
   lemmas: readonly Reading[];
   placed: PlacedFacts;
   gender: SpelledGender;
+  /** The conjugation the query's form records declare, on a page whose verb records draw none (#799). */
+  declared: DeclaredConjugation | undefined;
 }
 
 /**
@@ -1110,7 +1155,7 @@ interface PageParts {
  * `which` names as readings, every verb's block, and, for a reading with
  * nothing to show, its bare heading.
  */
-function pageDrafts({ ordered, about, own, lemmas, placed, gender }: PageParts, which: "about" | "every"): Unnumbered<PageEntry | BareReading>[] {
+function pageDrafts({ ordered, about, own, lemmas, placed, gender, declared }: PageParts, which: "about" | "every"): Unnumbered<PageEntry | BareReading>[] {
   // Each verb the query is a form of gets one block, in the place its first
   // line puts it: the rule-built ones lead, as their lines did under #627, and
   // a form record's take its place in the source's order.
@@ -1191,7 +1236,7 @@ function pageDrafts({ ordered, about, own, lemmas, placed, gender }: PageParts, 
   const drawn = new Drawn();
   return joinBlocksOfOneBaseWord(slots).flatMap((slot): Unnumbered<PageEntry | BareReading>[] => {
     if (slot.kind === "reading") {
-      const shown = shownReading(slot, lemmas, own, placed, drawn);
+      const shown = shownReading(slot, lemmas, own, placed, drawn, declared);
       return shown !== undefined ? [shown] : slot.readings.map((reading) => ({ kind: "bare", reading }));
     }
     if (slot.kind === "grid") return [gridFormBlock(slot, drawn)];
@@ -1455,6 +1500,7 @@ function shownReading(
   own: ReadonlySet<string>,
   placed: PlacedFacts,
   drawn: Drawn,
+  declared: DeclaredConjugation | undefined,
 ): Unnumbered<PageReading> | undefined {
   const [reading, ...rest] = records;
   const also = [...rest, ...joined.map(({ source }) => source.reading).filter((record) => !rest.includes(record))];
@@ -1473,7 +1519,7 @@ function shownReading(
   const conjugations = conjugationTablesOf(reading);
 
   if (!isFormOfReading(reading)) {
-    const forms = ownFormsOf(reading);
+    const forms = ownFormsOf(reading, declared);
     const etymologies = nonEmpty(placed.etymologies.get(reading) ?? []);
     const synonyms = nonEmpty(relatedItems(placed.synonyms.get(reading) ?? []));
     const parts: LemmaPart[] = [];
