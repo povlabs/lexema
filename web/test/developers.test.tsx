@@ -792,10 +792,10 @@ test("the developer legal pages: a Contents column on a wide screen only, read a
   }
 });
 
-test("lexema.fyi keeps no /developers route, and its footer links to the developer site", async () => {
+test("lexema.fyi keeps no /developers route, and its footer has no link to the developer site for now (#796)", async () => {
   await assert.rejects(access(join(REPO, "web/app/(lexema)/developers")), { code: "ENOENT" });
   const footer = renderToStaticMarkup(<SiteFooter origins={ORIGIN} current="/" />);
-  assert.match(footer, /<a class="[^"]*" href="https:\/\/developers\.lexema\.fyi">Sviluppatori<\/a>/);
+  assert.doesNotMatch(footer, /developers\.lexema\.fyi|Sviluppatori/);
 });
 
 test("rendered for a Preview, every link to another site and every API address names that Preview's sibling host (#266)", () => {
@@ -809,9 +809,10 @@ test("rendered for a Preview, every link to another site and every API address n
   ];
   const html = pages.map((page) => renderToStaticMarkup(page)).join("\n");
   const hosts = new Set([...html.matchAll(/https?:\/\/([a-z0-9.-]*lexema\.fyi)/g)].map((match) => match[1]));
-  assert.deepEqual([...hosts].sort(), [`${name}.api-preview.lexema.fyi`, `${name}.developers-preview.lexema.fyi`, `${name}.preview.lexema.fyi`]);
+  // No page here links the developer site itself while the footer leaves it out (#796).
+  assert.deepEqual([...hosts].sort(), [`${name}.api-preview.lexema.fyi`, `${name}.preview.lexema.fyi`]);
 
-  assert.match(renderToStaticMarkup(<SiteFooter origins={preview} current="/" />), new RegExp(`href="https://${name}\\.developers-preview\\.lexema\\.fyi">Sviluppatori</a>`));
+  assert.doesNotMatch(renderToStaticMarkup(<SiteFooter origins={preview} current="/" />), /Sviluppatori/);
   assert.match(renderToStaticMarkup(<DeveloperFooter origins={preview} />), new RegExp(`href="https://${name}\\.preview\\.lexema\\.fyi">Lexema\\.fyi</a>`));
   const attribution = renderToStaticMarkup(<DeveloperDocs page={{ kind: "guide", guide: "attribution" }} signUp="open" origins={preview} />);
   assert.match(attribution, new RegExp(`href="https://${name}\\.preview\\.lexema\\.fyi/licence"`));
@@ -831,7 +832,7 @@ test("rendered for the live and local hosts, every link to another site and ever
     ];
     const html = pages.map((page) => renderToStaticMarkup(page)).join("\n");
     const hosts = new Set([...html.matchAll(/https?:\/\/([a-z0-9.-]*lexema\.fyi)/g)].map((match) => match[1]));
-    assert.deepEqual([...hosts].sort(), ["api.lexema.fyi", "developers.lexema.fyi", "lexema.fyi"], hostname);
+    assert.deepEqual([...hosts].sort(), ["api.lexema.fyi", "lexema.fyi"], hostname);
   }
 });
 

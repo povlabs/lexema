@@ -2615,7 +2615,7 @@ test("the field is a combobox in both states, and still a plain named input for 
   });
 });
 
-test("the footer links Licenza, Privacy, Contatti and Sviluppatori, and marks the page being shown", async () => {
+test("the footer links Licenza, Privacy and Contatti, with no Sviluppatori for now (#796), and marks the page being shown", async () => {
   const linksOf = (current: string) =>
     [...renderToStaticMarkup(<SiteFooter origins={ORIGIN} current={current} />).matchAll(/<a class="([^"]*)" href="([^"]+)"( aria-current="page")?>([^<]+)<\/a>/g)]
       .filter((match) => match[1] === SITE_FOOTER_LINK)
@@ -2624,12 +2624,11 @@ test("the footer links Licenza, Privacy, Contatti and Sviluppatori, and marks th
     ["Licenza", "/licence", false],
     ["Privacy", "/privacy", false],
     ["Contatti", `mailto:${CONTACT_EMAIL}`, false],
-    ["Sviluppatori", "https://developers.lexema.fyi", false],
   ]);
-  assert.deepEqual(linksOf("/licence").map(([label, , current]) => [label, current]), [["Licenza", true], ["Privacy", false], ["Contatti", false], ["Sviluppatori", false]]);
-  assert.deepEqual(linksOf("/privacy").map(([label, , current]) => [label, current]), [["Licenza", false], ["Privacy", true], ["Contatti", false], ["Sviluppatori", false]]);
+  assert.deepEqual(linksOf("/licence").map(([label, , current]) => [label, current]), [["Licenza", true], ["Privacy", false], ["Contatti", false]]);
+  assert.deepEqual(linksOf("/privacy").map(([label, , current]) => [label, current]), [["Licenza", false], ["Privacy", true], ["Contatti", false]]);
   // Contact is a mail link, so no page is ever its own: it is never marked.
-  assert.deepEqual(linksOf(`mailto:${CONTACT_EMAIL}`).map(([label, , current]) => [label, current]), [["Licenza", false], ["Privacy", false], ["Contatti", false], ["Sviluppatori", false]]);
+  assert.deepEqual(linksOf(`mailto:${CONTACT_EMAIL}`).map(([label, , current]) => [label, current]), [["Licenza", false], ["Privacy", false], ["Contatti", false]]);
   // The links' list is named in Italian too.
   assert.match(renderToStaticMarkup(<SiteFooter origins={ORIGIN} current="/" />), /<nav aria-label="Sito">/);
   // The marked link is drawn highlighted, in the strong text role.
@@ -2643,7 +2642,8 @@ test("the footer links Licenza, Privacy, Contatti and Sviluppatori, and marks th
   // this footer, told the page being shown, is asserted on the files.
   const layout = await readFile(join(REPO, "web/app/(lexema)/layout.tsx"), "utf8");
   assert.match(layout, /const \{ developers \} = await siteOrigins\(\);/);
-  // Only the origin the footer links to crosses into the client component (#647).
+  // Only the developer origin crosses into the client component (#647); the
+  // footer keeps it while its link is out (#796).
   assert.match(layout, /<CurrentSiteFooter origins=\{\{ developers \}\} \/>/);
   const current = await readFile(join(REPO, "web/components/dictionary/CurrentSiteFooter.tsx"), "utf8");
   assert.match(current, /<SiteFooter origins=\{origins\} current=\{usePathname\(\)\} \/>/);
