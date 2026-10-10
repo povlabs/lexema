@@ -5,6 +5,8 @@
 // array. Typing it as a plain string made `.trim()` throw on that URL and the
 // page answered with a server error instead of a search.
 
+import { NOT_FOUND } from "./wordPageText.ts";
+
 /** What the router can hand back for one search parameter. */
 export type QueryParam = string | string[] | undefined;
 
@@ -28,7 +30,7 @@ export function firstQuery(value: QueryParam): string {
  */
 export const SITE_NAME = "Lexema";
 export const SITE_PRONUNCIATION = "/lekˈsɛːma/";
-export const SITE_TAGLINE = "a simple dictionary";
+export const SITE_TAGLINE = "un dizionario semplice";
 
 /** What the title knows about the answer: the headword found, or that nothing was. */
 export type TitleOutcome = { found: string } | "not-found" | undefined;
@@ -42,12 +44,12 @@ const capitalised = (word: string): string => {
 /**
  * The browser tab's title. Before a query, what Lexema is; on a result, the
  * headword with its first letter in capitals (`Casa — Lexema`), though the page
- * shows it as the source spells it; when nothing was found, `No entry for
- * "<query>" — Lexema`, as typed.
+ * shows it as the source spells it; when nothing was found, `Nessuna voce per
+ * “<query>” — Lexema`, as typed, in the words of the page's own heading.
  */
 export function pageTitle(query: string, outcome?: TitleOutcome): string {
   const q = query.trim();
   if (q === "") return `${SITE_NAME} — ${SITE_TAGLINE}`;
-  if (outcome === "not-found") return `No entry for "${q}" — ${SITE_NAME}`;
+  if (outcome === "not-found") return `${NOT_FOUND.heading} “${q}” — ${SITE_NAME}`;
   return `${capitalised(outcome?.found ?? q)} — ${SITE_NAME}`;
 }

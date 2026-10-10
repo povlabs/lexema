@@ -131,7 +131,7 @@ export function cardOf(attempt: Attempt): Card {
  * never served for the new one. The served version in the address does the
  * same for the data.
  */
-export const CARD_DRAWING = "1";
+export const CARD_DRAWING = "2";
 
 const CARD_PREFIX = "/card/";
 const CARD_SUFFIX = ".png";

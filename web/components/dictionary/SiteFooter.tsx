@@ -5,7 +5,7 @@
 // of `page.tsx`: the layout imports `globals.css`, which Node cannot load, so
 // `web/test/page.test.tsx` renders this component instead of the layout.
 //
-// Four links (#139, #614): the Licence page, which carries the credit ADR 0009
+// Four links (#139, #614), in Italian (#791): the Licence page, which carries the credit ADR 0009
 // asks for, the Privacy notice, Contact, a mail to the address the developer
 // site gives too, and Developers, the one way from the dictionary to the
 // developer site (#159). Developers is on the host `origins` names, so a
@@ -15,6 +15,7 @@
 
 import type { SiteOrigins } from "@/worker/shared/hosts.ts";
 import { CONTACT_EMAIL } from "@/components/shared/contact.ts";
+import { FOOTER } from "@/lib/dictionary/siteText.ts";
 import {
   SITE_FOOTER,
   SITE_FOOTER_INNER,
@@ -35,10 +36,10 @@ type FooterLink = { kind: "page"; label: string; path: string } | { kind: "away"
 export type FooterOrigins = Pick<SiteOrigins, "developers">;
 
 const linksOf = (origins: FooterOrigins): readonly FooterLink[] => [
-  { kind: "page", label: "Licence", path: LICENCE_PATH },
-  { kind: "page", label: "Privacy", path: PRIVACY_PATH },
-  { kind: "away", label: "Contact", href: `mailto:${CONTACT_EMAIL}` },
-  { kind: "away", label: "Developers", href: origins.developers },
+  { kind: "page", label: FOOTER.licence, path: LICENCE_PATH },
+  { kind: "page", label: FOOTER.privacy, path: PRIVACY_PATH },
+  { kind: "away", label: FOOTER.contact, href: `mailto:${CONTACT_EMAIL}` },
+  { kind: "away", label: FOOTER.developers, href: origins.developers },
 ];
 
 const hrefOf = (link: FooterLink) => (link.kind === "page" ? link.path : link.href);
@@ -52,7 +53,7 @@ export function SiteFooter({ origins, current }: { origins: FooterOrigins; curre
         <a className={SITE_FOOTER_NAME} href="/">
           Lexema
         </a>
-        <nav aria-label="Site">
+        <nav aria-label={FOOTER.name}>
           <ul className={SITE_FOOTER_LINKS}>
             {linksOf(origins).map((link) => (
               <li key={link.label}>

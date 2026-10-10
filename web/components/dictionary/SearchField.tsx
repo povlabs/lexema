@@ -30,6 +30,7 @@ import { SearchIcon } from "@/components/shared/icons";
 import { isApple, isSearchShortcut, shortcutApplies, shortcutLabel } from "@/lib/shared/searchShortcut.ts";
 import type { SuggestAnswer } from "@/lib/dictionary/suggestAnswer.ts";
 import { suggestionsAt, SuggestionAsker } from "@/lib/dictionary/suggestionAsker.ts";
+import { SEARCH, SUGGESTIONS } from "@/lib/dictionary/siteText.ts";
 import {
   SEARCH_CLEAR,
   SEARCH_FIELD,
@@ -85,15 +86,15 @@ export function shownFor(answer: SuggestAnswer): Shown | null {
  */
 function statusOf(shown: Shown | null): string {
   if (shown === null) return "";
-  if (shown.kind === "failed") return "Suggestions could not be loaded.";
+  if (shown.kind === "failed") return SUGGESTIONS.failed;
   const count = shown.suggestions.length;
-  if (count === 0) return "No suggestions.";
-  return `${count} suggestion${count === 1 ? "" : "s"}. Use the up and down arrows to choose one.`;
+  if (count === 0) return SUGGESTIONS.none;
+  return SUGGESTIONS.count(count);
 }
 
 /**
  * The one search field: a magnifier at the left, and at the right either a
- * `×` that clears a query or, before one, the `ENTER` hint. No label above it
+ * `×` that clears a query or, before one, the `INVIO` hint. No label above it
  * and no button beside it — Enter submits — and its accessible name is on the
  * input itself, so a screen reader still hears what it is for.
  *
@@ -196,8 +197,8 @@ export function SearchField({ raw, version }: { raw: string; version: string }) 
             className={SEARCH_INPUT[at]}
             id="q"
             type="search"
-            aria-label="Search an Italian word"
-            placeholder="Search an Italian word"
+            aria-label={SEARCH.label}
+            placeholder={SEARCH.label}
             autoComplete="off"
             autoCapitalize="none"
             spellCheck={false}
@@ -215,13 +216,13 @@ export function SearchField({ raw, version }: { raw: string; version: string }) 
               </kbd>
             )}
             {value !== "" ? (
-              <a className={SEARCH_CLEAR} href="/" aria-label="Clear search" onClick={clear}>
+              <a className={SEARCH_CLEAR} href="/" aria-label={SEARCH.clear} onClick={clear}>
                 ×
               </a>
             ) : (
               (apple === undefined || focused) && (
                 <kbd className={SEARCH_HINT} aria-hidden="true">
-                  ENTER
+                  {SEARCH.enterKey}
                 </kbd>
               )
             )}
@@ -235,9 +236,7 @@ export function SearchField({ raw, version }: { raw: string; version: string }) 
             <Autocomplete.Empty>
               {shown !== null && (
                 <p className={SUGGEST_NOTE}>
-                  {shown.kind === "failed"
-                    ? "Suggestions could not be loaded. Enter still searches."
-                    : "No suggestions. Enter still searches."}
+                  {shown.kind === "failed" ? SUGGESTIONS.failed : SUGGESTIONS.none} {SUGGESTIONS.stillSearches}
                 </p>
               )}
             </Autocomplete.Empty>
@@ -246,7 +245,7 @@ export function SearchField({ raw, version }: { raw: string; version: string }) 
                 <Autocomplete.Item key={suggestion} value={suggestion} className={SUGGEST_ITEM}>
                   <span lang="it">{suggestion}</span>
                   <span className={SUGGEST_ITEM_HINT} aria-hidden="true">
-                    ENTER
+                    {SEARCH.enterKey}
                   </span>
                 </Autocomplete.Item>
               )}

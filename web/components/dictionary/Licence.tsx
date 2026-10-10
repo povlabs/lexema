@@ -3,7 +3,8 @@
 // This page carries the whole credit ADR 0009 asks for, which every result's
 // small Source link leans on. The words are Huey's, approved on 2026-10-04
 // (https://github.com/povlabs/lexema/issues/139#issuecomment-5978972736), and
-// are kept exactly; only the release in section 5 is filled in, from the value
+// are kept exactly in meaning, in Italian since #791: the same claims, none
+// added or dropped. Only the release in section 5 is filled in, from the value
 // `licence/page.tsx` hands in. Sections 1, 3, 4, 5 and 7 carry the ids the old
 // `/attribution` page's sections had, so a link to one of them still lands on
 // the section that replaced it.
@@ -11,32 +12,34 @@
 import { ExternalLink } from "@/components/shared/ExternalLink";
 import { LEGAL_ITEMS, LEGAL_PARAGRAPH, LEGAL_UNBROKEN, LINK } from "@/components/shared/styles.ts";
 import type { ServedRelease } from "@lexema/source/servedRelease.ts";
-import { LegalItem } from "@/components/shared/LegalPage";
-import { DictionaryLegalPage } from "./DictionaryLegalPage";
+import { dayIn, LegalItem } from "@/components/shared/LegalPage";
+import { LEGAL_TITLE } from "@/lib/dictionary/siteText.ts";
+import { DictionaryLegalPage, KICKER } from "./DictionaryLegalPage";
 
 const LICENCE_URL = "https://creativecommons.org/licenses/by-sa/4.0/";
 const LICENCE_TEXT_URL = "https://creativecommons.org/licenses/by-sa/4.0/legalcode";
 
 /** A dump's `YYYY-MM-DD` date, as a reader would say it. */
-const DAY = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+const DAY = dayIn("it-IT");
 
 /** The whole page, over the release the dictionary serves. */
 export function Licence({ release }: { release: ServedRelease }) {
   return (
     <DictionaryLegalPage
-      kicker="LEXEMA · LEGAL"
-      title="Licence"
+      kicker={KICKER}
+      title={LEGAL_TITLE.licence}
       effective="2026-10-04"
-      lede="This page sets out the terms under which the lexical content published on Lexema may be reused, and credits the sources from which it is derived."
+      lede="Questa pagina stabilisce le condizioni alle quali il contenuto lessicale pubblicato su Lexema può essere riutilizzato e cita le fonti da cui deriva."
       sections={[
         {
           id: "licence",
-          title: "Licence",
+          title: "Licenza",
           body: (
             <p className={LEGAL_PARAGRAPH}>
-              The definitions and other lexical content derived from the sources below are made available under the{" "}
-              <ExternalLink className={LINK} href={LICENCE_URL}>
-                Creative Commons Attribution-ShareAlike 4.0 International licence (CC BY-SA 4.0)
+              Le definizioni e gli altri contenuti lessicali derivati dalle fonti indicate di seguito sono resi
+              disponibili con la licenza{" "}
+              <ExternalLink language="it" className={LINK} href={LICENCE_URL}>
+                Creative Commons Attribuzione - Condividi allo stesso modo 4.0 Internazionale (CC BY-SA 4.0)
               </ExternalLink>
               .
             </p>
@@ -44,99 +47,102 @@ export function Licence({ release }: { release: ServedRelease }) {
         },
         {
           id: "reuse",
-          title: "Reuse",
+          title: "Riutilizzo",
           body: (
             <>
-              <p className={LEGAL_PARAGRAPH}>Under that licence you may:</p>
+              <p className={LEGAL_PARAGRAPH}>In base a tale licenza puoi:</p>
               <ul className={LEGAL_ITEMS}>
-                <LegalItem mark="a">copy and redistribute the content in any medium or format;</LegalItem>
-                <LegalItem mark="b">adapt, transform and build upon it, for any purpose, including commercially;</LegalItem>
+                <LegalItem mark="a">copiare e ridistribuire il contenuto con qualsiasi mezzo o formato;</LegalItem>
+                <LegalItem mark="b">
+                  adattarlo, trasformarlo e basarti su di esso, per qualsiasi fine, anche commerciale;
+                </LegalItem>
               </ul>
               <p className={LEGAL_PARAGRAPH}>
-                provided that you give appropriate credit, provide a link to the licence, indicate any changes made,
-                and distribute your contributions under the same licence.
+                a condizione di attribuire adeguatamente la paternità, fornire un link alla licenza, indicare le
+                eventuali modifiche apportate e distribuire i tuoi contributi con la stessa licenza.
               </p>
             </>
           ),
         },
         {
           id: "where",
-          title: "Sources",
+          title: "Fonti",
           body: (
             <>
               <p className={LEGAL_PARAGRAPH}>
-                The content is derived from the{" "}
-                <ExternalLink className={LINK} href="https://it.wiktionary.org/">
-                  Italian Wiktionary
+                Il contenuto deriva dal{" "}
+                <ExternalLink language="it" className={LINK} href="https://it.wiktionary.org/">
+                  Wikizionario
                 </ExternalLink>{" "}
-                (Wikizionario), a project of the{" "}
-                <ExternalLink className={LINK} href="https://wikimediafoundation.org/">
+                (il Wiktionary in italiano), un progetto della{" "}
+                <ExternalLink language="it" className={LINK} href="https://wikimediafoundation.org/">
                   Wikimedia Foundation
                 </ExternalLink>{" "}
-                written by volunteer contributors. Most entries are taken from the extraction published by{" "}
-                <ExternalLink className={LINK} href="https://kaikki.org/itwiktionary/">
+                scritto da collaboratori volontari. La maggior parte delle voci proviene dall’estrazione pubblicata
+                da{" "}
+                <ExternalLink language="it" className={LINK} href="https://kaikki.org/itwiktionary/">
                   kaikki.org
                 </ExternalLink>
-                , produced with{" "}
-                <ExternalLink className={LINK} href="https://github.com/tatuylonen/wiktextract">
+                , prodotta con{" "}
+                <ExternalLink language="it" className={LINK} href="https://github.com/tatuylonen/wiktextract">
                   wiktextract
                 </ExternalLink>{" "}
-                by Tatu Ylonen. Where that extraction could not read a page, Lexema reads the entry from the
-                page&rsquo;s own text in the{" "}
-                <ExternalLink className={LINK} href={release.dump.url}>
-                  Wikimedia dump
+                da Tatu Ylonen. Dove quell’estrazione non è riuscita a leggere una pagina, Lexema legge la voce dal
+                testo della pagina stessa nel{" "}
+                <ExternalLink language="it" className={LINK} href={release.dump.url}>
+                  dump di Wikimedia
                 </ExternalLink>
                 .
               </p>
               <p className={LEGAL_PARAGRAPH}>
-                The authors of each entry are recorded in the revision history of its Wiktionary page. Every entry on
-                Lexema links to that page.
+                Gli autori di ogni voce sono registrati nella cronologia delle versioni della sua pagina del
+                Wikizionario. Ogni voce di Lexema rimanda a quella pagina.
               </p>
             </>
           ),
         },
         {
           id: "changed",
-          title: "Modifications",
+          title: "Modifiche",
           body: (
             <p className={LEGAL_PARAGRAPH}>
-              Lexema has adapted the source material: it is restructured and indexed for search, some grammatical
-              information is added by rule, some wording is made consistent, and individual errors are corrected.
-              Lexema does not write or generate definitions.
+              Lexema ha adattato il materiale di origine: è ristrutturato e indicizzato per la ricerca, alcune
+              informazioni grammaticali sono aggiunte secondo regole, alcune formulazioni sono rese uniformi e singoli
+              errori sono corretti. Lexema non scrive né genera definizioni.
             </p>
           ),
         },
         {
           id: "version",
-          title: "Version of the data",
+          title: "Versione dei dati",
           body: (
             <p className={LEGAL_PARAGRAPH}>
-              The content is up to date with release <span className={LEGAL_UNBROKEN}>{release.release}</span>, published
-              by kaikki.org and built from the Italian Wiktionary dump of{" "}
+              Il contenuto è aggiornato alla release <span className={LEGAL_UNBROKEN}>{release.release}</span>,
+              pubblicata da kaikki.org e costruita a partire dal dump del Wikizionario del{" "}
               <span className={LEGAL_UNBROKEN}>{DAY.format(new Date(release.dump.date))}</span>.
             </p>
           ),
         },
         {
           id: "disclaimer",
-          title: "Disclaimer",
+          title: "Esclusione di garanzie",
           body: (
             <p className={LEGAL_PARAGRAPH}>
-              The content is provided &ldquo;as is&rdquo;, without warranties of any kind, as set out in{" "}
-              <ExternalLink className={LINK} href={LICENCE_TEXT_URL}>
-                section 5 of the licence
+              Il contenuto è fornito &laquo;così com’è&raquo;, senza garanzie di alcun tipo, come stabilito nella{" "}
+              <ExternalLink language="it" className={LINK} href={LICENCE_TEXT_URL}>
+                sezione 5 della licenza
               </ExternalLink>
-              . Lexema does not warrant that the content is accurate, complete or fit for any particular purpose.
+              . Lexema non garantisce che il contenuto sia accurato, completo o adatto a uno scopo particolare.
             </p>
           ),
         },
         {
           id: "trademarks",
-          title: "Trademarks",
+          title: "Marchi",
           body: (
             <p className={LEGAL_PARAGRAPH}>
-              Wikipedia, Wiktionary, Wikizionario and Wikimedia are registered trademarks of the Wikimedia Foundation,
-              Inc. Lexema is not affiliated with, endorsed or sponsored by the Wikimedia Foundation.
+              Wikipedia, Wiktionary, Wikizionario e Wikimedia sono marchi registrati della Wikimedia Foundation, Inc.
+              Lexema non è affiliato alla Wikimedia Foundation, né approvato o sponsorizzato da essa.
             </p>
           ),
         },

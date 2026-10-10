@@ -272,7 +272,7 @@ test("a card's address carries the drawing, the served version and the word, and
   assert.equal(cardAddressOf(new URL("https://lexema.fyi/card/1/it-0c432803.0.png?word=%20%20"))?.word, undefined);
   // An address from before the version was in it is still a card's, to be sent on.
   assert.deepEqual(cardAddressOf(new URL("https://lexema.fyi/card/1/it-0c432803.png?word=casa")), {
-    drawing: CARD_DRAWING,
+    drawing: "1",
     version: "it-0c432803",
     word: "casa",
   });
@@ -294,14 +294,14 @@ test("a result page's preview tags: title, description, a 1200×630 PNG on the p
   assert.equal(tags.description, "che desta impressione di piacere e gradimento");
   assert.equal(tags.openGraph.title, "Bello — Lexema");
   assert.deepEqual(tags.openGraph.images, [
-    { url: "https://x.preview.lexema.fyi/card/1/it-0c432803.0.png?word=bello", width: 1200, height: 630, type: "image/png" },
+    { url: "https://x.preview.lexema.fyi/card/2/it-0c432803.0.png?word=bello", width: 1200, height: 630, type: "image/png" },
   ]);
   assert.equal(tags.twitter.card, "summary_large_image");
 
   // The home page, an unknown word and a limited search all name the one home card.
-  const home = linkPreview({ title: "Lexema — a simple dictionary", card: HOME_CARD, word: "zzzqqq", version: "it-0c432803.0", origin: "https://lexema.fyi" });
-  assert.equal(home.openGraph.images[0].url, "https://lexema.fyi/card/1/it-0c432803.0.png");
-  assert.equal(home.description, "a simple dictionary");
+  const home = linkPreview({ title: "Lexema — un dizionario semplice", card: HOME_CARD, word: "zzzqqq", version: "it-0c432803.0", origin: "https://lexema.fyi" });
+  assert.equal(home.openGraph.images[0].url, "https://lexema.fyi/card/2/it-0c432803.0.png");
+  assert.equal(home.description, "un dizionario semplice");
 });
 
 test("the origin a page names its card on", () => {

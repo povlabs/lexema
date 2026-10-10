@@ -13,9 +13,9 @@ exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
 <path d="m10.5 10.5 3.5 3.5" stroke-linecap="round">
 </path>
 </svg>
-<input data-list-empty="" autoComplete="off" spellCheck="false" autoCorrect="off" autoCapitalize="none" role="combobox" aria-expanded="false" aria-haspopup="listbox" aria-autocomplete="list" id="q" type="search" aria-label="Search an Italian word" placeholder="Search an Italian word" lang="it" enterKeyHint="search" class="w-full min-w-0 bg-transparent py-3 pr-24 pl-[2.375rem] font-serif text-[1.0625rem] text-text-strong outline-none placeholder:font-sans placeholder:text-base placeholder:text-text-muted sm:pl-[2.875rem] sm:text-lg [&amp;::-webkit-search-cancel-button]:appearance-none" name="q" value="bello"/>
+<input data-list-empty="" autoComplete="off" spellCheck="false" autoCorrect="off" autoCapitalize="none" role="combobox" aria-expanded="false" aria-haspopup="listbox" aria-autocomplete="list" id="q" type="search" aria-label="Cerca una parola" placeholder="Cerca una parola" lang="it" enterKeyHint="search" class="w-full min-w-0 bg-transparent py-3 pr-24 pl-[2.375rem] font-serif text-[1.0625rem] text-text-strong outline-none placeholder:font-sans placeholder:text-base placeholder:text-text-muted sm:pl-[2.875rem] sm:text-lg [&amp;::-webkit-search-cancel-button]:appearance-none" name="q" value="bello"/>
 <div class="pointer-events-none absolute inset-y-0 right-1.5 flex items-center gap-1.5 sm:right-3">
-<a class="flex h-7 items-center leading-none pointer-events-auto w-7 justify-center font-sans text-lg text-text-muted no-underline hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/" aria-label="Clear search">×</a>
+<a class="flex h-7 items-center leading-none pointer-events-auto w-7 justify-center font-sans text-lg text-text-muted no-underline hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/" aria-label="Cancella la ricerca">×</a>
 </div>
 </div>
 </form>

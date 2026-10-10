@@ -10,7 +10,7 @@ export const metadata = { title: "Lexema", ...SITE_ICON_METADATA };
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const { developers } = await siteOrigins();
   return (
-    <html lang="en">
+    <html lang="it">
       {/* The dark scheme, said once: `surface` under the page and `text` on it,
           in the size and the face the manifest has not re-ruled. There is no
           light branch — the manifest rules dark only. */}

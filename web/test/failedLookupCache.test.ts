@@ -179,7 +179,7 @@ test("a word page whose lookup failed leaves no-store, still says the lookup fai
   assert.doesNotMatch(cacheControl, /private|max-age=3600/);
   assert.match(cacheControl, /(?:^|,)\s*no-store\s*(?:,|$)/);
   const html = await response.text();
-  assert.match(html, /The lookup failed, so this page cannot say whether/);
+  assert.match(html, /La ricerca non è riuscita, quindi questa pagina non può dire se/);
   assert.match(html, /role="alert"/);
   assert.deepEqual(scriptNoncesOf(html), [policyNonceOf(response)]);
   assert.equal(lookups, 1, "the title, the link preview and the result read one lookup");
@@ -197,7 +197,7 @@ test("with the lookup working, a found word, a word not found and the home page 
   const send = worker(workingD1);
   for (const [url, says] of [
     ["https://lexema.fyi/?q=bello", /bello/],
-    ["https://lexema.fyi/?q=zzqxnotaword", /No entry for/],
+    ["https://lexema.fyi/?q=zzqxnotaword", /Nessuna voce per/],
     ["https://lexema.fyi/", /<form/],
   ] as const) {
     const response = await send(url);
@@ -205,7 +205,7 @@ test("with the lookup working, a found word, a word not found and the home page 
     assert.equal(response.headers.get("cache-control"), PAGE_CACHE_CONTROL, url);
     const html = await response.text();
     assert.match(html, says, url);
-    assert.doesNotMatch(html, /The lookup failed/, url);
+    assert.doesNotMatch(html, /La ricerca non è riuscita/, url);
     assert.deepEqual(scriptNoncesOf(html), [policyNonceOf(response)], url);
   }
 });

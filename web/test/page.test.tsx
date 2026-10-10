@@ -50,11 +50,14 @@ import { readingIndex } from "@/components/shared/LegalContents";
 import { FirstLoad, Limited, Outcome, SearchPage, TRY_WORDS } from "@/components/dictionary/SearchPage";
 import { SiteFooter } from "@/components/dictionary/SiteFooter";
 import { CONTACT_EMAIL } from "@/components/shared/contact.ts";
-import { byHost, ORIGIN } from "@/worker/shared/hosts.ts";
+import { byHost, ORIGIN, SITE_NOT_FOUND } from "@/worker/shared/hosts.ts";
 import { SiteHeader } from "@/components/dictionary/SiteHeader";
 import { readingChoiceLabel } from "@/components/dictionary/ReportDialog";
 import { OPENING_TROUBLE, REPORT_BOX, REPORT_CHOICE_LABEL, REPORT_DETAILS_HINT, REPORT_SUBJECT_LABEL, reportReadings, SEND_TROUBLE } from "@/lib/dictionary/report.ts";
 import * as WORD_PAGE_TEXT from "@/lib/dictionary/wordPageText.ts";
+import * as SITE_TEXT from "@/lib/dictionary/siteText.ts";
+import { PAGE_NOT_FOUND } from "@/lib/dictionary/siteText.ts";
+import { PageNotFound } from "@/components/dictionary/PageNotFound";
 import { NotFound } from "@/components/dictionary/NotFound";
 import { PhraseView } from "@/components/dictionary/Phrase";
 import { phrasePage } from "@/lib/dictionary/phrasePage.ts";
@@ -73,7 +76,7 @@ import {
 } from "@/lib/dictionary/wordPage.ts";
 import { VerbFormBlockView } from "@/components/dictionary/Reading";
 import { WordView } from "@/components/dictionary/Word";
-import { firstQuery, pageTitle } from "@/lib/dictionary/params";
+import { firstQuery, pageTitle, SITE_TAGLINE } from "@/lib/dictionary/params";
 import { NOT_FOUND_SMOKE_WORDS, readingProblem, SMOKE_WORDS, wordPageProblems } from "@/builds/previewSmokeCommand.ts";
 // The class strings the components carry, imported rather than copied, so a
 // restyle that changes one changes both together.
@@ -2549,7 +2552,7 @@ test("each spelling of a cell has its own article line", async () => {
 
 // The page around the result ----------------------------------------------------
 
-test("the home page is the name, the field and the Try chips, centred", async () => {
+test("the home page is the name, the field and the Prova chips, centred", async () => {
   const home = renderToStaticMarkup(
     <SearchPage raw="" version={VERSION}>
       <FirstLoad />
@@ -2557,15 +2560,15 @@ test("the home page is the name, the field and the Try chips, centred", async ()
   );
   assert.match(home, new RegExp(`^<main class="${esc(SHELL_CENTRED)}"><h1 [^>]*>Lexema</h1>`));
   // Under the wordmark: its pronunciation, then what it is.
-  assert.match(textOf(home), /^Lexema\/lekˈsɛːma\/a simple dictionary/);
+  assert.match(textOf(home), /^Lexema\/lekˈsɛːma\/un dizionario semplice/);
   assert.doesNotMatch(home, new RegExp(esc(TOP_BAR)));
-  assert.match(home, /placeholder="Search an Italian word"/);
-  assert.match(home, /aria-label="Search an Italian word"/);
-  assert.match(home, />ENTER<\/kbd>/);
+  assert.match(home, /placeholder="Cerca una parola"/);
+  assert.match(home, /aria-label="Cerca una parola"/);
+  assert.match(home, />INVIO<\/kbd>/);
   assert.match(home, /<form class="[^"]*" role="search" action="\/" method="get">/);
   // Frame 00 draws the field before a query larger than the result frames draw it.
   assert.match(home, new RegExp(`class="${esc(SEARCH_FIELD.centred)}"`));
-  assert.match(home, />Try<\/span>/);
+  assert.match(home, /<nav class="[^"]*" aria-label="Prova una parola"><span class="[^"]*">Prova<\/span>/);
   for (const word of TRY_WORDS) assert.match(home, new RegExp(`href="/\\?q=${word}" lang="it">${word}</a>`));
   assert.doesNotMatch(home, /href="\/\?q=andavano"/);
 });
@@ -2574,10 +2577,10 @@ test("a results page has the top bar and one bordered field with a clear control
   await withDevSeed(async ({ db }) => {
     const html = await render(db, "casa");
     assert.match(html, new RegExp(`^<header class="${esc(TOP_BAR)}"><div class="[^"]*"><a class="[^"]*" href="/">Lexema</a></div></header><main class="${esc(SHELL_TOP)}">`));
-    assert.match(html, /<input [^>]*type="search" aria-label="Search an Italian word"[^>]*name="q" value="casa"\/>/);
-    assert.match(html, /<a class="[^"]*" href="\/" aria-label="Clear search">×<\/a>/);
+    assert.match(html, /<input [^>]*type="search" aria-label="Cerca una parola"[^>]*name="q" value="casa"\/>/);
+    assert.match(html, /<a class="[^"]*" href="\/" aria-label="Cancella la ricerca">×<\/a>/);
     assert.match(html, new RegExp(`class="${esc(SEARCH_FIELD.top)}"`));
-    assert.doesNotMatch(html, />ENTER</);
+    assert.doesNotMatch(html, />INVIO</);
     assert.equal(patternsOf(html, /<label[\s>]/), 0);
   });
   assert.match(renderToStaticMarkup(<SiteHeader />), />Lexema<\/a>/);
@@ -2612,21 +2615,23 @@ test("the field is a combobox in both states, and still a plain named input for 
   });
 });
 
-test("the footer links Licence, Privacy, Contact and Developers, and marks the page being shown", async () => {
+test("the footer links Licenza, Privacy, Contatti and Sviluppatori, and marks the page being shown", async () => {
   const linksOf = (current: string) =>
     [...renderToStaticMarkup(<SiteFooter origins={ORIGIN} current={current} />).matchAll(/<a class="([^"]*)" href="([^"]+)"( aria-current="page")?>([^<]+)<\/a>/g)]
       .filter((match) => match[1] === SITE_FOOTER_LINK)
       .map((match) => [match[4], match[2], match[3] !== undefined]);
   assert.deepEqual(linksOf("/"), [
-    ["Licence", "/licence", false],
+    ["Licenza", "/licence", false],
     ["Privacy", "/privacy", false],
-    ["Contact", `mailto:${CONTACT_EMAIL}`, false],
-    ["Developers", "https://developers.lexema.fyi", false],
+    ["Contatti", `mailto:${CONTACT_EMAIL}`, false],
+    ["Sviluppatori", "https://developers.lexema.fyi", false],
   ]);
-  assert.deepEqual(linksOf("/licence").map(([label, , current]) => [label, current]), [["Licence", true], ["Privacy", false], ["Contact", false], ["Developers", false]]);
-  assert.deepEqual(linksOf("/privacy").map(([label, , current]) => [label, current]), [["Licence", false], ["Privacy", true], ["Contact", false], ["Developers", false]]);
+  assert.deepEqual(linksOf("/licence").map(([label, , current]) => [label, current]), [["Licenza", true], ["Privacy", false], ["Contatti", false], ["Sviluppatori", false]]);
+  assert.deepEqual(linksOf("/privacy").map(([label, , current]) => [label, current]), [["Licenza", false], ["Privacy", true], ["Contatti", false], ["Sviluppatori", false]]);
   // Contact is a mail link, so no page is ever its own: it is never marked.
-  assert.deepEqual(linksOf(`mailto:${CONTACT_EMAIL}`).map(([label, , current]) => [label, current]), [["Licence", false], ["Privacy", false], ["Contact", false], ["Developers", false]]);
+  assert.deepEqual(linksOf(`mailto:${CONTACT_EMAIL}`).map(([label, , current]) => [label, current]), [["Licenza", false], ["Privacy", false], ["Contatti", false], ["Sviluppatori", false]]);
+  // The links' list is named in Italian too.
+  assert.match(renderToStaticMarkup(<SiteFooter origins={ORIGIN} current="/" />), /<nav aria-label="Sito">/);
   // The marked link is drawn highlighted, in the strong text role.
   assert.ok(SITE_FOOTER_LINK.split(" ").includes("aria-[current=page]:text-text-strong"));
   // The footer's wordmark goes home, in the same tab, like the top bar's.
@@ -2662,14 +2667,14 @@ test("the search page carries no credit line, no licence name and no contributor
 });
 
 test("the tab title is the word on a result, and what Lexema is on the home page", () => {
-  assert.equal(pageTitle(""), "Lexema — a simple dictionary");
-  assert.equal(pageTitle("   "), "Lexema — a simple dictionary");
+  assert.equal(pageTitle(""), "Lexema — un dizionario semplice");
+  assert.equal(pageTitle("   "), "Lexema — un dizionario semplice");
   // A result's title capitalises the headword's first letter; the page does not.
   assert.equal(pageTitle(" casa ", { found: "casa" }), "Casa — Lexema");
   assert.equal(pageTitle("citta", { found: "città" }), "Città — Lexema");
   assert.equal(pageTitle("roma", { found: "Roma" }), "Roma — Lexema");
   assert.equal(pageTitle("andavano", { found: "andavano" }), "Andavano — Lexema");
-  assert.equal(pageTitle("xqzt", "not-found"), 'No entry for "xqzt" — Lexema');
+  assert.equal(pageTitle("xqzt", "not-found"), "Nessuna voce per “xqzt” — Lexema");
 });
 
 test("a repeated query parameter is searched, not thrown on", async () => {
@@ -2690,13 +2695,19 @@ test("renders the states that are not an answer: rejected, failed, not found", a
       <Outcome raw="sale" attempt={{ outcome: "failed" }} />
     </SearchPage>,
   );
-  assert.match(failed, exact(`<p class="${ERROR}" role="alert">The lookup failed`));
+  assert.match(
+    failed,
+    exact(
+      `<p class="${ERROR}" role="alert">La ricerca non è riuscita, quindi questa pagina non può dire se <q>sale</q> è nel dizionario. Riprova tra un momento.</p>`,
+    ),
+  );
+  assert.match(failed, /<h1 class="sr-only">Ricerca di sale<\/h1>/);
   assert.doesNotMatch(failed, /release|D1|normalizer|SQLITE/i);
   assert.equal(patternsOf(failed, /<h1[\s>]/), 1);
 
   await withFixture(async ({ db }) => {
-    assert.match(await render(db, "   "), /Type a word to search for\./);
-    assert.match(await render(db, "a".repeat(200)), /That is 200 characters\. The limit is 128\./);
+    assert.match(await render(db, "   "), /Scrivi una parola da cercare\./);
+    assert.match(await render(db, "a".repeat(200)), /Sono 200 caratteri\. Il limite è 128\./);
     const missing = await render(db, "zzzznothing");
     assert.match(missing, /Nessuna voce per “zzzznothing”<\/h1>/);
     assert.doesNotMatch(missing, /Nothing in this release matches|Accents matter/);
@@ -2712,13 +2723,13 @@ test("a search over the limit says so plainly, under the same field, and claims 
   assert.match(
     html,
     exact(
-      `<p class="${ERROR}" role="alert">Too many searches in the last minute, so this one did not run. ` +
-        `Try again in a minute.</p>`,
+      `<p class="${ERROR}" role="alert">Troppe ricerche nell’ultimo minuto, quindi questa non è stata eseguita. ` +
+        `Riprova tra un minuto.</p>`,
     ),
   );
-  assert.match(html, /<input [^>]*type="search" aria-label="Search an Italian word"[^>]*name="q" value="sale"\/>/);
+  assert.match(html, /<input [^>]*type="search" aria-label="Cerca una parola"[^>]*name="q" value="sale"\/>/);
   assert.equal(patternsOf(html, /<h1[\s>]/), 1);
-  assert.doesNotMatch(html, /Nothing in this release|The lookup failed|Searching for/);
+  assert.doesNotMatch(html, /Nothing in this release|La ricerca non è riuscita|Searching for/);
 });
 
 /** The release today's repository serves, read from `dictionary-changes/` as the build reads it. */
@@ -2754,52 +2765,60 @@ const sectionsOf = (html: string): [string, string][] =>
     readOf(match[2]),
   ]);
 
-test("the Licence page reads, section by section, exactly as Huey approved it (#139)", () => {
+test("the Licence page reads, section by section, Huey's approved text in Italian (#139, #791)", () => {
   const html = licence();
-  assert.match(html, exact(`<p class="${LEGAL_KICKER}">LEXEMA · LEGAL</p>`));
-  assert.match(html, exact(`<h1 class="${LEGAL_TITLE}">Licence</h1>`));
-  assert.match(html, exact(`<p class="${LEGAL_EFFECTIVE}">Effective 4 October 2026</p>`));
+  assert.match(html, exact(`<p class="${LEGAL_KICKER}">LEXEMA · NOTE LEGALI</p>`));
+  assert.match(html, exact(`<h1 class="${LEGAL_TITLE}">Licenza</h1>`));
+  assert.match(html, exact(`<p class="${LEGAL_EFFECTIVE}">In vigore dal 4 ottobre 2026</p>`));
   assert.match(
     html,
     exact(
-      `<p class="${LEGAL_LEDE}">This page sets out the terms under which the lexical content published on Lexema may be reused, and credits the sources from which it is derived.</p>`,
+      `<p class="${LEGAL_LEDE}">Questa pagina stabilisce le condizioni alle quali il contenuto lessicale pubblicato su Lexema può essere riutilizzato e cita le fonti da cui deriva.</p>`,
     ),
   );
   const expected: [string, string, string[]][] = [
-    ["licence", "1. Licence", ["The definitions and other lexical content derived from the sources below are made available under the Creative Commons Attribution-ShareAlike 4.0 International licence (CC BY-SA 4.0)."]],
+    [
+      "licence",
+      "1. Licenza",
+      ["Le definizioni e gli altri contenuti lessicali derivati dalle fonti indicate di seguito sono resi disponibili con la licenza Creative Commons Attribuzione - Condividi allo stesso modo 4.0 Internazionale (CC BY-SA 4.0)."],
+    ],
     [
       "reuse",
-      "2. Reuse",
+      "2. Riutilizzo",
       [
-        "Under that licence you may:",
-        "(a) copy and redistribute the content in any medium or format;",
-        "(b) adapt, transform and build upon it, for any purpose, including commercially;",
-        "provided that you give appropriate credit, provide a link to the licence, indicate any changes made, and distribute your contributions under the same licence.",
+        "In base a tale licenza puoi:",
+        "(a) copiare e ridistribuire il contenuto con qualsiasi mezzo o formato;",
+        "(b) adattarlo, trasformarlo e basarti su di esso, per qualsiasi fine, anche commerciale;",
+        "a condizione di attribuire adeguatamente la paternità, fornire un link alla licenza, indicare le eventuali modifiche apportate e distribuire i tuoi contributi con la stessa licenza.",
       ],
     ],
     [
       "where",
-      "3. Sources",
+      "3. Fonti",
       [
-        "The content is derived from the Italian Wiktionary (Wikizionario), a project of the Wikimedia Foundation written by volunteer contributors. Most entries are taken from the extraction published by kaikki.org, produced with wiktextract by Tatu Ylonen. Where that extraction could not read a page, Lexema reads the entry from the page’s own text in the Wikimedia dump.",
-        "The authors of each entry are recorded in the revision history of its Wiktionary page. Every entry on Lexema links to that page.",
+        "Il contenuto deriva dal Wikizionario (il Wiktionary in italiano), un progetto della Wikimedia Foundation scritto da collaboratori volontari. La maggior parte delle voci proviene dall’estrazione pubblicata da kaikki.org, prodotta con wiktextract da Tatu Ylonen. Dove quell’estrazione non è riuscita a leggere una pagina, Lexema legge la voce dal testo della pagina stessa nel dump di Wikimedia.",
+        "Gli autori di ogni voce sono registrati nella cronologia delle versioni della sua pagina del Wikizionario. Ogni voce di Lexema rimanda a quella pagina.",
       ],
     ],
     [
       "changed",
-      "4. Modifications",
-      ["Lexema has adapted the source material: it is restructured and indexed for search, some grammatical information is added by rule, some wording is made consistent, and individual errors are corrected. Lexema does not write or generate definitions."],
+      "4. Modifiche",
+      ["Lexema ha adattato il materiale di origine: è ristrutturato e indicizzato per la ricerca, alcune informazioni grammaticali sono aggiunte secondo regole, alcune formulazioni sono rese uniformi e singoli errori sono corretti. Lexema non scrive né genera definizioni."],
     ],
-    ["version", "5. Version of the data", ["The content is up to date with release it-78385b62, published by kaikki.org and built from the Italian Wiktionary dump of 1 September 2026."]],
+    [
+      "version",
+      "5. Versione dei dati",
+      ["Il contenuto è aggiornato alla release it-78385b62, pubblicata da kaikki.org e costruita a partire dal dump del Wikizionario del 1 settembre 2026."],
+    ],
     [
       "disclaimer",
-      "6. Disclaimer",
-      ["The content is provided “as is”, without warranties of any kind, as set out in section 5 of the licence. Lexema does not warrant that the content is accurate, complete or fit for any particular purpose."],
+      "6. Esclusione di garanzie",
+      ["Il contenuto è fornito «così com’è», senza garanzie di alcun tipo, come stabilito nella sezione 5 della licenza. Lexema non garantisce che il contenuto sia accurato, completo o adatto a uno scopo particolare."],
     ],
     [
       "trademarks",
-      "7. Trademarks",
-      ["Wikipedia, Wiktionary, Wikizionario and Wikimedia are registered trademarks of the Wikimedia Foundation, Inc. Lexema is not affiliated with, endorsed or sponsored by the Wikimedia Foundation."],
+      "7. Marchi",
+      ["Wikipedia, Wiktionary, Wikizionario e Wikimedia sono marchi registrati della Wikimedia Foundation, Inc. Lexema non è affiliato alla Wikimedia Foundation, né approvato o sponsorizzato da essa."],
     ],
   ];
   assert.deepEqual(sectionsOf(html), expected.map(([id, heading]) => [id, heading]));
@@ -2812,66 +2831,66 @@ test("the Licence page links each source and the licence where /attribution did,
   assert.deepEqual(
     external.map((match) => [readOf(match[3]), match[2]]),
     [
-      ["Creative Commons Attribution-ShareAlike 4.0 International licence (CC BY-SA 4.0)", "https://creativecommons.org/licenses/by-sa/4.0/"],
-      ["Italian Wiktionary", "https://it.wiktionary.org/"],
+      ["Creative Commons Attribuzione - Condividi allo stesso modo 4.0 Internazionale (CC BY-SA 4.0)", "https://creativecommons.org/licenses/by-sa/4.0/"],
+      ["Wikizionario", "https://it.wiktionary.org/"],
       ["Wikimedia Foundation", "https://wikimediafoundation.org/"],
       ["kaikki.org", "https://kaikki.org/itwiktionary/"],
       ["wiktextract", "https://github.com/tatuylonen/wiktextract"],
       // The dump's own page, as /attribution linked it: the served release's dump.
-      ["Wikimedia dump", "https://dumps.wikimedia.org/itwiktionary/20260901/"],
-      ["section 5 of the licence", "https://creativecommons.org/licenses/by-sa/4.0/legalcode"],
+      ["dump di Wikimedia", "https://dumps.wikimedia.org/itwiktionary/20260901/"],
+      ["sezione 5 della licenza", "https://creativecommons.org/licenses/by-sa/4.0/legalcode"],
     ],
   );
   for (const [, attributes, , inner] of external) {
     assert.match(attributes, /target="_blank" rel="noopener noreferrer"/, attributes);
-    assert.match(inner, /opens in a new tab/, attributes);
+    assert.match(inner, /<span class="sr-only"> \(si apre in una nuova scheda\)<\/span>$/, attributes);
   }
   for (const page of [html, privacy()]) {
     for (const [, attributes] of page.matchAll(/<a ([^>]*href="(?:[/#]|mailto:)[^>]*)>/g)) assert.doesNotMatch(attributes, /target=/, attributes);
   }
 });
 
-test("the Privacy page reads, section by section, exactly as Huey approved it (#139)", () => {
+test("the Privacy page reads, section by section, Huey's approved text in Italian (#139, #791)", () => {
   const html = privacy();
-  assert.match(html, exact(`<p class="${LEGAL_KICKER}">LEXEMA · LEGAL</p>`));
+  assert.match(html, exact(`<p class="${LEGAL_KICKER}">LEXEMA · NOTE LEGALI</p>`));
   assert.match(html, exact(`<h1 class="${LEGAL_TITLE}">Privacy</h1>`));
-  assert.match(html, exact(`<p class="${LEGAL_EFFECTIVE}">Effective 4 October 2026</p>`));
+  assert.match(html, exact(`<p class="${LEGAL_EFFECTIVE}">In vigore dal 4 ottobre 2026</p>`));
   assert.match(
     html,
-    exact(`<p class="${LEGAL_LEDE}">This notice explains what information Lexema processes when you use lexema.fyi, why, and for how long.</p>`),
+    exact(`<p class="${LEGAL_LEDE}">Questa informativa spiega quali informazioni Lexema tratta quando usi lexema.fyi, perché e per quanto tempo.</p>`),
   );
   const expected: [string, string, string[]][] = [
     [
       "information",
-      "1. Information we process",
+      "1. Informazioni che trattiamo",
       [
-        "Lexema has no user accounts and does not use advertising, analytics or tracking cookies. We process only:",
-        "(a) your IP address, transiently, to limit the number of requests a single visitor can make. It is not stored;",
-        "(b) when you report a mistake or suggest a correction: the entry, the option you selected, any note you write, and, for one hour, a one-way code derived from your IP address, used only to limit the number of reports per hour.",
+        "Lexema non ha account utente e non usa pubblicità, strumenti di analisi né cookie di tracciamento. Trattiamo soltanto:",
+        "(a) il tuo indirizzo IP, in modo transitorio, per limitare il numero di richieste che un singolo visitatore può fare. Non viene conservato;",
+        "(b) quando segnali un errore o suggerisci una correzione: la voce, l’opzione che hai scelto, l’eventuale nota che scrivi e, per un’ora, un codice non reversibile derivato dal tuo indirizzo IP, usato solo per limitare il numero di segnalazioni all’ora.",
       ],
     ],
     [
       "purpose",
-      "2. Purpose and legal basis",
-      ["We process this information to operate the service, protect it from abuse and review reported errors. The legal basis is our legitimate interest in providing a reliable dictionary (Article 6(1)(f) GDPR)."],
+      "2. Finalità e base giuridica",
+      ["Trattiamo queste informazioni per far funzionare il servizio, proteggerlo dagli abusi ed esaminare gli errori segnalati. La base giuridica è il nostro legittimo interesse a offrire un dizionario affidabile (articolo 6, paragrafo 1, lettera f, del GDPR)."],
     ],
     [
       "providers",
-      "3. Service providers",
-      ["Lexema is hosted by Cloudflare, Inc., which processes requests on our behalf and may keep short-lived security logs. Report forms are protected by Cloudflare Turnstile. We do not sell or share information with anyone else."],
+      "3. Fornitori di servizi",
+      ["Lexema è ospitato da Cloudflare, Inc., che tratta le richieste per nostro conto e può conservare log di sicurezza di breve durata. I moduli di segnalazione sono protetti da Cloudflare Turnstile. Non vendiamo né condividiamo informazioni con nessun altro."],
     ],
     [
       "retention",
-      "4. Retention",
-      ["Request counts expire within minutes. The code derived from your IP address is erased one hour after a report is sent. Reports themselves are kept as a record of corrections to the dictionary; any note you wrote is erased as soon as the report is resolved."],
+      "4. Conservazione",
+      ["I conteggi delle richieste scadono entro pochi minuti. Il codice derivato dal tuo indirizzo IP viene cancellato un’ora dopo l’invio di una segnalazione. Le segnalazioni stesse sono conservate come registro delle correzioni al dizionario; l’eventuale nota che hai scritto viene cancellata non appena la segnalazione è risolta."],
     ],
     [
       "rights",
-      "5. Your rights",
-      ["Because Lexema does not store your IP address or any account, we generally cannot link stored information to you. Until a report is resolved, you may ask us to remove a note you wrote, using the address below. You also have the right to lodge a complaint with your data protection authority."],
+      "5. I tuoi diritti",
+      ["Poiché Lexema non conserva il tuo indirizzo IP né alcun account, in genere non possiamo collegare a te le informazioni conservate. Finché una segnalazione non è risolta, puoi chiederci di rimuovere una nota che hai scritto, usando l’indirizzo qui sotto. Hai anche il diritto di proporre reclamo alla tua autorità per la protezione dei dati."],
     ],
-    ["changes", "6. Changes", ["We may update this notice. The effective date above shows when it last changed."]],
-    ["contact", "7. Contact", ["For any question about this notice, write to:", "privacy@lexema.fyi"]],
+    ["changes", "6. Modifiche", ["Possiamo aggiornare questa informativa. La data di entrata in vigore indicata sopra mostra quando è cambiata l’ultima volta."]],
+    ["contact", "7. Contatti", ["Per qualsiasi domanda su questa informativa, scrivi a:", "privacy@lexema.fyi"]],
   ];
   assert.deepEqual(sectionsOf(html), expected.map(([id, heading]) => [id, heading]));
   for (const [id, heading, blocks] of expected) assert.deepEqual(readSection(html, id), { heading, blocks }, id);
@@ -2888,6 +2907,7 @@ test("both legal pages: the header, a Contents column on a wide screen only, no 
     // The Contents column lists every section, in order, each a link to it; on a phone it is hidden.
     const contents = html.slice(html.indexOf(`<nav class="${LEGAL_CONTENTS}"`), html.indexOf("</nav>"));
     assert.deepEqual(LEGAL_CONTENTS.split(" "), ["hidden", "sm:block"], "no Contents column on a phone");
+    assert.match(contents, />Indice<\/p>/);
     const entries = [...contents.matchAll(/<a class="[^"]*" href="#([^"]+)"( aria-current="location")?>(.*?)<\/a>/g)];
     const listed = entries.map((match) => [match[1], readOf(match[3])]);
     assert.deepEqual(listed, sectionsOf(html));
@@ -2904,7 +2924,7 @@ test("both legal pages: the header, a Contents column on a wide screen only, no 
   }
   const { metadata: licenceMeta } = await import("@/app/(lexema)/licence/page");
   const { metadata: privacyMeta } = await import("@/app/(lexema)/privacy/page");
-  assert.equal(licenceMeta.title, "Licence — Lexema");
+  assert.equal(licenceMeta.title, "Licenza — Lexema");
   assert.equal(privacyMeta.title, "Privacy — Lexema");
 });
 
@@ -2931,8 +2951,8 @@ test("the dictionary's legal pages have one-digit section numbers, so their titl
 
 test("a legal page's heading and Contents link read the number, a full stop and a space before the title (#581)", () => {
   for (const [html, id, read] of [
-    [licence(), "licence", "1. Licence"],
-    [privacy(), "information", "1. Information we process"],
+    [licence(), "licence", "1. Licenza"],
+    [privacy(), "information", "1. Informazioni che trattiamo"],
   ] as const) {
     const heading = sectionOf(html, id).match(/<h2[^>]*>(.*?)<\/h2>/);
     assert.equal(textOf(heading?.[1] ?? ""), read);
@@ -2947,15 +2967,15 @@ test("the Contents mark follows the section whose top has passed the read line, 
   assert.equal(readingIndex([-900, -500, 300], true), 2);
 });
 
-test("Privacy keeps \"one-way\" on one line on a phone (#581)", () => {
-  assert.match(sectionOf(privacy(), "information"), exact(`<span class="${LEGAL_UNBROKEN}">one-way</span>`));
+test("Privacy keeps \"non reversibile\" on one line on a phone (#581)", () => {
+  assert.match(sectionOf(privacy(), "information"), exact(`<span class="${LEGAL_UNBROKEN}">non reversibile</span>`));
 });
 
 test("the old /attribution sections land on the /licence sections that replaced them", () => {
   const html = licence();
   assert.deepEqual(
     ["licence", "where", "changed", "version", "trademarks"].map((id) => readSection(html, id).heading),
-    ["1. Licence", "3. Sources", "4. Modifications", "5. Version of the data", "7. Trademarks"],
+    ["1. Licenza", "3. Fonti", "4. Modifiche", "5. Versione dei dati", "7. Marchi"],
   );
 });
 
@@ -2989,7 +3009,7 @@ test("/attribution answers a permanent redirect to /licence, and only on the dic
   assert.deepEqual(app, ["https://lexema.fyi/licence", "https://developers.lexema.fyi/developer-site/attribution"]);
 });
 
-test("Version of the data follows the declarations: the newest feed release and its dump, else the master release", () => {
+test("Versione dei dati follows the declarations: the newest feed release and its dump, else the master release", () => {
   // Today's repository: the September feed of the master.
   assert.deepEqual(SERVED, { release: "it-78385b62", dump: { date: "2026-09-01", url: "https://dumps.wikimedia.org/itwiktionary/20260901/" } });
 
@@ -3014,13 +3034,13 @@ test("Version of the data follows the declarations: the newest feed release and 
     master,
   );
   assert.deepEqual(version(fed), [
-    "The content is up to date with release it-c0000000, published by kaikki.org and built from the Italian Wiktionary dump of 1 November 2026.",
+    "Il contenuto è aggiornato alla release it-c0000000, pubblicata da kaikki.org e costruita a partire dal dump del Wikizionario del 1 novembre 2026.",
   ]);
   assert.match(licence(fed), exact(`href="https://dumps.wikimedia.org/itwiktionary/20261101/"`));
 
   // With no feed declared, the master is what the dictionary serves.
   assert.deepEqual(version(servedRelease([other], catalog, master)), [
-    "The content is up to date with release it-aaaaaaaa, published by kaikki.org and built from the Italian Wiktionary dump of 1 August 2026.",
+    "Il contenuto è aggiornato alla release it-aaaaaaaa, pubblicata da kaikki.org e costruita a partire dal dump del Wikizionario del 1 agosto 2026.",
   ]);
   // A release with no recorded dump is refused, never shown without one.
   assert.throws(() => servedRelease([feed("it-dddddddd", "dictionary-changes/it-dddddddd.json")], catalog, master), ServedReleaseUnknown);
@@ -3997,7 +4017,8 @@ test("gravida and citta: a form block with a line built by rule, the base word's
 
 // The word page's interface is Italian (Huey's ruling of 2026-10-09 on #789):
 // its section labels, controls, report box, no-entry state and accessible
-// names. The footer, the landing page and the search box keep their English.
+// names. Since #791 the whole site is: the search box, the landing page, the
+// footer, the legal pages and the not-found page too.
 
 /** The English interface words the word page used before #789; none may come back. */
 const ENGLISH_INTERFACE =
@@ -4019,14 +4040,12 @@ test("every word page interface word, the report box's included, is Italian (#78
   for (const word of words) assert.doesNotMatch(word, ENGLISH_INTERFACE, word);
 });
 
-test("no English section title, control or accessible name comes back on a word page or a no-entry page (#789)", async () => {
+test("no English section title, control or accessible name comes back on a word page or a no-entry page (#789, #791)", async () => {
   await withDevSeed(async ({ db }) => {
     for (const query of ["casa", "andare", "andavano", "bello", "sale", "vado via", "citta", "stud", "mangare", "xqzt"]) {
       const html = await render(db, query);
-      // The search box above the result keeps its English; the page starts at its heading.
-      const start = html.indexOf("<h1");
-      assert.notEqual(start, -1, query);
-      const page = html.slice(start);
+      // The whole page, the search box above the result included (#791).
+      const page = html;
       const names = [...page.matchAll(/(?:aria-label|placeholder)="([^"]*)"/g)].map((match) => match[1]);
       for (const shown of [textOf(page), ...names]) assert.doesNotMatch(shown, ENGLISH_INTERFACE, query);
       assert.doesNotMatch(page, ENGLISH_INTERFACE, query);
@@ -4037,4 +4056,59 @@ test("no English section title, control or accessible name comes back on a word 
       assert.ok(andare.includes(label), `andare: ${label}`);
     }
   });
+});
+
+
+/** The English the rest of the site used before #791: its line, footer, search box, states and legal chrome. None may come back. */
+const ENGLISH_SITE =
+  /a simple dictionary|\b(Licence|Contact|Developers|Search an Italian word|Clear search|ENTER|Try a word|Try|Search for|Type a word|The lookup failed|Too many searches|No suggestions|could not be loaded|Enter still searches|LEGAL|Effective|Contents|Page not found|could not be found|Information we process|Your rights|Trademarks|Disclaimer|Modifications|Version of the data)\b/;
+
+test("the site line, the footer, the search box and the legal pages never go back to English (#791)", async () => {
+  // The site line is exactly Huey's, with no other tagline beside it.
+  assert.equal(SITE_TAGLINE, "un dizionario semplice");
+  assert.equal(pageTitle(""), "Lexema — un dizionario semplice");
+  const home = renderToStaticMarkup(
+    <SearchPage raw="" version={VERSION}>
+      <FirstLoad />
+    </SearchPage>,
+  );
+  const footer = renderToStaticMarkup(<SiteFooter origins={ORIGIN} current="/" />);
+  const notFound = renderToStaticMarkup(<PageNotFound />);
+  assert.match(notFound, />Pagina non trovata<\/h1>/);
+  // The plain 404 the Worker answers on lexema.fyi says what the page does.
+  assert.equal(SITE_NOT_FOUND, PAGE_NOT_FOUND);
+  const failed = renderToStaticMarkup(
+    <SearchPage raw="sale" version={VERSION}>
+      <Outcome raw="sale" attempt={{ outcome: "failed" }} />
+    </SearchPage>,
+  );
+  const limited = renderToStaticMarkup(
+    <SearchPage raw="sale" version={VERSION}>
+      <Limited raw="sale" />
+    </SearchPage>,
+  );
+  for (const [name, html] of [
+    ["home", home],
+    ["footer", footer],
+    ["not found", notFound],
+    ["failed", failed],
+    ["limited", limited],
+    ["licence", licence()],
+    ["privacy", privacy()],
+  ] as const) {
+    const names = [...html.matchAll(/(?:aria-label|placeholder)="([^"]*)"/g)].map((match) => match[1]);
+    for (const shown of [readOf(html), ...names]) {
+      assert.doesNotMatch(shown, ENGLISH_SITE, name);
+      assert.doesNotMatch(shown, /opens in a new tab/, name);
+    }
+  }
+  for (const word of stringsOf(SITE_TEXT)) assert.doesNotMatch(word, ENGLISH_SITE, word);
+  // Every lexema.fyi page is Italian from its root; the layout imports globals.css, so this is read off the file.
+  const layout = await readFile(join(REPO, "web/app/(lexema)/layout.tsx"), "utf8");
+  assert.match(layout, /<html lang="it">/);
+  // The legal pages' tab titles.
+  const { metadata: licenceMeta } = await import("@/app/(lexema)/licence/page");
+  const { metadata: notFoundMeta } = await import("@/app/(lexema)/not-found");
+  assert.doesNotMatch(licenceMeta.title, ENGLISH_SITE);
+  assert.equal(notFoundMeta.title, "Pagina non trovata — Lexema");
 });

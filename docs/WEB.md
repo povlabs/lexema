@@ -105,7 +105,7 @@ release is served; flipping it safely is #18.
 ## Why a server component and no client fetching
 
 Before a query the page is the wordmark, its pronunciation `/lekˈsɛːma/` and
-*a simple dictionary* under it, and the search field, centred on the screen
+*un dizionario semplice* under it, and the search field, centred on the screen
 ([design-system-manifest.md § "The page"](../design-system-manifest.md#the-page));
 with a query, the field moves to the top and the result fills the page. Both
 are this one server-rendered route.
@@ -677,8 +677,9 @@ credit be satisfied by a link to a page that carries the required information.
 the licence and what it allows, the sources and where each entry's authors are
 recorded, what Lexema adapted, the release the content is up to date with, the
 no-warranty notice and the trademark line. Its words are Huey's approved text,
-kept exactly. `/privacy` beside it is the Privacy notice, and the footer on every
-page links *Licence*, *Privacy* and *Developers*, marking the page being shown.
+in a faithful Italian version since #791. `/privacy` beside it is the Privacy
+notice, and the footer on every page links *Licenza*, *Privacy*, *Contatti* and
+*Sviluppatori*, marking the page being shown.
 
 `/attribution`, the page's old address, answers a permanent redirect to
 `/licence` (`worker/shared/hosts.ts`). A browser never sends a URL's fragment, so

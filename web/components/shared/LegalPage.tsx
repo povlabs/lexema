@@ -37,7 +37,7 @@ export interface LegalSection {
 
 /** A legal page's text. `effective` is the date it took effect, `YYYY-MM-DD`. */
 export interface LegalText {
-  /** The line above the title, naming the site: `LEXEMA · LEGAL`. */
+  /** The line above the title, naming the site: `LEXEMA · NOTE LEGALI`. */
   kicker: string;
   title: string;
   effective: string;
@@ -57,8 +57,18 @@ export function LegalItem({ mark, children }: { mark: string; children: ReactNod
   );
 }
 
-/** `2026-10-04` as `4 October 2026`, the date a reader would say. */
-const DAY = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+/** A `YYYY-MM-DD` date as a reader of `locale` would say it: `4 October 2026`, `4 ottobre 2026`. */
+export const dayIn = (locale: "en-GB" | "it-IT"): Intl.DateTimeFormat =>
+  new Intl.DateTimeFormat(locale, { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+
+/**
+ * The words a legal page draws around its text, in its site's language: the
+ * dictionary is Italian (#791), the developer site English.
+ */
+const CHROME: Readonly<Record<LegalSite, { contents: string; effective: (date: Date) => string }>> = {
+  dictionary: { contents: "Indice", effective: (date) => `In vigore dal ${dayIn("it-IT").format(date)}` },
+  developers: { contents: "Contents", effective: (date) => `Effective ${dayIn("en-GB").format(date)}` },
+};
 
 /** How many digits the highest of `count` section numbers has. */
 export function numberDigits(count: number): LegalNumberDigits {
@@ -73,11 +83,11 @@ export function LegalPage({ site, kicker, title, effective, lede, sections }: Le
   return (
     <main className={LEGAL_SHELL[site]}>
       <div className={LEGAL_LAYOUT[numberDigits(sections.length)]}>
-        <LegalContents sections={sections.map(({ id, title }) => ({ id, title }))} />
+        <LegalContents label={CHROME[site].contents} sections={sections.map(({ id, title }) => ({ id, title }))} />
         <article className={LEGAL_TEXT}>
           <p className={LEGAL_KICKER}>{kicker}</p>
           <h1 className={LEGAL_TITLE}>{title}</h1>
-          <p className={LEGAL_EFFECTIVE}>Effective {DAY.format(new Date(effective))}</p>
+          <p className={LEGAL_EFFECTIVE}>{CHROME[site].effective(new Date(effective))}</p>
           <p className={LEGAL_LEDE}>{lede}</p>
           {sections.map((section, i) => (
             <section key={section.id} className={LEGAL_SECTION} id={section.id} aria-labelledby={`${section.id}-heading`}>

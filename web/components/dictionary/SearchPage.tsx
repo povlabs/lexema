@@ -24,6 +24,8 @@ import { WrittenOffer } from "./WrittenOffer";
 import { phrasePage } from "@/lib/dictionary/phrasePage.ts";
 import { wordPage } from "@/lib/dictionary/wordPage.ts";
 import { SITE_NAME, SITE_PRONUNCIATION, SITE_TAGLINE } from "@/lib/dictionary/params.ts";
+import { SEARCH_STATE, TRY } from "@/lib/dictionary/siteText.ts";
+import { PRONUNCIATION_LABEL } from "@/lib/dictionary/wordPageText.ts";
 import {
   ERROR,
   HOME_NAME,
@@ -56,7 +58,7 @@ export function SearchPage({ raw, version, children }: { raw: string; version: s
     return (
       <main className={SHELL_CENTRED}>
         <h1 className={HOME_NAME}>{SITE_NAME}</h1>
-        <p className={HOME_PRONUNCIATION} aria-label="Pronunciation">
+        <p className={HOME_PRONUNCIATION} aria-label={PRONUNCIATION_LABEL}>
           {SITE_PRONUNCIATION}
         </p>
         <p className={HOME_TAGLINE}>{SITE_TAGLINE}</p>
@@ -82,8 +84,8 @@ export const TRY_WORDS = ["casa", "andare", "bello", "sale", "studente"] as cons
 /** Nothing asked yet. */
 export function FirstLoad() {
   return (
-    <nav className={TRY_ROW} aria-label="Try a word">
-      <span className={TRY_LABEL}>Try</span>
+    <nav className={TRY_ROW} aria-label={TRY.name}>
+      <span className={TRY_LABEL}>{TRY.label}</span>
       {TRY_WORDS.map((word) => (
         <a key={word} className={TRY_CHIP} href={`/?q=${word}`} lang="it">
           {word}
@@ -103,10 +105,10 @@ export function Limited({ raw }: { raw: string }) {
   return (
     <>
       <h1 className="sr-only">
-        Search for <span lang="it">{raw.trim()}</span>
+        {SEARCH_STATE.heading} {raw.trim()}
       </h1>
       <p className={ERROR} role="alert">
-        Too many searches in the last minute, so this one did not run. Try again in a minute.
+        {SEARCH_STATE.limited}
       </p>
     </>
   );
@@ -150,13 +152,13 @@ export function Outcome({ raw, attempt, siteKey }: { raw: string; attempt: Attem
   return (
     <>
       <h1 className="sr-only">
-        Search for <span lang="it">{query}</span>
+        {SEARCH_STATE.heading} {query}
       </h1>
       {attempt.outcome === "rejected" && (
         <p className={ERROR} role="alert">
           {attempt.rejection.reason === "empty"
-            ? "Type a word to search for."
-            : `That is ${attempt.rejection.length} characters. The limit is ${attempt.rejection.limit}.`}
+            ? SEARCH_STATE.empty
+            : SEARCH_STATE.tooLong(attempt.rejection.length, attempt.rejection.limit)}
         </p>
       )}
 
@@ -165,8 +167,7 @@ export function Outcome({ raw, attempt, siteKey }: { raw: string; attempt: Attem
           Why it failed is in the Worker's log, not on this page. */}
       {attempt.outcome === "failed" && (
         <p className={ERROR} role="alert">
-          The lookup failed, so this page cannot say whether <q lang="it">{query}</q> is in the
-          dictionary. Try again in a moment.
+          {SEARCH_STATE.failedLead} <q>{query}</q> {SEARCH_STATE.failedTail}
         </p>
       )}
 

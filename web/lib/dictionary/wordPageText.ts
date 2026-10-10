@@ -4,8 +4,8 @@
 // holds them and a test can tell an English one apart. The report box's words
 // are in report.ts beside the choices they name.
 //
-// The footer, the landing page, the search box and the developer site keep
-// their English, and are not here.
+// The rest of the site's words, Italian too since #791, are in siteText.ts;
+// the developer site keeps its English.
 
 /** The small grey label over each block of a result. */
 export const SECTION_LABEL = {

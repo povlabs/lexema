@@ -6,6 +6,9 @@
 import { LegalPage, type LegalText } from "@/components/shared/LegalPage";
 import { SiteHeader } from "./SiteHeader";
 
+/** The line above both pages' titles, in the site's Italian (#791). */
+export const KICKER = "LEXEMA · NOTE LEGALI";
+
 export function DictionaryLegalPage(text: LegalText) {
   return (
     <>
