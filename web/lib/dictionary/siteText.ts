@@ -48,7 +48,7 @@ export const FOOTER = {
   licence: "Licenza",
   privacy: "Privacy",
   contact: "Contatti",
-  developers: "Sviluppatori",
+  developers: "API",
 } as const;
 
 /** An address no page answers. */

@@ -678,10 +678,9 @@ the licence and what it allows, the sources and where each entry's authors are
 recorded, what Lexema adapted, the release the content is up to date with, the
 no-warranty notice and the trademark line. Its words are Huey's approved text,
 in a faithful Italian version since #791. `/privacy` beside it is the Privacy
-notice, and the footer on every page links *Licenza*, *Privacy* and *Contatti*,
-marking the page being shown. The *Sviluppatori* link is out of the footer for
-now ([#796](https://github.com/povlabs/lexema/issues/796)); the developer site
-and the footer's developer origin stay.
+notice, and the footer on every page links *Licenza*, *Privacy*, *Contatti* and
+*API*, marking the page being shown. *API*, named *Sviluppatori* until
+[#796](https://github.com/povlabs/lexema/issues/796), links the developer site.
 
 `/attribution`, the page's old address, answers a permanent redirect to
 `/licence` (`worker/shared/hosts.ts`). A browser never sends a URL's fragment, so
