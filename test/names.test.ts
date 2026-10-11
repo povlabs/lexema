@@ -13,7 +13,7 @@ import { join, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { gzipSync } from "node:zlib";
 import { seedSql } from "../src/import/seedSql.js";
-import { SLICE_COPY_WORDS, sliceKeys } from "../src/deploy/previewSlice.js";
+import { sliceKeys } from "../src/deploy/previewSlice.js";
 import { builtSlice, readOnlyReader } from "../src/deploy/sliceCli.js";
 import { planWrite, readyChange, type WritePlan } from "../src/deploy/writePlan.js";
 import { touchedWords, wordsOfNames } from "../src/deploy/touchedWords.js";
@@ -401,7 +401,7 @@ test("the change declaration that loads the snapshot takes no inputs", () => {
   assert.throws(() => parseDeclaration("x.json", JSON.stringify({ command: "load:names", inputs: { snapshot: "x" }, expected: {} })), /inputs of load:names/);
 });
 
-test("a load:names branch's Preview slice serves the names its declaration names, with no read over D1's statement limit and no name row for a word it leaves out", async () => {
+test("a load:names branch's Preview slice serves every name it touches, with no read over D1's statement limit", async () => {
   const schema = await readFile(SCHEMA, "utf8");
   const db = await seeded();
   try {
@@ -422,7 +422,7 @@ test("a load:names branch's Preview slice serves the names its declaration names
     const declared = { state: "declared" as const, fingerprint: "f".repeat(64), declarations: [parseDraft("dictionary-changes/names.json", text)] };
     const plan = (declaration: DeclarationDraft): Promise<WritePlan> => planWrite(readyChange(declaration, null), reader, "2026-10-11T00:00:00Z", { names: [...SNAPSHOT, ...many] });
     const touched = (await plan(declared.declarations[0])).touched;
-    assert.ok(touched.kind === "words" && touched.words.length > SLICE_COPY_WORDS);
+    assert.ok(touched.kind === "words" && touched.words.length > 7_000);
 
     sent.length = 0;
     // The Preview build's cap (SLICE_ROWS_WRITTEN_CAP, web/builds/previewSlice.ts).
@@ -431,15 +431,9 @@ test("a load:names branch's Preview slice serves the names its declaration names
     const { slice } = built;
     try {
       assert.deepEqual(sent.map((sql) => Buffer.byteLength(sql)).filter((bytes) => bytes > 100_000), []);
-      // At most SLICE_COPY_WORDS words are copied, the named ones first; every other touched word is left out.
-      assert.equal(slice.isSample, true);
-      assert.equal(slice.keys.length, SLICE_COPY_WORDS);
-      for (const key of sliceKeys(["Hormuz", "mar Mediterraneo"])) assert.ok(slice.keys.includes(key), key);
-      assert.deepEqual([...slice.keys, ...slice.leftOut].sort(), sliceKeys(touched.words));
-      // The slice keeps the served words' name rows only: the left-out words read the shared dictionary.
-      const served = new Set(slice.keys);
-      const keys = (slice.db.prepare("SELECT label_key FROM name_entry").all() as { label_key: string }[]).map(({ label_key }) => label_key);
-      assert.ok(keys.length > 0 && keys.every((key) => served.has(key)), `${keys.length} name rows`);
+      // Under the cap the slice is whole (ADR 0018): it serves every touched word and leaves none out.
+      assert.equal(slice.isSample, false);
+      assert.deepEqual(slice.keys, sliceKeys(touched.words));
       const sliced = fromNodeSqlite(slice.db);
       const readings = async (word: string) => {
         const result = await lookup({ db: sliced, releaseId: RELEASE, query: word });

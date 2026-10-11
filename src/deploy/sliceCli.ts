@@ -126,7 +126,7 @@ export async function builtSlice(declared: Extract<SliceDeclared, { state: "decl
   try {
     if (cap === undefined) return { state: "built", slice: PreviewSlice.build({ reader, words: touched.words, ...inputs }) };
     const named = declared.declarations.flatMap(({ lookups = [] }) => lookups.map(({ word }) => word));
-    const source = SliceSource.copy({ reader, words: touched.words, named, schema });
+    const source = SliceSource.copy({ reader, words: touched.words, schema });
     try {
       return { state: "built", slice: PreviewSlice.fitting({ source, named, cap, ...inputs }) };
     } finally {
