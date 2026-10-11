@@ -872,6 +872,9 @@ test("/lookup, /lookup/batch and /exists find the word a form the source lists n
     ["raccontarvi", ["raccontare verb headword"]],
     ["dirlo", ["dire verb headword"]],
     ["aver", ["avere noun headword", "avere verb headword", "avere verb headword"]],
+    // A regular form of a word that lists none: saggezza's plural, pettinare's present.
+    ["saggezze", ["saggezza noun headword"]],
+    ["pettina", ["pettinare verb headword"]],
   ];
   for (const [q, expected] of cases) {
     assert.deepEqual(candidates(await okBody(`lookup?q=${encodeURIComponent(q)}`)), expected, q);
@@ -886,6 +889,8 @@ test("/lookup, /lookup/batch and /exists find the word a form the source lists n
       ["aver", true, "avere", "noun"],
       ["aver", true, "avere", "verb"],
       ["aver", true, "avere", "verb"],
+      ["saggezze", true, "saggezza", "noun"],
+      ["pettina", true, "pettinare", "verb"],
     ],
   );
 });

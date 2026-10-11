@@ -38,6 +38,7 @@ import { servedRelease, ServedReleaseUnknown, type ServedRelease } from "../../s
 import type { DeclaredChange, ReleaseId } from "../../src/update/declaration.js";
 import { readServedRelease } from "../../src/update/readServedRelease.js";
 import { fromNodeSqlite } from "../../src/lookup/database.js";
+import { lookup } from "../../src/lookup/lookup.js";
 import { formsOfQueryReadings, isFormOfReading, type Reading, type SourceRef } from "../../src/lookup/types.js";
 import type { Attempt } from "@/lib/dictionary/attempt.ts";
 import { searchAttempt } from "@/lib/dictionary/searchAttempt.ts";
@@ -1091,6 +1092,12 @@ test("a form the source lists nowhere shows its word's page: quei and quegli que
     assert.deepEqual(headingsOf(bravissimo), ["1·Aggettivo·maschile, singolare"]);
     // A participle the table lists only as piaciuto is piacere's form block.
     assert.deepEqual(headingsOf(await render(db, "piaciute")), ["1·Voce verbale·piacere"]);
+    // A regular form of a word that lists none: a plural, a feminine, a verb form, an English plural.
+    for (const [query, word] of [["follie", "follia"], ["crucchi", "crucco"], ["poverina", "poverino"], ["fischia", "fischiare"], ["marines", "marine"]] as const) {
+      const html = await render(db, query);
+      headedBy(html, word);
+      assert.ok(!html.includes(NOT_FOUND_HEADING), query);
+    }
   });
   await withDevSeedAndPages(async ({ db }) => {
     const html = await render(db, "raccontarvi");
@@ -3624,6 +3631,19 @@ test("a declared lemma's page has no definitions and no note on what it lacks", 
       shown.push(word);
     }
     assert.equal(shown.length, 6);
+  });
+});
+
+test("a declared lemma keeps its page when rule it-word-shape/v1 reads it as a shape: aggrapparsi stays itself beside aggrappare (#809)", async () => {
+  await withLines([...DECLARED_LINES, ...WORD_SHAPE_LINES], async ({ db }) => {
+    // The lookup reads aggrapparsi as aggrappare with a clitic; the page answers the word itself.
+    const shaped = await lookup({ db: fromNodeSqlite(db), releaseId: RELEASE, query: "aggrapparsi" });
+    assert.ok(shaped.outcome === "found" && shaped.route.kind === "shape");
+    const html = await render(db, "aggrapparsi");
+    assert.match(html, new RegExp(`<h1 class="${esc(WORD_HEADING)}" lang="it">aggrapparsi</h1>`));
+    assert.deepEqual(declaredHeadings(html), ["Verbo"]);
+    // A clitic form no record names is still aggrappare's.
+    assert.match(await render(db, "aggrapparti"), new RegExp(`<h1 class="${esc(WORD_HEADING)}" lang="it">aggrappare</h1>`));
   });
 });
 

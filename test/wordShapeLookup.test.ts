@@ -6,8 +6,13 @@
 // seeded the way `pnpm run seed:dev` seeds D1, and the release lines of
 // `fixtures/word-shapes.jsonl`: dare (lines 2340 and 2341), mi (12704),
 // piacere (33110), quello (33211 and 33212) and bravo (70242) of release
-// it-0c432803, none of which the development fixture has. `raccontare` is a
-// page-only entry there, read from `fixtures/upstream-pages/raccontare.wikitext`.
+// it-0c432803, then studio (7581), game (11654), valigia (40921), tipa
+// (54777), tata (67171), marine (91893), valigie (111783), annettere
+// (115927), follia (134835), yankee (138159), fischiare (138386), aggrappare
+// (321151), crucco (423156), poverino (448712), fuggitivo (453277) and
+// artificiere (458568), none of which the development fixture has.
+// `raccontare` is a page-only entry there, read from
+// `fixtures/upstream-pages/raccontare.wikitext`.
 
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
@@ -134,8 +139,54 @@ test("piaciute finds piacere through the past participle its table lists only as
   assert.deepEqual(readingsOf(result), ["piacere verb (table)"]);
 });
 
+test("a regular plural or feminine of a word that lists no forms finds that word: tate, follie, crucchi, tipe, fuggitivi, artificieri, poverina (#809)", async () => {
+  const cases: [string, string, string[]][] = [
+    ["tate", "inflected:tata", ["tata noun"]],
+    ["follie", "inflected:follia", ["follia noun"]],
+    ["crucchi", "inflected:crucco", ["crucco adj"]],
+    ["tipe", "inflected:tipa", ["tipa noun"]],
+    ["fuggitivi", "inflected:fuggitivo", ["fuggitivo adj"]],
+    ["artificieri", "inflected:artificiere", ["artificiere noun"]],
+    ["poverina", "inflected:poverino", ["poverino noun"]],
+  ];
+  for (const [query, spelling, readings] of cases) {
+    const result = await found(query);
+    assert.deepEqual(spellingsOf(result), [spelling], query);
+    assert.deepEqual(readingsOf(result), readings, query);
+  }
+});
+
+test("a word with a table is never inflected by rule: studii finds nothing, since studio lists studi (#809)", async () => {
+  assert.equal((await lookup({ db, releaseId: RELEASE, query: "studii" })).outcome, "not-found");
+});
+
+test("valige finds valigie, the plural valigia lists, and valigia through it (#809)", async () => {
+  const result = await found("valige");
+  assert.deepEqual(spellingsOf(result), ["plural-spelling:valigie"]);
+  assert.ok(readingsOf(result).includes("valigie noun"), readingsOf(result).join(", "));
+});
+
+test("a verb with no table finds its regular forms: fischia fischiare, annette annettere (#809)", async () => {
+  for (const [query, verb] of [["fischia", "fischiare"], ["annette", "annettere"], ["fischiano", "fischiare"]] as const) {
+    const result = await found(query);
+    assert.deepEqual(spellingsOf(result), [`conjugated:${verb}`], query);
+    assert.deepEqual(readingsOf(result), [`${verb} verb`], query);
+  }
+});
+
+test("an English plural finds its loanword: marines, games, yankees, studios (#809)", async () => {
+  for (const [query, word] of [["marines", "marine"], ["games", "game"], ["yankees", "yankee"], ["studios", "studio"]] as const) {
+    const result = await found(query);
+    assert.deepEqual(spellingsOf(result), [`english-plural:${word}`], query);
+    assert.deepEqual(readingsOf(result), [`${word} noun`], query);
+  }
+});
+
 test("the batch answers every shaped word with the records /v1/lookup answers it with, and exists() agrees (#809)", async () => {
-  const words = ["quei", "quegli", "raccontarvi", "dammi", "dirlo", "fammi", "quell'", "bell'", "m'", "aver", "far", "bravissimo", "piaciute", "qqqqqq", "citta'"];
+  const words = [
+    "quei", "quegli", "raccontarvi", "dammi", "dirlo", "fammi", "quell'", "bell'", "m'", "aver", "far", "bravissimo", "piaciute", "qqqqqq", "citta'",
+    "tate", "follie", "crucchi", "tipe", "fuggitivi", "artificieri", "poverina", "valige", "fischia", "annette", "marines", "games", "yankees", "studios",
+  ];
   const { answers } = await lookupBatch({ db, releaseId: RELEASE, queries: words });
   for (const [at, word] of words.entries()) {
     const single = await lookup({ db, releaseId: RELEASE, query: word });

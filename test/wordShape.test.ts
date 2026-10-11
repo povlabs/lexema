@@ -13,7 +13,7 @@ const keysOf = (key: string, shape: Shape): string[] =>
     .filter((spelling) => spelling.shape === shape)
     .map((spelling) => spelling.key);
 
-const record = (pos: string, plural = false, pastParticiple = false): ShapedRecord => ({ pos, plural, pastParticiple });
+const record = (pos: string, plural = false, pastParticiple = false, listsForms = false): ShapedRecord => ({ pos, plural, pastParticiple, listsForms });
 
 test("a verb with clitics names its infinitive, and its pronominal verb when the cluster opens with a reflexive: raccontarvi, vergognarti, andartene (#809)", () => {
   assert.ok(keysOf("raccontarvi", "clitic").includes("raccontare"));
@@ -94,11 +94,12 @@ test("a word of none of the shapes names nothing, and neither does a phrase", ()
 });
 
 test("no shape's word is a name, an abbreviation, a symbol or a nominal plural; a verb's plural is (#809)", () => {
-  for (const shape of ["clitic", "elided", "truncated", "demonstrative", "superlative", "participle"] as const) {
+  for (const shape of ["clitic", "elided", "truncated", "demonstrative", "superlative", "participle", "inflected", "conjugated", "plural-spelling", "english-plural"] as const) {
     assert.equal(shapeAdmits(shape, record("name")), false, shape);
     assert.equal(shapeAdmits(shape, record("abbrev")), false, shape);
     assert.equal(shapeAdmits(shape, record("symbol")), false, shape);
-    assert.equal(shapeAdmits(shape, record("adj", true)), false, shape);
+    // Only a plural has another plural spelling.
+    if (shape !== "plural-spelling") assert.equal(shapeAdmits(shape, record("adj", true)), false, shape);
   }
   assert.equal(shapeAdmits("truncated", record("verb", true)), true, "devon of devono");
   assert.equal(shapeAdmits("truncated", record("noun")), true, "cuor of cuore");
@@ -120,4 +121,72 @@ test("of each shape the lowest tier with an admitted row answers: capitan is cap
 
   const aver = answeringSpellings(shapedSpellings("aver"), (key) => (key === "avere" || key === "avero" ? [record("verb")] : []), (row) => row);
   assert.deepEqual(aver.map(({ spelling }) => spelling.key), ["avere"]);
+});
+
+test("a regular plural or feminine names its word, in tiers: tate tata, follie follia, crucchi crucco, artificieri artificiere, valige valigia, poverina poverino (#809)", () => {
+  const tiers = (key: string) => shapedSpellings(key).filter((spelling) => spelling.shape === "inflected").map(({ key: spelled, tier }) => [spelled, tier]);
+  assert.deepEqual(tiers("tate"), [["tata", 0], ["tato", 2]]);
+  assert.deepEqual(tiers("follie"), [["follia", 0], ["follio", 2]]);
+  assert.deepEqual(tiers("crucchi"), [["crucco", 0]]);
+  assert.deepEqual(tiers("bianche"), [["bianca", 0], ["bianco", 2]]);
+  assert.deepEqual(tiers("fuggitivi"), [["fuggitivo", 0], ["fuggitive", 0], ["fuggitivio", 0]]);
+  assert.deepEqual(tiers("artificieri"), [["artificiero", 0], ["artificiere", 0], ["artificierio", 0]]);
+  assert.deepEqual(tiers("valige"), [["valiga", 0], ["valigia", 0], ["valigo", 2]]);
+  assert.deepEqual(tiers("poverina"), [["poverino", 1]]);
+  assert.deepEqual(tiers("ai"), [], "no word of one letter is inflected");
+});
+
+test("a regular verb form names its infinitive: fischia fischiare, annette annettere, cerchi cercare, finisce finire (#809)", () => {
+  assert.ok(keysOf("fischia", "conjugated").includes("fischiare"));
+  assert.ok(keysOf("fischi", "conjugated").includes("fischiare"));
+  assert.ok(keysOf("annette", "conjugated").includes("annettere"));
+  assert.ok(keysOf("cerchi", "conjugated").includes("cercare"));
+  assert.ok(keysOf("cercheremo", "conjugated").includes("cercare"));
+  assert.ok(keysOf("finisce", "conjugated").includes("finire"));
+  assert.ok(keysOf("parlavano", "conjugated").includes("parlare"));
+  assert.ok(keysOf("temettero", "conjugated").includes("temere"));
+  assert.ok(keysOf("ama", "conjugated").includes("amare"));
+  assert.deepEqual(keysOf("da", "conjugated"), [], "no stem of one letter");
+});
+
+test("a -ce or -ge plural names its -cie or -gie spelling, and back: valige valigie, provincie province (#809)", () => {
+  assert.deepEqual(keysOf("valige", "plural-spelling"), ["valigie"]);
+  assert.deepEqual(keysOf("provincie", "plural-spelling"), ["province"]);
+  assert.deepEqual(keysOf("case", "plural-spelling"), []);
+});
+
+test("an English plural in -s names its loanword: marines marine, games game, yankees yankee, studios studio (#809)", () => {
+  assert.deepEqual(keysOf("marines", "english-plural"), ["marine"]);
+  assert.deepEqual(keysOf("games", "english-plural"), ["game"]);
+  assert.deepEqual(keysOf("yankees", "english-plural"), ["yankee"]);
+  assert.deepEqual(keysOf("studios", "english-plural"), ["studio"]);
+  assert.deepEqual(keysOf("cas", "english-plural"), [], "too short");
+  assert.deepEqual(keysOf("sig.", "english-plural"), []);
+});
+
+test("an inflected or conjugated word is a record that lists no forms; a plural spelling is a plural; an English plural is a noun's (#809)", () => {
+  assert.equal(shapeAdmits("inflected", record("noun")), true, "tata lists no forms");
+  assert.equal(shapeAdmits("inflected", record("adj")), true, "crucco lists no forms");
+  assert.equal(shapeAdmits("inflected", record("noun", false, false, true)), false, "studio lists studi");
+  assert.equal(shapeAdmits("inflected", record("verb")), false);
+  assert.equal(shapeAdmits("inflected", record("noun"), 1), true, "poverina of poverino, a noun");
+  assert.equal(shapeAdmits("inflected", record("noun"), 2), false, "home is no feminine plural of homo");
+  assert.equal(shapeAdmits("inflected", record("adj"), 2), true, "fuggitive of fuggitivo");
+  assert.equal(shapeAdmits("conjugated", record("verb")), true, "fischiare lists no conjugation");
+  assert.equal(shapeAdmits("conjugated", record("verb", false, false, true)), false, "a verb with a table lists its forms");
+  assert.equal(shapeAdmits("conjugated", record("noun")), false);
+  assert.equal(shapeAdmits("plural-spelling", record("noun", true)), true, "valigie, the plural valigia lists");
+  assert.equal(shapeAdmits("plural-spelling", record("noun")), false);
+  assert.equal(shapeAdmits("plural-spelling", record("verb", true)), false);
+  assert.equal(shapeAdmits("english-plural", record("noun", false, false, true)), true, "studio lists only its Italian plural");
+  assert.equal(shapeAdmits("english-plural", record("adj")), false);
+});
+
+test("a regular inflection answers only when no other shape does, and its lowest tier wins: tipe is tipa, piaciute stays the participle (#809)", () => {
+  const tipe = answeringSpellings(shapedSpellings("tipe"), (key) => (key === "tipa" ? [record("noun")] : key === "tipo" ? [record("adj")] : []), (row) => row);
+  assert.deepEqual(tipe.map(({ spelling }) => `${spelling.shape}:${spelling.key}`), ["inflected:tipa"]);
+
+  const rows: Record<string, ShapedRecord[]> = { piaciuto: [record("verb", false, true), record("adj")] };
+  const piaciute = answeringSpellings(shapedSpellings("piaciute"), (key) => rows[key] ?? [], (row) => row);
+  assert.deepEqual(piaciute.map(({ spelling }) => `${spelling.shape}:${spelling.key}`), ["participle:piaciuto"]);
 });

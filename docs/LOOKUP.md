@@ -218,11 +218,23 @@ the spellings of the words the key may be a form of, each with its shape:
 | `superlative` | `bravissimo`, `ricchissimi` | `bravo`, `brave`; `ricco` | adjectives |
 | `participle` | `piaciute`, `valsa` | the masculine singular, `piaciuto` | a verb's past participle cell |
 
+Four more shapes read the regular forms of a word whose record lists none.
+They answer only when none of the six above does:
+
+| Shape | Example | Spellings named | Records admitted |
+| --- | --- | --- | --- |
+| `inflected` | `tate`, `follie`, `crucchi`, `artificieri`, `poverina` | tier 0, the same gender: `-i` names `-o`, `-e` and `-io`, `-chi` `-co`; `-e` names `-a`, `-che` `-ca`, `-ce` and `-ge` also `-cia` and `-gia`. Tier 1, a feminine singular: `-a` names `-o`. Tier 2, a feminine plural: `-e` names `-o` | nouns and adjectives that list no forms; tier 2 adjectives only |
+| `conjugated` | `fischia`, `annette` | the infinitive of each regular ending the key ends with; `-iare` drops its `i` before `i` and `e`, `-care` and `-gare` write `h` | verbs that list no forms |
+| `plural-spelling` | `valige` | `-ce` and `-ge` name `-cie` and `-gie`, and back | a noun's or adjective's plural |
+| `english-plural` | `marines`, `games`, `studios` | the key without its `-s`, three letters at least | nouns |
+
 No shape admits a proper name, an abbreviation, a symbol or a word part, and
-none admits a spelling the source states a plural on a noun, adjective,
-pronoun or article record: `belle` is no `bell'`, `capitane` no `capitan`. A
-verb's plural is admitted (`devon` of `devono`). Of each shape only the lowest
-tier with an admitted record answers. An accent written as an apostrophe
+none but `plural-spelling` admits a spelling the source states a plural on a
+noun, adjective, pronoun or article record: `belle` is no `bell'`, `capitane`
+no `capitan`. A verb's plural is admitted (`devon` of `devono`). Of each shape
+only the lowest tier with an admitted record answers. `inflected` does not
+read a stated `invariable`: the source states it on `follia`, whose plural
+`follie` is regular. An accent written as an apostrophe
 (`citta'`) is no elision, and a word with an accent missing (`perche`) is no
 shape: accents are meaning ([LOOKUP_DESIGN.md](LOOKUP_DESIGN.md#accents-are-meaning)),
 and the not-found answer offers the accented word.
@@ -238,6 +250,11 @@ spellings reach, as a typed word's are made, then their page-only entries and
 hand-kept readings; `route` is `{ kind: "shape", spellings }`, the spellings that
 answered. `exists()` and `lookupBatch` answer the same way. Nothing derived is
 stored.
+
+The word page keeps a declared lemma's page (#453) for a query the rule reads
+as a shape: `aggrapparsi` is a declared lemma, so its page stays
+`aggrapparsi`, not `aggrappare` with a clitic
+([`searchAttempt.ts`](../web/lib/dictionary/searchAttempt.ts)).
 
 ## Outcomes
 

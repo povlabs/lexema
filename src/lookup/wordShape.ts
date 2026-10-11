@@ -35,6 +35,7 @@ export interface ShapeHitRow {
   is_headword_hit: number;
   is_plural: number;
   is_past_participle: number;
+  lists_forms: number;
 }
 
 /** A page-only entry a shaped spelling heads. */
@@ -54,15 +55,18 @@ export type ShapeRow =
   | { from: "page"; key: string; entry: ShapePageRow }
   | { from: "kept"; key: string; head: HandKeptHead };
 
-/** What rule `it-word-shape/v1` reads of a row's record. */
+/**
+ * What rule `it-word-shape/v1` reads of a row's record. A page-only entry and
+ * a hand-kept reading list no forms the lookup reads.
+ */
 export function shapedRecordOf(row: ShapeRow): ShapedRecord {
   switch (row.from) {
     case "source":
-      return { pos: row.hit.record_pos, plural: row.hit.is_plural === 1, pastParticiple: row.hit.is_past_participle === 1 };
+      return { pos: row.hit.record_pos, plural: row.hit.is_plural === 1, pastParticiple: row.hit.is_past_participle === 1, listsForms: row.hit.lists_forms === 1 };
     case "page":
-      return { pos: row.entry.pos, plural: false, pastParticiple: false };
+      return { pos: row.entry.pos, plural: false, pastParticiple: false, listsForms: false };
     case "kept":
-      return { pos: row.head.pos, plural: false, pastParticiple: false };
+      return { pos: row.head.pos, plural: false, pastParticiple: false, listsForms: false };
   }
 }
 
@@ -90,11 +94,15 @@ const IS_PAST_PARTICIPLE = `(lf.origin = 'embedded-form'
                           WHERE t.record_id = lf.record_id AND t.scope = 'form' AND t.scope_index = lf.form_index
                             AND t.status = 'stated' AND t.dimension = 'tense' AND t.value = 'past'))`;
 
+/** Whether a `lookup_form` row's record lists any form in `forms[]`. */
+const LISTS_FORMS = `EXISTS (SELECT 1 FROM lookup_form listed
+                      WHERE listed.record_id = lf.record_id AND listed.origin = 'embedded-form')`;
+
 /** The source's spellings, as `SEARCH_SQL` reads them. Its columns name every arm's. */
 const SOURCE_ARM = `SELECT lf.surface_key AS set_key, 'source' AS kind, r.record_id, r.release_id, r.line_no, r.line_sha256,
             r.word AS record_word, r.pos AS record_pos, r.pos_title AS record_pos_title,
             lf.origin, lf.json_pointer, lf.form_source, lf.surface, (lf.origin = 'headword') AS is_headword_hit,
-            ${IS_PLURAL} AS is_plural, ${IS_PAST_PARTICIPLE} AS is_past_participle,
+            ${IS_PLURAL} AS is_plural, ${IS_PAST_PARTICIPLE} AS is_past_participle, ${LISTS_FORMS} AS lists_forms,
             NULL AS entry_id, NULL AS revision_id, NULL AS page_line, NULL AS reading_id, NULL AS evidence_url, 0 AS arm
        FROM lookup_form lf
        JOIN source_record r ON r.record_id = lf.record_id
@@ -105,7 +113,7 @@ const SOURCE_ARM = `SELECT lf.surface_key AS set_key, 'source' AS kind, r.record
 const CELL_ARM = `SELECT c.surface_key, 'cell', r.record_id, r.release_id, r.line_no, r.line_sha256,
             r.word, r.pos, r.pos_title,
             lf.origin, lf.json_pointer, lf.form_source, c.surface, 0,
-            ${IS_PLURAL}, ${IS_PAST_PARTICIPLE},
+            ${IS_PLURAL}, ${IS_PAST_PARTICIPLE}, ${LISTS_FORMS},
             NULL, NULL, NULL, NULL, NULL, 0
        FROM corrected_form c
        JOIN lookup_form lf ON lf.record_id = c.record_id AND lf.form_index = c.form_index
@@ -116,7 +124,7 @@ const CELL_ARM = `SELECT c.surface_key, 'cell', r.record_id, r.release_id, r.lin
 /** The page-only entries a key heads, as `PAGE_ENTRY_SQL` (src/lookup/pageEntry.ts) finds them. */
 const PAGE_ARM = `SELECT e.word_key, 'page', NULL, e.release_id, NULL, NULL,
             e.word, e.pos, e.pos_title,
-            NULL, NULL, NULL, NULL, 1, 0, 0,
+            NULL, NULL, NULL, NULL, 1, 0, 0, 0,
             e.entry_id, p.revision_id, e.page_line, NULL, NULL, 1
        FROM recovered_entry e JOIN raw_page p ON p.page_id = e.page_id
       WHERE e.release_id IN (${servedBy("?2")}) AND e.word_key IN (SELECT value FROM json_each(?1))
@@ -126,7 +134,7 @@ const PAGE_ARM = `SELECT e.word_key, 'page', NULL, e.release_id, NULL, NULL,
 /** The hand-kept readings a key heads, each once, as `HAND_KEPT_HEADS_SQL` (src/lookup/handKept.ts) names them. */
 const KEPT_ARM = `SELECT k.word_key, 'kept', NULL, NULL, NULL, NULL,
             k.word, k.pos, k.pos_title,
-            NULL, NULL, NULL, NULL, 1, 0, 0,
+            NULL, NULL, NULL, NULL, 1, 0, 0, 0,
             NULL, NULL, k.section_line, k.reading_id, k.evidence_url, 2
        FROM (SELECT word_key, reading_id, MIN(definition_index) AS first_definition, word, pos, pos_title, section_line, evidence_url
                FROM hand_kept_definition WHERE word_key IN (SELECT value FROM json_each(?1))
@@ -206,6 +214,7 @@ function rowOf(releaseId: string, row: ShapeReadRow, corrected: ReadonlySet<stri
         record_word: row.record_word, record_pos: row.record_pos, record_pos_title: row.record_pos_title,
         origin: row.origin as ShapeHitRow["origin"], json_pointer: row.json_pointer as string, form_source: row.form_source,
         surface: row.surface as string, is_headword_hit: row.is_headword_hit, is_plural: row.is_plural, is_past_participle: row.is_past_participle,
+        lists_forms: row.lists_forms,
       };
       return { from: "source", key, hit };
     }
