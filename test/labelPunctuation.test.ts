@@ -42,7 +42,7 @@ test("a comma, semicolon or colon between labels, or between the opening labels 
     rendered("{{Term|matematica|it}}, {{Term|aritmetica|it}} [[numero]] che viene dopo il [[cinquantuno]] e prima del [[cinquantatré]]; è [[tredici]] [[volte]] il [[quadrato]] di [[due]]"),
     ["numero che viene dopo il cinquantuno e prima del cinquantatré; è tredici volte il quadrato di due", ["matematica", "aritmetica"]],
   );
-  assert.deepEqual(rendered("{{Term|zoologia|it}}; {{Fig}}: [[felino]]"), ["felino", ["zoologia", "figurato"]]);
+  assert.deepEqual(rendered("{{Term|zoologia|it}}; {{Fig}}: [[felino]]"), ["felino", ["zoologia", "senso figurato"]]);
   assert.deepEqual(rendered("{{Term|a|it}}, , {{Term|b|it}}, [[parola]]"), ["parola", ["a", "b"]]);
   // Emphasis around the labels still toggles, and the words keep theirs.
   const italic = renderInline("''{{Term|a|it}}'', ''{{Term|b|it}}'' ''[[parola]]'' scritta", "prova");

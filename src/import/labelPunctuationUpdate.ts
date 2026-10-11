@@ -12,7 +12,7 @@
 import { labelPunctuation } from "../italian/wikitext.js";
 import { select, type MasterReader } from "../update/master.js";
 import type { CountedTable } from "../update/planCounts.js";
-import { type DictionarySql, quoted, type RulePlanner, runRuleAlone } from "./sourceTextUpdate.js";
+import { bodyOf, type DictionarySql, quoted, type RulePlanner, runRuleAlone } from "./sourceTextUpdate.js";
 
 export const LABEL_PUNCTUATION_RULE = "rendered-label-punctuation/v1" as const;
 
@@ -86,9 +86,6 @@ function candidates(db: MasterReader, { table, from, key, record }: (typeof TABL
       ORDER BY ${key.map((column) => `t.${column}`).join(", ")}`,
   ).map((row) => ({ ...row, key: JSON.parse(row.key) as number[] }));
 }
-
-/** The body a stored line was rendered from: the line without its list mark. */
-const bodyOf = (wikitext: string): string => wikitext.trim().replace(/^[#*:;]+\s*/, "");
 
 /**
  * Plan rule `rendered-label-punctuation/v1`: every candidate whose stored text

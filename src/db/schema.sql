@@ -611,7 +611,7 @@ CREATE TABLE recovered_definition (
 
 CREATE INDEX recovered_definition_by_record ON recovered_definition (record_id);
 
--- Usage labels a recovered line's templates print (`architettura`, `figurato`).
+-- Usage labels a recovered line's templates print (`architettura`, `senso figurato`).
 CREATE TABLE recovered_label (
   recovered_id INTEGER NOT NULL REFERENCES recovered_definition(recovered_id) ON DELETE CASCADE,
   label_index  INTEGER NOT NULL CHECK (label_index >= 0),

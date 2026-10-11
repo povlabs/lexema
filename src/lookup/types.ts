@@ -405,7 +405,7 @@ export type RecoveredDefinition = RecoveredRoute & {
    * page-only entry's definition is ever corrected.
    */
   correction: (CorrectionRef & { replaces: string }) | null;
-  /** Usage labels the line's templates print: `architettura`, `figurato`. */
+  /** Usage labels the line's templates print: `architettura`, `senso figurato`. */
   labels: string[];
   ref: RecoveredRef;
   examples: RecoveredExample[];
