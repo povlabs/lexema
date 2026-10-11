@@ -1,0 +1,14 @@
+{
+  "command": "load:wikidata-words",
+  "inputs": {},
+  "lookups": [
+    { "word": "paralimpico" },
+    { "word": "paralimpiche" },
+    { "word": "stanotte" },
+    { "word": "domattina" },
+    { "word": "oddio" },
+    { "word": "flebo", "gloss": "per via endovenosa" },
+    { "word": "pento", "gloss": "un'azione sbagliata commessa" },
+    { "word": "papà" }
+  ]
+}

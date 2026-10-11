@@ -1154,3 +1154,38 @@ CREATE TABLE name_entry (
 -- "Which name entry spells this?", as lookup_form_by_key.
 CREATE INDEX name_entry_by_key
   ON name_entry (label_key);
+
+-- A Wikidata word (ADR 0033, #812): an Italian lexeme from Wikidata (CC0), as
+-- imported, one row per lexeme and snapshot, from the committed snapshot
+-- `wikidata-words/wikidata-words.jsonl`. It keys to no archive line, raw page
+-- or source row, and no imported row is touched. `pnpm run
+-- load:wikidata-words` writes a lexeme the master lacks, and a changed one as
+-- a row of the newer snapshot beside the older, which stays as history; a
+-- lookup reads a lexeme's newest row only. A lookup reads a word only when no
+-- Wiktionary reading answers its spelling (src/lookup/wikidataWords.ts). A
+-- seed writes none. Absent on a master seeded before it until
+-- `update:upgrade` creates it; a lookup reads an absent one as empty.
+CREATE TABLE wikidata_word (
+  lexeme   TEXT NOT NULL CHECK (lexeme GLOB 'L[1-9]*' AND lexeme NOT GLOB 'L*[^0-9]*'),
+  -- The date of the lexeme dump the row was taken from (src/wikidataWords/lexemeDump.ts).
+  snapshot TEXT NOT NULL CHECK (snapshot GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'),
+  -- The Italian lemma, as Wikidata states it.
+  lemma    TEXT NOT NULL CHECK (trim(lemma) <> ''),
+  -- The lexical category, which `POS_TITLE_BY_CATEGORY` (src/wikidataWords/lexicalCategories.ts) maps to a part of speech.
+  category TEXT NOT NULL CHECK (category GLOB 'Q[1-9]*' AND category NOT GLOB 'Q*[^0-9]*'),
+  -- Every form with an Italian spelling, as `[{"form", "spelling", "features"}]`, in Wikidata's order.
+  forms    TEXT NOT NULL CHECK (json_valid(forms) AND json_type(forms) = 'array'),
+  -- Every sense with an Italian gloss, as `[{"sense", "gloss"}]`, in Wikidata's order; often empty.
+  glosses  TEXT NOT NULL CHECK (json_valid(glosses) AND json_type(glosses) = 'array'),
+  PRIMARY KEY (lexeme, snapshot)
+) STRICT;
+
+-- "Which Wikidata word spells this?": one row per search key of a lexeme's
+-- lemma and forms, for each of its rows, as lookup_form_by_key.
+CREATE TABLE wikidata_word_key (
+  word_key TEXT NOT NULL CHECK (word_key <> ''), -- the normalizer applied to the spelling, as lookup_form's
+  lexeme   TEXT NOT NULL,
+  snapshot TEXT NOT NULL,
+  PRIMARY KEY (word_key, lexeme, snapshot),
+  FOREIGN KEY (lexeme, snapshot) REFERENCES wikidata_word (lexeme, snapshot)
+) STRICT;

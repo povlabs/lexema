@@ -250,6 +250,10 @@ function rowsToCopy(reader: MasterReader, keys: readonly string[]): Map<string, 
   read("hand_kept_definition", () => rowsWhere(reader, "hand_kept_definition", inList("word_key"), keys));
   // Name entries of each word (ADR 0032): they key to no record or page either.
   read("name_entry", () => rowsWhere(reader, "name_entry", inList("label_key"), keys));
+  // Wikidata words of each word (ADR 0033): every row of each lexeme a word spells, so its newest is the slice's newest too.
+  read("wikidata_word_key", () => rowsWhere(reader, "wikidata_word_key", inList("word_key"), keys));
+  const lexemes = [...new Set((rows.get("wikidata_word_key") ?? []).map((row) => String(row.lexeme)))];
+  read("wikidata_word", () => rowsWhere(reader, "wikidata_word", inList("lexeme"), lexemes));
 
   const pages = ["recovered_definition", "hidden_record", "recovered_entry"].flatMap((table) => numbers(rows.get(table) ?? [], "page_id"));
   read("raw_page", () => rowsWhere(reader, "raw_page", inList("page_id"), pages));

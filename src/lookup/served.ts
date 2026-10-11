@@ -82,13 +82,14 @@ export const PAGE_ENTRY_FACT_TABLE = "entry_fact";
 /**
  * Which of the tables an older master may lack it has: `hide_version` (#408),
  * the page-entry tables (#403), the curated-correction tables (#420,
- * #450, #723, #773), the hand-kept readings (#745) and the name entries (#794), and
+ * #450, #723, #773), the hand-kept readings (#745), the name entries (#794) and the
+ * Wikidata words (#812), and
  * `corrected_form_by_key`, the index a search reads a
  * corrected cell through (#743): it is on `surface_key`, so it stands only
  * where that column does. Presence is read from the schema, never inferred
  * from a failed read, so an error on a table that exists still fails.
  */
-export const OPTIONAL_TABLES_SQL: DictionaryRead = `SELECT name FROM sqlite_schema WHERE (type = 'table' AND name IN (${["hide_version", "corrected_claim", "corrected_form", "corrected_edge", "hidden_recovered_definition", "correction_version", ...PAGE_ENTRY_TABLES, PAGE_ENTRY_FACT_TABLE, "corrected_definition", "hand_kept_definition", "name_entry"].map((name) => `'${name}'`).join(", ")})) OR (type = 'index' AND name = 'corrected_form_by_key')`;
+export const OPTIONAL_TABLES_SQL: DictionaryRead = `SELECT name FROM sqlite_schema WHERE (type = 'table' AND name IN (${["hide_version", "corrected_claim", "corrected_form", "corrected_edge", "hidden_recovered_definition", "correction_version", ...PAGE_ENTRY_TABLES, PAGE_ENTRY_FACT_TABLE, "corrected_definition", "hand_kept_definition", "name_entry", "wikidata_word", "wikidata_word_key"].map((name) => `'${name}'`).join(", ")})) OR (type = 'index' AND name = 'corrected_form_by_key')`;
 export const HIDE_VERSION_SQL: DictionaryRead = `SELECT revision FROM hide_version WHERE singleton = 1`;
 export const CORRECTION_VERSION_SQL: DictionaryRead = `SELECT revision FROM correction_version WHERE singleton = 1`;
 
@@ -139,6 +140,8 @@ export interface DictionaryTables {
   handKeptReadings: boolean;
   /** `name_entry` (ADR 0032); absent on a master seeded before #794 until `update:upgrade` creates it, and read as empty. */
   names: boolean;
+  /** `wikidata_word` with `wikidata_word_key` (ADR 0033); absent on a master seeded before #812 until `update:upgrade` creates them, and read as empty. */
+  wikidataWords: boolean;
 }
 
 /**
@@ -168,6 +171,7 @@ export async function dictionaryTables(db: LookupDatabase): Promise<DictionaryTa
     correctionVersion: present.has("correction_version"),
     handKeptReadings: present.has("hand_kept_definition"),
     names: present.has("name_entry"),
+    wikidataWords: present.has("wikidata_word") && present.has("wikidata_word_key"),
   };
 }
 

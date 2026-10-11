@@ -44,6 +44,7 @@ export const CARD_HEIGHT = 630;
 /** A definition's text as the page writes it, without its labels. */
 function definitionText(item: DefinitionItem): string {
   if (item.from === "name") return item.description;
+  if (item.from === "lexeme") return item.gloss.text;
   return item.from === "page" ? item.definition.text : item.sense.glosses.map((gloss) => gloss.text).join(" ");
 }
 

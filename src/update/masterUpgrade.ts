@@ -1,7 +1,7 @@
 // The tables and views a master needs before a change can be applied to it
 // (#18), the page-entry tables lookups read (ADR 0024, #403) with their
 // definition corrections (#450), and the tables `correct:records`,
-// `hide:records` and `load:names` write (#420, #382, #745, #794), for a
+// `hide:records`, `load:names` and `load:wikidata-words` write (#420, #382, #745, #794, #812), for a
 // dictionary seeded before they existed. The dictionary deploy runs this as its own step before any data
 // (#507), and no write command carries DDL of its own (#509): each refuses to
 // write while the upgrade has something to do for it. They are read out of
@@ -69,6 +69,9 @@ export const HAND_KEPT_INDEXES = ["hand_kept_definition_by_key"] as const;
 export const NAME_TABLES = ["name_entry"] as const;
 export const NAME_INDEXES = ["name_entry_by_key"] as const;
 
+/** The tables `load:wikidata-words` writes the Wikidata words to (ADR 0033, #812), a word before its keys; a lookup reads them through the keys table's own key. */
+export const WIKIDATA_WORD_TABLES = ["wikidata_word", "wikidata_word_key"] as const;
+
 /** The tables `hide:records` writes a hidden record to (#382), after its cache revision. */
 export const HIDE_TABLES = ["hide_version", "hidden_record"] as const;
 
@@ -82,7 +85,7 @@ export const SERVING_VIEWS = ["served_release", "served_record", "form_of_candid
 export type ServingView = (typeof SERVING_VIEWS)[number];
 
 /** Every table the upgrade creates when absent, in the order their foreign keys need. */
-const UPGRADE_TABLES = [...UPDATE_TABLES, ...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_FACT_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES, ...CORRECTION_TABLES, ...HAND_KEPT_TABLES, ...NAME_TABLES, ...HIDE_TABLES] as const;
+const UPGRADE_TABLES = [...UPDATE_TABLES, ...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_FACT_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES, ...CORRECTION_TABLES, ...HAND_KEPT_TABLES, ...NAME_TABLES, ...WIKIDATA_WORD_TABLES, ...HIDE_TABLES] as const;
 
 /** Every table, index and view the upgrade creates, by its sqlite_schema name. */
 export const UPGRADE_NAMES: readonly string[] = [...UPGRADE_TABLES, ...PAGE_ENTRY_INDEXES, ...CORRECTION_INDEXES, ...HAND_KEPT_INDEXES, ...NAME_INDEXES, ...SERVING_VIEWS];

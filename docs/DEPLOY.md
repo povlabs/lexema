@@ -347,8 +347,8 @@ The prepare step builds it in this order, and logs a line starting
 3. Otherwise `pnpm run preview:slice build` plans each declaration with
    `planWrite` against `lexema-dictionary`, through single `SELECT`s only, and
    takes the words each plan touches. `update:auto`, `hide:records`,
-   `correct:records`, `load:page-entries`, `load:recovered-definitions` and
-   `load:names` name them; `update:upgrade` touches
+   `correct:records`, `load:page-entries`, `load:recovered-definitions`,
+   `load:names` and `load:wikidata-words` name them; `update:upgrade` touches
    none, and `normalize:source-text` rewrites the whole dictionary, so a branch
    with only those gets no slice. It builds the slice in a local SQLite
    database: the schema, the shared rows a lookup of those words reads, then
