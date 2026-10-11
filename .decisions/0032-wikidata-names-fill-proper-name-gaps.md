@@ -38,7 +38,7 @@ Asked "People: those with a Wikipedia page in 50+ languages, plus anyone with an
 - **One label, several items.** Every item a label names is its own entry, and all of them are shown, as every candidate is ([AGENTS.md](../AGENTS.md)). They come in the list's category order, then the older item (lower number) first: `Europa` reads the continent, then the island. A commodity no category admits (*Brent* crude, *WTI*) is not added, and no hand list adds one.
 - **Kept apart.** Name entries live in their own table, `name_entry`, keyed to nothing in the source. The committed snapshot `names/wikidata-names.jsonl` holds them, one item per line in shown order; `pnpm run names:fetch` writes it from Wikidata, one SPARQL query per category.
 - **Refreshed as a diff.** `pnpm run load:names` writes the snapshot into a seeded master: an item the master lacks or holds with other text is written, and an item no longer served (gone from the snapshot, or its key now answered by the source) is removed. It reaches the shared dictionary only through a change declaration and the dictionary deploy ([ADR 0018](0018-previews-on-workers-builds.md)). [ADR 0025](0025-newer-source-definitions-are-authoritative.md)'s diff feed reads only Wiktionary records and never touches `name_entry`; a refresh of the names is a pull request whose snapshot diff is the names that changed, applied the same way.
-- **People wait.** Well-known people (an Italian Wikipedia page and pages in 50 or more Wikipedias, or named in a news test text) are counted on #794 and added only after Huey's OK there, as a further category.
+- **People wait.** Well-known people (an Italian Wikipedia page and pages in 50 or more Wikipedias, or named in a news test text) are counted on #794 and added only after Huey's OK there, as a further category. *Huey gave it on 2026-10-11: see [Amendments](#amendments).*
 
 **What it amends and narrows.**
 
@@ -61,3 +61,15 @@ Asked "People: those with a Wikipedia page in 50+ languages, plus anyone with an
 - A name entry carries no forms, grammar, pronunciation or examples, and no translations.
 - A name whose key Wiktionary later explains stays served until the next `load:names` removes it; until then both show.
 - The API names a name entry `<release>:wikidata:<item>`, and its `attribution` names Wikidata, CC0 1.0 and the item's page.
+
+## Amendments
+
+- **#794 — Well-known people are a category (2026-10-11).** The lane counted the people as ruled ([count](https://github.com/povlabs/lexema/issues/794#issuecomment-6104167464)): 9,330 with an Italian Wikipedia page, pages in 50 or more Wikipedias, an Italian label and an Italian description, Alex Zanardi among them. Asked "The names lane counted 9,330 people with a Wikipedia page in 50+ languages (plus Alex Zanardi from the news text). Add them as names, the same way?", Huey answered, in chat, quoted verbatim on [#794](https://github.com/povlabs/lexema/issues/794#issuecomment-6106840562):
+
+  > yes add them
+
+  The *People wait* clause now reads: **People are a category, `person`, shown after every place and group.** A person is a Wikidata item that is an instance of human (`P31` = `Q5`, no subclass) with pages in 50 or more Wikipedias (only Wikipedias count, not other wikis), and every other rule of a name entry holds: an Italian Wikipedia page, an Italian or `mul` label, an Italian description, and only where the dictionary has nothing to read for the label's key. One person is taken whatever his number of Wikipedias: Alex Zanardi (`Q173188`, 35 Wikipedias), the one person a news test text names that the 50 leave out. The test texts are the three it.wikinews articles named in the count. No other person is added by name.
+
+  The snapshot gets the people from the QLever mirror of Wikidata (`https://qlever.dev/api/wikidata`), because counting each person's Wikipedias times out on query.wikidata.org. QLever answers the whole query, labels and descriptions included; it is a recent copy of Wikidata, not the live data. `pnpm run names:fetch --category person` asks for the people alone and keeps every other line of the snapshot as committed. The binding constraint "No person is added without Huey's OK on #794" is met by the ruling above.
+
+  `name_entry` lists its categories in a CHECK, so the deployed table refuses a person. The upgrade rebuilds `name_entry` with its rows when its stored definition is not `schema.sql`'s, as it rebuilds the other groups of `REBUILT_GROUPS`; the dictionary deploy runs it before the `load:names` declaration that writes the people.
