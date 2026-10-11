@@ -1,0 +1,12 @@
+{
+  "command": "normalize:source-text",
+  "inputs": { "rules": ["gloss-headword-lead/v1", "gloss-person-ordinal/v1", "form-plural-placeholder/v1", "it-gloss-stamp/v1", "rendered-label-punctuation/v1", "rendered-fig-label/v1"] },
+  "lookups": [
+    { "word": "casa", "gloss": "casa costruttrice" }
+  ],
+  "expected": {
+    "records": { "added": 0, "changed": 4, "removed": 0 },
+    "written": { "recovered_label": 4, "entry_label": 6 },
+    "deleted": {}
+  }
+}

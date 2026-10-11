@@ -223,8 +223,15 @@ test("every declaration already in dictionary-changes parses as before, with no 
       continue;
     }
     // The label punctuation rule (#712) names words whose page text it rewrites.
+    // It deployed before the rule for the labels `{{Fig}}` printed (#800), so it is refused for that alone.
     if (name === "2026-10-09-normalize-label-punctuation.json") {
-      assert.deepEqual(parseDraft(path, text).lookups?.map((item) => item.word), ["cinquantadue", "ozelot", "travet"]);
+      assert.equal(refusal(text, path), "inputs.rules must name every rule the command applies; it lacks rendered-fig-label/v1");
+      assert.deepEqual((JSON.parse(text) as { lookups: { word: string }[] }).lookups.map((item) => item.word), ["cinquantadue", "ozelot", "travet"]);
+      continue;
+    }
+    // The labels `{{Fig}}` printed (#800) name a word whose recovered definition it relabels.
+    if (name === "2026-10-11-normalize-fig-label.json") {
+      assert.deepEqual(parseDeclaration(path, text).lookups?.map((item) => [item.word, item.gloss]), [["casa", "casa costruttrice"]]);
       continue;
     }
     // The upgrade that keys corrected cells (#743) names the spellings a search now finds, and the source's it still finds.

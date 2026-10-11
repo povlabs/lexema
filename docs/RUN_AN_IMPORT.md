@@ -173,7 +173,10 @@ written. A fifth, rule `rendered-label-punctuation/v1`
 read off a page without the comma, semicolon or colon that only separated its
 usage labels (`{{Term|matematica|it}}, {{Term|aritmetica|it}} [[numero]]…` is
 `numero…`), as the renderer now prints it
-([wikitext.ts](../src/italian/wikitext.ts), `renderInline`). A database seeded
+([wikitext.ts](../src/italian/wikitext.ts), `renderInline`). A sixth, rule
+`rendered-fig-label/v1` ([#800](https://github.com/povlabs/lexema/issues/800)),
+stores the label `{{Fig}}` prints, `senso figurato`, where the renderer printed
+`figurato` before. A database seeded
 before a rule existed gets it from a one-off update, with no reseed:
 
 ```sh
@@ -193,14 +196,20 @@ drops the stamped gloss, adds the stated `grammar_claim` rows, and removes the
 line each `recovered_definition`, `recovered_example`, `entry_definition` and
 `entry_example` row keeps in `wikitext` again, and rewrites `text` only where
 it still holds what the renderer printed before #712; labels and every other
-column stay. It never touches
+column stay. The `{{Fig}}` rule renders the line each `recovered_label` and
+`entry_label` row labels again, and rewrites a label only where the line's
+`{{Fig}}` printed it; `{{Term|figurato|it}}` prints `figurato` and stays. A
+`wrapped-prose` definition takes its labels from the `#` line above its stored
+line, and a `numbered-prose` one shares its stored line with the other numbered
+meanings, so the rule leaves a label of theirs and counts it as undecided. It never touches
 `source_record_json`. It reads the rows back and fails if any still needs a
 rule. It prints one line per rule, led by the rule's name and version:
 `gloss-headword-lead/v1: sense_gloss: <n> row(s) changed`,
 `gloss-person-ordinal/v1: sense_gloss: <n> row(s) changed`,
 `form-plural-placeholder/v1: lookup_form: <n> row(s) removed, grammar_claim: <n> row(s) removed`,
-`it-gloss-stamp/v1: sense_gloss: <n> row(s) changed, grammar_claim: <n> row(s) changed`
-and `rendered-label-punctuation/v1: recovered_definition: <n> row(s) changed, …`.
+`it-gloss-stamp/v1: sense_gloss: <n> row(s) changed, grammar_claim: <n> row(s) changed`,
+`rendered-label-punctuation/v1: recovered_definition: <n> row(s) changed, …`
+and `rendered-fig-label/v1: recovered_label: <n> row(s) changed, entry_label: <n> row(s) changed, …`.
 The seed prints the first three ids on its `source text rules:` line; the stamp
 rule is the importer's grammar policy
 ([grammarPolicy.ts](../src/import/grammarPolicy.ts)). A second run changes 0
@@ -227,7 +236,9 @@ and `it-gloss-stamp/v1: sense_gloss: 9 row(s) changed, grammar_claim: 30 row(s) 
 (8 nouns: 16 stated claims added, 14 `missing` rows removed) on the first run,
 and 0 on every later run. A seed of it and its dump from before #712 holds 7
 `recovered_definition` and 4 `entry_definition` rows the label rule rewrites,
-and none of the two example tables. It writes through Wrangler, never through the
+and none of the two example tables. The shared dictionary held 4
+`recovered_label` and 6 `entry_label` rows the `{{Fig}}` rule rewrites
+([#800](https://github.com/povlabs/lexema/issues/800)). It writes through Wrangler, never through the
 Worker's read-only binding.
 
 ## Hide another language's records in a seeded database

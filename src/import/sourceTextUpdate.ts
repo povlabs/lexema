@@ -16,6 +16,9 @@ export interface DictionarySql {
 
 export const quoted = (value: string): string => `'${value.replaceAll("'", "''")}'`;
 
+/** The body a stored page line was rendered from: the line without its list mark. */
+export const bodyOf = (wikitext: string): string => wikitext.trim().replace(/^[#*:;]+\s*/, "");
+
 /** One gloss as the statements planned so far leave it: its new text, or `null` once deleted. */
 export interface PlannedGloss {
   readonly recordId: number;
