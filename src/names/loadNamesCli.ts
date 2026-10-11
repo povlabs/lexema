@@ -37,12 +37,12 @@ export async function main(
   const snapshot = names ?? (await readNameSnapshot());
   const target = seedTargetFrom(env, wrangler, resolve(".data/seed-state"));
   const reader = masterReaderOf(target);
-  const plan = planNames(reader, snapshot);
+  const plan = await planNames(reader, snapshot);
   log(`planning ${snapshot.length} Wikidata name(s) for the master ${plan.masterReleaseId} in ${target.dictionary}`);
   const lines = [
     `written: ${plan.written.length}`,
     `removed: ${plan.removed.length}`,
-    `left out, Wiktionary already gives the label a meaning: ${plan.explained.length}`,
+    `left out, the dictionary already answers the label: ${plan.explained.length}`,
   ];
   const out = resolve(options.get("out") ?? ".data/updates");
   if (planOnly) {

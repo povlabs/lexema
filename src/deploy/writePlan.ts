@@ -140,7 +140,7 @@ export async function planWrite(ready: ReadyChange, reader: MasterReader, applie
         };
       }
       case "load:names": {
-        const plan = planNames(reader, names ?? (await readNameSnapshot()));
+        const plan = await planNames(reader, names ?? (await readNameSnapshot()));
         return {
           run: planOnlyRun(change.command, plan.counts, reader),
           sql: plan.sql,

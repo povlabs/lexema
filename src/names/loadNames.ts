@@ -3,9 +3,10 @@
 // nothing: the plan is the SQL a run applies, counted.
 //
 // A name is served only where the dictionary has nothing to read for its
-// spelling: an item whose label's search key a served reading already answers
-// with a meaning, or a table already lists, is left out, so every page that
-// shows something today shows exactly that after the load. `Italia` and
+// search key: an item is left out when a served reading already answers the
+// key with a meaning, a table already lists it, or the lookup reaches a
+// multi-word headword or an essere agreement cell through it, so every page
+// that shows something today shows exactly that after the load. `Italia` and
 // `Iran` are Wiktionary names with a meaning, and `Sale` the comune is the
 // key of the salt noun, so none gets a name entry; `Hormuz` has no entry, so
 // it gets one. Each run writes the snapshot's other items the master does not
@@ -16,7 +17,9 @@ import { normalizeItalianExact } from "../italian/normalize.js";
 import { shownGloss } from "../italian/headwordEcho.js";
 import { isFurnitureGloss } from "../italian/furniture.js";
 import { literal } from "../import/seedSql.js";
-import { PAGE_ENTRY_TABLES } from "../lookup/served.js";
+import { keysAnsweredPastSpelling } from "../lookup/batch.js";
+import { dictionaryTables, PAGE_ENTRY_TABLES } from "../lookup/served.js";
+import { lookupDatabaseOf } from "../deploy/wordCheck.js";
 import { readMasterRelease, select, upgradeNeededFor, type MasterReader } from "../update/master.js";
 import { NAME_INDEXES, NAME_TABLES } from "../update/masterUpgrade.js";
 import { PlanCounts } from "../update/planCounts.js";
@@ -85,15 +88,41 @@ const tablesIn = (reader: MasterReader, names: readonly string[]): Set<string> =
 const LABELS_PAGE = 500;
 
 /**
- * The search keys among `keys` whose lookup the dictionary already answers
- * with something to read: a served record headed by the key with a meaning the
- * page shows (a sense gloss or a recovered definition), any served record
- * whose table lists the key (its page shows that word's block), a page-only
- * entry with a definition, or a hand-kept reading. Search ignores capitals, so
- * `Sale` the comune is the key `sale`, which the salt noun already answers.
- * Read through the key indexes, a page of keys at a time.
+ * How many keys one read past spelling asks about. Each key's lemma sequences
+ * are inlined into one headword read, and D1 caps a statement at 100 KB; a
+ * label's words name a few lemmas each, so 200 keys stay well under it.
  */
-export function answeredKeys(reader: MasterReader, masterReleaseId: string, keys: readonly string[]): Set<string> {
+const ROUTES_PAGE = 200;
+
+/**
+ * The search keys among `keys` whose lookup the dictionary already answers
+ * with something to read: what spells the key (`spelledKeys`), or, for a key
+ * nothing spells, a multi-word headword (#214) or an essere agreement cell
+ * (#676) the lookup reaches through it (`keysAnsweredPastSpelling`). The
+ * lookup tries a name entry before those two routes, so a key they answer
+ * takes no name entry. `mar Mediterraneo` reaches nothing, so it gets one.
+ */
+export async function answeredKeys(reader: MasterReader, masterReleaseId: string, keys: readonly string[]): Promise<Set<string>> {
+  const answered = spelledKeys(reader, masterReleaseId, keys);
+  const db = lookupDatabaseOf(reader);
+  const tables = await dictionaryTables(db);
+  const rest = [...new Set(keys)].filter((key) => !answered.has(key));
+  for (let start = 0; start < rest.length; start += ROUTES_PAGE) {
+    for (const key of await keysAnsweredPastSpelling(db, masterReleaseId, tables, rest.slice(start, start + ROUTES_PAGE))) answered.add(key);
+  }
+  return answered;
+}
+
+/**
+ * The search keys among `keys` something served spells with a reading to
+ * show: a served record headed by the key with a meaning the page shows (a
+ * sense gloss or a recovered definition), any served record whose table lists
+ * the key (its page shows that word's block), a page-only entry with a
+ * definition, or a hand-kept reading. Search ignores capitals, so `Sale` the
+ * comune is the key `sale`, which the salt noun already answers. Read through
+ * the key indexes, a page of keys at a time.
+ */
+export function spelledKeys(reader: MasterReader, masterReleaseId: string, keys: readonly string[]): Set<string> {
   const tables = tablesIn(reader, [...PAGE_ENTRY_TABLES, "recovered_definition", "hand_kept_definition"]);
   // The served releases, read once and written into each read as literals.
   const served = select<{ release_id: string }>(reader, `SELECT release_id FROM served_release WHERE master_release_id = ${literal(masterReleaseId)}`)
@@ -178,10 +207,10 @@ const DELETE_PAGE = 2_000;
  * the master; it writes nothing. A master without `name_entry` is read as
  * holding none, so the plan counts the same before the upgrade as after it.
  */
-export function planNames(reader: MasterReader, snapshot: readonly NameItem[]): NamePlan {
+export async function planNames(reader: MasterReader, snapshot: readonly NameItem[]): Promise<NamePlan> {
   const master = readMasterRelease(reader);
   const items = snapshotOf(snapshot);
-  const answered = answeredKeys(reader, master.releaseId, items.map((item) => nameRow(item).label_key));
+  const answered = await answeredKeys(reader, master.releaseId, items.map((item) => nameRow(item).label_key));
   const explained = items.filter((item) => answered.has(nameRow(item).label_key));
   const served = items.filter((item) => !answered.has(nameRow(item).label_key));
   const held = heldRows(reader);

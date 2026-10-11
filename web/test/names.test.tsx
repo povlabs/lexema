@@ -56,7 +56,7 @@ before(async () => {
   });
   db = new DatabaseSync(":memory:");
   for (const part of parts) db.exec(await readFile(part, "utf8"));
-  db.exec(planNames({ query: <Row,>(sql: string) => db.prepare(sql).all() as Row[] }, NAMES).sql);
+  db.exec((await planNames({ query: <Row,>(sql: string) => db.prepare(sql).all() as Row[] }, NAMES)).sql);
 });
 
 after(async () => {

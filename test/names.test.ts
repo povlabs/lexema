@@ -20,7 +20,7 @@ import { exists, lookup } from "../src/lookup/lookup.js";
 import { BESIDE_SOURCE_HEADS_SQL, BESIDE_SOURCE_SQL } from "../src/lookup/besideSource.js";
 import { NAME_HEADS_SQL, NAME_SQL } from "../src/lookup/names.js";
 import { entryKey, isNameEntry, publicEntryId, type Reading } from "../src/lookup/types.js";
-import { answeredKeys, isShownMeaning, missingForNames, planNames, unwrittenNames } from "../src/names/loadNames.js";
+import { isShownMeaning, missingForNames, planNames, spelledKeys, unwrittenNames } from "../src/names/loadNames.js";
 import { categoryRank, NAME_CATEGORIES } from "../src/names/nameCategories.js";
 import { InvalidNameItem, nameItem, wikidataItemUrl, type NameItem, type NameItemSpec } from "../src/names/nameItem.js";
 import { NAME_SNAPSHOT_PATH, parseSnapshot, readNameSnapshot, snapshotText } from "../src/names/nameSnapshot.js";
@@ -203,7 +203,7 @@ test("load:names writes the names whose key nothing answers, once, after the upg
     const recordsBefore = all(db, "SELECT * FROM source_record_json ORDER BY record_id");
 
     const reader = readerOf(db);
-    const plan = planNames(reader, SNAPSHOT);
+    const plan = await planNames(reader, SNAPSHOT);
     // Iran has a meaning; `Sale` is the key `sale`, which the salt noun answers. Giulia's record has no gloss.
     assert.deepEqual(plan.explained.map((item) => item.label), ["Iran", "Sale"]);
     assert.deepEqual(plan.written.map((item) => item.item), ["Q46", "Q4918", "Q686341", "Q193089", "Q695265"]);
@@ -214,7 +214,7 @@ test("load:names writes the names whose key nothing answers, once, after the upg
     assert.deepEqual(missingForNames(reader), ["name_entry", "name_entry_by_key"]);
     execute(db, masterUpgradeSql(schema));
     assert.deepEqual(missingForNames(reader), []);
-    assert.equal(planNames(reader, SNAPSHOT).sql, plan.sql);
+    assert.equal((await planNames(reader, SNAPSHOT)).sql, plan.sql);
     execute(db, plan.sql);
     assert.deepEqual(unwrittenNames(reader, plan), []);
 
@@ -228,13 +228,13 @@ test("load:names writes the names whose key nothing answers, once, after the upg
     assert.deepEqual(await readingsOf(db, "mar mediterraneo"), [`Q4918 Nome proprio: ${SPECS.mediterraneo.description}`]);
     assert.deepEqual(all(db, "SELECT * FROM source_record_json ORDER BY record_id"), recordsBefore);
 
-    const again = planNames(reader, SNAPSHOT);
+    const again = await planNames(reader, SNAPSHOT);
     assert.equal(again.sql, "");
     assert.equal(again.counts, PlanCounts.NONE);
 
     // A refresh is a diff: a changed description is written again, and an item the snapshot dropped is removed.
     const refreshed = SNAPSHOT.filter((item) => item.item !== "Q193089").map((item) => (item.item === "Q695265" ? nameItem({ ...item, description: "isola del Golfo Persico" }) : item));
-    const refresh = planNames(reader, refreshed);
+    const refresh = await planNames(reader, refreshed);
     assert.deepEqual([refresh.written.map((item) => item.item), refresh.removed.map((row) => row.item)], [["Q695265"], ["Q193089"]]);
     assert.deepEqual(refresh.counts.toJSON(), { records: { added: 0, changed: 0, removed: 0 }, written: { name_entry: 1 }, deleted: { name_entry: 2 } });
     execute(db, refresh.sql);
@@ -249,7 +249,7 @@ test("load:names writes the names whose key nothing answers, once, after the upg
 test("a name entry is an ordinary reading: a proper name, its description its one definition, its item its ref and id", async () => {
   const db = await seeded();
   try {
-    execute(db, planNames(readerOf(db), SNAPSHOT).sql);
+    execute(db, (await planNames(readerOf(db), SNAPSHOT)).sql);
     const result = await lookup({ db: fromNodeSqlite(db), releaseId: RELEASE, query: "Hormuz" });
     assert.ok(result.outcome === "found");
     const [hormuz] = result.readings;
@@ -323,7 +323,7 @@ test("load:names reads which keys are answered through the search index, never s
   const db = await seeded();
   try {
     const asked: string[] = [];
-    answeredKeys({ query: <Row>(sql: string) => { asked.push(sql); return db.prepare(sql).all() as Row[]; } }, RELEASE, ["hormuz", "sale", "giulia"]);
+    spelledKeys({ query: <Row>(sql: string) => { asked.push(sql); return db.prepare(sql).all() as Row[]; } }, RELEASE, ["hormuz", "sale", "giulia"]);
     const reads = asked.filter((sql) => sql.includes("lookup_form"));
     assert.equal(reads.length, 1);
     const steps = (db.prepare(`EXPLAIN QUERY PLAN ${reads[0]}`).all() as { detail: string }[]).map((row) => row.detail);
@@ -335,6 +335,44 @@ test("load:names reads which keys are answered through the search index, never s
     for (const probe of probes) assert.match(probe, /\((release_id=\? AND (surface_key|word_key)=\?|word_key=\?)\)/, steps.join("\n"));
   } finally {
     db.close();
+  }
+});
+
+test("load:names leaves out a label the lookup answers as a multi-word headword or an essere agreement cell, and the page stays the same", async () => {
+  // The development fixture and the essere cells, seeded as test/feminineLookup.test.ts seeds them.
+  const dir = await mkdtemp(join(tmpdir(), "lexema-names-routes-"));
+  const db = new DatabaseSync(":memory:");
+  try {
+    const archive = join(dir, "dev-seed.jsonl.gz");
+    const lines = `${(await readFile("fixtures/dev-seed.jsonl", "utf8")).trimEnd()}\n${await readFile("fixtures/essere-compound-cells.jsonl", "utf8")}`;
+    await writeFile(archive, gzipSync(lines));
+    const { parts } = await seedSql({ input: archive, outputDir: join(dir, "sql"), schema: SCHEMA, releaseId: RELEASE, license: "CC-BY-SA-4.0", onRejection: (rejection) => {
+      throw new Error(`fixture line rejected: ${JSON.stringify(rejection)}`);
+    } });
+    for (const part of parts) db.exec(await readFile(part, "utf8"));
+
+    // Made-up items, each labelled as a key one route answers: `tiro fuori` reaches tirare fuori by phrase
+    // (#214), `sono andata` andare's cell by agreement (#676). Hormuz reaches nothing.
+    const phrase = nameItem({ item: "Q1000001", label: "Tiro Fuori", description: "isola", category: "island" });
+    const agreement = nameItem({ item: "Q1000002", label: "Sono Andata", description: "isola", category: "island" });
+    const snapshot = [phrase, agreement, ITEMS.hormuz];
+    const routes = async (word: string) => {
+      const result = await lookup({ db: fromNodeSqlite(db), releaseId: RELEASE, query: word });
+      return result.outcome === "found" ? [result.route.kind, ...shown(result.readings)] : [result.outcome];
+    };
+    const before = await Promise.all(["tiro fuori", "sono andata"].map(routes));
+    assert.deepEqual(before.map(([kind]) => kind), ["phrase", "feminine"]);
+
+    const plan = await planNames(readerOf(db), snapshot);
+    assert.deepEqual(plan.explained.map((item) => item.item), [phrase.item, agreement.item]);
+    assert.deepEqual(plan.written.map((item) => item.item), [ITEMS.hormuz.item]);
+    execute(db, plan.sql);
+    assert.deepEqual(await Promise.all(["tiro fuori", "sono andata"].map(routes)), before);
+    const { answers } = await lookupBatch({ db: fromNodeSqlite(db), releaseId: RELEASE, queries: ["tiro fuori", "sono andata"] });
+    assert.ok(answers.every((answer) => answer.outcome === "found" && answer.candidates.every((candidate) => !("nameItem" in candidate && candidate.nameItem !== undefined))));
+  } finally {
+    db.close();
+    await rm(dir, { recursive: true, force: true });
   }
 });
 

@@ -572,6 +572,23 @@ export async function lookupBatch({
 }
 
 /**
+ * The keys among `keys` the lookup answers through a route past spelling: the
+ * multi-word reading (#214), or, where no phrase answers, the essere agreement
+ * reading (#676). Read as `lookupBatch` reads them, whatever spells the key,
+ * so an entry that comes to spell it later is judged against what the lookup
+ * shows today. `load:names` leaves such a key out (ADR 0032): a name entry
+ * there would take the page those routes answer. At most four statements
+ * however many keys, none for keys of one word.
+ */
+export async function keysAnsweredPastSpelling(db: LookupDatabase, releaseId: string, tables: DictionaryTables, keys: readonly string[]): Promise<Set<string>> {
+  const phrases = await phraseMatchesOf(db, releaseId, tables, keys);
+  const answered = new Set(keys.filter((key) => (phrases.get(key) ?? []).length > 0));
+  const agreements = await agreementsOf(db, readsFor(tables), releaseId, keys.filter((key) => !answered.has(key)));
+  for (const [key, candidates] of agreements) if (candidates.length > 0) answered.add(key);
+  return answered;
+}
+
+/**
  * The lines of archive records, with the coordinates a translation's pointer
  * needs. Read only when a batch asks for translations (#739): one statement
  * for every candidate of every word.

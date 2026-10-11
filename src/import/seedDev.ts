@@ -142,7 +142,7 @@ try {
 // archive gets none: its names come from `pnpm run load:names`.
 let names: { written: number; leftOut: number } | undefined;
 if (!isArchive) {
-  const plan = planNames(masterReaderOf(target), parseSnapshot(await readFile(resolve(DEV_NAMES_FILE), "utf8")));
+  const plan = await planNames(masterReaderOf(target), parseSnapshot(await readFile(resolve(DEV_NAMES_FILE), "utf8")));
   if (plan.sql !== "") {
     const file = join(outputDir, "names.sql");
     await writeFile(file, plan.sql);

@@ -433,9 +433,10 @@ export function everyRecovered(reading: Pick<Reading, "senses" | "recovered">): 
 
 /**
  * What an entry is: a source record, pointed at by its archive line; a
- * page-only entry (ADR 0024, #403), pointed at by its page revision; or a
+ * page-only entry (ADR 0024, #403), pointed at by its page revision; a
  * hand-kept reading (ADR 0031, #745), pointed at by the en.wiktionary revision
- * it cites. Exactly one of the three.
+ * it cites; or a name entry (ADR 0032, #794), pointed at by its Wikidata item.
+ * Exactly one of the four.
  */
 export type EntryIdentity =
   | { recordId: number; entryId?: never; handKeptId?: never; nameItem?: never; description?: never; ref: SourceRef }

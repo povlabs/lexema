@@ -1132,8 +1132,10 @@ CREATE INDEX hand_kept_definition_by_key
 -- per item, from the committed snapshot `names/wikidata-names.jsonl`. Its one
 -- meaning is the item's Italian description. It keys to nothing in the source
 -- and no imported row is touched. `pnpm run load:names` writes the items whose
--- label no served Italian reading spelled the same way already gives a
--- meaning, and removes the rest; the seed writes none. A lookup reads it
+-- label's search key (capitals ignored) the dictionary answers with nothing to
+-- read, by spelling, table listing, phrase or agreement, and removes the rest.
+-- A seed of an archive writes none; a fixture seed writes the fixture's few
+-- names the same way (ADR 0032). A lookup reads it
 -- beside the source's readings of its word, last (src/lookup/names.ts).
 -- Absent on a master seeded before it until `update:upgrade` creates it; a
 -- lookup reads an absent one as empty.
