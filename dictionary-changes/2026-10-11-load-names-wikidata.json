@@ -1,0 +1,10 @@
+{
+  "command": "load:names",
+  "lookups": [
+    { "word": "Hormuz", "gloss": "isola dell'Iran" },
+    { "word": "mar Mediterraneo", "gloss": "bacino marino" },
+    { "word": "Brent", "gloss": "Tamigi" },
+    { "word": "Iran", "gloss": "Repubblica Islamica dell'Iran" },
+    { "word": "sale", "gloss": "cloruro di sodio" }
+  ]
+}

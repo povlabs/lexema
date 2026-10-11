@@ -25,6 +25,9 @@ the archive's SHA-256, `it-0c432803`.
   hand-kept readings, whole readings the source lacks, kept beside it, each
   citing an en.wiktionary revision and added only on a ruling
   ([ADR 0031](.decisions/0031-hand-kept-readings-fill-source-gaps.md)).
+  Wiktionary is the source; proper names it does not explain come from Wikidata
+  as name entries, kept beside it under the same rule
+  ([ADR 0032](.decisions/0032-wikidata-names-fill-proper-name-gaps.md)).
   Italian grammar enrichment is deterministic and language-specific. AI generation, a product UI, or wider work
   needs an explicit request.
 - Make invalid states unrepresentable. Domain logic belongs in domain objects.

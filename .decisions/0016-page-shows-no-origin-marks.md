@@ -1,7 +1,7 @@
 ---
 id: 0016
 title: A result shows every fact as the dictionary's, with no mark for where it came from
-status: accepted
+status: amended-in-part by [0032](0032-wikidata-names-fill-proper-name-gaps.md)
 date: 2026-09-27
 tags: [product, provenance]
 ---
@@ -42,3 +42,7 @@ The web app loses its recovered marks, its derived-article treatment and its moo
 ## Records
 
 no vocabulary impact
+
+## Amendments
+
+- **#794 — A name entry links its own Wikidata item (2026-10-11).** [ADR 0032](0032-wikidata-names-fill-proper-name-gaps.md) adds name entries from Wikidata, a second source. Each carries a small *Fonte* link to its Wikidata item, under its definition, because the page's one *Fonte* opens a Wiktionary page and a name entry does not come from there. That link is the source credit, like the page's *Fonte*, not an origin mark; no other mark is added, and every other rule here stands.

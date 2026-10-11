@@ -5,8 +5,11 @@
 // the local `APP_DB`, never into the dictionary (ADR 0018). `SEED_REMOTE`
 // loads the dictionary into a named remote D1 instead (seedTarget.ts).
 
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
+import { planNames } from "../names/loadNames.js";
+import { parseSnapshot } from "../names/nameSnapshot.js";
+import { masterReaderOf } from "../update/updateCli.js";
 import { openRawPages } from "../source/wiktionaryDump.js";
 import { CURATED_CORRECTIONS } from "../italian/curatedCorrections.js";
 import { FixtureLines } from "../italian/correctionsAtLines.js";
@@ -18,6 +21,8 @@ import { seedTargetFrom, webWrangler } from "./seedTarget.js";
 import { DEFAULT_PART_CEILING_BYTES } from "./sqlParts.js";
 
 const input = resolve(process.env.SEED_INPUT ?? "fixtures/dev-seed.jsonl");
+/** The fixture's Wikidata names, in the committed snapshot's format (ADR 0032). */
+const DEV_NAMES_FILE = "fixtures/names/dev-names.jsonl";
 const outputDir = resolve(process.env.SEED_SQL ?? ".data/dev-sql");
 const isArchive = input.endsWith(".gz");
 // The fixture is always `it-dev`; an archive is named by its own digest
@@ -131,5 +136,20 @@ try {
   process.stderr.write(`${error.message}\n`);
   process.exit(1);
 }
+// The fixture's name entries (ADR 0032): a few Wikidata names, written as
+// `load:names` writes the snapshot, so the left-out ones (`Sale`, `Fine`,
+// `Bella`, whose keys the fixture's words answer) are left out here too. An
+// archive gets none: its names come from `pnpm run load:names`.
+let names: { written: number; leftOut: number } | undefined;
+if (!isArchive) {
+  const plan = planNames(masterReaderOf(target), parseSnapshot(await readFile(resolve(DEV_NAMES_FILE), "utf8")));
+  if (plan.sql !== "") {
+    const file = join(outputDir, "names.sql");
+    await writeFile(file, plan.sql);
+    target.execute(["--file", file], false);
+  }
+  names = { written: plan.written.length, leftOut: plan.explained.length };
+  process.stderr.write(`name entries: ${names.written} written, ${names.leftOut} left out (${DEV_NAMES_FILE})\n`);
+}
 target.finished((line) => process.stderr.write(`${line}\n`));
-process.stdout.write(JSON.stringify({ ...report, rejectionPath, loaded, ...target.reported }) + "\n");
+process.stdout.write(JSON.stringify({ ...report, rejectionPath, loaded, names, ...target.reported }) + "\n");

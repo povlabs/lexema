@@ -418,6 +418,45 @@ writes them with the entries, as a seed does, so a run after the load prints
 older Worker serves the master as before, since it never reads the new tables;
 the deployed one reads no correction from a master without them.
 
+## Write the Wikidata names into a seeded database
+
+Name entries are proper names from Wikidata, a second source beside
+Wiktionary ([ADR 0032](../.decisions/0032-wikidata-names-fill-proper-name-gaps.md),
+[#794](https://github.com/povlabs/lexema/issues/794)). Two commands handle them:
+
+```sh
+pnpm run names:fetch      # ask Wikidata, write names/wikidata-names.jsonl
+pnpm run load:names       # write that snapshot into the seeded dictionary
+```
+
+`names:fetch` sends one SPARQL query per category of
+[`src/names/nameCategories.ts`](../src/names/nameCategories.ts) to
+query.wikidata.org, one at a time, and asks again after a pause when the
+service times out. It keeps every item with an Italian label, an Italian
+description and an Italian Wikipedia page, each once, and writes the snapshot
+in shown order: by category, then the older item first. It writes nothing else.
+Commit the snapshot: its diff is the names that changed.
+
+`load:names` picks its database the way the seed does (`SEED_STATE`, or
+`SEED_REMOTE`). It reads the master, then writes the snapshot's items the
+master lacks or holds with other text, and removes the held ones it no longer
+serves. An item is left out when its label's search key already finds
+something to read: a record with a meaning, a table that lists it, a page-only
+entry or a hand-kept reading. So `Sale` the comune is left out (the salt noun
+answers `sale`), and `Giulia` the river is added after `Giulia`'s record,
+whose one sense has no gloss. It prints the items written, removed and left
+out. `--plan-only` prints the counts and writes nothing. On a master without
+`name_entry` it plans but refuses to write, and names `pnpm run update:upgrade`.
+No source row is touched, and the full seed writes no names; `pnpm run
+seed:dev` writes the eight of `fixtures/names/dev-names.jsonl` the same way.
+
+On the shared `lexema-dictionary`, the dictionary deploy workflow runs it
+after a merged declaration `{"command": "load:names"}` names it, its
+`expected` counts copied from the [pull request plan
+check](DEPLOY.md#the-pull-request-plan-check) as for `correct:records`. A
+refresh is one pull request: `names:fetch`, the snapshot diff, and a new
+declaration.
+
 ## Page-only entries
 
 The seed also stores page-only entries: it reads every raw page whose title no

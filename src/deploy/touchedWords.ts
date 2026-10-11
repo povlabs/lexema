@@ -13,6 +13,7 @@ import type { HidePlan } from "../import/hideRecords.js";
 import type { PageEntryPlan } from "../import/loadPageEntries.js";
 import type { RecoveredDefinitionPlan } from "../import/loadRecoveredDefinitions.js";
 import { normalizeItalianExact } from "../italian/normalize.js";
+import type { NamePlan } from "../names/loadNames.js";
 import type { ApplyPlan } from "../update/apply.js";
 import type { DeclaredCommand } from "../update/declaration.js";
 
@@ -68,6 +69,9 @@ export const wordsOfCorrections = (plan: CorrectionPlan): TouchedWords =>
     ...plan.definitions.flatMap((definition) => (definition.state === "write" ? [definition.correction.entry.title] : [])),
     ...plan.readings.flatMap((planned) => (planned.state === "write" ? [planned.reading.word] : [])),
   ]);
+
+/** `load:names`: the label of each name entry it writes or removes (#794). */
+export const wordsOfNames = (plan: NamePlan): TouchedWords => touchedWords([...plan.written.map((item) => item.label), ...plan.removed.map((row) => row.label)]);
 
 /** `load:page-entries`: the title of each page-only entry it writes, and of each definition correction it writes beside one. */
 export const wordsOfPageEntries = (plan: PageEntryPlan): TouchedWords =>
