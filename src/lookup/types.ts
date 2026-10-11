@@ -4,6 +4,7 @@
 
 import type { ArticleDisplay } from "../core/types.js";
 import type { SurfaceWithholding } from "../italian/articles.js";
+import type { PronominalPair } from "../italian/pronominalPair.js";
 import type { ShapedSpelling } from "../italian/wordShape.js";
 import type { AgreeingSpelling } from "../italian/essereAgreement.js";
 import type { PhraseGloss } from "../italian/phrase.js";
@@ -1258,14 +1259,18 @@ export interface PhraseForm {
  * `shape`: it is none of these, and rule `it-word-shape/v1` reads it as a
  * shape of words the dictionary has (`raccontarvi` of `raccontare`,
  * `quei` of `quello`, #809); `spellings` are the spellings that answered, and the
- * readings are their records.
+ * readings are their records. `pronominal`: it is none of these, and rule
+ * `it-pronominal-pair/v1` reads it, `si` and a verb form, as a pronominal
+ * verb the dictionary has (`si trasferiscono` of `trasferirsi`, #810);
+ * `pairs` are the pairs that answered, and the readings are those verbs.
  */
 export type FoundRoute =
   | { kind: "surface" }
   | { kind: "phrase"; phrases: [PhraseMatch, ...PhraseMatch[]]; forms: PhraseForm[] }
   | { kind: "feminine"; agreement: AgreeingSpelling }
   | { kind: "first-spelling"; agreement: AgreeingSpelling }
-  | { kind: "shape"; spellings: [ShapedSpelling, ...ShapedSpelling[]] };
+  | { kind: "shape"; spellings: [ShapedSpelling, ...ShapedSpelling[]] }
+  | { kind: "pronominal"; pairs: [PronominalPair, ...PronominalPair[]] };
 
 /**
  * The index was probed and at least one record matched. The readings are a
