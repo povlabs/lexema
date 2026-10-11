@@ -7,7 +7,7 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -27,10 +27,11 @@ import { isShownMeaning, missingForNames, planNames, spelledKeys, unwrittenNames
 import { categoryRank, NAME_CATEGORIES } from "../src/names/nameCategories.js";
 import { InvalidNameItem, nameItem, wikidataItemUrl, type NameItem, type NameItemSpec } from "../src/names/nameItem.js";
 import { NAME_SNAPSHOT_PATH, parseSnapshot, readNameSnapshot, snapshotText } from "../src/names/nameSnapshot.js";
-import { categoryCountQuery, categoryQuery, itemsOf, runQuery } from "../src/names/wikidataQuery.js";
+import { main as fetchNames } from "../src/names/fetchNamesCli.js";
+import { categoryCountQuery, categoryQuery, endpointOf, itemsOf, QLEVER_WIKIDATA_SPARQL, runQuery, WIKIDATA_SPARQL } from "../src/names/wikidataQuery.js";
 import { parseDeclaration, parseDraft, type DeclarationDraft } from "../src/update/declaration.js";
-import type { MasterReader } from "../src/update/master.js";
-import { masterUpgradeSql } from "../src/update/masterUpgrade.js";
+import { nameEntryBeforePeople, planUpgrade, upgradeShortfall, type MasterReader } from "../src/update/master.js";
+import { createStatement, masterUpgradeSql } from "../src/update/masterUpgrade.js";
 import { PlanCounts } from "../src/update/planCounts.js";
 
 const RELEASE = "it-names";
@@ -47,19 +48,26 @@ const SPECS: Record<string, NameItemSpec> = {
   hormuz: { item: "Q695265", label: "Hormuz", description: "isola dell'Iran", category: "island" },
   sale: { item: "Q17660", label: "Sale", description: "comune italiano", category: "comune" },
 };
+/** People of the committed snapshot, verbatim, as the QLever mirror gave them on 2026-10-11. */
+const PEOPLE = {
+  dante: { item: "Q1067", label: "Dante Alighieri", description: "poeta, scrittore e politico fiorentino, considerato il padre della lingua italiana (1265-1321)", category: "person" },
+  zanardi: { item: "Q173188", label: "Alex Zanardi", description: "pilota automobilistico e paraciclista italiano (1966-2026)", category: "person" },
+} as const satisfies Record<string, NameItemSpec>;
 const ITEMS: Record<keyof typeof SPECS, NameItem> = Object.fromEntries(Object.entries(SPECS).map(([key, spec]) => [key, nameItem(spec)])) as Record<keyof typeof SPECS, NameItem>;
 const SNAPSHOT: NameItem[] = Object.values(ITEMS);
 
 test("the categories are the ruled list, in the order they are shown, and the table accepts exactly them", async () => {
   assert.deepEqual(NAME_CATEGORIES.map((category) => category.id), [
     "country", "continent", "sea", "river", "lake", "mountain", "island", "comune", "city",
-    "international-organization", "political-party", "listed-company", "football-club", "language", "currency", "holiday",
+    "international-organization", "political-party", "listed-company", "football-club", "language", "currency", "holiday", "person",
   ]);
   const schema = await readFile(SCHEMA, "utf8");
   const check = /category\s+TEXT NOT NULL CHECK \(category IN \(([^)]*)\)\)/.exec(schema)?.[1];
   assert.ok(check !== undefined);
   assert.deepEqual(check.split(",").map((value) => value.trim().replace(/^'|'$/g, "")), NAME_CATEGORIES.map((category) => category.id));
   assert.ok(categoryRank("country") < categoryRank("river") && categoryRank("river") < categoryRank("football-club"));
+  // A person comes after every place and group.
+  assert.equal(categoryRank("person"), NAME_CATEGORIES.length - 1);
 });
 
 test("a name item without an item id, a label, a description or a listed category cannot be made", () => {
@@ -69,8 +77,8 @@ test("a name item without an item id, a label, a description or a listed categor
   refused({ ...SPECS.hormuz, label: "" });
   refused({ ...SPECS.hormuz, label: "Hormuz " });
   refused({ ...SPECS.hormuz, description: "  " });
-  // @ts-expect-error `person` is not a category: people wait for their own ruling
-  refused({ ...SPECS.hormuz, category: "person" });
+  // @ts-expect-error `planet` is not a category
+  refused({ ...SPECS.hormuz, category: "planet" });
   // @ts-expect-error a spec is not an item until `nameItem` checks it
   const unchecked: NameItem = SPECS.hormuz;
   assert.ok(unchecked);
@@ -110,6 +118,56 @@ test("each category is one query: its class, its subclasses where it says so, an
   assert.match(categoryQuery(language), /MINUS \{ \?item wdt:P31\/wdt:P279\* wd:Q629206 \. \}/);
   // The count query reads the same items, a description optional.
   assert.match(categoryCountQuery(country), /OPTIONAL \{ \?item schema:description/);
+});
+
+test("people are humans with pages in 50 or more Wikipedias, plus Alex Zanardi, asked of the QLever mirror", async () => {
+  const person = NAME_CATEGORIES.find((category) => category.id === "person");
+  assert.ok(person !== undefined);
+  const people = categoryQuery(person);
+  assert.equal(endpointOf(person), QLEVER_WIKIDATA_SPARQL);
+  assert.equal(endpointOf(NAME_CATEGORIES[0]), WIKIDATA_SPARQL);
+  assert.match(people, /\?item wdt:P31 wd:Q5 \./);
+  // Wikipedias alone count, not every wiki an item links.
+  assert.match(people, /FILTER\(STRENDS\(STR\(\?wiki\), "\.wikipedia\.org\/"\)\)/);
+  assert.match(people, /GROUP BY \?item HAVING \(COUNT\(DISTINCT \?wiki\) >= 50\)/);
+  assert.match(people, /UNION \{\s+VALUES \?item \{ wd:Q173188 \}\s+\?item wdt:P31 wd:Q5 \./);
+  // Still an Italian label, description and Wikipedia page, as every category.
+  assert.match(people, /schema:isPartOf <https:\/\/it\.wikipedia\.org\/>/);
+  assert.match(people, /schema:description \?description \. FILTER\(LANG\(\?description\) = "it"\)/);
+  assert.match(people, /^PREFIX wikibase: <http:\/\/wikiba\.se\/ontology#>$/m);
+  assert.doesNotMatch(categoryQuery(NAME_CATEGORIES[0]), /HAVING|wikiba\.se\/ontology#sitelinks/);
+
+  // The committed snapshot holds them as the mirror gave them on 2026-10-11.
+  const committed = await readNameSnapshot();
+  const inSnapshot = committed.filter((item) => item.category === "person");
+  assert.equal(inSnapshot.length, 9_330);
+  for (const spec of [PEOPLE.dante, PEOPLE.zanardi]) assert.deepEqual(committed.find((item) => item.item === spec.item), nameItem(spec), spec.item);
+});
+
+test("names:fetch --category asks for that one category and keeps every other line as committed", async () => {
+  const root = await mkdtemp(join(tmpdir(), "lexema-names-fetch-"));
+  try {
+    await mkdir(join(root, "names"));
+    await writeFile(join(root, NAME_SNAPSHOT_PATH), snapshotText([ITEMS.iran, ITEMS.hormuz, nameItem({ ...PEOPLE.dante, description: "poeta" })]));
+    const asked: string[] = [];
+    const fetchStub = (async (url: string | URL | Request) => {
+      asked.push(String(url));
+      const rows = [PEOPLE.zanardi, PEOPLE.dante].map(({ item, label, description }) => ({
+        item: { type: "uri", value: `http://www.wikidata.org/entity/${item}` },
+        label: { type: "literal", value: label },
+        description: { type: "literal", value: description },
+      }));
+      return new Response(JSON.stringify({ results: { bindings: rows } }), { status: 200 });
+    }) as typeof fetch;
+    assert.deepEqual(await fetchNames(["--category", "person"], fetchStub, root), { out: `4 name item(s) written to ${NAME_SNAPSHOT_PATH}`, status: 0 });
+    assert.equal(asked.length, 1);
+    assert.ok(asked[0].startsWith(`${QLEVER_WIKIDATA_SPARQL}?`), asked[0]);
+    assert.deepEqual(parseSnapshot(await readFile(join(root, NAME_SNAPSHOT_PATH), "utf8")), [ITEMS.iran, ITEMS.hormuz, nameItem(PEOPLE.dante), nameItem(PEOPLE.zanardi)]);
+    assert.equal((await fetchNames(["--category", "planet"], fetchStub, root)).status, 1);
+    assert.equal(asked.length, 1, "an unknown category asks nothing");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test("an answer becomes name items, each once, and an answer cut off by a timeout is asked again", async () => {
@@ -244,6 +302,43 @@ test("load:names writes the names whose key nothing answers, once, after the upg
     assert.deepEqual(unwrittenNames(reader, refresh), []);
     assert.deepEqual(await readingsOf(db, "Europa"), ["Q46 Nome proprio: continente della Terra"]);
     assert.deepEqual(await readingsOf(db, "Hormuz"), ["Q695265 Nome proprio: isola del Golfo Persico"]);
+  } finally {
+    db.close();
+  }
+});
+
+test("a name_entry from before people is rebuilt by the upgrade with every row, and then takes a person, read after the places", async () => {
+  const schema = await readFile(SCHEMA, "utf8");
+  const db = await seeded();
+  try {
+    // The definition #816 deployed: every category but `person`.
+    const stated = createStatement(schema, "TABLE", "name_entry");
+    db.exec("DROP INDEX name_entry_by_key; DROP TABLE name_entry;");
+    db.exec(stated.replace(", 'person'))", "))"));
+    db.exec(createStatement(schema, "INDEX", "name_entry_by_key"));
+    const reader = readerOf(db);
+    execute(db, (await planNames(reader, SNAPSHOT)).sql);
+    const places = all(db, "SELECT * FROM name_entry ORDER BY item");
+    assert.equal(places.length, 5);
+
+    const zanardi = nameItem(PEOPLE.zanardi);
+    const people = await planNames(reader, [...SNAPSHOT, zanardi]);
+    assert.throws(() => execute(db, people.sql), /CHECK constraint failed/);
+    assert.equal(nameEntryBeforePeople(reader), true);
+    assert.deepEqual(missingForNames(reader), ["name_entry"]);
+
+    const upgrade = planUpgrade(reader, schema);
+    assert.deepEqual(upgrade.changed, ["name_entry"]);
+    assert.deepEqual(upgrade.kept.map((table) => [table.name, table.rows]), [["name_entry", 5]]);
+    execute(db, upgrade.sql);
+    assert.deepEqual(upgradeShortfall(reader, schema, upgrade), []);
+    assert.deepEqual(all(db, "SELECT * FROM name_entry ORDER BY item"), places);
+    assert.equal(nameEntryBeforePeople(reader), false);
+    assert.deepEqual(missingForNames(reader), []);
+
+    execute(db, people.sql);
+    assert.deepEqual(unwrittenNames(reader, people), []);
+    assert.deepEqual(await readingsOf(db, "alex zanardi"), [`Q173188 Nome proprio: ${PEOPLE.zanardi.description}`]);
   } finally {
     db.close();
   }
@@ -385,7 +480,7 @@ test("the table refuses an item that is not one, an empty label or description, 
     const insert = (values: string[]) => db.prepare("INSERT INTO name_entry (item, label, label_key, description, category) VALUES (?, ?, ?, ?, ?)").run(...values);
     const row = ["Q695265", "Hormuz", "hormuz", "isola dell'Iran", "island"];
     const at = (index: number, value: string) => row.map((cell, i) => (i === index ? value : cell));
-    for (const bad of [at(0, "P31"), at(0, "Q12a"), at(0, "Q0"), at(1, ""), at(1, " Hormuz"), at(3, ""), at(4, "person")]) {
+    for (const bad of [at(0, "P31"), at(0, "Q12a"), at(0, "Q0"), at(1, ""), at(1, " Hormuz"), at(3, ""), at(4, "planet")]) {
       assert.throws(() => insert(bad), /CHECK constraint failed/, JSON.stringify(bad));
     }
     insert(row);

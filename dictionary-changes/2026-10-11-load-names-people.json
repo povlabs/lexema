@@ -1,0 +1,10 @@
+{
+  "command": "load:names",
+  "inputs": {},
+  "lookups": [
+    { "word": "Dante Alighieri", "gloss": "padre della lingua italiana" },
+    { "word": "Alex Zanardi", "gloss": "paraciclista" },
+    { "word": "Hormuz", "gloss": "isola dell'Iran" },
+    { "word": "sale", "gloss": "cloruro di sodio" }
+  ]
+}

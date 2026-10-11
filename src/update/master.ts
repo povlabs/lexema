@@ -96,6 +96,16 @@ export function correctedEdgeBefore755(reader: MasterReader): boolean {
 }
 
 /**
+ * Whether the master's `name_entry` is from before `person` was a category
+ * (#794), so it refuses a person's row. Its stored definition then differs
+ * from schema.sql's, so `changedUpgrade` lists it and the upgrade rebuilds it;
+ * a master without the table has nothing to rebuild.
+ */
+export function nameEntryBeforePeople(reader: MasterReader): boolean {
+  return select<{ sql: string }>(reader, "SELECT sql FROM sqlite_schema WHERE type = 'table' AND name = 'name_entry'").some((row) => !row.sql.includes("'person'"));
+}
+
+/**
  * Whether the master has `table` without its keyed column (`keyedColumnOf`):
  * a `corrected_form` from before #743, with no `surface_key`. Its stored
  * definition then differs from schema.sql's, so the upgrade rebuilds it, keying
@@ -146,7 +156,7 @@ export function changedViews(reader: MasterReader, schema: string): ServingView[
 /**
  * The upgrade names among `names` the master lacks, or holds as the upgrade
  * still rebuilds them (`hidden_record` from before #389, `corrected_edge` from
- * before #755, a table without its keyed column), in the order of
+ * before #755, `name_entry` from before people, a table without its keyed column), in the order of
  * `names`. A command whose SQL writes into them refuses to write while any is
  * listed: its SQL holds no DDL, and `update:upgrade` is what clears them.
  */
@@ -154,6 +164,7 @@ export function upgradeNeededFor(reader: MasterReader, names: readonly string[])
   const needed = new Set(missingUpgrade(reader));
   if (names.includes("hidden_record") && hiddenRecordBefore389(reader)) needed.add("hidden_record");
   if (names.includes("corrected_edge") && correctedEdgeBefore755(reader)) needed.add("corrected_edge");
+  if (names.includes("name_entry") && nameEntryBeforePeople(reader)) needed.add("name_entry");
   for (const name of names) if (lacksKeyedColumn(reader, name)) needed.add(name);
   return names.filter((name) => needed.has(name));
 }
