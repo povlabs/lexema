@@ -327,9 +327,12 @@ test("load:names reads which keys are answered through the search index, never s
     const reads = asked.filter((sql) => sql.includes("lookup_form"));
     assert.equal(reads.length, 1);
     const steps = (db.prepare(`EXPLAIN QUERY PLAN ${reads[0]}`).all() as { detail: string }[]).map((row) => row.detail);
-    // D1 resets a statement that runs past its CPU time: each arm probes `lookup_form_by_key` per key, and no view is materialised.
-    assert.ok(!steps.some((step) => /SCAN (lf|r|lookup_form|source_record|served_record)\b|MATERIALIZE/.test(step)), steps.join("\n"));
-    assert.ok(steps.filter((step) => /SEARCH lf USING (COVERING )?INDEX lookup_form_(headword_)?by_key/.test(step)).length >= 3, steps.join("\n"));
+    // D1 resets a statement that runs past its CPU time (#816's first plan check): each arm probes a key index
+    // by release and key, once per key, and nothing walks a release or materialises a view.
+    assert.ok(!steps.some((step) => /SCAN (lf|r|e|h|lookup_form|source_record|recovered_entry)\b|MATERIALIZE/.test(step)), steps.join("\n"));
+    const probes = steps.filter((step) => /^SEARCH (lf|e|h) /.test(step));
+    assert.equal(probes.length, 5, steps.join("\n"));
+    for (const probe of probes) assert.match(probe, /\((release_id=\? AND (surface_key|word_key)=\?|word_key=\?)\)/, steps.join("\n"));
   } finally {
     db.close();
   }

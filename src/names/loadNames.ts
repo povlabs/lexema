@@ -95,16 +95,21 @@ const LABELS_PAGE = 500;
  */
 export function answeredKeys(reader: MasterReader, masterReleaseId: string, keys: readonly string[]): Set<string> {
   const tables = tablesIn(reader, [...PAGE_ENTRY_TABLES, "recovered_definition", "hand_kept_definition"]);
-  const served = `SELECT release_id FROM served_release WHERE master_release_id = ${literal(masterReleaseId)}`;
+  // The served releases, read once and written into each read as literals.
+  const served = select<{ release_id: string }>(reader, `SELECT release_id FROM served_release WHERE master_release_id = ${literal(masterReleaseId)}`)
+    .map((row) => literal(row.release_id))
+    .join(", ");
   const answered = new Set<string>();
   const distinct = [...new Set(keys)];
+  if (served === "") return answered;
   for (let start = 0; start < distinct.length; start += LABELS_PAGE) {
     // Each arm reads the page's keys itself: a dictionary read is one SELECT, so there is no WITH to share them.
-    const asked = `json_each(${json(distinct.slice(start, start + LABELS_PAGE))}) a`;
-    // A record's search rows, probed by `lookup_form_by_key` as a search probes them: a hidden record
-    // has none, and neither has a record a change replaced, so every row found is a served record's.
-    const records = (origin: string) => `FROM ${asked}
-        JOIN lookup_form lf ON lf.release_id IN (${served}) AND lf.surface_key = a.value AND lf.origin = '${origin}'
+    // CROSS JOIN keeps the keys the outer loop, so each is one probe of a key index (release and key); left to
+    // the planner, it walked a whole release of `lookup_form` and D1 reset the statement on its CPU limit.
+    const asked = `json_each(${json(distinct.slice(start, start + LABELS_PAGE))}) a CROSS JOIN`;
+    // A record's search rows, probed as a search probes them: a hidden record has none, and neither
+    // has a record a change replaced, so every row found is a served record's.
+    const records = (origin: string) => `FROM ${asked} lookup_form lf ON lf.release_id IN (${served}) AND lf.surface_key = a.value AND lf.origin = '${origin}'
         JOIN source_record r ON r.record_id = lf.record_id`;
     // A headword's text is judged below, as a page judges it; a table's listing answers the key whatever it says.
     const arms = [
@@ -113,12 +118,11 @@ export function answeredKeys(reader: MasterReader, masterReleaseId: string, keys
       ...(tables.has("recovered_definition") ? [`SELECT a.value, r.word, d.text ${records("headword")} JOIN recovered_definition d ON d.record_id = r.record_id`] : []),
       ...(PAGE_ENTRY_TABLES.every((table) => tables.has(table))
         ? [
-            `SELECT a.value, e.word, d.text FROM ${asked}
-        JOIN recovered_entry e ON e.word_key = a.value AND e.release_id IN (${served})
+            `SELECT a.value, e.word, d.text FROM ${asked} recovered_entry e ON e.release_id IN (${served}) AND e.word_key = a.value
         JOIN entry_definition d ON d.entry_id = e.entry_id`,
           ]
         : []),
-      ...(tables.has("hand_kept_definition") ? [`SELECT a.value, NULL, NULL FROM ${asked} JOIN hand_kept_definition h ON h.word_key = a.value`] : []),
+      ...(tables.has("hand_kept_definition") ? [`SELECT a.value, NULL, NULL FROM ${asked} hand_kept_definition h ON h.word_key = a.value`] : []),
     ];
     for (const row of select<{ word_key: string; word: string | null; text: string | null }>(reader, arms.join("\n      UNION ALL\n"))) {
       if (row.word === null || row.text === null || isShownMeaning(row.text, row.word)) answered.add(row.word_key);
