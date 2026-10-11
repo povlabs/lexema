@@ -1,9 +1,9 @@
 // Name entries on the word page and in the API (ADR 0032, #794): a name entry
-// reads as `Nome proprio` with its Wikidata description as its one definition
-// and a *Fonte* to its item: in the footer beside *Segnala un errore* when it
-// is the page's one reading (#827), else under its definition; a page whose
-// readings are all name entries has no Wiktionary *Fonte*; and the API names
-// and credits it by its item.
+// reads as `Nome proprio` with its Wikidata description as its one definition;
+// every page has one *Fonte*, in the footer beside *Segnala un errore*, to
+// Wiktionary when any reading is Wiktionary's, else to the first name entry's
+// Wikidata item, and no reading has its own (#827); and the API names and
+// credits a name entry by its item.
 // Seeded from fixtures/names/ as the dev seed seeds names: three verbatim
 // archive lines, then `load:names` over items of the committed snapshot.
 
@@ -23,7 +23,7 @@ import { planNames } from "../../src/names/loadNames.js";
 import { nameItem } from "../../src/names/nameItem.js";
 import { searchAttempt } from "@/lib/dictionary/searchAttempt.ts";
 import { Outcome, SearchPage } from "@/components/dictionary/SearchPage";
-import { NAME_SOURCE, SOURCE_LINE } from "@/components/shared/styles.ts";
+import { SOURCE_LINE } from "@/components/shared/styles.ts";
 import { candidatesOf, entryAttribution, resultJson } from "@/worker/api/lookupAnswer.ts";
 import { UNFILTERED } from "@/worker/api/lookupFilters.ts";
 
@@ -81,50 +81,48 @@ const footerOf = (html: string): string => {
   const start = html.lastIndexOf(`<footer class="${SOURCE_LINE}" lang="it">`);
   return html.slice(start, html.indexOf("</footer>", start));
 };
-/** Each name entry's own *Fonte*: where it links. */
-const nameSources = (html: string): string[] =>
-  [...html.matchAll(new RegExp(`<p class="${NAME_SOURCE.replace(/[[\]().:]/g, "\\$&")}" lang="it"><a [^>]*href="([^"]+)"`, "g"))].map((match) => match[1]);
+/** Every *Fonte* on the page, footer included: where each links. */
+const sourceLinks = (html: string): string[] => [...html.matchAll(/<a [^>]*href="([^"]+)"[^>]*>Fonte</g)].map((match) => match[1]);
 
-/** The footer's *Fonte*: where it links, if it has one. */
+/** The footer's *Fonte*: where it links. */
 const footerSource = (html: string): string | undefined => footerOf(html).match(/<a [^>]*href="([^"]+)"/)?.[1];
 
-test("a page whose one reading is a name entry reads as a proper name, its Fonte to its Wikidata item beside Segnala un errore", async () => {
+test("a page whose one reading is a name entry reads as a proper name, its one Fonte to its Wikidata item beside Segnala un errore", async () => {
   const html = await render("Hormuz");
   // A lone reading keeps its number (§ 2): only an empty lone reading drops it.
   assert.deepEqual(headingsOf(html), ["1·Nome proprio"]);
   assert.match(textOf(html), /Definizioni1\.isola dell'Iran/);
-  // The footer credits the item, so the reading shows no Fonte of its own (#827).
-  assert.deepEqual(nameSources(html), []);
   const footer = footerOf(html);
   assert.equal(textOf(footer), "Fonte·Segnala un errore");
   assert.equal(footerSource(html), "https://www.wikidata.org/wiki/Q695265");
   assert.match(footer, /aria-label="Voce di Wikidata per Hormuz, la fonte di questa voce \(si apre in una nuova scheda\)"/);
+  // The footer's is the page's one Fonte: none sits under the definition (#827).
+  assert.deepEqual(sourceLinks(html), ["https://www.wikidata.org/wiki/Q695265"]);
   assert.doesNotMatch(footer, /wiktionary/);
   assert.doesNotMatch(textOf(html), /Wikidata/);
 });
 
-test("a spelling two items share shows both, the continent before the island, each with its own Fonte and none in the footer", async () => {
+test("a spelling two items share shows both, the continent before the island, and one Fonte to the first", async () => {
   const html = await render("europa");
   assert.deepEqual(headingsOf(html), ["1·Nome proprio", "2·Nome proprio"]);
-  assert.deepEqual(nameSources(html), ["https://www.wikidata.org/wiki/Q46", "https://www.wikidata.org/wiki/Q193089"]);
   assert.ok(textOf(html).indexOf("continente della Terra") < textOf(html).indexOf("isola nel Canale del Mozambico"));
-  // One footer link cannot credit two items, so the footer has only the report link (#827).
-  assert.equal(textOf(footerOf(html)), "Segnala un errore");
-  assert.equal(footerSource(html), undefined);
+  assert.equal(textOf(footerOf(html)), "Fonte·Segnala un errore");
+  assert.match(footerOf(html), /aria-label="Voce di Wikidata per Europa, la fonte di questa voce/);
+  assert.deepEqual(sourceLinks(html), ["https://www.wikidata.org/wiki/Q46"]);
 });
 
 test("a word Wiktionary has keeps its page: a name with no meaning gains the name after it, and a word with one is unchanged", async () => {
   // Giulia's record has a sense with no gloss; the river is its first meaning on the page.
-  // A mixed page: the footer credits Wiktionary, and the name keeps its own Fonte.
   const giulia = await render("Giulia");
   assert.match(textOf(giulia), /fiume/);
-  assert.deepEqual(nameSources(giulia), ["https://www.wikidata.org/wiki/Q686341"]);
   assert.equal(textOf(footerOf(giulia)), "Fonte·Segnala un errore");
-  assert.equal(footerSource(giulia), "https://it.wiktionary.org/wiki/Giulia");
+  // A mixed page credits Wiktionary alone: the name shows no Wikidata Fonte (#827).
+  assert.deepEqual(sourceLinks(giulia), ["https://it.wiktionary.org/wiki/Giulia"]);
+  assert.doesNotMatch(giulia, /wikidata\.org/);
   // `Sale` the comune is the key of the salt noun, so load:names left it out: the page is the noun's alone.
   const sale = await render("sale");
   assert.deepEqual(headingsOf(sale), ["1·Sostantivo·maschile, singolare"]);
-  assert.deepEqual(nameSources(sale), []);
+  assert.deepEqual(sourceLinks(sale), ["https://it.wiktionary.org/wiki/sale"]);
   assert.doesNotMatch(textOf(sale), /comune italiano/);
 });
 

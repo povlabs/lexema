@@ -11,14 +11,9 @@
 // article worked out by rule. Every Italian string carries `lang="it"`.
 
 import { Fragment, type ReactNode } from "react";
-import { wikidataItemUrl } from "@lexema/lookup/names.ts";
-import { entryKey, factRefKey, isNameEntry } from "@lexema/lookup/types.ts";
-import type { NameIdentity, RecoveredDefinition, Reading } from "@lexema/lookup/types.ts";
-import { ExternalIcon } from "@/components/shared/icons";
-import { NEW_TAB } from "@/components/shared/ExternalLink";
-import { nameSourceLinkName, SOURCE_LABEL } from "@/lib/dictionary/wordPageText.ts";
+import { entryKey, factRefKey } from "@lexema/lookup/types.ts";
+import type { RecoveredDefinition, Reading } from "@lexema/lookup/types.ts";
 import { conjugationOf } from "@/lib/dictionary/conjugation.ts";
-import { creditsItem, type FooterSource } from "@/lib/dictionary/footerSource.ts";
 import { definitionsOf, shownSenseLabels, type DefinitionItem } from "@/lib/dictionary/definitions.ts";
 import { headingGrammar, placesGrammar } from "@/lib/dictionary/genderGrid.ts";
 import { lemmaMatches, lemmaWordsOf, unlinkedLemmas, type LinksOf } from "@/lib/dictionary/lemmaLines.ts";
@@ -76,10 +71,7 @@ import {
   READING_HEADING,
   READING_NUMBER,
   SENSE_LABEL,
-  SOURCE_LINK,
   SUB_ITEMS,
-  ICON,
-  NAME_SOURCE,
 } from "@/components/shared/styles.ts";
 import { FORM_OF_LEAD, FORMS_OF_LEAD, formsOf, SECTION_LABEL } from "@/lib/dictionary/wordPageText.ts";
 
@@ -626,7 +618,7 @@ function HeadingPartsOfSpeech({ heading }: { heading: BlockHeading }) {
  * to show, is its heading alone, and a lone one is its part of speech with no
  * number (#696).
  */
-export function ReadingView({ entry, footerSource }: { entry: PageReading | BareReading | LoneBareReading; footerSource: FooterSource }) {
+export function ReadingView({ entry }: { entry: PageReading | BareReading | LoneBareReading }) {
   const { reading } = entry;
   const grammar = headingGrammar(reading);
   const parts: readonly (LemmaPart | FormOfPart)[] = entry.kind === "source" ? entry.parts : [];
@@ -663,24 +655,6 @@ export function ReadingView({ entry, footerSource }: { entry: PageReading | Bare
       {parts.map((part) => (
         <ReadingPartView key={part.kind} reading={reading} owner={entryName(entry)} part={part} />
       ))}
-      {isNameEntry(reading) && !creditsItem(footerSource, reading.nameItem) && <NameSource reading={reading} />}
     </article>
-  );
-}
-
-/**
- * A name entry's own *Fonte*, to its Wikidata item, under its definition
- * (ADR 0032, #794), on a page whose footer *Fonte* credits something else: a
- * Wiktionary page, or nothing on a page of several name entries. A page whose
- * one reading is a name entry credits its item in the footer instead (#827).
- */
-function NameSource({ reading }: { reading: NameIdentity & { word: string } }) {
-  return (
-    <p className={NAME_SOURCE} lang="it">
-      <a className={SOURCE_LINK} href={wikidataItemUrl(reading.nameItem)} {...NEW_TAB} aria-label={nameSourceLinkName(reading.word)}>
-        {SOURCE_LABEL}
-        <ExternalIcon className={ICON} />
-      </a>
-    </p>
   );
 }

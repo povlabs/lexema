@@ -122,7 +122,7 @@ function WordFactsView({
 
 /** What the footer needs of a result: the page its content is credited to, and the readings a report can name. */
 export interface FooterFacts {
-  /** What the one *Source* link credits: a Wiktionary page, a name entry's Wikidata item, or nothing. */
+  /** What the one *Source* link credits: a Wiktionary page, or the first name entry's Wikidata item. */
   source: FooterSource;
   /** The word a report is about. */
   headword: string;
@@ -131,22 +131,20 @@ export interface FooterFacts {
 }
 
 /**
- * One *Source*, to the page's source, then *Segnala un errore* (ADR 0009,
- * amended on #281): the Wiktionary page of the page's word, or the Wikidata
- * item of its one name entry (#827). A page of several name entries credits
- * each in its reading, so it shows *Segnala un errore* alone.
+ * The page's one *Source*, then *Segnala un errore* (ADR 0009, amended on
+ * #281 and #827): to the Wiktionary page of the page's word, or, on a page of
+ * name entries alone, to the first one's Wikidata item. No reading shows a
+ * *Source* of its own.
  */
 export function SourceLine({ page, siteKey }: { page: FooterFacts; siteKey: string | undefined }) {
   const link = footerSourceLink(page.source);
   return (
     <footer className={SOURCE_LINE} lang="it">
-      {link !== undefined && (
-        <a className={SOURCE_LINK} href={link.href} {...NEW_TAB} aria-label={link.name}>
-          {SOURCE_LABEL}
-          <ExternalIcon className={ICON} />
-        </a>
-      )}
-      {link !== undefined && <span aria-hidden="true">·</span>}
+      <a className={SOURCE_LINK} href={link.href} {...NEW_TAB} aria-label={link.name}>
+        {SOURCE_LABEL}
+        <ExternalIcon className={ICON} />
+      </a>
+      <span aria-hidden="true">·</span>
       <ReportDialog
         word={page.headword}
         subject={{ kind: "mistake", readings: reportReadings(page.readings) }}
@@ -171,7 +169,7 @@ export function WordView({ page, siteKey }: { page: WordPage; siteKey?: string }
           ) : entry.kind === "grid-form" ? (
             <GridFormBlockView key={readingAnchor(entry)} block={entry} />
           ) : (
-            <ReadingView key={readingAnchor(entry)} entry={entry} footerSource={page.source} />
+            <ReadingView key={readingAnchor(entry)} entry={entry} />
           ),
         )}
       </div>

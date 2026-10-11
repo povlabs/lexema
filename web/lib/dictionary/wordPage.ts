@@ -124,7 +124,7 @@ import {
   type SourceRef,
 } from "@lexema/lookup/types.ts";
 import { definitionTextKey, definitionsOf, placeOf, readAt, type DefinitionItem } from "./definitions.ts";
-import { NO_SOURCE, wiktionarySource, type FooterSource } from "./footerSource.ts";
+import { wiktionarySource, type FooterSource } from "./footerSource.ts";
 import { conjugates, conjugationOf, declaredConjugationOf, placesAny, type Conjugation } from "./conjugation.ts";
 import { agreementOf, placesOf, type Agreement, type GridPlace, type Spelling } from "./genderGrid.ts";
 import { GRID_FORM_LINE_RULE, gridFormLine } from "./gridFormLine.ts";
@@ -1133,21 +1133,18 @@ export function wordPage(
 }
 
 /**
- * What the footer's *Fonte* credits. The Wiktionary page of the title, the
- * spelling the page is about, whenever the lookup found a Wiktionary reading,
- * shown or not, since its word facts may show: that page holds every entry for
- * the spelling, so one link covers every reading (ADR 0009, amended on #281).
- * A page whose one shown reading is a name entry credits that entry's Wikidata
- * item there instead, beside *Segnala un errore* (#827). A page of several
- * name entries credits none: one link cannot credit two items, so each keeps
- * its own *Fonte* (ADR 0032).
+ * What the footer's one *Fonte* credits; no reading credits its own (#827).
+ * The Wiktionary page of the title, the spelling the page is about, whenever
+ * the lookup found a Wiktionary reading, shown or not, since its word facts
+ * may show: that page holds every entry for the spelling, so one link covers
+ * every reading (ADR 0009, amended on #281). A page of name entries alone
+ * credits the Wikidata item of the first it shows (ADR 0032, #827).
  */
-function footerSourceOf(found: readonly Reading[], shown: WordReadings, headword: string): FooterSource {
+function footerSourceOf(found: readonly [Reading, ...Reading[]], shown: WordReadings, headword: string): FooterSource {
   if (!found.every(isNameEntry)) return wiktionarySource(headword);
-  if (shown.length !== 1) return NO_SOURCE;
-  const [only] = shown;
-  if (only.kind === "verb-form" || only.kind === "grid-form" || !isNameEntry(only.reading)) return NO_SOURCE;
-  return { kind: "wikidata", item: only.reading.nameItem, word: only.reading.word };
+  const shownNames = shown.flatMap((entry) => (entry.kind !== "verb-form" && entry.kind !== "grid-form" && isNameEntry(entry.reading) ? [entry.reading] : []));
+  const first = shownNames[0] ?? found[0];
+  return { kind: "wikidata", item: first.nameItem, word: first.word };
 }
 
 /** What a page's entries are drawn from. */
