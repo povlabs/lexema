@@ -27,7 +27,10 @@ the archive's SHA-256, `it-0c432803`.
   ([ADR 0031](.decisions/0031-hand-kept-readings-fill-source-gaps.md)); and
   Wikidata words, Italian lexemes from Wikidata (CC0) kept as imported in their
   own layer beside it, shown only for a word no Wiktionary reading answers
-  ([ADR 0032](.decisions/0032-wikidata-words-fill-wiktionary-gaps.md)).
+  ([ADR 0033](.decisions/0033-wikidata-words-fill-wiktionary-gaps.md)).
+  Wiktionary is the source; proper names it does not explain come from Wikidata
+  as name entries, kept beside it under the same rule
+  ([ADR 0032](.decisions/0032-wikidata-names-fill-proper-name-gaps.md)).
   Italian grammar enrichment is deterministic and language-specific. AI generation, a product UI, or wider work
   needs an explicit request.
 - Make invalid states unrepresentable. Domain logic belongs in domain objects.

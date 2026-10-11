@@ -111,6 +111,7 @@ import {
   formsOfQueryReadings,
   isAdjectiveReading,
   isFormOfReading,
+  isNameEntry,
   isNounReading,
   isSourceRef,
   isVerbReading,
@@ -123,6 +124,7 @@ import {
   type SourceRef,
 } from "@lexema/lookup/types.ts";
 import { definitionTextKey, definitionsOf, placeOf, readAt, type DefinitionItem } from "./definitions.ts";
+import { wiktionarySource, type FooterSource } from "./footerSource.ts";
 import { conjugates, conjugationOf, declaredConjugationOf, placesAny, type Conjugation } from "./conjugation.ts";
 import { agreementOf, placesOf, type Agreement, type GridPlace, type Spelling } from "./genderGrid.ts";
 import { GRID_FORM_LINE_RULE, gridFormLine } from "./gridFormLine.ts";
@@ -749,12 +751,8 @@ export interface WordPage {
   wordLists: WordLists;
   /** The word's own expressions, each once; the last of the word's facts. None when its records list none. */
   expressions: ExpressionSection | undefined;
-  /**
-   * The word whose Wiktionary page the one *Source* link opens: the spelling
-   * the page is about, its title. That page holds every entry for the
-   * spelling, so one link covers every reading (ADR 0009, amended on #281).
-   */
-  sourceWord: string;
+  /** What the footer's one *Fonte* credits (`footerSourceOf`). */
+  source: FooterSource;
 }
 
 /**
@@ -1130,8 +1128,23 @@ export function wordPage(
       derived: relatedItems(placed.rest.derived),
     },
     expressions: expressions === undefined ? undefined : { expressions },
-    sourceWord: headword,
+    source: footerSourceOf(readings, shown, headword),
   };
+}
+
+/**
+ * What the footer's one *Fonte* credits; no reading credits its own (#827).
+ * The Wiktionary page of the title, the spelling the page is about, whenever
+ * the lookup found a Wiktionary reading, shown or not, since its word facts
+ * may show: that page holds every entry for the spelling, so one link covers
+ * every reading (ADR 0009, amended on #281). A page of name entries alone
+ * credits the Wikidata item of the first it shows (ADR 0032, #827).
+ */
+function footerSourceOf(found: readonly [Reading, ...Reading[]], shown: WordReadings, headword: string): FooterSource {
+  if (!found.every(isNameEntry)) return wiktionarySource(headword);
+  const shownNames = shown.flatMap((entry) => (entry.kind !== "verb-form" && entry.kind !== "grid-form" && isNameEntry(entry.reading) ? [entry.reading] : []));
+  const first = shownNames[0] ?? found[0];
+  return { kind: "wikidata", item: first.nameItem, word: first.word };
 }
 
 /** What a page's entries are drawn from. */

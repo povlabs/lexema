@@ -23,6 +23,8 @@
     "correct:records": "tsx src/import/correctRecordsCli.ts",
     "load:page-entries": "tsx src/import/loadPageEntriesCli.ts",
     "load:recovered-definitions": "tsx src/import/loadRecoveredDefinitionsCli.ts",
+    "load:names": "tsx src/names/loadNamesCli.ts",
+    "names:fetch": "tsx src/names/fetchNamesCli.ts",
     "update:auto": "tsx src/update/updateCli.ts auto",
     "update:upgrade": "tsx src/update/updateCli.ts upgrade",
     "update:diff": "tsx src/update/updateCli.ts diff",

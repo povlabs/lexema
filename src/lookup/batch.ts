@@ -8,8 +8,9 @@
 // 110 statements a word, where Cloudflare allows a request 1,000
 // (reports/2026-10-01-batch-d1-statements.md). Here every step is one
 // statement for all the words: the release, the search, beside it the
-// hand-kept readings (`hand_kept_definition`, ADR 0031, #776) where the
-// dictionary has their table, the lemma links, for words nothing spells, the multi-word reading (src/lookup/phrase.ts), and for
+// hand-kept readings (`hand_kept_definition`, ADR 0031, #776) and the name
+// entries (`name_entry`, ADR 0032, #794) where the dictionary has their
+// tables, the lemma links, for words nothing spells, the multi-word reading (src/lookup/phrase.ts), and for
 // words no phrase answers either, the essere agreement reading (rule
 // `it-essere-agreement/v1`, #676, #756): `sono andata` as the feminine of
 // andare's `sono andato`, and beside it the words rule `it-word-shape/v1`
@@ -31,7 +32,7 @@ import { answeringShapes, shapeKeysOf, readShapeRows, type ShapeRow } from "./wo
 import { phraseMatchesOf } from "./phrase.js";
 import { correctedEdgeServed, sourceEdgeServed } from "./correctedEdge.js";
 import { dictionaryTables, servedBy, type DictionaryTables } from "./served.js";
-import { handKeptReadingsOf } from "./handKept.js";
+import { besideSourceOf } from "./besideSource.js";
 import { readTranslations } from "./sourceRecord.js";
 import { lemmasOfPartOfSpeech, sourceTagsAt, type QueryInfo, type RejectedResult, type ReleaseInfo, type Translation } from "./types.js";
 import { agreeingQuery, agreementProbes, namesCell, type AgreeingQuery } from "../italian/essereAgreement.js";
@@ -41,15 +42,17 @@ import { prefixUpperBound } from "./keyRange.js";
 /**
  * One entry a word is answered with: where it is, its headword and its part of
  * speech. Exactly one of a source record by its archive line, a page-only
- * entry by its page revision, or a hand-kept reading (ADR 0031) by its reading
- * id, with the revision it cites and its section line there.
+ * entry by its page revision, a hand-kept reading (ADR 0031) by its reading
+ * id, with the revision it cites and its section line there, or a name entry
+ * (ADR 0032) by its Wikidata item.
  */
 export type CandidateRecord = (
-  | { recordId: number; entryId?: never; handKeptId?: never; lineNo: number }
-  | { entryId: number; revisionId: number; pageLine: number; recordId?: never; handKeptId?: never; lineNo?: never }
-  | { handKeptId: string; revisionId: number; pageLine: number; recordId?: never; entryId?: never; lineNo?: never }
+  | { recordId: number; entryId?: never; handKeptId?: never; nameItem?: never; lineNo: number }
+  | { entryId: number; revisionId: number; pageLine: number; recordId?: never; handKeptId?: never; nameItem?: never; lineNo?: never }
+  | { handKeptId: string; revisionId: number; pageLine: number; recordId?: never; entryId?: never; nameItem?: never; lineNo?: never }
+  | { nameItem: `Q${number}`; recordId?: never; entryId?: never; handKeptId?: never; lineNo?: never; revisionId?: never; pageLine?: never }
 ) & {
-  /** The record's own release, which `lineNo` counts in: the master's, or a feed's (src/lookup/served.ts); the served one for a hand-kept reading, which belongs to none. */
+  /** The record's own release, which `lineNo` counts in: the master's, or a feed's (src/lookup/served.ts); the served one for a hand-kept reading or a name entry, which belongs to none. */
   releaseId: string;
   word: string;
   pos: string;
@@ -440,10 +443,11 @@ async function agreementsOf(db: LookupDatabase, reads: BatchReads, releaseId: st
   );
 }
 
-/** As `entryKey` (src/lookup/types.ts) names an entry: records, page entries and hand-kept readings apart. */
+/** As `entryKey` (src/lookup/types.ts) names an entry: records, page entries, hand-kept readings and name entries apart. */
 const candidateKey = (record: CandidateRecord): string => {
   if (record.recordId !== undefined) return String(record.recordId);
-  return record.entryId !== undefined ? `page-${record.entryId}` : `kept-${record.handKeptId}`;
+  if (record.entryId !== undefined) return `page-${record.entryId}`;
+  return record.handKeptId !== undefined ? `kept-${record.handKeptId}` : `name-${record.nameItem}`;
 };
 
 /** Each record once, the first time it comes. */
@@ -548,9 +552,10 @@ export async function lookupBatch({
   });
   const keys = [...new Set(prepared.flatMap((query) => ("outcome" in query ? [] : [query.key])))];
 
-  // The hand-kept readings (ADR 0031, #776) are read beside the search, for
-  // the same keys; a dictionary without their table is sent no statement.
-  const [spelled, kept] = await Promise.all([search(db, reads, releaseId, keys), handKeptReadingsOf(db, releaseId, tables).heads(keys)]);
+  // The hand-kept readings (ADR 0031, #776) and the name entries (ADR 0032,
+  // #794) are read beside the search, for the same keys, in one statement
+  // (src/lookup/besideSource.ts); a dictionary without their tables is sent none.
+  const [spelled, kept] = await Promise.all([search(db, reads, releaseId, keys), besideSourceOf(db, releaseId, tables).heads(keys)]);
   const aboutIds = [...new Set([...spelled.values()].flatMap((matches) => [...matches.values()].filter((match) => match.about).flatMap((match) => match.record.recordId === undefined ? [] : [match.record.recordId])))];
 
   // A word nothing spells may still be a multi-word headword said the way a
@@ -586,11 +591,12 @@ export async function lookupBatch({
   /**
    * The readings of everything that spells `key`, as `spelledResult`
    * (src/lookup/lookup.ts) orders them: the source's records and page entries
-   * in source order, then the hand-kept readings. Undefined when none does.
+   * in source order, then the hand-kept readings, then the name entries.
+   * Undefined when none does.
    */
   const spelledReadings = (key: string): Match[] | undefined => {
     const matches = spelled.get(key);
-    const heads = kept.get(key) ?? [];
+    const heads: CandidateRecord[] = kept.get(key) ?? [];
     if (matches === undefined && heads.length === 0) return undefined;
     return [...(matches === undefined ? [] : readingsOf(matches.values(), links)), ...heads.map((head): Match => ({ record: head, about: true }))];
   };
@@ -615,6 +621,23 @@ export async function lookupBatch({
     return first === undefined ? { outcome: "not-found", query } : { outcome: "found", query, candidates: [first, ...rest] };
   });
   return { release, answers };
+}
+
+/**
+ * The keys among `keys` the lookup answers through a route past spelling: the
+ * multi-word reading (#214), or, where no phrase answers, the essere agreement
+ * reading (#676). Read as `lookupBatch` reads them, whatever spells the key,
+ * so an entry that comes to spell it later is judged against what the lookup
+ * shows today. `load:names` leaves such a key out (ADR 0032): a name entry
+ * there would take the page those routes answer. At most four statements
+ * however many keys, none for keys of one word.
+ */
+export async function keysAnsweredPastSpelling(db: LookupDatabase, releaseId: string, tables: DictionaryTables, keys: readonly string[]): Promise<Set<string>> {
+  const phrases = await phraseMatchesOf(db, releaseId, tables, keys);
+  const answered = new Set(keys.filter((key) => (phrases.get(key) ?? []).length > 0));
+  const agreements = await agreementsOf(db, readsFor(tables), releaseId, keys.filter((key) => !answered.has(key)));
+  for (const [key, candidates] of agreements) if (candidates.length > 0) answered.add(key);
+  return answered;
 }
 
 /**

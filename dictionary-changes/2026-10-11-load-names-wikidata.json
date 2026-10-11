@@ -1,0 +1,15 @@
+{
+  "command": "load:names",
+  "inputs": {},
+  "lookups": [
+    { "word": "Hormuz", "gloss": "isola dell'Iran" },
+    { "word": "Brent", "gloss": "Tamigi" },
+    { "word": "Iran", "gloss": "Repubblica Islamica dell'Iran" },
+    { "word": "sale", "gloss": "cloruro di sodio" }
+  ],
+  "expected": {
+    "records": { "added": 0, "changed": 0, "removed": 0 },
+    "written": {},
+    "deleted": {}
+  }
+}

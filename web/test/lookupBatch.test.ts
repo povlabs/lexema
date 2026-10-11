@@ -28,6 +28,7 @@ import { fromNodeSqlite, type DictionaryRead, type LookupDatabase } from "../../
 import { lookup } from "../../src/lookup/lookup.js";
 import { HAND_KEPT_HEADS_SQL } from "../../src/lookup/handKept.js";
 import { SHAPE_READ_SQL } from "../../src/lookup/wordShape.js";
+import { BESIDE_SOURCE_HEADS_SQL } from "../../src/lookup/besideSource.js";
 import { OPTIONAL_TABLES_SQL } from "../../src/lookup/served.js";
 import { entryKey, publicEntryId, type LemmaTarget } from "../../src/lookup/types.js";
 import { loadFixturePages, rawPageSource } from "../../src/source/rawPage.js";
@@ -189,8 +190,8 @@ test("a batch reads the release once and runs the same few statements for one wo
       // A schema.sql seed has `corrected_edge`, so the links read the corrected edges beside the source's (#722).
       assert.equal(asked.filter((sql) => sql === CORRECTED_BATCH_LEMMA_LINK_SQL).length, 1, asked.join("\n---\n"));
       assert.equal(asked.filter((sql) => sql === OPTIONAL_TABLES_SQL).length, 1, asked.join("\n---\n"));
-      // A schema.sql seed has `hand_kept_definition`, read beside the search for every word at once (#776).
-      assert.equal(asked.filter((sql) => sql === HAND_KEPT_HEADS_SQL).length, 1, asked.join("\n---\n"));
+      // A schema.sql seed has `hand_kept_definition` and `name_entry`, read beside the search for every word at once, in one statement (#776, #794).
+      assert.equal(asked.filter((sql) => sql === BESIDE_SOURCE_HEADS_SQL).length, 1, asked.join("\n---\n"));
       // The release and the optional tables (one D1 call), the search and the
       // hand-kept readings, and the lemma links: a single word nothing spells
       // is never read word by word.

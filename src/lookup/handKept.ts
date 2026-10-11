@@ -12,7 +12,8 @@ import { NO_ENTRY_FACTS } from "./pageFacts.js";
 import type { DictionaryTables } from "./served.js";
 import type { PageEntryRef, Reading, ReadingPartOfSpeech, RecoveredDefinition } from "./types.js";
 
-interface DefinitionRow {
+/** One definition of a hand-kept reading, as `HAND_KEPT_SQL` reads it. */
+export interface HandKeptDefinitionRow {
   reading_id: string;
   word: string;
   pos: string;
@@ -43,7 +44,8 @@ export const HAND_KEPT_HEADS_SQL: KeyedRead = keyedRead(`SELECT word_key AS set_
   FROM hand_kept_definition WHERE word_key IN (SELECT value FROM json_each(?1))
  GROUP BY word_key, reading_id ORDER BY word_key, reading_id`);
 
-interface HeadRow {
+/** One hand-kept reading named, as `HAND_KEPT_HEADS_SQL` reads it. */
+export interface HandKeptHeadRow {
   set_key: string;
   reading_id: string;
   word: string;
@@ -82,30 +84,29 @@ const NONE: HandKeptReadings = { readings: async () => [], heads: async () => ne
 export function handKeptReadingsOf(db: LookupDatabase, releaseId: string, tables: Pick<DictionaryTables, "handKeptReadings">): HandKeptReadings {
   if (!tables.handKeptReadings) return NONE;
   return {
-    readings: async (key) => {
-      const byReading = new Map<string, DefinitionRow[]>();
-      for (const row of await db.all<DefinitionRow>(HAND_KEPT_SQL, [key])) {
-        byReading.set(row.reading_id, [...(byReading.get(row.reading_id) ?? []), row]);
-      }
-      return [...byReading.values()].map((rows) => readingOf(releaseId, rows as [DefinitionRow, ...DefinitionRow[]]));
-    },
+    readings: async (key) => handKeptReadingsFrom(releaseId, await db.all<HandKeptDefinitionRow>(HAND_KEPT_SQL, [key])),
     heads: async (keys) => {
       const byKey = new Map<string, HandKeptHead[]>();
-      for (const row of await readKeys<HeadRow>(db, HAND_KEPT_HEADS_SQL, keys)) {
-        byKey.set(row.set_key, [...(byKey.get(row.set_key) ?? []), handKeptHead(releaseId, row)]);
+      for (const row of await readKeys<HandKeptHeadRow>(db, HAND_KEPT_HEADS_SQL, keys)) {
+        byKey.set(row.set_key, [...(byKey.get(row.set_key) ?? []), handKeptHeadOf(releaseId, row)]);
       }
       return byKey;
     },
   };
 }
 
-/** A hand-kept reading named, from a row of `HAND_KEPT_HEADS_SQL` or one read as it reads them; `releaseId` is the served release's. */
-export function handKeptHead(releaseId: string, row: Omit<HeadRow, "set_key">): HandKeptHead {
-  return {
-    handKeptId: row.reading_id, releaseId, revisionId: revisionOf(row.evidence_url).revisionId, pageLine: row.section_line,
-    word: row.word, pos: row.pos, posTitle: row.pos_title,
-  };
+/** The readings of a key's definition rows, as `HAND_KEPT_SQL` orders them: one per reading, its definitions in order. */
+export function handKeptReadingsFrom(releaseId: string, rows: readonly HandKeptDefinitionRow[]): Reading[] {
+  const byReading = new Map<string, HandKeptDefinitionRow[]>();
+  for (const row of rows) byReading.set(row.reading_id, [...(byReading.get(row.reading_id) ?? []), row]);
+  return [...byReading.values()].map((definitions) => readingOf(releaseId, definitions as [HandKeptDefinitionRow, ...HandKeptDefinitionRow[]]));
 }
+
+/** A reading named by its head row, as `HAND_KEPT_HEADS_SQL` reads it or one read as it reads them; `releaseId` is the served release's. */
+export const handKeptHeadOf = (releaseId: string, row: Omit<HandKeptHeadRow, "set_key">): HandKeptHead => ({
+  handKeptId: row.reading_id, releaseId, revisionId: revisionOf(row.evidence_url).revisionId, pageLine: row.section_line,
+  word: row.word, pos: row.pos, posTitle: row.pos_title,
+});
 
 /** A hand-kept reading's part of speech, articles and all: its own, with no claims, forms or pronunciations, since it keys to no record. */
 function handKeptPartOfSpeech({ pos, word }: { pos: string; word: string }): ReadingPartOfSpeech {
@@ -119,7 +120,7 @@ function revisionOf(url: string): { wiki: string; title: string; revisionId: num
   return { wiki: parsed.hostname, title: parsed.searchParams.get("title") ?? "", revisionId: Number(parsed.searchParams.get("oldid")) };
 }
 
-function readingOf(releaseId: string, [first, ...rest]: readonly [DefinitionRow, ...DefinitionRow[]]): Reading {
+function readingOf(releaseId: string, [first, ...rest]: readonly [HandKeptDefinitionRow, ...HandKeptDefinitionRow[]]): Reading {
   const revision = revisionOf(first.evidence_url);
   const ref: PageEntryRef = {
     releaseId, ...revision, timestamp: first.revision_timestamp, line: first.section_line, wikitext: first.section_wikitext,

@@ -74,8 +74,8 @@ export const readsDataFiles = (change: DeclaredChange): change is DataReadingCha
  * The archive and dump `change` reads, from the catalogs: `update:auto` reads
  * its feed release; `hide:records`, `load:page-entries` and
  * `load:recovered-definitions` the master's archive, each with the dump it was
- * built from. `update:upgrade`, `normalize:source-text` and `correct:records`
- * read none.
+ * built from. `update:upgrade`, `normalize:source-text`, `correct:records`
+ * and `load:names` read none.
  */
 export function filesFor(
   change: DeclaredChange,
@@ -86,6 +86,7 @@ export function filesFor(
     case "update:upgrade":
     case "normalize:source-text":
     case "correct:records":
+    case "load:names":
       return null;
     case "update:auto":
       return releaseFiles(change.inputs.feedRelease, catalog, dumps);

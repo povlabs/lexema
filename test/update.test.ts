@@ -33,6 +33,7 @@ import {
   createStatement,
   definitionOf,
   HAND_KEPT_TABLES,
+  NAME_TABLES,
   HIDE_TABLES,
   masterUpgradeSql,
   rebuildSql,
@@ -530,7 +531,7 @@ test("the upgrade brings a master seeded before #18 up to the schema and is safe
   const old = new DatabaseSync(":memory:");
   old.exec(await readFile(SCHEMA, "utf8"));
   for (const view of [...SERVING_VIEWS].reverse()) old.exec(`DROP VIEW ${view}`);
-  for (const table of [...UPDATE_TABLES, ...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_FACT_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES, ...CORRECTION_TABLES, ...HAND_KEPT_TABLES, ...HIDE_TABLES].reverse()) old.exec(`DROP TABLE ${table}`);
+  for (const table of [...UPDATE_TABLES, ...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_FACT_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES, ...CORRECTION_TABLES, ...HAND_KEPT_TABLES, ...NAME_TABLES, ...HIDE_TABLES].reverse()) old.exec(`DROP TABLE ${table}`);
   assert.deepEqual(missingUpgrade(readerOf(old)), [...UPGRADE_NAMES]);
   assert.deepEqual(
     UPGRADE_NAMES.filter((name) => [...CORRECTION_TABLES, ...HIDE_TABLES].includes(name as never)),
@@ -625,7 +626,7 @@ test("no table outside the rebuilt tables, or outside a rebuilt group, points at
       .filter((table) => !rebuilt.has(table))
       .flatMap((table) => db.prepare("SELECT \"table\" AS parent FROM pragma_foreign_key_list(?)").all(table).map((row) => `${table} -> ${String(row.parent)}`))
       .filter((edge) => rebuilt.has(edge.split(" -> ")[1]));
-  assert.deepEqual(REBUILT_TABLES, [...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_FACT_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES, "recovered_definition", "recovered_label", "recovered_example", "hidden_record", "corrected_form", "corrected_edge"]);
+  assert.deepEqual(REBUILT_TABLES, [...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_FACT_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES, "recovered_definition", "recovered_label", "recovered_example", "hidden_record", "corrected_form", "corrected_edge", "name_entry"]);
   assert.deepEqual(pointingInto(new Set<string>(REBUILT_TABLES)), []);
   for (const group of REBUILT_GROUPS) {
     assert.deepEqual(pointingInto(new Set<string>(group.tables)), [], group.tables.join(", "));

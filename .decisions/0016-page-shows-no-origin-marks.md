@@ -1,7 +1,7 @@
 ---
 id: 0016
 title: A result shows every fact as the dictionary's, with no mark for where it came from
-status: accepted
+status: amended-in-part by [0032](0032-wikidata-names-fill-proper-name-gaps.md)
 date: 2026-09-27
 tags: [product, provenance]
 ---
@@ -42,3 +42,7 @@ The web app loses its recovered marks, its derived-article treatment and its moo
 ## Records
 
 no vocabulary impact
+
+## Amendments
+
+- **#794 — A name entry links its own Wikidata item (2026-10-11).** [ADR 0032](0032-wikidata-names-fill-proper-name-gaps.md) adds name entries from Wikidata, a second source. Each carries a small *Fonte* link to its Wikidata item, under its definition, because the page's one *Fonte* opens a Wiktionary page and a name entry does not come from there. That link is the source credit, like the page's *Fonte*, not an origin mark; no other mark is added, and every other rule here stands. *Note of 2026-10-11 ([#827](https://github.com/povlabs/lexema/issues/827)):* on Huey's ruling quoted at https://github.com/povlabs/lexema/issues/827#issuecomment-6110758089, no name entry carries a link of its own any more. Every page has one *Fonte*, in the footer beside *Segnala un errore*: to Wiktionary when the page has a Wiktionary reading, else to the first name entry's Wikidata item. It is the page's source credit, not a mark, so a name entry now carries no mark at all.

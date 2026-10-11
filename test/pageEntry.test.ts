@@ -152,7 +152,7 @@ test("ruled layouts recover definitions in page order with exact line evidence, 
   assert.deepEqual(labelsOf("fidelizzare"), [[]]);
   const result = recoverPageEntry(page("raccontare"), new Set());
   assert.ok(result.outcome === "recovered");
-  assert.deepEqual(result.entries[0].definitions[1].labels, ["figurato"]);
+  assert.deepEqual(result.entries[0].definitions[1].labels, ["senso figurato"]);
   assert.deepEqual(result.entries[0].definitions[1].examples.map((example) => example.text), ["quello lì non me la racconta giusta"]);
   for (const title of ["movere", "skirmish", "notiziare"]) {
     assert.notEqual(recoverPageEntry(page(title), new Set()).outcome, "recovered", title);

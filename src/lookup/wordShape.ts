@@ -10,7 +10,7 @@
 
 import { answeringSpellings, shapedSpellings, type AnsweringSpelling, type ShapedRecord } from "../italian/wordShape.js";
 import { keyedRead, readKeys, type KeyedRead, type LookupDatabase } from "./database.js";
-import { handKeptHead, type HandKeptHead } from "./handKept.js";
+import { handKeptHeadOf, type HandKeptHead } from "./handKept.js";
 import { servedBy, type DictionaryTables } from "./served.js";
 
 /**
@@ -231,7 +231,7 @@ function rowOf(releaseId: string, row: ShapeReadRow, corrected: ReadonlySet<stri
       return {
         from: "kept",
         key,
-        head: handKeptHead(releaseId, {
+        head: handKeptHeadOf(releaseId, {
           reading_id: row.reading_id as string, word: row.record_word, pos: row.record_pos, pos_title: row.record_pos_title,
           section_line: row.page_line as number, evidence_url: row.evidence_url as string,
         }),

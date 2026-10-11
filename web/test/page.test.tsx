@@ -1323,8 +1323,11 @@ const VIRA_LINES = (await readFile(join(REPO, "fixtures/vira.jsonl"), "utf8")).t
 /** The text of every sense a record has, in order: what its own page shows as its definitions when none is furniture. */
 const senseTexts = (reading: Reading): string[] => reading.senses.flatMap((sense) => sense.glosses.map((gloss) => gloss.text));
 
-/** Where a definition was read: its sense's pointer, or its raw page line. */
-const definitionRef = (item: DefinitionItem) => (item.from === "record" ? item.sense.ref : item.definition.ref);
+/** Where a definition was read: its sense's pointer, or its raw page line; a name entry's description has neither. */
+const definitionRef = (item: DefinitionItem) => {
+  if (item.from === "name") return undefined;
+  return item.from === "record" ? item.sense.ref : item.definition.ref;
+};
 
 /** The headings a reading or block draws, as text, in order: its own, then its blocks'. */
 const headingTexts = (html: string): string[] => [...html.matchAll(/<h[23] [^>]*>(.*?)<\/h[23]>/g)].map((match) => textOf(match[1]));
@@ -2839,6 +2842,8 @@ test("the Licence page reads, section by section, Huey's approved text in Italia
       [
         "Il contenuto deriva dal Wikizionario (il Wiktionary in italiano), un progetto della Wikimedia Foundation scritto da collaboratori volontari. La maggior parte delle voci proviene dall’estrazione pubblicata da kaikki.org, prodotta con wiktextract da Tatu Ylonen. Dove quell’estrazione non è riuscita a leggere una pagina, Lexema legge la voce dal testo della pagina stessa nel dump di Wikimedia.",
         "Gli autori di ogni voce sono registrati nella cronologia delle versioni della sua pagina del Wikizionario. Ogni voce di Lexema rimanda a quella pagina.",
+        // Added by #794 (ADR 0032): the Wikidata credit.
+        "I nomi propri che il Wikizionario non spiega, come luoghi, organizzazioni, lingue, valute e festività, provengono da Wikidata, un altro progetto della Wikimedia Foundation, i cui dati sono rilasciati nel pubblico dominio con la dedicazione Creative Commons CC0 1.0 Universale. Ogni nome tratto da Wikidata rimanda al proprio elemento su Wikidata.",
       ],
     ],
     [
@@ -2859,7 +2864,7 @@ test("the Licence page reads, section by section, Huey's approved text in Italia
     [
       "trademarks",
       "7. Marchi",
-      ["Wikipedia, Wiktionary, Wikizionario e Wikimedia sono marchi registrati della Wikimedia Foundation, Inc. Lexema non è affiliato alla Wikimedia Foundation, né approvato o sponsorizzato da essa."],
+      ["Wikipedia, Wiktionary, Wikizionario, Wikidata e Wikimedia sono marchi registrati della Wikimedia Foundation, Inc. Lexema non è affiliato alla Wikimedia Foundation, né approvato o sponsorizzato da essa."],
     ],
   ];
   assert.deepEqual(sectionsOf(html), expected.map(([id, heading]) => [id, heading]));
@@ -2879,6 +2884,9 @@ test("the Licence page links each source and the licence where /attribution did,
       ["wiktextract", "https://github.com/tatuylonen/wiktextract"],
       // The dump's own page, as /attribution linked it: the served release's dump.
       ["dump di Wikimedia", "https://dumps.wikimedia.org/itwiktionary/20260901/"],
+      // The Wikidata credit (#794, ADR 0032).
+      ["Wikidata", "https://www.wikidata.org/"],
+      ["dedicazione Creative Commons CC0 1.0 Universale", "https://creativecommons.org/publicdomain/zero/1.0/deed.it"],
       ["sezione 5 della licenza", "https://creativecommons.org/licenses/by-sa/4.0/legalcode"],
     ],
   );
@@ -3987,7 +3995,7 @@ test("a curated definition correction shows in place of the page's wrong words, 
   // The API answers the same definitions the page shows.
   assert.deepEqual(JSON.parse(corrected.api).map((definition: { definition: string; labels: string[] }) => [definition.definition, definition.labels]), [
     [tremare.text, []],
-    ["essere agitato da scosse continue", ["figurato"]],
+    ["essere agitato da scosse continue", ["senso figurato"]],
   ]);
 });
 

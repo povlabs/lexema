@@ -13,7 +13,8 @@
 // read-only statements only, builds the slice locally, and writes its SQL and
 // the rows that SQL writes. With `--cap`, a slice of every touched word that
 // would write more rows is a sample of them that writes at most that many
-// (#741). Neither writes any database: the Preview build decides, against
+// (#741), and a branch touching more than `SLICE_COPY_WORDS` words gets a
+// sample of that many at most (#794). Neither writes any database: the Preview build decides, against
 // the cap, whether the SQL is run, and on which D1.
 //
 // Every answer is JSON: `none` with the reason a Preview keeps the shared
@@ -126,7 +127,7 @@ export async function builtSlice(declared: Extract<SliceDeclared, { state: "decl
   try {
     if (cap === undefined) return { state: "built", slice: PreviewSlice.build({ reader, words: touched.words, ...inputs }) };
     const named = declared.declarations.flatMap(({ lookups = [] }) => lookups.map(({ word }) => word));
-    const source = SliceSource.copy({ reader, words: touched.words, schema });
+    const source = SliceSource.copy({ reader, words: touched.words, named, schema });
     try {
       return { state: "built", slice: PreviewSlice.fitting({ source, named, cap, ...inputs }) };
     } finally {

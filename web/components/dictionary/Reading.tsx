@@ -92,8 +92,10 @@ export function Block({ id, label, children }: { id: string; label: ReactNode; c
 const nestedExamples = (items: readonly RecoveredDefinition[]): boolean =>
   items.some((item) => item.examples.length > 0 || nestedExamples(item.items));
 
-const nestedItemsOf = (item: DefinitionItem): readonly RecoveredDefinition[] =>
-  item.from === "record" ? item.sense.recoveredItems : item.definition.items;
+const nestedItemsOf = (item: DefinitionItem): readonly RecoveredDefinition[] => {
+  if (item.from === "name") return [];
+  return item.from === "record" ? item.sense.recoveredItems : item.definition.items;
+};
 
 /** A gloss with each lemma it names linked to its search. */
 function LinkedGloss({ text, lemmas }: { text: string; lemmas: readonly string[] }) {
@@ -137,6 +139,13 @@ function SubItems({ items }: { items: readonly RecoveredDefinition[] }) {
 
 /** A definition's text, in the gloss style or, as a form line, in `gloss`'s. */
 function DefinitionText({ item, reading, gloss = GLOSS }: { item: DefinitionItem; reading: LinksOf; gloss?: string }) {
+  if (item.from === "name") {
+    return (
+      <p className={gloss} lang="it">
+        {item.description}
+      </p>
+    );
+  }
   if (item.from === "page") {
     const { definition } = item;
     return (
@@ -165,8 +174,10 @@ function DefinitionText({ item, reading, gloss = GLOSS }: { item: DefinitionItem
   );
 }
 
-export const definitionKey = (item: DefinitionItem): string =>
-  item.from === "record" ? `sense-${item.sense.index}` : `page-${item.definition.ref.line}`;
+export const definitionKey = (item: DefinitionItem): string => {
+  if (item.from === "name") return "description";
+  return item.from === "record" ? `sense-${item.sense.index}` : `page-${item.definition.ref.line}`;
+};
 
 function Example({ text, className = EXAMPLE }: { text: string; className?: string }) {
   return (

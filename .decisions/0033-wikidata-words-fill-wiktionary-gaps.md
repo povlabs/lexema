@@ -1,12 +1,12 @@
 ---
-id: 0032
+id: 0033
 title: Wikidata lexemes answer an Italian word only when no Wiktionary reading does
 status: accepted
 date: 2026-10-11
 tags: [data, provenance, licensing]
 ---
 
-# 0032 — Wikidata lexemes answer an Italian word only when no Wiktionary reading does
+# 0033 — Wikidata lexemes answer an Italian word only when no Wiktionary reading does
 
 **What this decides:** Lexema may answer an Italian word that Italian Wiktionary lacks from Wikidata's free (CC0) Italian lexemes, kept in a layer of their own beside the source data, and never in place of a Wiktionary reading. This amends [ADR 0009](0009-two-licences-and-a-source-link.md) in part.
 

@@ -9,7 +9,9 @@ import { readPluralGloss, type PluralGlossGender } from "../italian/pluralGloss.
 import { readingPartOfSpeech } from "./articles.js";
 import { keyedRead, readKeys, type DictionaryRead, type KeyedRead, type LookupDatabase } from "./database.js";
 import { phraseForms, phraseMatches } from "./phrase.js";
+import { besideSourceOf } from "./besideSource.js";
 import { handKeptReadingsOf } from "./handKept.js";
+import { nameEntriesOf } from "./names.js";
 import { pageEntriesOf, type PageEntries } from "./pageEntry.js";
 import { readExpressions } from "./expressions.js";
 import { placeRecovered, type RecoveredOfRecord, type StoredRecovered } from "./recovered.js";
@@ -190,23 +192,28 @@ const keyOf = (query: string): string => normalizeItalianExact(query.trim());
 export type ExistsResult =
   | RejectedResult
   | { outcome: "absent"; query: QueryInfo; release: ReleaseInfo }
-  | { outcome: "present"; query: QueryInfo; release: ReleaseInfo; word: string };
+  | { outcome: "present"; query: QueryInfo; release: ReleaseInfo; word: string; nameItem?: never }
+  /** Found only as a name entry (ADR 0032): its credit is its Wikidata item, not a Wiktionary page. */
+  | { outcome: "present"; query: QueryInfo; release: ReleaseInfo; word: string; nameItem: `Q${number}` };
 
 export async function exists({ db, releaseId, query }: LookupOptions): Promise<ExistsResult> {
   const [prepared, pages, tables] = await probeWithPages(db, releaseId, query, (key) => queryAll<HitRow>(db, `${SEARCH_SQL}\n      LIMIT 1`, releaseId, key));
   if (prepared.outcome === "rejected") return prepared;
   const [first] = prepared.probed;
   const { key } = prepared.query;
+  const found = { outcome: "present", query: prepared.query, release: prepared.release } as const;
   const word =
     first?.record_word ??
     (await correctedCellHits(db, releaseId, key, tables))[0]?.record_word ??
-    (await pages.candidates(key))[0]?.word ??
+    (await pages.candidates(key))[0]?.word;
+  if (word !== undefined) return { ...found, word };
+  const [name] = (await nameEntriesOf(db, releaseId, tables).heads([key])).get(key) ?? [];
+  if (name !== undefined) return { ...found, word: name.word, nameItem: name.nameItem };
+  const reached =
     (await phraseHits(db, releaseId, tables, key))?.hits[0].record_word ??
     (await agreementHits(db, releaseId, key, tables))?.hits[0].record_word ??
     (await shapeWord(db, releaseId, key, tables));
-  return word === undefined
-    ? { outcome: "absent", query: prepared.query, release: prepared.release }
-    : { outcome: "present", query: prepared.query, release: prepared.release, word };
+  return reached === undefined ? { outcome: "absent", query: prepared.query, release: prepared.release } : { ...found, word: reached };
 }
 
 /**
@@ -353,13 +360,14 @@ interface Spelled {
 /**
  * The readings of everything that spells `key`, as found as typed: the
  * source's rows `hits`, `SEARCH_SQL`'s answer for `key`, the curated table
- * cells that spell it (#743), the page entries, and the hand-kept readings
- * (ADR 0031, #745), last. Undefined when none does.
+ * cells that spell it (#743), the page entries, the hand-kept readings
+ * (ADR 0031, #745), and the name entries (ADR 0032, #794), last. Undefined
+ * when none does.
  */
 async function spelledResult({ db, releaseId, pages, query, release, tables }: Spelled, key: string, hits: readonly HitRow[]): Promise<FoundResult | undefined> {
   const corrected: Corrected = tables;
   const edges = tables.edgeCorrections;
-  const pageReadings = Promise.all([pages.readings(key), handKeptReadingsOf(db, releaseId, tables).readings(key)]).then(([page, kept]) => [...page, ...kept]);
+  const pageReadings = Promise.all([pages.readings(key), besideSourceOf(db, releaseId, tables).readings(key)]).then(([page, beside]) => [...page, ...beside]);
   // A curated table cell spelled as the query (#743) is read once the tables
   // say the master keys them, beside the page entries. A lookup the source's
   // spellings already found builds its readings meanwhile, and builds them
