@@ -219,7 +219,7 @@ test("every declaration already in dictionary-changes parses as before, with no 
     }
     // The Wikidata names (#794) name names they add, and words whose key the source already answers.
     if (name === "2026-10-11-load-names-wikidata.json") {
-      assert.deepEqual(parseDraft(path, text).lookups?.map((item) => item.word), ["Hormuz", "mar Mediterraneo", "Brent", "Iran", "sale"]);
+      assert.deepEqual(parseDraft(path, text).lookups?.map((item) => item.word), ["Hormuz", "Brent", "Iran", "sale"]);
       continue;
     }
     // The hand-kept readings (#745) name each word they give a reading, with a definition of it.
