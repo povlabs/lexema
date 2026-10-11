@@ -25,7 +25,9 @@
 // may (#741, ADR 0018), the slice is a sample: the words the declarations name
 // in their `lookups` first, then the others in key order, as many as fit. The
 // touched words it leaves out read the shared dictionary, as any other word
-// does, and a change's rows for them are dropped from the sample.
+// does, and a change's rows for them are dropped from the sample. A branch
+// that touches more than `SLICE_COPY_WORDS` words (#794) is always a sample:
+// only that many, in the same order, are read from the shared dictionary.
 
 import { createHash } from "node:crypto";
 import { DatabaseSync } from "node:sqlite";
@@ -128,10 +130,12 @@ function correctedFormRows(reader: MasterReader, rows: readonly Row[]): Row[] {
 function correctedCellsSpelling(reader: MasterReader, keys: readonly string[], tables: ReadonlySet<string>): number[] {
   if (!tables.has("corrected_form")) return [];
   if (!lacksKeyedColumn(reader, "corrected_form")) {
-    return select<{ record_id: number }>(
-      reader,
-      `SELECT DISTINCT record_id FROM corrected_form WHERE release_id IN (${releasesIn}) AND surface_key IN (SELECT value FROM json_each(${json(keys)}))`,
-    ).map(({ record_id }) => record_id);
+    return chunks(keys).flatMap((chunk) =>
+      select<{ record_id: number }>(
+        reader,
+        `SELECT DISTINCT record_id FROM corrected_form WHERE release_id IN (${releasesIn}) AND surface_key IN (SELECT value FROM json_each(${json(chunk)}))`,
+      ).map(({ record_id }) => record_id),
+    );
   }
   // The table holds only curated cells, a few dozen rows, so one without the key is keyed whole.
   const wanted = new Set(keys);
@@ -148,23 +152,27 @@ function correctedCellsSpelling(reader: MasterReader, keys: readonly string[], t
  * lemma's forms (src/lookup/declaredLemma.ts), and never shows whole.
  */
 function recordsFor(reader: MasterReader, keys: readonly string[], tables: ReadonlySet<string>): { whole: number[]; listed: number[]; targets: string[] } {
-  const keyList = json(keys);
+  // The keys are read a chunk at a time, as every other list here: D1 refuses a statement over 100,000 bytes.
   const spelling = [
-    ...select<{ record_id: number }>(
-      reader,
-      `SELECT DISTINCT record_id FROM lookup_form WHERE release_id IN (${releasesIn}) AND surface_key IN (SELECT value FROM json_each(${keyList}))`,
-    ).map(({ record_id }) => record_id),
+    ...chunks(keys).flatMap((chunk) =>
+      select<{ record_id: number }>(
+        reader,
+        `SELECT DISTINCT record_id FROM lookup_form WHERE release_id IN (${releasesIn}) AND surface_key IN (SELECT value FROM json_each(${json(chunk)}))`,
+      ).map(({ record_id }) => record_id),
+    ),
     ...correctedCellsSpelling(reader, keys, tables),
   ];
   // A corrected edge (#722) names a word as a source edge does, while its record is served.
   const edgeTables = ["form_of_edge", ...(tables.has("corrected_edge") ? ["corrected_edge"] : [])];
   const naming = edgeTables.flatMap((table) =>
-    select<{ record_id: number }>(
-      reader,
-      `SELECT DISTINCT e.record_id FROM ${table} e WHERE e.release_id IN (${releasesIn}) AND e.target_word_key IN (SELECT value FROM json_each(${keyList}))${
-        table === "corrected_edge" ? ` AND ${correctedEdgeServed("e")}` : ""
-      }`,
-    ).map(({ record_id }) => record_id),
+    chunks(keys).flatMap((chunk) =>
+      select<{ record_id: number }>(
+        reader,
+        `SELECT DISTINCT e.record_id FROM ${table} e WHERE e.release_id IN (${releasesIn}) AND e.target_word_key IN (SELECT value FROM json_each(${json(chunk)}))${
+          table === "corrected_edge" ? ` AND ${correctedEdgeServed("e")}` : ""
+        }`,
+      ).map(({ record_id }) => record_id),
+    ),
   );
   // A corrected edge that removes its sense's edges (#755) names no word.
   const targets = [
@@ -342,24 +350,62 @@ function dropOrphans(db: DatabaseSync): void {
 }
 
 /**
- * The rows every word a branch touches reads, copied once from the shared
- * dictionary into a local database (#741). Every slice of those words, or of
- * fewer, is built from it, so the shared dictionary is read once however
- * many slices a sample measures: the rows a set of words reads only grow
- * with the set, so fewer words read a part of what the copy holds.
+ * The tables whose rows key to a word alone, by the column that holds its
+ * key: no foreign key names their word, so `dropOrphans` never drops them.
+ */
+const WORD_KEYED: readonly { table: string; column: string }[] = [
+  { table: "hand_kept_definition", column: "word_key" },
+  { table: "name_entry", column: "label_key" },
+];
+
+/**
+ * Delete every row of a word-keyed table whose word `served` does not hold.
+ * On a sample these are the rows a change writes for a word the sample left
+ * out: the Worker reads the shared dictionary for that word, so no lookup
+ * reads them, and a `load:names` change writes tens of thousands (#794).
+ */
+function dropUnservedWords(db: DatabaseSync, served: readonly string[]): void {
+  for (const { table, column } of WORD_KEYED) {
+    db.prepare(`DELETE FROM ${table} WHERE ${column} NOT IN (SELECT value FROM json_each(?))`).run(JSON.stringify(served));
+  }
+}
+
+/**
+ * The most touched words a slice copies from the shared dictionary (#794).
+ * Each 500 words cost dozens of remote reads, so a branch that touches tens
+ * of thousands of words, as `load:names` does, would never finish copying
+ * them. Past this many, the slice is a sample of the first ones in the
+ * sample's order, the words the declarations name first.
+ */
+export const SLICE_COPY_WORDS = 1_000;
+
+/**
+ * The rows the touched words a branch reads, copied once from the shared
+ * dictionary into a local database (#741): every touched word, or the first
+ * `SLICE_COPY_WORDS` of them in the sample's order. Every slice of those
+ * words, or of fewer, is built from it, so the shared dictionary is read once
+ * however many slices a sample measures: the rows a set of words reads only
+ * grow with the set, so fewer words read a part of what the copy holds.
  */
 export class SliceSource {
   private constructor(
     private readonly db: DatabaseSync,
-    /** The lookup keys of every touched word, sorted. */
+    /** The lookup keys of the touched words copied, sorted. */
     readonly keys: readonly string[],
+    /** The lookup keys of the touched words past `SLICE_COPY_WORDS`, not copied, sorted: every slice leaves them out. */
+    readonly notCopied: readonly string[],
   ) {}
 
-  /** Copy what `words` read from the shared dictionary `reader` reads. Throws `SliceRefused` for no word. */
-  static copy({ reader, words, schema }: { reader: MasterReader; words: readonly string[]; schema: string }): SliceSource {
-    const keys = sliceKeys(words);
-    if (keys.length === 0) throw new SliceRefused("a slice needs at least one word");
-    return new SliceSource(copiedDatabase(reader, keys, schema, ""), keys);
+  /**
+   * Copy what `words` read from the shared dictionary `reader` reads: all of
+   * them, or the first `SLICE_COPY_WORDS` in the sample's order, the ones
+   * `named` names first. Throws `SliceRefused` for no word.
+   */
+  static copy({ reader, words, named = [], schema }: { reader: MasterReader; words: readonly string[]; named?: readonly string[]; schema: string }): SliceSource {
+    const order = sampleOrder(sliceKeys(words), named);
+    if (order.length === 0) throw new SliceRefused("a slice needs at least one word");
+    const keys = [...order.slice(0, SLICE_COPY_WORDS)].sort();
+    return new SliceSource(copiedDatabase(reader, keys, schema, ""), keys, [...order.slice(SLICE_COPY_WORDS)].sort());
   }
 
   /** The copy, read as the shared dictionary is: single SELECTs only. */
@@ -412,7 +458,8 @@ export class PreviewSlice {
 
   /**
    * The slice of every word `source` holds when it writes at most `cap`
-   * rows; else a sample of them that does (#741). The sample takes the
+   * rows; else a sample of them that does (#741). Either way the words
+   * `source` did not copy are left out. The sample takes the
    * touched words `named` names first, in their order, then the other
    * touched words in key order, while the slice built of them writes at most
    * `cap` rows: the first word past that, and every word after it, is left
@@ -426,11 +473,11 @@ export class PreviewSlice {
    * Throws `SliceRefused` when not even the first word fits under the cap.
    */
   static fitting({ source, named, cap, ...inputs }: { source: SliceSource; named: readonly string[]; cap: number } & SliceInputs): PreviewSlice {
-    const whole = PreviewSlice.assemble(source.reader, source.keys, [], inputs);
+    const whole = PreviewSlice.assemble(source.reader, source.keys, source.notCopied, inputs);
     if (whole.rowsWritten <= cap) return whole;
     whole.close();
     const order = sampleOrder(source.keys, named);
-    const sampleOf = (count: number) => PreviewSlice.assemble(source.reader, order.slice(0, count), order.slice(count), inputs);
+    const sampleOf = (count: number) => PreviewSlice.assemble(source.reader, order.slice(0, count), [...order.slice(count), ...source.notCopied], inputs);
     // `fits` is the longest run found that fits; a run of `over` words is known not to.
     let fits = sampleOf(1);
     if (fits.rowsWritten > cap) {
@@ -467,6 +514,7 @@ export class PreviewSlice {
               db.exec("PRAGMA defer_foreign_keys = ON");
               db.exec(sql);
               dropOrphans(db);
+              dropUnservedWords(db, served);
             }
           });
         } catch (error: unknown) {

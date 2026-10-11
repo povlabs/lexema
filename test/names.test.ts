@@ -13,6 +13,9 @@ import { join, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { gzipSync } from "node:zlib";
 import { seedSql } from "../src/import/seedSql.js";
+import { SLICE_COPY_WORDS, sliceKeys } from "../src/deploy/previewSlice.js";
+import { builtSlice, readOnlyReader } from "../src/deploy/sliceCli.js";
+import { planWrite, readyChange, type WritePlan } from "../src/deploy/writePlan.js";
 import { touchedWords, wordsOfNames } from "../src/deploy/touchedWords.js";
 import { fromNodeSqlite } from "../src/lookup/database.js";
 import { lookupBatch } from "../src/lookup/batch.js";
@@ -25,7 +28,7 @@ import { categoryRank, NAME_CATEGORIES } from "../src/names/nameCategories.js";
 import { InvalidNameItem, nameItem, wikidataItemUrl, type NameItem, type NameItemSpec } from "../src/names/nameItem.js";
 import { NAME_SNAPSHOT_PATH, parseSnapshot, readNameSnapshot, snapshotText } from "../src/names/nameSnapshot.js";
 import { categoryCountQuery, categoryQuery, itemsOf, runQuery } from "../src/names/wikidataQuery.js";
-import { parseDeclaration } from "../src/update/declaration.js";
+import { parseDeclaration, parseDraft, type DeclarationDraft } from "../src/update/declaration.js";
 import type { MasterReader } from "../src/update/master.js";
 import { masterUpgradeSql } from "../src/update/masterUpgrade.js";
 import { PlanCounts } from "../src/update/planCounts.js";
@@ -396,4 +399,58 @@ test("the change declaration that loads the snapshot takes no inputs", () => {
   const declaration = parseDeclaration("dictionary-changes/x.json", JSON.stringify({ command: "load:names", expected: { records: { added: 0, changed: 0, removed: 0 }, written: { name_entry: 3 } } }));
   assert.equal(declaration.command, "load:names");
   assert.throws(() => parseDeclaration("x.json", JSON.stringify({ command: "load:names", inputs: { snapshot: "x" }, expected: {} })), /inputs of load:names/);
+});
+
+test("a load:names branch's Preview slice serves the names its declaration names, with no read over D1's statement limit and no name row for a word it leaves out", async () => {
+  const schema = await readFile(SCHEMA, "utf8");
+  const db = await seeded();
+  try {
+    // The shared dictionary a Preview reads before the merge: no name_entry yet.
+    db.exec("DROP INDEX name_entry_by_key; DROP TABLE name_entry;");
+    // Enough labels that one read naming them all is over D1's 100,000 bytes, as the committed snapshot's 28,674 are.
+    const many = Array.from({ length: 7_000 }, (_, index) =>
+      nameItem({ item: `Q${900_001 + index}`, label: `Comune di prova ${String(index).padStart(4, "0")}`, description: "comune di prova", category: "comune" }),
+    );
+    const sent: string[] = [];
+    const reader: MasterReader = {
+      query: <Row>(sql: string) => {
+        sent.push(sql);
+        return db.prepare(sql).all() as Row[];
+      },
+    };
+    const text = JSON.stringify({ command: "load:names", lookups: [{ word: "Hormuz" }, { word: "mar Mediterraneo" }] });
+    const declared = { state: "declared" as const, fingerprint: "f".repeat(64), declarations: [parseDraft("dictionary-changes/names.json", text)] };
+    const plan = (declaration: DeclarationDraft): Promise<WritePlan> => planWrite(readyChange(declaration, null), reader, "2026-10-11T00:00:00Z", { names: [...SNAPSHOT, ...many] });
+    const touched = (await plan(declared.declarations[0])).touched;
+    assert.ok(touched.kind === "words" && touched.words.length > SLICE_COPY_WORDS);
+
+    sent.length = 0;
+    // The Preview build's cap (SLICE_ROWS_WRITTEN_CAP, web/builds/previewSlice.ts).
+    const built = await builtSlice(declared, schema, { reader: readOnlyReader(reader), plan, cap: 250_000 });
+    assert.ok(built.state === "built", JSON.stringify(built));
+    const { slice } = built;
+    try {
+      assert.deepEqual(sent.map((sql) => Buffer.byteLength(sql)).filter((bytes) => bytes > 100_000), []);
+      // At most SLICE_COPY_WORDS words are copied, the named ones first; every other touched word is left out.
+      assert.equal(slice.isSample, true);
+      assert.equal(slice.keys.length, SLICE_COPY_WORDS);
+      for (const key of sliceKeys(["Hormuz", "mar Mediterraneo"])) assert.ok(slice.keys.includes(key), key);
+      assert.deepEqual([...slice.keys, ...slice.leftOut].sort(), sliceKeys(touched.words));
+      // The slice keeps the served words' name rows only: the left-out words read the shared dictionary.
+      const served = new Set(slice.keys);
+      const keys = (slice.db.prepare("SELECT label_key FROM name_entry").all() as { label_key: string }[]).map(({ label_key }) => label_key);
+      assert.ok(keys.length > 0 && keys.every((key) => served.has(key)), `${keys.length} name rows`);
+      const sliced = fromNodeSqlite(slice.db);
+      const readings = async (word: string) => {
+        const result = await lookup({ db: sliced, releaseId: RELEASE, query: word });
+        return result.outcome === "found" ? shown(result.readings) : [result.outcome];
+      };
+      assert.deepEqual(await readings("Hormuz"), ["Q695265 Nome proprio: isola dell'Iran"]);
+      assert.deepEqual(await readings("mar Mediterraneo"), [`Q4918 Nome proprio: ${SPECS.mediterraneo.description}`]);
+    } finally {
+      slice.close();
+    }
+  } finally {
+    db.close();
+  }
 });

@@ -131,6 +131,13 @@ function writeSlice(wrangler: Wrangler, preview: PreviewName, sql: string): Slic
   return created;
 }
 
+/** The most left-out words a log line names: a `load:names` sample leaves out tens of thousands (#794). */
+const LOGGED_WORDS = 20;
+
+/** `words`, the first `LOGGED_WORDS` of them and how many more. */
+const listed = (words: readonly string[]): string =>
+  words.length <= LOGGED_WORDS ? words.join(", ") : `${words.slice(0, LOGGED_WORDS).join(", ")} and ${words.length - LOGGED_WORDS} more`;
+
 /** The slice the Preview binds, or none, with the line that says why logged. */
 function slice(wrangler: Wrangler, preview: PreviewName, planner: SlicePlanner, log: (line: string) => void): SliceDatabase | undefined {
   const declared = planner.declared();
@@ -161,7 +168,7 @@ function slice(wrangler: Wrangler, preview: PreviewName, planner: SlicePlanner, 
   } else {
     log(
       `dictionary slice: wrote a sample, ${preview.sliceDatabase} (${written.id}): ${built.words} of ${built.words + built.leftOut.length} touched word(s), ${built.rowsWritten} rows written, under the cap of ${SLICE_ROWS_WRITTEN_CAP}; ` +
-        `the slice of every touched word is over the cap, so ${built.leftOut.length} word(s) read the shared dictionary: ${built.leftOut.join(", ")}`,
+        `the slice of every touched word is over the cap, so ${built.leftOut.length} word(s) read the shared dictionary: ${listed(built.leftOut)}`,
     );
   }
   return written;

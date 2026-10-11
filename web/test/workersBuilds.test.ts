@@ -772,6 +772,15 @@ test("a branch whose slice of every touched word is over the cap gets a sample w
     ),
     logged.join("\n"),
   );
+
+  // A sample that leaves out tens of thousands of words, as a load:names branch's does (#794), names the first twenty and counts the rest.
+  const wide = new FakeAccount([{ name: DICTIONARY.name, uuid: DICTIONARY.id }]);
+  const words = Array.from({ length: 25 }, (_, index) => `parola${String(index).padStart(2, "0")}`) as [string, ...string[]];
+  const many: SliceBuilt = { ...sample, leftOut: words };
+  const wideRun = previewCommand(wide, DICTIONARY_BRANCH, undefined, planner(wide, declaring(), many).slices);
+  const line = wideRun.logged.find((entry) => entry.startsWith("dictionary slice: wrote a sample"));
+  assert.ok(line !== undefined, wideRun.logged.join("\n"));
+  assert.ok(line.endsWith(`so 25 word(s) read the shared dictionary: ${words.slice(0, 20).join(", ")} and 5 more`), line);
 });
 
 test("when not even one touched word fits under the cap, nothing is written, no slice is bound, the line gives the rows and the cap, and the Preview still deploys", () => {
