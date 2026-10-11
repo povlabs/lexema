@@ -1323,9 +1323,9 @@ const VIRA_LINES = (await readFile(join(REPO, "fixtures/vira.jsonl"), "utf8")).t
 /** The text of every sense a record has, in order: what its own page shows as its definitions when none is furniture. */
 const senseTexts = (reading: Reading): string[] => reading.senses.flatMap((sense) => sense.glosses.map((gloss) => gloss.text));
 
-/** Where a definition was read: its sense's pointer, or its raw page line; a name entry's description has neither. */
+/** Where a definition was read: its sense's pointer, or its raw page line; a name entry's description and a Wikidata word's gloss have neither. */
 const definitionRef = (item: DefinitionItem) => {
-  if (item.from === "name") return undefined;
+  if (item.from === "name" || item.from === "lexeme") return undefined;
   return item.from === "record" ? item.sense.ref : item.definition.ref;
 };
 
@@ -2842,8 +2842,8 @@ test("the Licence page reads, section by section, Huey's approved text in Italia
       [
         "Il contenuto deriva dal Wikizionario (il Wiktionary in italiano), un progetto della Wikimedia Foundation scritto da collaboratori volontari. La maggior parte delle voci proviene dall’estrazione pubblicata da kaikki.org, prodotta con wiktextract da Tatu Ylonen. Dove quell’estrazione non è riuscita a leggere una pagina, Lexema legge la voce dal testo della pagina stessa nel dump di Wikimedia.",
         "Gli autori di ogni voce sono registrati nella cronologia delle versioni della sua pagina del Wikizionario. Ogni voce di Lexema rimanda a quella pagina.",
-        // Added by #794 (ADR 0032): the Wikidata credit.
-        "I nomi propri che il Wikizionario non spiega, come luoghi, organizzazioni, lingue, valute e festività, provengono da Wikidata, un altro progetto della Wikimedia Foundation, i cui dati sono rilasciati nel pubblico dominio con la dedicazione Creative Commons CC0 1.0 Universale. Ogni nome tratto da Wikidata rimanda al proprio elemento su Wikidata.",
+        // Added by #794 (ADR 0032): the Wikidata credit, extended by #812 (ADR 0033) to the Wikidata words.
+        "I nomi propri che il Wikizionario non spiega, come luoghi, organizzazioni, lingue, valute e festività, e le parole italiane che il Wikizionario non ha provengono da Wikidata, un altro progetto della Wikimedia Foundation, i cui dati sono rilasciati nel pubblico dominio con la dedicazione Creative Commons CC0 1.0 Universale. Ogni nome tratto da Wikidata rimanda al proprio elemento su Wikidata, e ogni parola al proprio lessema.",
       ],
     ],
     [

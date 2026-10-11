@@ -9,9 +9,10 @@ import { readPluralGloss, type PluralGlossGender } from "../italian/pluralGloss.
 import { readingPartOfSpeech } from "./articles.js";
 import { keyedRead, readKeys, type DictionaryRead, type KeyedRead, type LookupDatabase } from "./database.js";
 import { phraseForms, phraseMatches } from "./phrase.js";
-import { besideSourceOf } from "./besideSource.js";
+import { besideSourceOf, type BesideReadings } from "./besideSource.js";
 import { handKeptReadingsOf } from "./handKept.js";
 import { nameEntriesOf } from "./names.js";
+import { unlessDeclaredLemma, wikidataWordsOf } from "./wikidataWords.js";
 import { pageEntriesOf, type PageEntries } from "./pageEntry.js";
 import { readExpressions } from "./expressions.js";
 import { placeRecovered, type RecoveredOfRecord, type StoredRecovered } from "./recovered.js";
@@ -24,7 +25,7 @@ import type { AnsweringSpelling } from "../italian/wordShape.js";
 import { answeringShapes, shapeKeysOf, readShapeRows, type ShapeRow } from "./wordShape.js";
 import { prefixUpperBound } from "./keyRange.js";
 import { personOfItalianVerbForm } from "../italian/moods.js";
-import { correctRecordClaims, pluralDeclaration, sourcePointerOf, sourceTagsOf } from "./types.js";
+import { correctRecordClaims, isNameEntry, pluralDeclaration, sourcePointerOf, sourceTagsOf } from "./types.js";
 import type {
   ArchiveClaim,
   Evidence,
@@ -192,9 +193,11 @@ const keyOf = (query: string): string => normalizeItalianExact(query.trim());
 export type ExistsResult =
   | RejectedResult
   | { outcome: "absent"; query: QueryInfo; release: ReleaseInfo }
-  | { outcome: "present"; query: QueryInfo; release: ReleaseInfo; word: string; nameItem?: never }
+  | { outcome: "present"; query: QueryInfo; release: ReleaseInfo; word: string; nameItem?: never; lexeme?: never }
   /** Found only as a name entry (ADR 0032): its credit is its Wikidata item, not a Wiktionary page. */
-  | { outcome: "present"; query: QueryInfo; release: ReleaseInfo; word: string; nameItem: `Q${number}` };
+  | { outcome: "present"; query: QueryInfo; release: ReleaseInfo; word: string; nameItem: `Q${number}`; lexeme?: never }
+  /** Found only as a Wikidata word (ADR 0033): its credit is its lexeme, not a Wiktionary page. */
+  | { outcome: "present"; query: QueryInfo; release: ReleaseInfo; word: string; lexeme: `L${number}`; nameItem?: never };
 
 export async function exists({ db, releaseId, query }: LookupOptions): Promise<ExistsResult> {
   const [prepared, pages, tables] = await probeWithPages(db, releaseId, query, (key) => queryAll<HitRow>(db, `${SEARCH_SQL}\n      LIMIT 1`, releaseId, key));
@@ -213,7 +216,12 @@ export async function exists({ db, releaseId, query }: LookupOptions): Promise<E
     (await phraseHits(db, releaseId, tables, key))?.hits[0].record_word ??
     (await agreementHits(db, releaseId, key, tables))?.hits[0].record_word ??
     (await shapeWord(db, releaseId, key, tables));
-  return reached === undefined ? { outcome: "absent", query: prepared.query, release: prepared.release } : { ...found, word: reached };
+  if (reached !== undefined) return { ...found, word: reached };
+  // Nothing of Wiktionary's answers it: a Wikidata word may (ADR 0033, #812).
+  const heads = (await wikidataWordsOf(db, releaseId, tables).heads([key])).get(key) ?? [];
+  const [lexemeWord] = await unlessDeclaredLemma(db, releaseId, tables, key, heads);
+  if (lexemeWord !== undefined) return { ...found, word: lexemeWord.word, lexeme: lexemeWord.lexeme };
+  return { outcome: "absent", query: prepared.query, release: prepared.release };
 }
 
 /**
@@ -261,7 +269,10 @@ export async function lookup({ db, releaseId, query }: LookupOptions): Promise<L
   const edges = tables.edgeCorrections;
   const asTyped: Spelled = { db, releaseId, pages, query: queryInfo, release, tables };
 
-  const spelling = spelledResult(asTyped, key, hits);
+  // What the dictionary keeps beside the source for the key, the Wikidata
+  // words among it, is read once, in the statement every lookup sends.
+  const beside = handled(besideSourceOf(db, releaseId, tables).readings(key));
+  const spelling = spelledResult(asTyped, key, hits, beside);
   // When the source spells nothing as typed, the words rule
   // `it-word-shape/v1` reads the query as a shape of are read now, in the
   // call that reads the page entries and curated cells spelled as typed: a
@@ -290,7 +301,13 @@ export async function lookup({ db, releaseId, query }: LookupOptions): Promise<L
   // the source lists nowhere: `raccontarvi` of `raccontare`, `quei` of
   // `quello`, `aver` of `avere` (rule `it-word-shape/v1`, #809).
   const shaped = shapeRows === undefined ? undefined : await shapeResult(asTyped, answeringShapes(key, await shapeRows));
-  return shaped ?? { outcome: "not-found", query: queryInfo, release };
+  if (shaped !== undefined) return shaped;
+
+  // No Wiktionary reading answers it. It may be a Wikidata word, an Italian
+  // lexeme Wiktionary lacks: `paralimpico` (ADR 0033, #812).
+  const [word, ...words] = await unlessDeclaredLemma(db, releaseId, tables, key, (await beside).wikidataWords);
+  if (word !== undefined) return { outcome: "found", query: queryInfo, release, route: { kind: "surface" }, readings: [word, ...words] };
+  return { outcome: "not-found", query: queryInfo, release };
 }
 
 /**
@@ -361,13 +378,19 @@ interface Spelled {
  * The readings of everything that spells `key`, as found as typed: the
  * source's rows `hits`, `SEARCH_SQL`'s answer for `key`, the curated table
  * cells that spell it (#743), the page entries, the hand-kept readings
- * (ADR 0031, #745), and the name entries (ADR 0032, #794), last. Undefined
- * when none does.
+ * (ADR 0031, #745), and the name entries (ADR 0032, #794), last; `beside`
+ * is the read of the last two, with the key's Wikidata words. Undefined when
+ * none does.
  */
-async function spelledResult({ db, releaseId, pages, query, release, tables }: Spelled, key: string, hits: readonly HitRow[]): Promise<FoundResult | undefined> {
+async function spelledResult(
+  { db, releaseId, pages, query, release, tables }: Spelled,
+  key: string,
+  hits: readonly HitRow[],
+  beside: Promise<BesideReadings>,
+): Promise<FoundResult | undefined> {
   const corrected: Corrected = tables;
   const edges = tables.edgeCorrections;
-  const pageReadings = Promise.all([pages.readings(key), besideSourceOf(db, releaseId, tables).readings(key)]).then(([page, beside]) => [...page, ...beside]);
+  const pageReadings = Promise.all([pages.readings(key), beside]).then(([page, { readings }]) => [...page, ...readings]);
   // A curated table cell spelled as the query (#743) is read once the tables
   // say the master keys them, beside the page entries. A lookup the source's
   // spellings already found builds its readings meanwhile, and builds them
@@ -381,7 +404,10 @@ async function spelledResult({ db, releaseId, pages, query, release, tables }: S
       : found(db, releaseId, pages, query, release, withCells(hits, cellRows), { kind: "surface" }, corrected, edges));
     return { ...result, readings: [...result.readings, ...read] };
   }
-  const [page, ...otherPages] = read;
+  // A spelling only name entries answer has no Wiktionary reading, so its
+  // Wikidata words show after them (ADR 0033, #812).
+  const words = read.length > 0 && read.every(isNameEntry) ? await unlessDeclaredLemma(db, releaseId, tables, key, (await beside).wikidataWords) : [];
+  const [page, ...otherPages] = [...read, ...words];
   if (page !== undefined) return { outcome: "found", query, release, route: { kind: "surface" }, readings: [page, ...otherPages] };
   return undefined;
 }

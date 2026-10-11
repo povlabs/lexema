@@ -352,8 +352,8 @@ export interface RecoveredRef {
  */
 export type FactRef = SourceRef | RecoveredRef;
 
-/** Whether a fact was read from the archive rather than from a raw page, or from a name entry's Wikidata item. */
-export const isSourceRef = (ref: FactRef | NameRef): ref is SourceRef => "jsonPointer" in ref;
+/** Whether a fact was read from the archive rather than from a raw page, or from a name entry's Wikidata item or a Wikidata word's lexeme. */
+export const isSourceRef = (ref: FactRef | NameRef | LexemeRef): ref is SourceRef => "jsonPointer" in ref;
 
 /** The archive pointer a fact was read at; undefined for a raw page's line, which no query hits. */
 export const sourcePointerOf = (ref: FactRef): string | undefined => (isSourceRef(ref) ? ref.jsonPointer : undefined);
@@ -436,14 +436,22 @@ export function everyRecovered(reading: Pick<Reading, "senses" | "recovered">): 
  * What an entry is: a source record, pointed at by its archive line; a
  * page-only entry (ADR 0024, #403), pointed at by its page revision; a
  * hand-kept reading (ADR 0031, #745), pointed at by the en.wiktionary revision
- * it cites; or a name entry (ADR 0032, #794), pointed at by its Wikidata item.
- * Exactly one of the four.
+ * it cites; a name entry (ADR 0032, #794), pointed at by its Wikidata item; or
+ * a Wikidata word (ADR 0033, #812), pointed at by its lexeme. Exactly one of
+ * the five.
  */
 export type EntryIdentity =
-  | { recordId: number; entryId?: never; handKeptId?: never; nameItem?: never; description?: never; ref: SourceRef }
-  | { entryId: number; recordId?: never; handKeptId?: never; nameItem?: never; description?: never; ref: PageEntryRef }
-  | { handKeptId: string; recordId?: never; entryId?: never; nameItem?: never; description?: never; ref: PageEntryRef }
-  | NameIdentity;
+  | ({ recordId: number; entryId?: never; handKeptId?: never; nameItem?: never; description?: never; ref: SourceRef } & NotLexeme)
+  | ({ entryId: number; recordId?: never; handKeptId?: never; nameItem?: never; description?: never; ref: PageEntryRef } & NotLexeme)
+  | ({ handKeptId: string; recordId?: never; entryId?: never; nameItem?: never; description?: never; ref: PageEntryRef } & NotLexeme)
+  | (NameIdentity & NotLexeme)
+  | LexemeIdentity;
+
+/** What every entry but a Wikidata word lacks. */
+interface NotLexeme {
+  lexeme?: never;
+  lexemeGlosses?: never;
+}
 
 /**
  * A name entry (ADR 0032, #794): a proper name from Wikidata, pointed at by
@@ -468,6 +476,8 @@ export interface NameRef {
   releaseId: string;
   wiki: "www.wikidata.org";
   item: `Q${number}`;
+  lexeme?: never;
+  snapshot?: never;
   title?: never;
   revisionId?: never;
   line?: never;
@@ -478,6 +488,56 @@ export interface NameRef {
 
 /** Whether an entry is a name entry from Wikidata rather than a reading of Wiktionary's or Lexema's. */
 export const isNameEntry = (entry: EntryIdentity): entry is NameIdentity => entry.nameItem !== undefined;
+
+/**
+ * A Wikidata word (ADR 0033, #812): an Italian lexeme from Wikidata, pointed
+ * at by its lexeme, shown only for a spelling no Wiktionary reading answers.
+ * Its definitions are the Italian glosses of its senses, as Wikidata states
+ * them, and it may have none.
+ */
+export interface LexemeIdentity {
+  lexeme: `L${number}`;
+  /** The Italian gloss of each sense that has one, in Wikidata's order: the word's definitions. */
+  lexemeGlosses: LexemeGloss[];
+  recordId?: never;
+  entryId?: never;
+  handKeptId?: never;
+  nameItem?: never;
+  description?: never;
+  ref: LexemeRef;
+}
+
+/** The Italian gloss of one sense of a lexeme, and the sense it glosses. */
+export interface LexemeGloss {
+  sense: `L${number}-S${number}`;
+  text: string;
+}
+
+/**
+ * Where a Wikidata word was read: its lexeme, as the lexeme dump of
+ * `snapshot` states it, under the release the lookup serves, since it belongs
+ * to none. A *Fonte* link opens the lexeme's page.
+ */
+export interface LexemeRef {
+  releaseId: string;
+  wiki: "www.wikidata.org";
+  lexeme: `L${number}`;
+  /** The date of the lexeme dump the row was taken from. */
+  snapshot: string;
+  item?: never;
+  title?: never;
+  revisionId?: never;
+  line?: never;
+  lineNo?: never;
+  lineSha256?: never;
+  jsonPointer?: never;
+}
+
+/** Whether an entry is a Wikidata word rather than a reading of Wiktionary's or Lexema's, or a name entry. */
+export const isWikidataWord = (entry: EntryIdentity): entry is LexemeIdentity => entry.lexeme !== undefined;
+
+/** Whether an entry is from Wikidata, a name entry or a Wikidata word: one Wiktionary does not state. */
+export const isFromWikidata = (entry: EntryIdentity): boolean => isNameEntry(entry) || isWikidataWord(entry);
 
 /**
  * Where a page-only entry was read: its page revision and the line that names
@@ -851,11 +911,12 @@ export type OtherReading = ReadingFacts & OtherPartOfSpeech;
 /** One source record that matched the query. */
 export type Reading = NounReading | OtherReading;
 
-/** Stable within one seeded database, without conflating page entries, hand-kept readings or name entries with source records. */
+/** Stable within one seeded database, without conflating page entries, hand-kept readings, name entries or Wikidata words with source records. */
 export function entryKey(entry: EntryIdentity): string {
   if (entry.recordId !== undefined) return String(entry.recordId);
   if (entry.entryId !== undefined) return `page-${entry.entryId}`;
-  return entry.handKeptId !== undefined ? `kept-${entry.handKeptId}` : `name-${entry.nameItem}`;
+  if (entry.handKeptId !== undefined) return `kept-${entry.handKeptId}`;
+  return entry.nameItem !== undefined ? `name-${entry.nameItem}` : `lexeme-${entry.lexeme}`;
 }
 
 /**
@@ -865,18 +926,21 @@ export function entryKey(entry: EntryIdentity): string {
  * the entries one page gives (`lungo`, ADR 0028).
  */
 export type PublicEntryKey = { releaseId: string } & (
-  | { lineNo: number; revisionId?: never; pageLine?: never; nameItem?: never }
-  | { revisionId: number; pageLine: number; lineNo?: never; nameItem?: never }
-  | { nameItem: `Q${number}`; lineNo?: never; revisionId?: never; pageLine?: never }
+  | { lineNo: number; revisionId?: never; pageLine?: never; nameItem?: never; lexeme?: never }
+  | { revisionId: number; pageLine: number; lineNo?: never; nameItem?: never; lexeme?: never }
+  | { nameItem: `Q${number}`; lineNo?: never; revisionId?: never; pageLine?: never; lexeme?: never }
+  | { lexeme: `L${number}`; lineNo?: never; revisionId?: never; pageLine?: never; nameItem?: never }
 );
 
 /**
  * The id the API names an entry by: `<release>:<lineNo>`,
  * `<release>:page:<revisionId>:<pageLine>`, or, for a name entry (ADR 0032),
- * `<release>:wikidata:<item>`.
+ * `<release>:wikidata:<item>`, and for a Wikidata word (ADR 0033),
+ * `<release>:wikidata:<lexeme>`.
  */
 export function publicEntryId(key: PublicEntryKey): string {
   if (key.nameItem !== undefined) return `${key.releaseId}:wikidata:${key.nameItem}`;
+  if (key.lexeme !== undefined) return `${key.releaseId}:wikidata:${key.lexeme}`;
   return key.lineNo === undefined ? `${key.releaseId}:page:${key.revisionId}:${key.pageLine}` : `${key.releaseId}:${key.lineNo}`;
 }
 

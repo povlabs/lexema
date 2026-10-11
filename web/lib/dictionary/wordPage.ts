@@ -111,10 +111,12 @@ import {
   formsOfQueryReadings,
   isAdjectiveReading,
   isFormOfReading,
+  isFromWikidata,
   isNameEntry,
   isNounReading,
   isSourceRef,
   isVerbReading,
+  isWikidataWord,
   lemmasOfPartOfSpeech,
   otherFormsOfQueryLemmas,
   searchedSpellings,
@@ -1137,14 +1139,17 @@ export function wordPage(
  * The Wiktionary page of the title, the spelling the page is about, whenever
  * the lookup found a Wiktionary reading, shown or not, since its word facts
  * may show: that page holds every entry for the spelling, so one link covers
- * every reading (ADR 0009, amended on #281). A page of name entries alone
- * credits the Wikidata item of the first it shows (ADR 0032, #827).
+ * every reading (ADR 0009, amended on #281). A page of Wikidata entries alone
+ * credits the Wikidata page of the first it shows: a name entry's item (ADR
+ * 0032, #827), or a Wikidata word's lexeme (ADR 0033, #812).
  */
 function footerSourceOf(found: readonly [Reading, ...Reading[]], shown: WordReadings, headword: string): FooterSource {
-  if (!found.every(isNameEntry)) return wiktionarySource(headword);
-  const shownNames = shown.flatMap((entry) => (entry.kind !== "verb-form" && entry.kind !== "grid-form" && isNameEntry(entry.reading) ? [entry.reading] : []));
-  const first = shownNames[0] ?? found[0];
-  return { kind: "wikidata", item: first.nameItem, word: first.word };
+  if (!found.every(isFromWikidata)) return wiktionarySource(headword);
+  const shownWikidata = shown.flatMap((entry) => (entry.kind !== "verb-form" && entry.kind !== "grid-form" && isFromWikidata(entry.reading) ? [entry.reading] : []));
+  const first = shownWikidata[0] ?? found[0];
+  if (isNameEntry(first)) return { kind: "wikidata", item: first.nameItem, word: first.word };
+  if (isWikidataWord(first)) return { kind: "lexeme", lexeme: first.lexeme, word: first.word };
+  return wiktionarySource(headword);
 }
 
 /** What a page's entries are drawn from. */

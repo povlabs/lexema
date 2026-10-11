@@ -69,18 +69,19 @@ export function lookupDatabaseOf(reader: MasterReader): LookupDatabase {
  * Why `result` is not what `declared` asks, or undefined when it is. A gloss
  * is held to every sense's glosses and every recovered definition, since a
  * page-only entry (ADR 0024) has no senses and states its definitions there,
- * and to a name entry's description (ADR 0032).
+ * to a name entry's description (ADR 0032), and to a Wikidata word's glosses (ADR 0033).
  */
 export function declaredMiss(declared: DeclaredLookup, result: LookupResult): string | undefined {
   if (declared.expect === "not-found") return result.outcome === "found" ? "found, declared not found" : undefined;
   if (result.outcome !== "found" || result.readings.length === 0) return `${result.outcome}, not found with a reading`;
   const { gloss } = declared;
   if (gloss === null) return undefined;
-  // A name entry (ADR 0032) has no senses: its Wikidata description is its one definition.
+  // A name entry (ADR 0032) has no senses: its Wikidata description is its one definition; a Wikidata word (ADR 0033) has its glosses.
   const texts = result.readings.flatMap((reading) => [
     ...reading.senses.flatMap((sense) => sense.glosses.map(({ text }) => text)),
     ...everyRecovered(reading).map(({ text }) => text),
     ...(reading.description === undefined ? [] : [reading.description]),
+    ...(reading.lexemeGlosses ?? []).map(({ text }) => text),
   ]);
   return texts.some((text) => text.includes(gloss)) ? undefined : `found, but no definition holds ${JSON.stringify(gloss)}`;
 }

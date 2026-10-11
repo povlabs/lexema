@@ -9,7 +9,8 @@
 // `/attribution` page's sections had, so a link to one of them still lands on
 // the section that replaced it. The Wikidata credit in section 3 and the
 // trademark line's Wikidata are added by #794 (ADR 0032), their wording for
-// Huey to approve on that pull request.
+// Huey to approve on that pull request. #812 (ADR 0033) extends that one
+// credit to the Wikidata words rather than adding a second.
 
 import { ExternalLink } from "@/components/shared/ExternalLink";
 import { LEGAL_ITEMS, LEGAL_PARAGRAPH, LEGAL_UNBROKEN, LINK } from "@/components/shared/styles.ts";
@@ -104,7 +105,7 @@ export function Licence({ release }: { release: ServedRelease }) {
               </p>
               <p className={LEGAL_PARAGRAPH}>
                 I nomi propri che il Wikizionario non spiega, come luoghi, organizzazioni, lingue, valute e festività,
-                provengono da{" "}
+                e le parole italiane che il Wikizionario non ha provengono da{" "}
                 <ExternalLink language="it" className={LINK} href="https://www.wikidata.org/">
                   Wikidata
                 </ExternalLink>
@@ -112,7 +113,8 @@ export function Licence({ release }: { release: ServedRelease }) {
                 <ExternalLink language="it" className={LINK} href={CC0_URL}>
                   dedicazione Creative Commons CC0 1.0 Universale
                 </ExternalLink>
-                . Ogni nome tratto da Wikidata rimanda al proprio elemento su Wikidata.
+                . Ogni nome tratto da Wikidata rimanda al proprio elemento su Wikidata, e ogni parola al proprio
+                lessema.
               </p>
             </>
           ),
