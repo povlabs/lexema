@@ -4,6 +4,7 @@
 
 import type { ArticleDisplay } from "../core/types.js";
 import type { SurfaceWithholding } from "../italian/articles.js";
+import type { ShapedSpelling } from "../italian/wordShape.js";
 import type { AgreeingSpelling } from "../italian/essereAgreement.js";
 import type { PhraseGloss } from "../italian/phrase.js";
 import type { VerbFormGloss } from "../italian/verbFormGloss.js";
@@ -1147,12 +1148,17 @@ export interface PhraseForm {
  * evidence is only the cells of that spelling that agree. `first-spelling`:
  * it is none, and it is, as typed, the agreeing first spelling of cells that
  * hold more than one (`mi sono arreso` of `mi sono arreso, arresosi`).
+ * `shape`: it is none of these, and rule `it-word-shape/v1` reads it as a
+ * shape of words the dictionary has (`raccontarvi` of `raccontare`,
+ * `quei` of `quello`, #809); `spellings` are the spellings that answered, and the
+ * readings are their records.
  */
 export type FoundRoute =
   | { kind: "surface" }
   | { kind: "phrase"; phrases: [PhraseMatch, ...PhraseMatch[]]; forms: PhraseForm[] }
   | { kind: "feminine"; agreement: AgreeingSpelling }
-  | { kind: "first-spelling"; agreement: AgreeingSpelling };
+  | { kind: "first-spelling"; agreement: AgreeingSpelling }
+  | { kind: "shape"; spellings: [ShapedSpelling, ...ShapedSpelling[]] };
 
 /**
  * The index was probed and at least one record matched. The readings are a

@@ -92,14 +92,18 @@ export function handKeptReadingsOf(db: LookupDatabase, releaseId: string, tables
     heads: async (keys) => {
       const byKey = new Map<string, HandKeptHead[]>();
       for (const row of await readKeys<HeadRow>(db, HAND_KEPT_HEADS_SQL, keys)) {
-        const head: HandKeptHead = {
-          handKeptId: row.reading_id, releaseId, revisionId: revisionOf(row.evidence_url).revisionId, pageLine: row.section_line,
-          word: row.word, pos: row.pos, posTitle: row.pos_title,
-        };
-        byKey.set(row.set_key, [...(byKey.get(row.set_key) ?? []), head]);
+        byKey.set(row.set_key, [...(byKey.get(row.set_key) ?? []), handKeptHead(releaseId, row)]);
       }
       return byKey;
     },
+  };
+}
+
+/** A hand-kept reading named, from a row of `HAND_KEPT_HEADS_SQL` or one read as it reads them; `releaseId` is the served release's. */
+export function handKeptHead(releaseId: string, row: Omit<HeadRow, "set_key">): HandKeptHead {
+  return {
+    handKeptId: row.reading_id, releaseId, revisionId: revisionOf(row.evidence_url).revisionId, pageLine: row.section_line,
+    word: row.word, pos: row.pos, posTitle: row.pos_title,
   };
 }
 

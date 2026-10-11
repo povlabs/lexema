@@ -30,6 +30,7 @@ import { gzipSync } from "node:zlib";
 import { seedSql } from "../../src/import/seedSql.js";
 import { rawPageSource, readSavedPage } from "../../src/source/rawPage.js";
 import { fromD1, fromNodeSqlite, type D1Like, type D1StatementLike, type SqlValue } from "../../src/lookup/database.js";
+import { shapeKeysOf } from "../../src/lookup/wordShape.js";
 import { lookup, withVerbDefinitions } from "../../src/lookup/lookup.js";
 import { dictionaryTables, servedVersion } from "../../src/lookup/served.js";
 import { searchAttempt } from "@/lib/dictionary/searchAttempt.ts";
@@ -193,6 +194,15 @@ const CELL_SEARCH_STATEMENTS = 1;
  * page-only entries' read, so it adds no call.
  */
 const HAND_KEPT_STATEMENTS = 1;
+
+/**
+ * The statement a lookup the source spells nothing for sends for the words
+ * rule `it-word-shape/v1` reads the query as a shape of (`shapeReadOf`,
+ * #809), when the query has one of its shapes (`mangare` may be a participle,
+ * `zzzz` is none). It goes in the call that reads the page-only entries, so
+ * it adds no call.
+ */
+const WORD_SHAPE_STATEMENTS = (word: string): number => (shapeKeysOf(word).length > 0 ? 1 : 0);
 
 /**
  * What #705 cut: the lemmas' own expressions, which no page shows since #700.
@@ -364,7 +374,7 @@ const NOT_FOUND: Record<string, { kind: string; statements: number; calls: numbe
 };
 
 for (const [word, then] of Object.entries(NOT_FOUND)) {
-  const ceiling = { ...then, statements: then.statements + CELL_SEARCH_STATEMENTS + HAND_KEPT_STATEMENTS };
+  const ceiling = { ...then, statements: then.statements + CELL_SEARCH_STATEMENTS + HAND_KEPT_STATEMENTS + WORD_SHAPE_STATEMENTS(word) };
   test(`the not-found page for '${word}' sends at most ${ceiling.statements} statements in at most ${ceiling.calls} calls, and reads the page SQLite reads`, async () => {
     const sent = nothingSent();
     const db = fromD1(countingD1(sqlite, sent));

@@ -185,7 +185,8 @@ test("a word not in the release is a 404 offering findNearby's spellings in its 
   const cases: [string, string[]][] = [
     ["citta", ["accent"]],
     ["mangare", ["edit"]],
-    ["sal", ["prefix"]],
+    // Not `sal`, which is now sale cut short (rule it-word-shape/v1, #809).
+    ["stud", ["prefix"]],
     ["qqqqqq", []],
     ["tiro%20fouri", ["phrase"]],
   ];
@@ -864,6 +865,29 @@ test("/exists is true exactly when /lookup finds the word, and always a 200 for 
   assert.deepEqual(await okBody("exists?q=qqqqqq"), { query: "qqqqqq", release_id: RELEASE, exists: false, attribution: null });
   await assertBadRequest("exists?q=%20", "invalid_query");
   await assertBadRequest(`exists?q=${"a".repeat(129)}`, "invalid_query");
+});
+
+test("/lookup, /lookup/batch and /exists find the word a form the source lists nowhere is a shape of: raccontarvi raccontare, dirlo dire, aver avere (#809)", async () => {
+  const cases: [string, string[]][] = [
+    ["raccontarvi", ["raccontare verb headword"]],
+    ["dirlo", ["dire verb headword"]],
+    ["aver", ["avere noun headword", "avere verb headword", "avere verb headword"]],
+  ];
+  for (const [q, expected] of cases) {
+    assert.deepEqual(candidates(await okBody(`lookup?q=${encodeURIComponent(q)}`)), expected, q);
+    assert.equal((await okBody(`exists?q=${encodeURIComponent(q)}`)).exists, true, q);
+  }
+  const batch = await okBody("lookup/batch", JSON.stringify({ q: cases.map(([q]) => q) }));
+  assert.deepEqual(
+    batch.results.map(({ query, found, lemma, pos }: Json) => [query, found, lemma, pos]),
+    [
+      ["raccontarvi", true, "raccontare", "verb"],
+      ["dirlo", true, "dire", "verb"],
+      ["aver", true, "avere", "noun"],
+      ["aver", true, "avere", "verb"],
+      ["aver", true, "avere", "verb"],
+    ],
+  );
 });
 
 test("/inflect finds andiamo for andare, congiuntivo presente noi, in Italian labels or English codes", async () => {

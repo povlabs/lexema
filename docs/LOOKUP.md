@@ -93,8 +93,9 @@ When the key matches nothing and has two to `MAX_PHRASE_WORDS` (12) words,
 
 The readings are those headwords' records, and `route` says how they were
 reached: `{ kind: "surface" }` for a query found as typed,
-`{ kind: "phrase", phrases, forms }`, or `{ kind: "feminine", agreement }`
-and `{ kind: "first-spelling", agreement }` (below). Each phrase is the headword `key`, its
+`{ kind: "phrase", phrases, forms }`, `{ kind: "feminine", agreement }`
+and `{ kind: "first-spelling", agreement }`, or `{ kind: "shape", spellings }`
+(both below). Each phrase is the headword `key`, its
 `word` as the source spells it, and the typed `words` with the lemma each
 stood for and the one word that stands for it (`inflected`: the participle of
 a compound tense). A single word is never read this way, and neither is a
@@ -197,6 +198,46 @@ Nothing derived is stored
 reflexive verbs are in scope by
 [Huey's scope reply](https://github.com/povlabs/lexema/issues/676#issuecomment-6014794503)
 of 2026-10-06).
+
+### A shape of a word the dictionary has
+
+Italian writes some forms by changing a word's spelling in a regular way, and
+the source lists none of them: `raccontarvi`, `quei`, `quell'`, `aver`. When
+the key is still found by nothing above, `lookup()` reads it by rule
+`it-word-shape/v1` (#809,
+[`src/italian/wordShape.ts`](../src/italian/wordShape.ts), read in
+[`src/lookup/wordShape.ts`](../src/lookup/wordShape.ts)). The rule names
+the spellings of the words the key may be a form of, each with its shape:
+
+| Shape | Example | Spellings named | Records admitted |
+| --- | --- | --- | --- |
+| `clitic` | `raccontarvi`, `dammi`, `vergognarti`, `scusatemi`, `dicendomi` | the infinitive (`raccontare`), its pronominal verb when the pronouns open with a reflexive (`vergognarsi`), an imperative of one syllable (`da'`), or the imperative or gerund the pronouns join (`scusate`, `dicendo`) | verbs |
+| `elided` | `quell'`, `dov'`, `m'` | the word with `-o`, `-a` or `-e`; a one-letter pronoun names its pronoun (`mi`) | no noun |
+| `truncated` | `aver`, `cuor`, `han`, `ancor` | `-e` first, then `-o` and `-no` after `-an`; `ora` and its compounds and `suora` name `-a` alone; after `m` only `-iamo` (`siam`) | any |
+| `demonstrative` | `quei`, `quegli`, `bei`, `begli` | `quello`, `bello` | adjectives |
+| `superlative` | `bravissimo`, `ricchissimi` | `bravo`, `brave`; `ricco` | adjectives |
+| `participle` | `piaciute`, `valsa` | the masculine singular, `piaciuto` | a verb's past participle cell |
+
+No shape admits a proper name, an abbreviation, a symbol or a word part, and
+none admits a spelling the source states a plural on a noun, adjective,
+pronoun or article record: `belle` is no `bell'`, `capitane` no `capitan`. A
+verb's plural is admitted (`devon` of `devono`). Of each shape only the lowest
+tier with an admitted record answers. An accent written as an apostrophe
+(`citta'`) is no elision, and a word with an accent missing (`perche`) is no
+shape: accents are meaning ([LOOKUP_DESIGN.md](LOOKUP_DESIGN.md#accents-are-meaning)),
+and the not-found answer offers the accented word.
+
+Every spelling is read in one statement, `shapeReadOf` (`SHAPE_READ_SQL` on a
+dictionary with every optional table): the source's rows as `SEARCH_SQL`
+reads them, the curated cells (#743), and the page-only entries and hand-kept
+readings each spelling heads. It is sent in the call that reads the page-only
+entries spelled as typed, as soon as the source spells nothing as typed, so a
+query nothing answers pays one statement and no call; a query of none of the
+rule's shapes sends nothing more. The readings are the records the answering
+spellings reach, as a typed word's are made, then their page-only entries and
+hand-kept readings; `route` is `{ kind: "shape", spellings }`, the spellings that
+answered. `exists()` and `lookupBatch` answer the same way. Nothing derived is
+stored.
 
 ## Outcomes
 
