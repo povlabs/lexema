@@ -16,6 +16,7 @@
 import type { DeclaredLemmaReading, DeclaredLemmaResult, DeclaredVerbForm } from "@lexema/lookup/types.ts";
 import { declaredConjugationOf, placesAny, type Conjugation } from "./conjugation.ts";
 import { declaredGridOf, type Grid } from "./genderGrid.ts";
+import { wiktionarySource, type WiktionarySource } from "./footerSource.ts";
 
 /** A reading's table: a conjugation for a verb, a gender and number grid for a noun or adjective. */
 export type DeclaredTable =
@@ -33,8 +34,8 @@ export interface DeclaredLemmaPage {
   /** The lemma as the edges spell it. */
   headword: string;
   readings: [DeclaredPageReading, ...DeclaredPageReading[]];
-  /** The word whose Wiktionary page the one *Source* link opens: the first reading's first form (#459). */
-  sourceWord: string;
+  /** The Wiktionary page the one *Source* link opens: the first reading's first form's (#459). */
+  source: WiktionarySource;
 }
 
 function tableOf(reading: DeclaredLemmaReading): DeclaredTable | undefined {
@@ -77,5 +78,5 @@ export function declaredLemmaPage(result: DeclaredLemmaResult): DeclaredLemmaPag
     return table === undefined || firstForm === undefined ? [] : [{ reading, table, firstForm }];
   });
   if (first === undefined) return undefined;
-  return { headword: first.reading.word, readings: [first, ...rest], sourceWord: first.firstForm };
+  return { headword: first.reading.word, readings: [first, ...rest], source: wiktionarySource(first.firstForm) };
 }

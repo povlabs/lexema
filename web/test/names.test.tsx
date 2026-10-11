@@ -1,7 +1,9 @@
 // Name entries on the word page and in the API (ADR 0032, #794): a name entry
 // reads as `Nome proprio` with its Wikidata description as its one definition
-// and its own *Fonte* to its item; a page whose readings are all name entries
-// has no Wiktionary *Fonte*; and the API names and credits it by its item.
+// and a *Fonte* to its item: in the footer beside *Segnala un errore* when it
+// is the page's one reading (#827), else under its definition; a page whose
+// readings are all name entries has no Wiktionary *Fonte*; and the API names
+// and credits it by its item.
 // Seeded from fixtures/names/ as the dev seed seeds names: three verbatim
 // archive lines, then `load:names` over items of the committed snapshot.
 
@@ -83,33 +85,42 @@ const footerOf = (html: string): string => {
 const nameSources = (html: string): string[] =>
   [...html.matchAll(new RegExp(`<p class="${NAME_SOURCE.replace(/[[\]().:]/g, "\\$&")}" lang="it"><a [^>]*href="([^"]+)"`, "g"))].map((match) => match[1]);
 
-test("a name entry reads as a proper name, its description its one definition, with its own Fonte to its Wikidata item", async () => {
+/** The footer's *Fonte*: where it links, if it has one. */
+const footerSource = (html: string): string | undefined => footerOf(html).match(/<a [^>]*href="([^"]+)"/)?.[1];
+
+test("a page whose one reading is a name entry reads as a proper name, its Fonte to its Wikidata item beside Segnala un errore", async () => {
   const html = await render("Hormuz");
   // A lone reading keeps its number (§ 2): only an empty lone reading drops it.
   assert.deepEqual(headingsOf(html), ["1·Nome proprio"]);
   assert.match(textOf(html), /Definizioni1\.isola dell'Iran/);
-  assert.deepEqual(nameSources(html), ["https://www.wikidata.org/wiki/Q695265"]);
-  assert.match(html, /aria-label="Voce di Wikidata per Hormuz, la fonte di questa voce \(si apre in una nuova scheda\)"/);
-  // No Wiktionary page is its source, so the footer has only the report link, and no note says why.
+  // The footer credits the item, so the reading shows no Fonte of its own (#827).
+  assert.deepEqual(nameSources(html), []);
   const footer = footerOf(html);
-  assert.equal(textOf(footer), "Segnala un errore");
+  assert.equal(textOf(footer), "Fonte·Segnala un errore");
+  assert.equal(footerSource(html), "https://www.wikidata.org/wiki/Q695265");
+  assert.match(footer, /aria-label="Voce di Wikidata per Hormuz, la fonte di questa voce \(si apre in una nuova scheda\)"/);
   assert.doesNotMatch(footer, /wiktionary/);
   assert.doesNotMatch(textOf(html), /Wikidata/);
 });
 
-test("a spelling two items share shows both, the continent before the island, each with its own Fonte", async () => {
+test("a spelling two items share shows both, the continent before the island, each with its own Fonte and none in the footer", async () => {
   const html = await render("europa");
   assert.deepEqual(headingsOf(html), ["1·Nome proprio", "2·Nome proprio"]);
   assert.deepEqual(nameSources(html), ["https://www.wikidata.org/wiki/Q46", "https://www.wikidata.org/wiki/Q193089"]);
   assert.ok(textOf(html).indexOf("continente della Terra") < textOf(html).indexOf("isola nel Canale del Mozambico"));
+  // One footer link cannot credit two items, so the footer has only the report link (#827).
+  assert.equal(textOf(footerOf(html)), "Segnala un errore");
+  assert.equal(footerSource(html), undefined);
 });
 
 test("a word Wiktionary has keeps its page: a name with no meaning gains the name after it, and a word with one is unchanged", async () => {
   // Giulia's record has a sense with no gloss; the river is its first meaning on the page.
+  // A mixed page: the footer credits Wiktionary, and the name keeps its own Fonte.
   const giulia = await render("Giulia");
   assert.match(textOf(giulia), /fiume/);
   assert.deepEqual(nameSources(giulia), ["https://www.wikidata.org/wiki/Q686341"]);
-  assert.match(footerOf(giulia), /href="https:\/\/it\.wiktionary\.org\/wiki\/Giulia"/);
+  assert.equal(textOf(footerOf(giulia)), "Fonte·Segnala un errore");
+  assert.equal(footerSource(giulia), "https://it.wiktionary.org/wiki/Giulia");
   // `Sale` the comune is the key of the salt noun, so load:names left it out: the page is the noun's alone.
   const sale = await render("sale");
   assert.deepEqual(headingsOf(sale), ["1·Sostantivo·maschile, singolare"]);

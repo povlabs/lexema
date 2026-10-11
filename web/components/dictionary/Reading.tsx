@@ -18,6 +18,7 @@ import { ExternalIcon } from "@/components/shared/icons";
 import { NEW_TAB } from "@/components/shared/ExternalLink";
 import { nameSourceLinkName, SOURCE_LABEL } from "@/lib/dictionary/wordPageText.ts";
 import { conjugationOf } from "@/lib/dictionary/conjugation.ts";
+import { creditsItem, type FooterSource } from "@/lib/dictionary/footerSource.ts";
 import { definitionsOf, shownSenseLabels, type DefinitionItem } from "@/lib/dictionary/definitions.ts";
 import { headingGrammar, placesGrammar } from "@/lib/dictionary/genderGrid.ts";
 import { lemmaMatches, lemmaWordsOf, unlinkedLemmas, type LinksOf } from "@/lib/dictionary/lemmaLines.ts";
@@ -625,7 +626,7 @@ function HeadingPartsOfSpeech({ heading }: { heading: BlockHeading }) {
  * to show, is its heading alone, and a lone one is its part of speech with no
  * number (#696).
  */
-export function ReadingView({ entry }: { entry: PageReading | BareReading | LoneBareReading }) {
+export function ReadingView({ entry, footerSource }: { entry: PageReading | BareReading | LoneBareReading; footerSource: FooterSource }) {
   const { reading } = entry;
   const grammar = headingGrammar(reading);
   const parts: readonly (LemmaPart | FormOfPart)[] = entry.kind === "source" ? entry.parts : [];
@@ -662,15 +663,16 @@ export function ReadingView({ entry }: { entry: PageReading | BareReading | Lone
       {parts.map((part) => (
         <ReadingPartView key={part.kind} reading={reading} owner={entryName(entry)} part={part} />
       ))}
-      {isNameEntry(reading) && <NameSource reading={reading} />}
+      {isNameEntry(reading) && !creditsItem(footerSource, reading.nameItem) && <NameSource reading={reading} />}
     </article>
   );
 }
 
 /**
  * A name entry's own *Fonte*, to its Wikidata item, under its definition
- * (ADR 0032, #794): the page's one *Fonte* opens a Wiktionary page, which is
- * not where a name entry comes from.
+ * (ADR 0032, #794), on a page whose footer *Fonte* credits something else: a
+ * Wiktionary page, or nothing on a page of several name entries. A page whose
+ * one reading is a name entry credits its item in the footer instead (#827).
  */
 function NameSource({ reading }: { reading: NameIdentity & { word: string } }) {
   return (

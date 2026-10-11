@@ -15,9 +15,9 @@ import { OneLine } from "./OneLine";
 import { GridFormBlockView, ReadingView, VerbFormBlockView } from "./Reading";
 import { ReportDialog } from "./ReportDialog";
 import { reportReadings, type ReportReading } from "@/lib/dictionary/report.ts";
-import { sourcePageUrl } from "@/lib/dictionary/sourcePage.ts";
+import { footerSourceLink, type FooterSource } from "@/lib/dictionary/footerSource.ts";
 import { WordList } from "./WordList";
-import { PRONUNCIATION_LABEL, READINGS_NAV, SECTION_LABEL, SOURCE_LABEL, sourceLinkName } from "@/lib/dictionary/wordPageText.ts";
+import { PRONUNCIATION_LABEL, READINGS_NAV, SECTION_LABEL, SOURCE_LABEL } from "@/lib/dictionary/wordPageText.ts";
 import {
   entryTitle,
   expressionRows,
@@ -122,8 +122,8 @@ function WordFactsView({
 
 /** What the footer needs of a result: the page its content is credited to, and the readings a report can name. */
 export interface FooterFacts {
-  /** The word whose Wiktionary page the one *Source* link opens; none when every reading is a name entry, which links its own (ADR 0032). */
-  sourceWord: string | undefined;
+  /** What the one *Source* link credits: a Wiktionary page, a name entry's Wikidata item, or nothing. */
+  source: FooterSource;
   /** The word a report is about. */
   headword: string;
   /** Each reading a report can name, with its number on the page. */
@@ -131,25 +131,22 @@ export interface FooterFacts {
 }
 
 /**
- * One *Source*, to the Wiktionary page of the page's word, then *Segnala un
- * errore* (ADR 0009, amended on #281). A page whose readings are all name
- * entries has no Wiktionary source, so it shows *Segnala un errore* alone.
+ * One *Source*, to the page's source, then *Segnala un errore* (ADR 0009,
+ * amended on #281): the Wiktionary page of the page's word, or the Wikidata
+ * item of its one name entry (#827). A page of several name entries credits
+ * each in its reading, so it shows *Segnala un errore* alone.
  */
 export function SourceLine({ page, siteKey }: { page: FooterFacts; siteKey: string | undefined }) {
+  const link = footerSourceLink(page.source);
   return (
     <footer className={SOURCE_LINE} lang="it">
-      {page.sourceWord !== undefined && (
-        <a
-          className={SOURCE_LINK}
-          href={sourcePageUrl(page.sourceWord)}
-          {...NEW_TAB}
-          aria-label={sourceLinkName(page.sourceWord)}
-        >
+      {link !== undefined && (
+        <a className={SOURCE_LINK} href={link.href} {...NEW_TAB} aria-label={link.name}>
           {SOURCE_LABEL}
           <ExternalIcon className={ICON} />
         </a>
       )}
-      {page.sourceWord !== undefined && <span aria-hidden="true">·</span>}
+      {link !== undefined && <span aria-hidden="true">·</span>}
       <ReportDialog
         word={page.headword}
         subject={{ kind: "mistake", readings: reportReadings(page.readings) }}
@@ -174,7 +171,7 @@ export function WordView({ page, siteKey }: { page: WordPage; siteKey?: string }
           ) : entry.kind === "grid-form" ? (
             <GridFormBlockView key={readingAnchor(entry)} block={entry} />
           ) : (
-            <ReadingView key={readingAnchor(entry)} entry={entry} />
+            <ReadingView key={readingAnchor(entry)} entry={entry} footerSource={page.source} />
           ),
         )}
       </div>

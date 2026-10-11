@@ -124,6 +124,7 @@ import {
   type SourceRef,
 } from "@lexema/lookup/types.ts";
 import { definitionTextKey, definitionsOf, placeOf, readAt, type DefinitionItem } from "./definitions.ts";
+import { NO_SOURCE, wiktionarySource, type FooterSource } from "./footerSource.ts";
 import { conjugates, conjugationOf, declaredConjugationOf, placesAny, type Conjugation } from "./conjugation.ts";
 import { agreementOf, placesOf, type Agreement, type GridPlace, type Spelling } from "./genderGrid.ts";
 import { GRID_FORM_LINE_RULE, gridFormLine } from "./gridFormLine.ts";
@@ -750,14 +751,8 @@ export interface WordPage {
   wordLists: WordLists;
   /** The word's own expressions, each once; the last of the word's facts. None when its records list none. */
   expressions: ExpressionSection | undefined;
-  /**
-   * The word whose Wiktionary page the one *Source* link opens: the spelling
-   * the page is about, its title. That page holds every entry for the
-   * spelling, so one link covers every reading (ADR 0009, amended on #281).
-   * Undefined when every reading the lookup found is a name entry (ADR 0032),
-   * whose own *Fonte* opens its Wikidata item: no Wiktionary page is a source.
-   */
-  sourceWord: string | undefined;
+  /** What the footer's one *Fonte* credits (`footerSourceOf`). */
+  source: FooterSource;
 }
 
 /**
@@ -1133,9 +1128,26 @@ export function wordPage(
       derived: relatedItems(placed.rest.derived),
     },
     expressions: expressions === undefined ? undefined : { expressions },
-    // A Wiktionary page is a source whenever the lookup found a reading of it, shown or not: its word facts may show (ADR 0032).
-    sourceWord: readings.every(isNameEntry) ? undefined : headword,
+    source: footerSourceOf(readings, shown, headword),
   };
+}
+
+/**
+ * What the footer's *Fonte* credits. The Wiktionary page of the title, the
+ * spelling the page is about, whenever the lookup found a Wiktionary reading,
+ * shown or not, since its word facts may show: that page holds every entry for
+ * the spelling, so one link covers every reading (ADR 0009, amended on #281).
+ * A page whose one shown reading is a name entry credits that entry's Wikidata
+ * item there instead, beside *Segnala un errore* (#827). A page of several
+ * name entries credits none: one link cannot credit two items, so each keeps
+ * its own *Fonte* (ADR 0032).
+ */
+function footerSourceOf(found: readonly Reading[], shown: WordReadings, headword: string): FooterSource {
+  if (!found.every(isNameEntry)) return wiktionarySource(headword);
+  if (shown.length !== 1) return NO_SOURCE;
+  const [only] = shown;
+  if (only.kind === "verb-form" || only.kind === "grid-form" || !isNameEntry(only.reading)) return NO_SOURCE;
+  return { kind: "wikidata", item: only.reading.nameItem, word: only.reading.word };
 }
 
 /** What a page's entries are drawn from. */
