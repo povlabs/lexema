@@ -10,5 +10,10 @@
     { "word": "flebo", "gloss": "per via endovenosa" },
     { "word": "pento", "gloss": "un'azione sbagliata commessa" },
     { "word": "papà" }
-  ]
+  ],
+  "expected": {
+    "records": { "added": 0, "changed": 0, "removed": 0 },
+    "written": { "wikidata_word": 62, "wikidata_word_key": 191 },
+    "deleted": {}
+  }
 }
