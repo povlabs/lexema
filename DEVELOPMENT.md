@@ -93,6 +93,42 @@ join lookup uses. It stops without timing if the two return different rows.
 a real archive instead. Why the two forms differ is in
 [the lookup design](./docs/LOOKUP_DESIGN.md#the-view-that-costs-four-orders-of-magnitude).
 
+### Diff every word page before and after a change
+
+```sh
+pnpm run diff:pages                    # base: where HEAD left origin/main; head: HEAD
+pnpm run diff:pages <base> <head>      # any two commits
+SEED_INPUT=.data/source/it-extract.jsonl.gz pnpm run diff:pages   # the whole release
+pnpm run diff:pages --words <file>     # also ask the words in <file>, one per line
+```
+
+It checks each commit out into its own linked worktree, seeds a local
+dictionary there with that commit's `pnpm run seed:dev`, and renders the page
+of every word either seed knows with that commit's site code. Those words are
+every headword and every word a `form_of` edge names, so a declared lemma's
+page, like *verbalizzare*'s, is compared too
+([pageWords.ts](./web/pageDiff/pageWords.ts)). It renders through the page's
+search and its own
+`Outcome` component, which builds the page with
+[wordPage.ts](./web/lib/dictionary/wordPage.ts). Both sides render through the
+running tree's [renderPages.ts](./web/pageDiff/renderPages.ts). It prints
+Markdown: pages compared, changed, added and removed, and the words of each.
+The fixture takes about two minutes. The whole release is a heavy job: run it
+alone. `PAGE_DIFF_WORK=<new dir>` keeps the work directory and each side's
+snapshot.
+
+Pass `--words` when the change should open pages for words no record heads
+and no edge names, such as clitic forms like *raccontarvi*. Only a word the
+run asks for can show as added. Give it the words the change targets, for
+example the missing words of
+[the missing-word count](./reports/2026-10-11-missing-common-words.md) the
+change fixes. Repeat `--words` for more files.
+
+Every pull request that changes lookup or dictionary data posts the printed
+summary as a comment, from a run against the whole release. Say why each
+changed or removed page changed; a page already on the site that should not
+change is a bug in the pull request.
+
 ### Run the search page
 
 The page answers from a seeded local D1. `pnpm run seed:dev` seeds it from the
