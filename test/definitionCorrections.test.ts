@@ -144,7 +144,7 @@ test("the seed writes each correction beside its entry, and a lookup reads its w
       assert.deepEqual(textsOf(await definitionsOf("grufolare")), [[grufolare.text, []]]);
       assert.deepEqual(textsOf(await definitionsOf("tremare")), [
         [tremare.text, []],
-        ["essere agitato da scosse continue", ["figurato"]],
+        ["essere agitato da scosse continue", ["senso figurato"]],
       ]);
       const [corrected, figurative] = await definitionsOf("tremare");
       assert.deepEqual(corrected.correction, { id: "page:4002473:0", evidenceUrl: evidenceUrl(tremare.evidence[0]), replaces: tremare.replaces.text });

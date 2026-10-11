@@ -3934,7 +3934,7 @@ test("a curated definition correction shows in place of the page's wrong words, 
   // The API answers the same definitions the page shows.
   assert.deepEqual(JSON.parse(corrected.api).map((definition: { definition: string; labels: string[] }) => [definition.definition, definition.labels]), [
     [tremare.text, []],
-    ["essere agitato da scosse continue", ["figurato"]],
+    ["essere agitato da scosse continue", ["senso figurato"]],
   ]);
 });
 

@@ -219,7 +219,7 @@ test("a dictionary lacking a definition on each route a seed writes, and a held 
     );
     assert.deepEqual(writes, [
       ["casa", 20, "below-page-control", ["astrologia"]],
-      ["pantomima", 6, "wrapped-prose", ["figurato"]],
+      ["pantomima", 6, "wrapped-prose", ["senso figurato"]],
       ["centouno", 4, "bullet-line", ["matematica"]],
       ["bavaglio", 4, "prose-line", []],
       ["progetto", 7, "sub-term", ["diritto", "politica"]],
