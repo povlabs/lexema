@@ -236,7 +236,9 @@ and `it-gloss-stamp/v1: sense_gloss: 9 row(s) changed, grammar_claim: 30 row(s) 
 (8 nouns: 16 stated claims added, 14 `missing` rows removed) on the first run,
 and 0 on every later run. A seed of it and its dump from before #712 holds 7
 `recovered_definition` and 4 `entry_definition` rows the label rule rewrites,
-and none of the two example tables. It writes through Wrangler, never through the
+and none of the two example tables. The shared dictionary held 4
+`recovered_label` and 6 `entry_label` rows the `{{Fig}}` rule rewrites
+([#800](https://github.com/povlabs/lexema/issues/800)). It writes through Wrangler, never through the
 Worker's read-only binding.
 
 ## Hide another language's records in a seeded database

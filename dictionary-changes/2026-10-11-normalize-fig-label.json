@@ -5,8 +5,8 @@
     { "word": "casa", "gloss": "casa costruttrice" }
   ],
   "expected": {
-    "records": { "added": 0, "changed": 0, "removed": 0 },
-    "written": {},
+    "records": { "added": 0, "changed": 4, "removed": 0 },
+    "written": { "recovered_label": 4, "entry_label": 6 },
     "deleted": {}
   }
 }
