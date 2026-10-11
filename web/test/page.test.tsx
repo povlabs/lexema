@@ -38,6 +38,7 @@ import { servedRelease, ServedReleaseUnknown, type ServedRelease } from "../../s
 import type { DeclaredChange, ReleaseId } from "../../src/update/declaration.js";
 import { readServedRelease } from "../../src/update/readServedRelease.js";
 import { fromNodeSqlite } from "../../src/lookup/database.js";
+import { lookup } from "../../src/lookup/lookup.js";
 import { formsOfQueryReadings, isFormOfReading, type Reading, type SourceRef } from "../../src/lookup/types.js";
 import type { Attempt } from "@/lib/dictionary/attempt.ts";
 import { searchAttempt } from "@/lib/dictionary/searchAttempt.ts";
@@ -1064,6 +1065,44 @@ test("a feminine nothing agrees with is not found, and masculine searches keep t
       "prima persona plurale del passato congiuntivo di andare",
     ]);
     assert.deepEqual(await lines("ho mangiato", "mangiare"), ["prima persona singolare del passato prossimo indicativo di mangiare"]);
+  });
+});
+
+/**
+ * `fixtures/word-shapes.jsonl`: dare, mi, piacere, quello and bravo, as
+ * release it-0c432803 has them (lines 2340, 2341, 12704, 33110, 33211, 33212
+ * and 70242). The dev seed has none of them (#809).
+ */
+const WORD_SHAPE_LINES = (await readFile(join(REPO, "fixtures/word-shapes.jsonl"), "utf8")).trimEnd().split("\n");
+
+test("a form the source lists nowhere shows its word's page: quei and quegli quello, raccontarvi raccontare, dirlo dire, piaciute piacere (#809)", async () => {
+  const headedBy = (html: string, word: string) => assert.match(html, new RegExp(`<h1 class="${esc(WORD_HEADING)}" lang="it">${esc(word)}</h1>`), word);
+  await withLines([...(await devSeedLines()), ...WORD_SHAPE_LINES], async ({ db }) => {
+    for (const query of ["quei", "quegli"]) {
+      const html = await render(db, query);
+      headedBy(html, "quello");
+      // The demonstrative adjective, never the pronoun: `quei libri`.
+      assert.deepEqual(headingsOf(html), ["1·Aggettivo dimostrativo·maschile, singolare"], query);
+    }
+    const dirlo = await render(db, "dirlo");
+    headedBy(dirlo, "dire");
+    assert.deepEqual(headingsOf(dirlo), ["1·Verbo"]);
+    const bravissimo = await render(db, "bravissimo");
+    headedBy(bravissimo, "bravo");
+    assert.deepEqual(headingsOf(bravissimo), ["1·Aggettivo·maschile, singolare"]);
+    // A participle the table lists only as piaciuto is piacere's form block.
+    assert.deepEqual(headingsOf(await render(db, "piaciute")), ["1·Voce verbale·piacere"]);
+    // A regular form of a word that lists none: a plural, a feminine, a verb form, an English plural.
+    for (const [query, word] of [["follie", "follia"], ["crucchi", "crucco"], ["poverina", "poverino"], ["fischia", "fischiare"], ["marines", "marine"]] as const) {
+      const html = await render(db, query);
+      headedBy(html, word);
+      assert.ok(!html.includes(NOT_FOUND_HEADING), query);
+    }
+  });
+  await withDevSeedAndPages(async ({ db }) => {
+    const html = await render(db, "raccontarvi");
+    headedBy(html, "raccontare");
+    assert.deepEqual(headingsOf(html), ["1·Verbo"]);
   });
 });
 
@@ -2432,9 +2471,10 @@ test("a search that finds nothing offers, in order: an accent, one edit, words t
       assert.match(offers, /Altre grafie similimagnare/);
     });
 
-    // A three-letter query skips the typo step: `mar` is one edit from `mare`,
-    // but the words that begin with it are the better offer.
-    assert.match(textOf(await render(db, "mar")), /Parole che iniziano con “mar”:Suggerimentimare/);
+    // A three-letter query skips the typo step: `cas` is one edit from `casa`,
+    // but the words that begin with it are the better offer. (`mar` is now
+    // mare cut short, rule it-word-shape/v1, #809.)
+    assert.match(textOf(await render(db, "cas")), /Parole che iniziano con “cas”:Suggerimenticasa/);
 
     // D: nothing at all.
     const none = textOf(await render(db, "xqzt"));
@@ -3599,6 +3639,19 @@ test("a declared lemma's page has no definitions and no note on what it lacks", 
       shown.push(word);
     }
     assert.equal(shown.length, 6);
+  });
+});
+
+test("a declared lemma keeps its page when rule it-word-shape/v1 reads it as a shape: aggrapparsi stays itself beside aggrappare (#809)", async () => {
+  await withLines([...DECLARED_LINES, ...WORD_SHAPE_LINES], async ({ db }) => {
+    // The lookup reads aggrapparsi as aggrappare with a clitic; the page answers the word itself.
+    const shaped = await lookup({ db: fromNodeSqlite(db), releaseId: RELEASE, query: "aggrapparsi" });
+    assert.ok(shaped.outcome === "found" && shaped.route.kind === "shape");
+    const html = await render(db, "aggrapparsi");
+    assert.match(html, new RegExp(`<h1 class="${esc(WORD_HEADING)}" lang="it">aggrapparsi</h1>`));
+    assert.deepEqual(declaredHeadings(html), ["Verbo"]);
+    // A clitic form no record names is still aggrappare's.
+    assert.match(await render(db, "aggrapparti"), new RegExp(`<h1 class="${esc(WORD_HEADING)}" lang="it">aggrappare</h1>`));
   });
 });
 

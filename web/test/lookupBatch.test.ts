@@ -27,6 +27,7 @@ import { CURATED_CORRECTIONS, cellCorrections, type CellCorrection } from "../..
 import { fromNodeSqlite, type DictionaryRead, type LookupDatabase } from "../../src/lookup/database.js";
 import { lookup } from "../../src/lookup/lookup.js";
 import { HAND_KEPT_HEADS_SQL } from "../../src/lookup/handKept.js";
+import { SHAPE_READ_SQL } from "../../src/lookup/wordShape.js";
 import { BESIDE_SOURCE_HEADS_SQL } from "../../src/lookup/besideSource.js";
 import { OPTIONAL_TABLES_SQL } from "../../src/lookup/served.js";
 import { entryKey, publicEntryId, type LemmaTarget } from "../../src/lookup/types.js";
@@ -543,6 +544,26 @@ test("a dictionary without hand_kept_definition is sent no statement naming it, 
     before.close();
     empty.close();
   }
+});
+
+test("the batch reads a form the source lists nowhere as a shape of a word it has, by rule it-word-shape/v1, as the single lookup does (#809)", async () => {
+  // Real words of the missing-word count the dev seed has the word of, and one it has none for.
+  const words = ["dirlo", "fammi", "vederti", "andartene", "vattene", "aver", "far", "esser", "bell'", "qqqqqq", "citta'"];
+  const asked = recording();
+  const { answers } = await lookupBatch({ db: asked.db, releaseId: RELEASE, queries: words });
+  for (const [at, word] of words.entries()) assert.deepEqual(light(answers[at]), await throughCandidatesOf(word), word);
+  assert.deepEqual(
+    light(answers[words.indexOf("dirlo")]).map((candidate) => candidate !== "not found" && candidate.lemma),
+    ["dire"],
+  );
+  assert.deepEqual(light(answers[words.indexOf("citta'")]), ["not found"]);
+  // Every word's spellings in one statement, beside the agreement read.
+  assert.equal(asked.asked.filter((sql) => sql === SHAPE_READ_SQL).length, 1, asked.asked.join("\n---\n"));
+});
+
+test("the batch's base read stays on its indexes rather than scanning (#809)", () => {
+  const steps = (sqlite.prepare(`EXPLAIN QUERY PLAN ${SHAPE_READ_SQL}`).all(JSON.stringify(["dire", "fare"]), RELEASE) as { detail: string }[]).map((row) => row.detail);
+  assert.ok(!steps.some((step) => /SCAN (lookup_form|grammar_claim|source_record|corrected_form|recovered_entry|hand_kept_definition|lf|g|n|m|t|r|c|e|p|present)\b/.test(step)), steps.join("\n"));
 });
 
 test("the batch's hand-kept read stays on its index rather than scanning (#776)", () => {
