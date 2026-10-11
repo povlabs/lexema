@@ -101,10 +101,11 @@ export function answeredKeys(reader: MasterReader, masterReleaseId: string, keys
   for (let start = 0; start < distinct.length; start += LABELS_PAGE) {
     // Each arm reads the page's keys itself: a dictionary read is one SELECT, so there is no WITH to share them.
     const asked = `json_each(${json(distinct.slice(start, start + LABELS_PAGE))}) a`;
-    // A record's search rows: a hidden record has none, and a record a change replaced is not served.
+    // A record's search rows, probed by `lookup_form_by_key` as a search probes them: a hidden record
+    // has none, and neither has a record a change replaced, so every row found is a served record's.
     const records = (origin: string) => `FROM ${asked}
-        JOIN lookup_form lf ON lf.surface_key = a.value AND lf.origin = '${origin}' AND lf.release_id IN (${served})
-        JOIN served_record r ON r.record_id = lf.record_id AND r.master_release_id = ${literal(masterReleaseId)}`;
+        JOIN lookup_form lf ON lf.release_id IN (${served}) AND lf.surface_key = a.value AND lf.origin = '${origin}'
+        JOIN source_record r ON r.record_id = lf.record_id`;
     // A headword's text is judged below, as a page judges it; a table's listing answers the key whatever it says.
     const arms = [
       `SELECT a.value AS word_key, r.word AS word, g.text AS text ${records("headword")} JOIN sense s ON s.record_id = r.record_id JOIN sense_gloss g ON g.sense_id = s.sense_id`,

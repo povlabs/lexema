@@ -20,7 +20,7 @@ import { exists, lookup } from "../src/lookup/lookup.js";
 import { BESIDE_SOURCE_HEADS_SQL, BESIDE_SOURCE_SQL } from "../src/lookup/besideSource.js";
 import { NAME_HEADS_SQL, NAME_SQL } from "../src/lookup/names.js";
 import { entryKey, isNameEntry, publicEntryId, type Reading } from "../src/lookup/types.js";
-import { isShownMeaning, missingForNames, planNames, unwrittenNames } from "../src/names/loadNames.js";
+import { answeredKeys, isShownMeaning, missingForNames, planNames, unwrittenNames } from "../src/names/loadNames.js";
 import { categoryRank, NAME_CATEGORIES } from "../src/names/nameCategories.js";
 import { InvalidNameItem, nameItem, wikidataItemUrl, type NameItem, type NameItemSpec } from "../src/names/nameItem.js";
 import { NAME_SNAPSHOT_PATH, parseSnapshot, readNameSnapshot, snapshotText } from "../src/names/nameSnapshot.js";
@@ -314,6 +314,22 @@ test("a lookup reads a key's name entries by index, beside the hand-kept reading
     await lookup({ db: recording, releaseId: RELEASE, query: "Europa" });
     await lookupBatch({ db: recording, releaseId: RELEASE, queries: ["Europa", "sale"] });
     assert.ok(!asked.some((sql) => sql.includes("FROM name_entry")), asked.join("\n---\n"));
+  } finally {
+    db.close();
+  }
+});
+
+test("load:names reads which keys are answered through the search index, never scanning the records", async () => {
+  const db = await seeded();
+  try {
+    const asked: string[] = [];
+    answeredKeys({ query: <Row>(sql: string) => { asked.push(sql); return db.prepare(sql).all() as Row[]; } }, RELEASE, ["hormuz", "sale", "giulia"]);
+    const reads = asked.filter((sql) => sql.includes("lookup_form"));
+    assert.equal(reads.length, 1);
+    const steps = (db.prepare(`EXPLAIN QUERY PLAN ${reads[0]}`).all() as { detail: string }[]).map((row) => row.detail);
+    // D1 resets a statement that runs past its CPU time: each arm probes `lookup_form_by_key` per key, and no view is materialised.
+    assert.ok(!steps.some((step) => /SCAN (lf|r|lookup_form|source_record|served_record)\b|MATERIALIZE/.test(step)), steps.join("\n"));
+    assert.ok(steps.filter((step) => /SEARCH lf USING (COVERING )?INDEX lookup_form_(headword_)?by_key/.test(step)).length >= 3, steps.join("\n"));
   } finally {
     db.close();
   }
