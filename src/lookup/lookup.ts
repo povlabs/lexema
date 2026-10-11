@@ -23,6 +23,8 @@ import { correctedEdgeServed, sourceEdgeServed } from "./correctedEdge.js";
 import { agreeingQuery, agreementProbes, namesCell } from "../italian/essereAgreement.js";
 import type { AnsweringSpelling } from "../italian/wordShape.js";
 import { answeringShapes, shapeKeysOf, readShapeRows, type ShapeRow } from "./wordShape.js";
+import { pairQueryOf } from "../italian/pronominalPair.js";
+import { answeringPairs, type AnsweringPair } from "./pronominalPair.js";
 import { prefixUpperBound } from "./keyRange.js";
 import { personOfItalianVerbForm } from "../italian/moods.js";
 import { correctRecordClaims, isNameEntry, pluralDeclaration, sourcePointerOf, sourceTagsOf } from "./types.js";
@@ -215,7 +217,8 @@ export async function exists({ db, releaseId, query }: LookupOptions): Promise<E
   const reached =
     (await phraseHits(db, releaseId, tables, key))?.hits[0].record_word ??
     (await agreementHits(db, releaseId, key, tables))?.hits[0].record_word ??
-    (await shapeWord(db, releaseId, key, tables));
+    (await shapeWord(db, releaseId, key, tables)) ??
+    wordOfRows(((await answeringPairs(db, releaseId, tables, [key])).get(key) ?? []).flatMap((answering) => answering.rows));
   if (reached !== undefined) return { ...found, word: reached };
   // Nothing of Wiktionary's answers it: a Wikidata word may (ADR 0033, #812).
   const heads = (await wikidataWordsOf(db, releaseId, tables).heads([key])).get(key) ?? [];
@@ -279,6 +282,9 @@ export async function lookup({ db, releaseId, query }: LookupOptions): Promise<L
   // query nothing answers pays one statement for them and no call (#809).
   const shapeKeys = hits.length === 0 ? shapeKeysOf(key) : [];
   const shapeRows = shapeKeys.length > 0 ? handled(readShapeRows(db, releaseId, tables, shapeKeys)) : undefined;
+  // So are the pronominal verbs rule `it-pronominal-pair/v1` reads a `si` +
+  // verb pair as (#810); a query that is no pair sends nothing for them.
+  const pairs = hits.length === 0 && pairQueryOf(key) !== undefined ? handled(answeringPairs(db, releaseId, tables, [key])) : undefined;
   const spelled = await spelling;
   if (spelled !== undefined) return spelled;
 
@@ -303,6 +309,12 @@ export async function lookup({ db, releaseId, query }: LookupOptions): Promise<L
   const shaped = shapeRows === undefined ? undefined : await shapeResult(asTyped, answeringShapes(key, await shapeRows));
   if (shaped !== undefined) return shaped;
 
+  // Nor a shape. It may be `si` and a verb form, said for a pronominal verb
+  // the dictionary has: `si trasferiscono` of `trasferirsi` (rule
+  // `it-pronominal-pair/v1`, #810).
+  const paired = pairs === undefined ? undefined : await pairResult(asTyped, (await pairs).get(key) ?? []);
+  if (paired !== undefined) return paired;
+
   // No Wiktionary reading answers it. It may be a Wikidata word, an Italian
   // lexeme Wiktionary lacks: `paralimpico` (ADR 0033, #812).
   const [word, ...words] = await unlessDeclaredLemma(db, releaseId, tables, key, (await beside).wikidataWords);
@@ -319,7 +331,15 @@ export async function lookup({ db, releaseId, query }: LookupOptions): Promise<L
 async function shapeWord(db: LookupDatabase, releaseId: string, key: string, tables: DictionaryTables): Promise<string | undefined> {
   const shapeKeys = shapeKeysOf(key);
   if (shapeKeys.length === 0) return undefined;
-  const answered = answeringShapes(key, await readShapeRows(db, releaseId, tables, shapeKeys)).flatMap((answering) => answering.rows);
+  return wordOfRows(answeringShapes(key, await readShapeRows(db, releaseId, tables, shapeKeys)).flatMap((answering) => answering.rows));
+}
+
+/**
+ * The word `exists()` credits for a query answered by `rows` alone: the first
+ * source row, a headword before a table cell, else the first page-only entry,
+ * else the first hand-kept reading. Undefined for no row.
+ */
+function wordOfRows(answered: readonly ShapeRow[]): string | undefined {
   const [hit] = answered.flatMap((row) => (row.from === "source" ? [row.hit] : [])).sort((a, b) => b.is_headword_hit - a.is_headword_hit || a.line_no - b.line_no);
   if (hit !== undefined) return hit.record_word;
   for (const row of answered) if (row.from === "page") return row.entry.word;
@@ -329,18 +349,37 @@ async function shapeWord(db: LookupDatabase, releaseId: string, key: string, tab
 
 /**
  * The query's readings as a shape of words the dictionary has (rule
- * `it-word-shape/v1`, #809), as `spelledResult` makes a typed word's: the
- * source's records in source order, then the page-only entries, then the
- * hand-kept readings. `answering` are the spellings that answer
- * (`answeringShapes`); only the records they reach are read. Undefined when
- * none answers.
+ * `it-word-shape/v1`, #809), made from their rows (`rowsResult`).
+ * `answering` are the spellings that answer (`answeringShapes`). Undefined
+ * when none answers.
  */
-async function shapeResult({ db, releaseId, pages, query, release, tables }: Spelled, answering: readonly AnsweringSpelling<ShapeRow>[]): Promise<FoundResult | undefined> {
+async function shapeResult(spelled: Spelled, answering: readonly AnsweringSpelling<ShapeRow>[]): Promise<FoundResult | undefined> {
   const [first, ...rest] = answering;
   if (first === undefined) return undefined;
   const route: FoundRoute = { kind: "shape", spellings: [first.spelling, ...rest.map((answering) => answering.spelling)] };
-  const answered = [first, ...rest].flatMap((answering) => answering.rows);
+  return rowsResult(spelled, route, [first, ...rest].flatMap((answering) => answering.rows));
+}
 
+/**
+ * The query's readings as `si` and a verb form of pronominal verbs the
+ * dictionary has (rule `it-pronominal-pair/v1`, #810), made from their rows
+ * as a shape's are. `answering` are the pairs that answer
+ * (`answeringPairs`). Undefined when none does.
+ */
+async function pairResult(spelled: Spelled, answering: readonly AnsweringPair[]): Promise<FoundResult | undefined> {
+  const [first, ...rest] = answering;
+  if (first === undefined) return undefined;
+  const route: FoundRoute = { kind: "pronominal", pairs: [first.pair, ...rest.map((answering) => answering.pair)] };
+  return rowsResult(spelled, route, [first, ...rest].flatMap((answering) => answering.rows));
+}
+
+/**
+ * The readings of `answered`, rows of the shape read, as `spelledResult`
+ * makes a typed word's: the source's records in source order, then the
+ * page-only entries, then the hand-kept readings. Only the records the rows
+ * reach are read. Undefined when no row gives a reading.
+ */
+async function rowsResult({ db, releaseId, pages, query, release, tables }: Spelled, route: FoundRoute, answered: readonly ShapeRow[]): Promise<FoundResult | undefined> {
   // A row two shapes reach is read once.
   const seen = new Set<string>();
   const hits = answered.flatMap((row) => (row.from === "source" ? [row.hit] : [])).filter((hit) => !seen.has(`${hit.record_id}${hit.json_pointer}`) && seen.add(`${hit.record_id}${hit.json_pointer}`));

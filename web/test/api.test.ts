@@ -895,6 +895,22 @@ test("/lookup, /lookup/batch and /exists find the word a form the source lists n
   );
 });
 
+test("/lookup, /lookup/batch and /exists find the pronominal verb a si + verb pair is said for: si addolorano addolorarsi (#810)", async () => {
+  // The development fixture's pair; si trasferiscono is test/pronominalPair.test.ts's, over its release lines.
+  const q = encodeURIComponent("si addolorano");
+  const single = await okBody(`lookup?q=${q}`);
+  assert.deepEqual(candidates(single), ["addolorarsi verb headword"]);
+  assert.equal((await okBody(`exists?q=${q}`)).exists, true);
+  const batch = await okBody("lookup/batch", JSON.stringify({ q: ["si addolorano", "si vive"] }));
+  assert.deepEqual(
+    batch.results.map(({ query, found, lemma, pos }: Json) => [query, found, lemma ?? null, pos ?? null]),
+    [
+      ["si addolorano", true, "addolorarsi", "verb"],
+      ["si vive", false, null, null],
+    ],
+  );
+});
+
 test("/inflect finds andiamo for andare, congiuntivo presente noi, in Italian labels or English codes", async () => {
   const italian = await okBody("inflect?lemma=andare&mood=congiuntivo&tense=presente&person=noi");
   assert.deepEqual(

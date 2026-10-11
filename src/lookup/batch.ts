@@ -14,8 +14,10 @@
 // words no phrase answers either, the essere agreement reading (rule
 // `it-essere-agreement/v1`, #676, #756): `sono andata` as the feminine of
 // andare's `sono andato`, and beside it the words rule `it-word-shape/v1`
-// reads them as a shape of (#809): `raccontarvi` of raccontare, with those
-// words' lemma links after. The search and the agreement reading read a curated
+// reads them as a shape of (#809): `raccontarvi` of raccontare, and the
+// pronominal verbs rule `it-pronominal-pair/v1` reads a `si` + verb pair as
+// (#810): `si trasferiscono` of trasferirsi, with those words' lemma links
+// after. The search and the agreement reading read a curated
 // table cell's corrected spelling beside the source's where the master keys
 // it (#748), as `lookup()` does.
 //
@@ -28,9 +30,9 @@
 
 import { keyedRead, readKeys, type DictionaryRead, type KeyedRead, type LookupDatabase } from "./database.js";
 import { queryInfoOf, rejectionOf, servableRelease } from "./lookup.js";
-import type { AnsweringSpelling } from "../italian/wordShape.js";
 import { answeringShapes, shapeKeysOf, readShapeRows, type ShapeRow } from "./wordShape.js";
 import { phraseMatchesOf } from "./phrase.js";
+import { answeringPairs } from "./pronominalPair.js";
 import { correctedEdgeServed, sourceEdgeServed } from "./correctedEdge.js";
 import { dictionaryTables, servedBy, type DictionaryTables } from "./served.js";
 import { besideSourceOf } from "./besideSource.js";
@@ -504,15 +506,16 @@ function candidatesOfReadings(readings: readonly Match[], links: ReadonlyMap<num
 
 /**
  * The candidates of a word rule `it-word-shape/v1` reads as a shape of
- * words the dictionary has (#809), as `lookup()` and `candidatesOf` make them
- * from the same rows (`readShapeRows`): the source's records and page-only
- * entries the answering spellings reach, as `readingsOf` orders and folds
- * them, then the hand-kept readings.
+ * words the dictionary has (#809), or rule `it-pronominal-pair/v1` as a
+ * pronominal verb (#810), as `lookup()` and `candidatesOf` make them from the
+ * same rows (`readShapeRows`): the source's records and page-only entries the
+ * rows reach, as `readingsOf` orders and folds them, then the hand-kept
+ * readings.
  */
-function shapeCandidates(answering: readonly AnsweringSpelling<ShapeRow>[], links: ReadonlyMap<number, readonly LightLink[]>): CandidateRecord[] {
+function shapeCandidates(answered: readonly ShapeRow[], links: ReadonlyMap<number, readonly LightLink[]>): CandidateRecord[] {
   const matches = new Map<string, Match>();
   const kept: Match[] = [];
-  for (const row of answering.flatMap(({ rows }) => rows)) {
+  for (const row of answered) {
     if (row.from === "kept") {
       kept.push({ record: row.head, about: true });
       continue;
@@ -535,8 +538,10 @@ function shapeCandidates(answering: readonly AnsweringSpelling<ShapeRow>[], link
  * spells has several words, the multi-word reading, then for a word that is
  * no phrase either and has the shape of rule `it-essere-agreement/v1`, the
  * agreement read, and beside it, for a word that is no phrase and has a shape
- * of rule `it-word-shape/v1`, the shape read (`readShapeRows`), then the
- * lemma links of the records it answers with.
+ * of rule `it-word-shape/v1`, the shape read (`readShapeRows`), and for a
+ * word that is `si` and a verb form, the two reads of rule
+ * `it-pronominal-pair/v1` (`answeringPairs`), then the lemma links of the
+ * records they answer with.
  */
 export async function lookupBatch({
   db,
@@ -575,20 +580,25 @@ export async function lookupBatch({
   // Nor a compound form: it may be a shape of a word the dictionary has (rule
   // `it-word-shape/v1`, #809). Its spellings are read beside the agreement
   // read, for every word that is no phrase, with `lookup()`'s own statements.
+  // Nor a shape: it may be `si` and a verb form, said for a pronominal verb
+  // the dictionary has (rule `it-pronominal-pair/v1`, #810), read beside them;
+  // a batch with no such word sends nothing for it.
   const shapeKeys = [...new Set(unphrased.flatMap(shapeKeysOf))];
-  const [headwords, agreements, shapeRows] = await Promise.all([
+  const [headwords, agreements, shapeRows, pairs] = await Promise.all([
     search(db, reads, releaseId, probeKeys),
     agreementsOf(db, reads, releaseId, unphrased),
     readShapeRows(db, releaseId, tables, shapeKeys),
+    answeringPairs(db, releaseId, tables, unphrased),
   ]);
-  const shapes = new Map(
-    unphrased.filter((key) => (agreements.get(key) ?? []).length === 0).map((key) => [key, answeringShapes(key, shapeRows)] as const),
+  const shaped = new Map(
+    unphrased
+      .filter((key) => (agreements.get(key) ?? []).length === 0)
+      .map((key) => [key, answeringShapes(key, shapeRows).flatMap(({ rows }) => rows)] as const),
   );
+  const shapes = new Map([...shaped].map(([key, rows]) => [key, rows.length > 0 ? rows : (pairs.get(key) ?? []).flatMap((answering) => answering.rows)] as const));
   const shapeAboutIds = [
     ...new Set(
-      [...shapes.values()].flatMap((answering) =>
-        answering.flatMap(({ rows }) => rows.flatMap((row) => (row.from === "source" && row.hit.origin === "headword" ? [row.hit.record_id] : []))),
-      ),
+      [...shapes.values()].flatMap((rows) => rows.flatMap((row) => (row.from === "source" && row.hit.origin === "headword" ? [row.hit.record_id] : []))),
     ),
   ].filter((recordId) => !aboutIds.includes(recordId));
   const shapeLinks = await linksOf(db, reads, releaseId, shapeAboutIds);

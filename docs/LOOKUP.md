@@ -256,6 +256,35 @@ as a shape: `aggrapparsi` is a declared lemma, so its page stays
 `aggrapparsi`, not `aggrappare` with a clitic
 ([`searchAttempt.ts`](../web/lib/dictionary/searchAttempt.ts)).
 
+### A `si` + verb pair
+
+Italian says a pronominal verb's finite forms with `si` before the verb:
+`trasferirsi` is said `si trasferiscono`. The source lists `trasferiscono`
+in trasferire's table, and trasferirsi's record lists no forms, so the pair
+spells nothing. When the key is still found by nothing above, `lookup()`
+reads it by rule `it-pronominal-pair/v1` (#810,
+[`src/italian/pronominalPair.ts`](../src/italian/pronominalPair.ts), read in
+[`src/lookup/pronominalPair.ts`](../src/lookup/pronominalPair.ts)):
+
+1. The key must be `si` and one word of letters. Anything else sends nothing
+   more: `trasferiscono`, `mi trasferisco` and `si l'ha` cost exactly the
+   statements they cost before.
+2. `PAIRED_CELL_SQL` reads the verb table cells that spell the word, as
+   `SEARCH_SQL` reads them, with whether the source states each cell a third
+   person's. Only a verb's third person cell counts: `si` is the third
+   person's reflexive pronoun, so `si trasferisco` finds nothing.
+3. Each such verb names its pronominal infinitive: `-e` turns to `si`
+   (`trasferire`, `trasferirsi`), and `-rre` drops `re` for `si` (`porre`,
+   `porsi`). Those keys are read with the shape read (`readShapeRows`), and a
+   row answers only when it is a verb's headword. `si vive` finds nothing:
+   the dictionary has no `viversi`.
+
+The readings are those verbs, made as a shape's are; `route` is
+`{ kind: "pronominal", pairs }`, each pair the form, the verb whose table
+spells it, and the pronominal infinitive. `exists()` and `lookupBatch`
+answer the same way, the batch reading every pair of its words in the same
+two statements. Nothing derived is stored.
+
 ## Outcomes
 
 | `outcome` | When | Carries |
