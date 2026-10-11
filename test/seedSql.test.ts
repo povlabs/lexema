@@ -536,7 +536,7 @@ test("a definition the page wrapped onto the line after its `#` is stored with i
           text: "Susseguirsi di gesti vivaci e concitati, per comunicare agli altri senza che i presenti se ne accorgano.",
           title: "pantomima",
           revision_id: 3994400,
-          label: "figurato",
+          label: "senso figurato",
         },
       ]);
     } finally { db.close(); }

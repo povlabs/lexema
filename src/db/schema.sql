@@ -611,7 +611,7 @@ CREATE TABLE recovered_definition (
 
 CREATE INDEX recovered_definition_by_record ON recovered_definition (record_id);
 
--- Usage labels a recovered line's templates print (`architettura`, `figurato`).
+-- Usage labels a recovered line's templates print (`architettura`, `senso figurato`).
 CREATE TABLE recovered_label (
   recovered_id INTEGER NOT NULL REFERENCES recovered_definition(recovered_id) ON DELETE CASCADE,
   label_index  INTEGER NOT NULL CHECK (label_index >= 0),
@@ -1127,3 +1127,29 @@ CREATE TABLE hand_kept_definition (
 -- "Which hand-kept reading spells this?", as lookup_form_by_key.
 CREATE INDEX hand_kept_definition_by_key
   ON hand_kept_definition (word_key);
+
+-- A name entry (ADR 0032, #794): a proper name from Wikidata (CC0), one row
+-- per item, from the committed snapshot `names/wikidata-names.jsonl`. Its one
+-- meaning is the item's Italian description. It keys to nothing in the source
+-- and no imported row is touched. `pnpm run load:names` writes the items whose
+-- label's search key (capitals ignored) the dictionary answers with nothing to
+-- read, by spelling, table listing, phrase or agreement, and removes the rest.
+-- A seed of an archive writes none; a fixture seed writes the fixture's few
+-- names the same way (ADR 0032). A lookup reads it
+-- beside the source's readings of its word, last (src/lookup/names.ts).
+-- Absent on a master seeded before it until `update:upgrade` creates it; a
+-- lookup reads an absent one as empty.
+CREATE TABLE name_entry (
+  item        TEXT NOT NULL PRIMARY KEY CHECK (item GLOB 'Q[1-9]*' AND item NOT GLOB 'Q*[^0-9]*'),
+  -- The Italian label, as Wikidata states it.
+  label       TEXT NOT NULL CHECK (label <> '' AND trim(label) = label),
+  label_key   TEXT NOT NULL CHECK (label_key <> ''), -- the normalizer applied to label, as lookup_form's
+  -- The Italian description, as Wikidata states it: the entry's one meaning.
+  description TEXT NOT NULL CHECK (description <> '' AND trim(description) = description),
+  -- The category that admitted it (`NAME_CATEGORIES` in src/names/nameCategories.ts).
+  category    TEXT NOT NULL CHECK (category IN ('country', 'continent', 'sea', 'river', 'lake', 'mountain', 'island', 'comune', 'city', 'international-organization', 'political-party', 'listed-company', 'football-club', 'language', 'currency', 'holiday'))
+) STRICT;
+
+-- "Which name entry spells this?", as lookup_form_by_key.
+CREATE INDEX name_entry_by_key
+  ON name_entry (label_key);

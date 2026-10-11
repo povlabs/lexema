@@ -24,7 +24,7 @@ import {
 import { APPLIED_MIGRATIONS_QUERY, compareHistory, inApplyOrder, MIGRATIONS_TABLE_QUERY } from "@/builds/appMigrations.ts";
 import { appMigrationsConfig, type BuiltConfig, DICTIONARY, refuseDictionary, SLICE_BINDING, withAppDatabase, withDictionarySlice } from "@/builds/previewConfig.ts";
 import { APP_DATABASE_PREFIX, PREVIEW_NAME_MAX, PreviewName, SLICE_DATABASE_PREFIX } from "@/builds/previewName.ts";
-import { readBuilt, readDeclared, SLICE_ROWS_WRITTEN_CAP, type SliceBuilt, type SliceDeclared, type SlicePlanner } from "@/builds/previewSlice.ts";
+import { readBuilt, readDeclared, SLICE_COPY_WORDS, SLICE_ROWS_WRITTEN_CAP, type SliceBuilt, type SliceDeclared, type SlicePlanner } from "@/builds/previewSlice.ts";
 import { migrateProductionAppDatabase, PRODUCTION_APP_DATABASE, type ProductionMigrationSteps } from "@/builds/productionAppDatabase.ts";
 import { runProductionCommand } from "@/builds/productionCommand.ts";
 import { type OpenBranches, readOpenBranches, selectForSweep, sweep } from "@/builds/sweep.ts";
@@ -771,6 +771,20 @@ test("a branch whose slice of every touched word is over the cap gets a sample w
       `dictionary slice: wrote a sample, ${name.sliceDatabase} (${created.uuid}): 3 of 5 touched word(s), 248000 rows written, under the cap of 250000; the slice of every touched word is over the cap, so 2 word(s) read the shared dictionary: abaco, zuppa`,
     ),
     logged.join("\n"),
+  );
+
+  // A branch touching more than SLICE_COPY_WORDS words, as a load:names branch does (#794), gets a sample of that many,
+  // and the line still names every word left out.
+  const wide = new FakeAccount([{ name: DICTIONARY.name, uuid: DICTIONARY.id }]);
+  const words = Array.from({ length: 27_000 }, (_, index) => `parola${String(index).padStart(5, "0")}`) as [string, ...string[]];
+  const many: SliceBuilt = { ...sample, words: SLICE_COPY_WORDS, leftOut: words };
+  const wideRun = previewCommand(wide, DICTIONARY_BRANCH, undefined, planner(wide, declaring(), many).slices);
+  const line = wideRun.logged.find((entry) => entry.startsWith("dictionary slice: wrote a sample"));
+  assert.ok(line !== undefined, wideRun.logged.join("\n"));
+  assert.ok(line.includes(": 1000 of 28000 touched word(s), "), line.slice(0, 300));
+  assert.ok(
+    line.endsWith(`; the branch touches more than 1000 words, and a Preview copies at most 1000 of them, so 27000 word(s) read the shared dictionary: ${words.join(", ")}`),
+    line.slice(0, 300),
   );
 });
 

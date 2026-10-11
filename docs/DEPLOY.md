@@ -347,13 +347,19 @@ The prepare step builds it in this order, and logs a line starting
 3. Otherwise `pnpm run preview:slice build` plans each declaration with
    `planWrite` against `lexema-dictionary`, through single `SELECT`s only, and
    takes the words each plan touches. `update:auto`, `hide:records`,
-   `correct:records`, `load:page-entries` and `load:recovered-definitions`
-   name them; `update:upgrade` touches
+   `correct:records`, `load:page-entries`, `load:recovered-definitions` and
+   `load:names` name them; `update:upgrade` touches
    none, and `normalize:source-text` rewrites the whole dictionary, so a branch
    with only those gets no slice. It builds the slice in a local SQLite
    database: the schema, the shared rows a lookup of those words reads, then
    each plan's SQL, with foreign keys on as on D1. A plan it cannot read, or
-   SQL that does not run on the slice, gives no slice.
+   SQL that does not run on the slice, gives no slice. When the branch
+   touches more than `SLICE_COPY_WORDS`, 1,000 words, it copies only 1,000 of
+   them from `lexema-dictionary`: the words the declarations name in their
+   `lookups` first, then the others in key order
+   ([#794](https://github.com/povlabs/lexema/issues/794), ADR 0018). The rest
+   are left out, as in step 4, so the slice is a sample. The dictionary
+   deploy still writes every word.
 4. It counts the rows writing the slice would write, each row once for its
    table and once per index, against `SLICE_ROWS_WRITTEN_CAP`, 250,000 rows,
    which the prepare step passes as `--cap`. When the slice of every touched
@@ -365,7 +371,8 @@ The prepare step builds it in this order, and logs a line starting
    The touched words it leaves out read the shared dictionary, and a change's
    rows for them are dropped from the sample. The log line says the slice is
    a sample, gives its word count, its rows written and the cap, and names
-   every touched word it left out. To show a word in a large change's
+   every touched word it left out, including the ones step 3 did not copy.
+   To show a word in a large change's
    Preview, name it in the declaration's `lookups`.
 5. When not even one word fits under the cap, it writes nothing and binds no
    slice, and the log line gives the count and the cap. Otherwise it deletes

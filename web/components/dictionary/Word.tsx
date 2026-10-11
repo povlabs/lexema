@@ -122,28 +122,34 @@ function WordFactsView({
 
 /** What the footer needs of a result: the page its content is credited to, and the readings a report can name. */
 export interface FooterFacts {
-  /** The word whose Wiktionary page the one *Source* link opens. */
-  sourceWord: string;
+  /** The word whose Wiktionary page the one *Source* link opens; none when every reading is a name entry, which links its own (ADR 0032). */
+  sourceWord: string | undefined;
   /** The word a report is about. */
   headword: string;
   /** Each reading a report can name, with its number on the page. */
   readings: readonly { number: ReportReading["number"]; reading: EntryIdentity & { posTitle: string } }[];
 }
 
-/** One *Source*, to the Wiktionary page of the page's word, then *Segnala un errore* (ADR 0009, amended on #281). */
+/**
+ * One *Source*, to the Wiktionary page of the page's word, then *Segnala un
+ * errore* (ADR 0009, amended on #281). A page whose readings are all name
+ * entries has no Wiktionary source, so it shows *Segnala un errore* alone.
+ */
 export function SourceLine({ page, siteKey }: { page: FooterFacts; siteKey: string | undefined }) {
   return (
     <footer className={SOURCE_LINE} lang="it">
-      <a
-        className={SOURCE_LINK}
-        href={sourcePageUrl(page.sourceWord)}
-        {...NEW_TAB}
-        aria-label={sourceLinkName(page.sourceWord)}
-      >
-        {SOURCE_LABEL}
-        <ExternalIcon className={ICON} />
-      </a>
-      <span aria-hidden="true">·</span>
+      {page.sourceWord !== undefined && (
+        <a
+          className={SOURCE_LINK}
+          href={sourcePageUrl(page.sourceWord)}
+          {...NEW_TAB}
+          aria-label={sourceLinkName(page.sourceWord)}
+        >
+          {SOURCE_LABEL}
+          <ExternalIcon className={ICON} />
+        </a>
+      )}
+      {page.sourceWord !== undefined && <span aria-hidden="true">·</span>}
       <ReportDialog
         word={page.headword}
         subject={{ kind: "mistake", readings: reportReadings(page.readings) }}

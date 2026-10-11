@@ -7,7 +7,9 @@
 // added or dropped. Only the release in section 5 is filled in, from the value
 // `licence/page.tsx` hands in. Sections 1, 3, 4, 5 and 7 carry the ids the old
 // `/attribution` page's sections had, so a link to one of them still lands on
-// the section that replaced it.
+// the section that replaced it. The Wikidata credit in section 3 and the
+// trademark line's Wikidata are added by #794 (ADR 0032), their wording for
+// Huey to approve on that pull request.
 
 import { ExternalLink } from "@/components/shared/ExternalLink";
 import { LEGAL_ITEMS, LEGAL_PARAGRAPH, LEGAL_UNBROKEN, LINK } from "@/components/shared/styles.ts";
@@ -18,6 +20,8 @@ import { DictionaryLegalPage, KICKER } from "./DictionaryLegalPage";
 
 const LICENCE_URL = "https://creativecommons.org/licenses/by-sa/4.0/";
 const LICENCE_TEXT_URL = "https://creativecommons.org/licenses/by-sa/4.0/legalcode";
+/** Wikidata's own data licence (ADR 0032). */
+const CC0_URL = "https://creativecommons.org/publicdomain/zero/1.0/deed.it";
 
 /** A dump's `YYYY-MM-DD` date, as a reader would say it. */
 const DAY = dayIn("it-IT");
@@ -98,6 +102,18 @@ export function Licence({ release }: { release: ServedRelease }) {
                 Gli autori di ogni voce sono registrati nella cronologia delle versioni della sua pagina del
                 Wikizionario. Ogni voce di Lexema rimanda a quella pagina.
               </p>
+              <p className={LEGAL_PARAGRAPH}>
+                I nomi propri che il Wikizionario non spiega, come luoghi, organizzazioni, lingue, valute e festività,
+                provengono da{" "}
+                <ExternalLink language="it" className={LINK} href="https://www.wikidata.org/">
+                  Wikidata
+                </ExternalLink>
+                , un altro progetto della Wikimedia Foundation, i cui dati sono rilasciati nel pubblico dominio con la{" "}
+                <ExternalLink language="it" className={LINK} href={CC0_URL}>
+                  dedicazione Creative Commons CC0 1.0 Universale
+                </ExternalLink>
+                . Ogni nome tratto da Wikidata rimanda al proprio elemento su Wikidata.
+              </p>
             </>
           ),
         },
@@ -141,7 +157,7 @@ export function Licence({ release }: { release: ServedRelease }) {
           title: "Marchi",
           body: (
             <p className={LEGAL_PARAGRAPH}>
-              Wikipedia, Wiktionary, Wikizionario e Wikimedia sono marchi registrati della Wikimedia Foundation, Inc.
+              Wikipedia, Wiktionary, Wikizionario, Wikidata e Wikimedia sono marchi registrati della Wikimedia Foundation, Inc.
               Lexema non è affiliato alla Wikimedia Foundation, né approvato o sponsorizzato da essa.
             </p>
           ),

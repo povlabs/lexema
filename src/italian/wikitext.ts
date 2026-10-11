@@ -132,6 +132,10 @@ const FIXED_LABELS: Readonly<Record<string, string>> = {
   reciproco: "reciproco", // Template:Reciproco, ====[[reciproco|Reciproco]]==== and a category
 };
 
+/** What `{{Fig}}` prints, and what this renderer printed for it before #800. */
+const FIG_LABEL = "senso figurato";
+const FIG_LABEL_BEFORE_800 = "figurato";
+
 /**
  * Templates whose whole job on a definition line is a usage label, and the label
  * each one prints. `{{Term|architettura|it}}` labels its line `architettura`,
@@ -140,8 +144,10 @@ const FIXED_LABELS: Readonly<Record<string, string>> = {
 const LABEL_TEMPLATES: Readonly<Record<string, (args: readonly string[]) => string | undefined>> = {
   term: (args) => args[0],
   glossa: (args) => args[0],
-  fig: () => "figurato",
-  est: () => "per estensione",
+  // Template:Fig, <small>(''senso figurato'')</small>; read on it.wiktionary
+  // on 2026-10-11 (#800). It printed `figurato` here before.
+  fig: () => FIG_LABEL,
+  est: () => "per estensione", // Template:Est, <small>(''per estensione'')</small>; read 2026-10-11
   ...Object.fromEntries(Object.entries(FIXED_LABELS).map(([name, label]) => [name, () => label])),
 };
 
@@ -280,6 +286,12 @@ export type Rendered =
  */
 const LABEL = "\u0001";
 
+/** A usage label a line prints, and the label template that printed it, lower-cased: `fig`, `term`. */
+interface PrintedLabel {
+  template: string;
+  label: string;
+}
+
 /**
  * Replace every template on a line, innermost first: a label by `LABEL`, noted
  * in `labels`; the headword, a printing template and a language name by what
@@ -290,8 +302,8 @@ function expandTemplates(
   headword: string,
   unknown: (name: string) => string,
   printing: Readonly<Record<string, TemplatePrinter>> = {},
-): { text: string; labels: string[] } {
-  const labels: string[] = [];
+): { text: string; labels: PrintedLabel[] } {
+  const labels: PrintedLabel[] = [];
   let text = withoutNoise(body);
   for (let previous = ""; previous !== text; ) {
     previous = text;
@@ -301,7 +313,7 @@ function expandTemplates(
       const label = LABEL_TEMPLATES[name];
       if (label !== undefined) {
         const printed = label(args);
-        if (printed !== undefined && printed !== "") labels.push(printed);
+        if (printed !== undefined && printed !== "") labels.push({ template: name, label: printed });
         return ` ${LABEL} `;
       }
       const printer = Object.hasOwn(PRINTING_TEMPLATES, name) ? PRINTING_TEMPLATES[name] : Object.hasOwn(printing, name) ? printing[name] : undefined;
@@ -354,7 +366,7 @@ export function renderInline(body: string, headword: string, printing: Readonly<
   const expanded = expandLine(body, headword, printing);
   if (!expanded.rendered) return expanded;
   const runs = runsOf(withoutLabels(expanded.text));
-  return { rendered: true, text: collapse(runs.map((run) => run.text).join("")), labels: expanded.labels, runs };
+  return { rendered: true, text: collapse(runs.map((run) => run.text).join("")), labels: expanded.labels.map(({ label }) => label), runs };
 }
 
 /**
@@ -370,12 +382,36 @@ export function labelPunctuation(body: string, headword: string): LabelPunctuati
   return { text: plain(withoutLabels(expanded.text)), kept: plain(expanded.text.replaceAll(LABEL, " ")) };
 }
 
+/** A line's usage labels as `renderInline` gives them, beside the labels it gave before `{{Fig}}` printed `senso figurato` (#800). */
+export interface FigLabels {
+  /** The labels `renderInline` gives, in page order. */
+  labels: string[];
+  /** The same labels with `figurato` where `{{Fig}}` printed, as rows stored before #800 hold them. */
+  kept: string[];
+}
+
+/**
+ * A line's labels as `renderInline` gives them, beside the labels it gave
+ * before #800; `undefined` when a template stops the line. Only a label
+ * `{{Fig}}` printed differs: `{{Term|figurato|it}}` and `{{Glossa|figurato}}`
+ * print `figurato`, then and now. The update that brings stored labels to the
+ * renderer reads both, so it changes only a label `{{Fig}}` printed.
+ */
+export function figLabels(body: string, headword: string): FigLabels | undefined {
+  const expanded = expandLine(body, headword, {});
+  if (!expanded.rendered) return undefined;
+  return {
+    labels: expanded.labels.map(({ label }) => label),
+    kept: expanded.labels.map(({ template, label }) => (template === "fig" ? FIG_LABEL_BEFORE_800 : label)),
+  };
+}
+
 /** Every template on a line expanded, labels still marked; or the first template that stops it. */
 function expandLine(
   body: string,
   headword: string,
   printing: Readonly<Record<string, TemplatePrinter>>,
-): { rendered: true; text: string; labels: string[] } | { rendered: false; template: string } {
+): { rendered: true; text: string; labels: PrintedLabel[] } | { rendered: false; template: string } {
   let unknown: string | undefined;
   const { text, labels } = expandTemplates(body, headword, (name) => {
     unknown ??= name;
@@ -549,7 +585,7 @@ export interface PageExample {
 export type PageDefinition = DefinitionRoute & {
   /** The definition as a reader sees it: templates printed, links as their labels. */
   text: string;
-  /** Usage labels its templates print — `architettura`, `figurato` — in page order. */
+  /** Usage labels its templates print — `architettura`, `senso figurato` — in page order. */
   labels: string[];
   ref: RawPageRef;
   /** The line exactly as the page has it. */
@@ -737,7 +773,7 @@ class SectionReader {
     const { line, wikitext } = node.wrapped;
     const { labels } = expandTemplates(node.body, this.page.title, () => " ");
     const prose: ListLine = { line, marker: "", body: wikitext, wikitext, wrapped: null, children: [] };
-    return this.definition(prose, { route: "wrapped-prose" }, null, labels);
+    return this.definition(prose, { route: "wrapped-prose" }, null, labels.map(({ label }) => label));
   }
 }
 

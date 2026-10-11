@@ -52,7 +52,7 @@ test("casa: every definition sits below a page-control line, and all seven come 
       ["below-page-control", 8, ["architettura"], "edificio costruito per essere utilizzato come abitazione e composto da uno o più piani, suddivisi in vani distinti, ognuno per un uso specifico"],
       ["below-page-control", 10, [], "dimora di una persona; costruzione o struttura in cui uno vive; in particolare la casa in cui uno vive con la sua famiglia"],
       ["below-page-control", 13, [], "edificio che accoglie temporaneamente, per motivi specifici di salute o altro, alcune categorie di persone"],
-      ["below-page-control", 15, ["figurato", "industriale"], "casa costruttrice"],
+      ["below-page-control", 15, ["senso figurato", "industriale"], "casa costruttrice"],
       ["below-page-control", 17, ["scacchi"], "nel gioco degli scacchi, è il nome tecnico della casella sulla scacchiera"],
       ["below-page-control", 18, ["astrologia"], "ognuna di dodici parti in cui è suddiviso il cielo in un dato momento"],
       ["below-page-control", 20, ["astrologia"], "casa lunare: ognuna di ventotto parti in cui è suddiviso il cielo durante il moto di rivoluzione della Luna"],
@@ -528,7 +528,7 @@ test("pantomima: a partial loss — the figurative sense's definition sits on th
   const text = "Susseguirsi di gesti vivaci e concitati, per comunicare agli altri senza che i presenti se ne accorgano.";
   assert.deepEqual(
     recovery.recovered.map((definition) => [definition.route, definition.ref, definition.labels, definition.text, definition.wikitext]),
-    [["wrapped-prose", { wiki: RAW_PAGE_WIKI, title: "pantomima", revisionId: 3994400, line: 6 }, ["figurato"], text, text]],
+    [["wrapped-prose", { wiki: RAW_PAGE_WIKI, title: "pantomima", revisionId: 3994400, line: 6 }, ["senso figurato"], text, text]],
   );
   // Only the one line right after the `#` line: the quoted line below it is not read.
   assert.equal(recovery.recovered.some((definition) => definition.text.includes("Vidi nello specchio")), false);

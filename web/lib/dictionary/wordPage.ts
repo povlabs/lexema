@@ -111,6 +111,7 @@ import {
   formsOfQueryReadings,
   isAdjectiveReading,
   isFormOfReading,
+  isNameEntry,
   isNounReading,
   isSourceRef,
   isVerbReading,
@@ -753,8 +754,10 @@ export interface WordPage {
    * The word whose Wiktionary page the one *Source* link opens: the spelling
    * the page is about, its title. That page holds every entry for the
    * spelling, so one link covers every reading (ADR 0009, amended on #281).
+   * Undefined when every reading the lookup found is a name entry (ADR 0032),
+   * whose own *Fonte* opens its Wikidata item: no Wiktionary page is a source.
    */
-  sourceWord: string;
+  sourceWord: string | undefined;
 }
 
 /**
@@ -1130,7 +1133,8 @@ export function wordPage(
       derived: relatedItems(placed.rest.derived),
     },
     expressions: expressions === undefined ? undefined : { expressions },
-    sourceWord: headword,
+    // A Wiktionary page is a source whenever the lookup found a reading of it, shown or not: its word facts may show (ADR 0032).
+    sourceWord: readings.every(isNameEntry) ? undefined : headword,
   };
 }
 

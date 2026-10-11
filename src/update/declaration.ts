@@ -24,8 +24,8 @@ export const DECLARATIONS_DIR = "dictionary-changes";
 export const isDeclarationPath = (path: string): boolean =>
   path.startsWith(`${DECLARATIONS_DIR}/`) && path.endsWith(".json") && !path.slice(DECLARATIONS_DIR.length + 1).includes("/");
 
-/** The seven commands that write the dictionary. */
-export const DECLARED_COMMANDS = ["update:upgrade", "update:auto", "hide:records", "normalize:source-text", "correct:records", "load:page-entries", "load:recovered-definitions"] as const;
+/** The eight commands that write the dictionary. */
+export const DECLARED_COMMANDS = ["update:upgrade", "update:auto", "hide:records", "normalize:source-text", "correct:records", "load:page-entries", "load:recovered-definitions", "load:names"] as const;
 export type DeclaredCommand = (typeof DECLARED_COMMANDS)[number];
 
 /** A release id: `it-` and the first eight hex digits of its archive's SHA-256. */
@@ -63,7 +63,13 @@ export type DeclaredChange =
   /** The release the master was seeded from, whose dump the rules read pages from, and the rules. */
   | Declared<"load:page-entries", { readonly archive: ReleaseId; readonly rules: typeof PAGE_ENTRY_RULES }>
   /** The release the master was seeded from, whose archive's records and dump's pages the rules read, and the rules (#706). */
-  | Declared<"load:recovered-definitions", { readonly archive: ReleaseId; readonly rules: typeof RECOVERED_DEFINITION_RULES }>;
+  | Declared<"load:recovered-definitions", { readonly archive: ReleaseId; readonly rules: typeof RECOVERED_DEFINITION_RULES }>
+  /**
+   * No inputs: it writes the committed Wikidata snapshot
+   * (`names/wikidata-names.jsonl`, ADR 0032) as it stands at the deploy's
+   * commit, and the expected counts pin what that snapshot writes.
+   */
+  | Declared<"load:names", Record<string, never>>;
 
 /**
  * A word a declaration names and what the site's lookup must show for it once
@@ -282,6 +288,10 @@ function changeOf(file: string, value: Record<string, unknown>, reasons: string[
     }
     case "correct:records": {
       reasons.push(...unknownKeys(inputs, [], "inputs of correct:records"));
+      return { file, command, inputs: {} };
+    }
+    case "load:names": {
+      reasons.push(...unknownKeys(inputs, [], "inputs of load:names"));
       return { file, command, inputs: {} };
     }
     case "load:page-entries": {

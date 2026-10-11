@@ -25,6 +25,7 @@ import { entryKey, isFormOfReading, publicEntryId, type LemmaTarget, type Lookup
 import { error, read, refused, type Reading, type Route } from "./answer.ts";
 import {
   attributionOf,
+  entryAttribution,
   candidatesOf,
   foundJson,
   idOf,
@@ -135,7 +136,7 @@ const existsRoute: Route = async (_request, url) => {
     const head = { query: result.query.raw, release_id: result.release.releaseId };
     const body: ExistsJson =
       result.outcome === "present"
-        ? { ...head, exists: true, attribution: attributionOf(result.word) }
+        ? { ...head, exists: true, attribution: entryAttribution(result) }
         : { ...head, exists: false, attribution: null };
     return { status: 200, body };
   });
@@ -176,7 +177,7 @@ const inflectRoute: Route = async (_request, url) => {
               pos: reading.pos,
               pos_title: reading.posTitle,
               inflections,
-              attribution: attributionOf(reading.word),
+              attribution: entryAttribution(reading),
             },
           ];
     });
@@ -300,7 +301,7 @@ const batchRoute: Route = async (request, url, { batchWords: most }) => {
         pos: candidate.pos,
         pos_title: candidate.posTitle,
         ...translationsOn(candidate),
-        attribution: attributionOf(candidate.word),
+        attribution: entryAttribution(candidate),
       }));
     });
     return { status: 200, body: { release_id: releaseId, results } };

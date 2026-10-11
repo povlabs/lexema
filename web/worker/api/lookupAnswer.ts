@@ -26,7 +26,8 @@ import { normalizeItalianExact } from "@lexema/italian/normalize.ts";
 import { expressionMeaning } from "@lexema/lookup/expressions.ts";
 import { bareKey, type Nearby } from "@lexema/lookup/nearby.ts";
 import type { PhraseOffer } from "@lexema/lookup/phrase.ts";
-import { entryKey, isFormOfReading, isVerbReading, lemmasOfPartOfSpeech, publicEntryId, searchedSpellings, sourcePointerOf } from "@lexema/lookup/types.ts";
+import { entryKey, isFormOfReading, isNameEntry, isVerbReading, lemmasOfPartOfSpeech, publicEntryId, searchedSpellings, sourcePointerOf } from "@lexema/lookup/types.ts";
+import { wikidataItemUrl } from "@lexema/lookup/names.ts";
 import type {
   FoundResult,
   LemmaTarget,
@@ -246,6 +247,7 @@ function recoveredJson(definition: RecoveredDefinition): DefinitionJson {
 }
 
 function definitionJson(item: DefinitionItem): DefinitionJson {
+  if (item.from === "name") return { definition: item.description, labels: [], examples: item.examples, items: [] };
   if (item.from === "page") return { ...recoveredJson(item.definition), examples: item.examples };
   return {
     definition: item.sense.glosses.map((gloss) => gloss.text).join("\n"),
@@ -255,20 +257,43 @@ function definitionJson(item: DefinitionItem): DefinitionJson {
   };
 }
 
-/** The credit every result carries, so a client can pass it on (ADR 0009). */
-export interface AttributionJson {
-  licence: "CC BY-SA 4.0";
-  licence_url: "https://creativecommons.org/licenses/by-sa/4.0/";
-  source: "Wikizionario";
-  source_url: string;
-}
+/**
+ * The credit every result carries, so a client can pass it on (ADR 0009): the
+ * Wiktionary page of the word, or, for a name entry, its Wikidata item, which
+ * is CC0 (ADR 0032).
+ */
+export type AttributionJson =
+  | {
+      licence: "CC BY-SA 4.0";
+      licence_url: "https://creativecommons.org/licenses/by-sa/4.0/";
+      source: "Wikizionario";
+      source_url: string;
+    }
+  | {
+      licence: "CC0 1.0";
+      licence_url: "https://creativecommons.org/publicdomain/zero/1.0/";
+      source: "Wikidata";
+      source_url: string;
+    };
 
+/** The credit of a word's Wiktionary page. */
 export const attributionOf = (word: string): AttributionJson => ({
   licence: "CC BY-SA 4.0",
   licence_url: "https://creativecommons.org/licenses/by-sa/4.0/",
   source: "Wikizionario",
   source_url: sourcePageUrl(word),
 });
+
+/** The credit of one entry: its Wikidata item for a name entry, else its word's Wiktionary page. */
+export const entryAttribution = (entry: { word: string; nameItem?: `Q${number}` }): AttributionJson =>
+  entry.nameItem === undefined
+    ? attributionOf(entry.word)
+    : {
+        licence: "CC0 1.0",
+        licence_url: "https://creativecommons.org/publicdomain/zero/1.0/",
+        source: "Wikidata",
+        source_url: wikidataItemUrl(entry.nameItem),
+      };
 
 /** What every result carries, whatever `fields` asks for. */
 export interface ResultCoreJson {
@@ -420,7 +445,7 @@ export function resultJson(candidate: Candidate, filters: LookupFilters): Result
       has_entry: expression.hasEntry,
     })),
     translations: translationsJson(reading.translations, filters.languages),
-    attribution: attributionOf(reading.word),
+    attribution: entryAttribution(reading),
   };
   return shaped(result, filters);
 }
@@ -525,11 +550,15 @@ export interface LemmaJson {
   attribution: AttributionJson;
 }
 
-export const idOf = ({ recordId, ref }: Reading): string => publicEntryId(
-  recordId === undefined
-    ? { releaseId: ref.releaseId, revisionId: ref.revisionId, pageLine: ref.line }
-    : { releaseId: ref.releaseId, lineNo: ref.lineNo },
-);
+export const idOf = (reading: Reading): string => {
+  if (isNameEntry(reading)) return publicEntryId({ releaseId: reading.ref.releaseId, nameItem: reading.nameItem });
+  const { recordId, ref } = reading;
+  return publicEntryId(
+    recordId === undefined
+      ? { releaseId: ref.releaseId, revisionId: ref.revisionId, pageLine: ref.line }
+      : { releaseId: ref.releaseId, lineNo: ref.lineNo },
+  );
+};
 
 export function lemmaJson(candidate: Candidate): LemmaJson {
   const { reading } = candidate;
@@ -539,7 +568,7 @@ export function lemmaJson(candidate: Candidate): LemmaJson {
     pos: reading.pos,
     pos_title: reading.posTitle,
     match: matchOf(candidate),
-    attribution: attributionOf(reading.word),
+    attribution: entryAttribution(reading),
   };
 }
 

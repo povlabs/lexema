@@ -4,6 +4,7 @@
 // earlier one rewrites from the plan, not the database, so the file does what
 // running the rules one after another did.
 
+import { FIG_LABEL_RULE, type FigLabelReport, planFigLabels } from "./figLabelUpdate.js";
 import { GLOSS_GRAMMAR_STAMP_RULE } from "../italian/glossGrammarStamp.js";
 import { SOURCE_TEXT_RULES } from "../italian/sourceTextNormalization.js";
 import type { MasterReader } from "../update/master.js";
@@ -25,6 +26,7 @@ export const SOURCE_TEXT_UPDATE_RULES = [
   SOURCE_TEXT_RULES.pluralPlaceholderForm,
   GLOSS_GRAMMAR_STAMP_RULE,
   LABEL_PUNCTUATION_RULE,
+  FIG_LABEL_RULE,
 ] as const;
 
 export type SourceTextUpdateRule = (typeof SOURCE_TEXT_UPDATE_RULES)[number];
@@ -36,6 +38,7 @@ export interface SourceTextReports {
   readonly forms: FormNormalizationReport;
   readonly glossStamps: GlossStampReport;
   readonly labelPunctuation: LabelPunctuationReport;
+  readonly figLabels: FigLabelReport;
 }
 
 /** The whole update, ready to run. */
@@ -60,7 +63,8 @@ export function planSourceText(db: MasterReader): SourceTextPlan {
   const forms = planPlaceholderForms(db, glosses);
   const glossStamps = planGlossStamps(db, glosses);
   const labelPunctuation = planLabelPunctuation(db, glosses);
-  const plans: RulePlan<unknown>[] = [headwordLeads, personOrdinals, forms, glossStamps, labelPunctuation];
+  const figLabels = planFigLabels(db, glosses);
+  const plans: RulePlan<unknown>[] = [headwordLeads, personOrdinals, forms, glossStamps, labelPunctuation, figLabels];
 
   const glossRows = glosses.rows();
   const written: Partial<Record<CountedTable, number>> = { sense_gloss: glossRows.written };
@@ -72,7 +76,14 @@ export function planSourceText(db: MasterReader): SourceTextPlan {
   const records = new Set([...glosses.records(), ...plans.flatMap((plan) => plan.records)]);
   const statements = plans.flatMap((plan) => plan.statements);
   return {
-    reports: { headwordLeads: headwordLeads.report, glosses: personOrdinals.report, forms: forms.report, glossStamps: glossStamps.report, labelPunctuation: labelPunctuation.report },
+    reports: {
+      headwordLeads: headwordLeads.report,
+      glosses: personOrdinals.report,
+      forms: forms.report,
+      glossStamps: glossStamps.report,
+      labelPunctuation: labelPunctuation.report,
+      figLabels: figLabels.report,
+    },
     statements: statements.length,
     counts: new PlanCounts({ added: 0, changed: records.size, removed: 0 }, written, deleted),
     sql: statements.length === 0
