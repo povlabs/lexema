@@ -222,6 +222,11 @@ test("every declaration already in dictionary-changes parses as before, with no 
       assert.deepEqual(parseDraft(path, text).lookups?.map((item) => item.word), ["Hormuz", "mar Mediterraneo", "Brent", "Iran", "sale"]);
       continue;
     }
+    // The people (#794) name two people they add, a place the rebuilt table keeps, and a word the source answers.
+    if (name === "2026-10-11-load-names-people.json") {
+      assert.deepEqual(parseDeclaration(path, text).lookups?.map((item) => item.word), ["Dante Alighieri", "Alex Zanardi", "Hormuz", "sale"]);
+      continue;
+    }
     // The hand-kept readings (#745) name each word they give a reading, with a definition of it.
     if (name === "2026-10-09-hand-kept-readings-si-come.json") {
       assert.deepEqual(parseDeclaration(path, text).lookups?.map((item) => [item.word, item.gloss]), [["si", "pronome riflessivo di terza persona"], ["come", "non appena"]]);
