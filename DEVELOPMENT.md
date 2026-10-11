@@ -93,6 +93,30 @@ join lookup uses. It stops without timing if the two return different rows.
 a real archive instead. Why the two forms differ is in
 [the lookup design](./docs/LOOKUP_DESIGN.md#the-view-that-costs-four-orders-of-magnitude).
 
+### Diff every word page before and after a change
+
+```sh
+pnpm run diff:pages                    # base: where HEAD left origin/main; head: HEAD
+pnpm run diff:pages <base> <head>      # any two commits
+SEED_INPUT=.data/source/it-extract.jsonl.gz pnpm run diff:pages   # the whole release
+```
+
+It checks each commit out into its own linked worktree, seeds a local
+dictionary there with that commit's `pnpm run seed:dev`, and renders every
+headword's page with that commit's site code: the page's search and its own
+`Outcome` component, which builds the page with
+[wordPage.ts](./web/lib/dictionary/wordPage.ts). Both sides render through the
+running tree's [renderPages.ts](./web/pageDiff/renderPages.ts). It prints
+Markdown: pages compared, changed, added and removed, and the words of each.
+The fixture takes about two minutes. The whole release is a heavy job: run it
+alone. `PAGE_DIFF_WORK=<new dir>` keeps the work directory and each side's
+snapshot.
+
+Every pull request that changes lookup or dictionary data posts the printed
+summary as a comment, from a run against the whole release. Say why each
+changed or removed page changed; a page already on the site that should not
+change is a bug in the pull request.
+
 ### Run the search page
 
 The page answers from a seeded local D1. `pnpm run seed:dev` seeds it from the
