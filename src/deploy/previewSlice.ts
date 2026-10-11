@@ -25,7 +25,10 @@
 // may (#741, ADR 0018), the slice is a sample: the words the declarations name
 // in their `lookups` first, then the others in key order, as many as fit. The
 // touched words it leaves out read the shared dictionary, as any other word
-// does, and a change's rows for them are dropped from the sample.
+// does, and a change's rows for them are dropped from the sample. A branch
+// that touches more than `SLICE_COPY_WORDS` words is always a sample (#794,
+// ADR 0018): only that many, in the same order, are read from the shared
+// dictionary.
 
 import { createHash } from "node:crypto";
 import { DatabaseSync } from "node:sqlite";
@@ -348,24 +351,42 @@ function dropOrphans(db: DatabaseSync): void {
 }
 
 /**
- * The rows every word a branch touches reads, copied once from the shared
- * dictionary into a local database (#741). Every slice of those words, or of
- * fewer, is built from it, so the shared dictionary is read once however
- * many slices a sample measures: the rows a set of words reads only grow
- * with the set, so fewer words read a part of what the copy holds.
+ * The most touched words a slice copies from the shared dictionary (#794,
+ * ADR 0018). Every 500 words cost dozens of remote reads, so a branch that
+ * touches tens of thousands of words, as `load:names` does, would never
+ * finish copying them: Workers Builds stopped one such build after 31
+ * minutes. Past this many, the slice is a sample of the first ones in the
+ * sample's order, the words the declarations name first.
+ */
+export const SLICE_COPY_WORDS = 1_000;
+
+/**
+ * The rows the touched words a branch reads, copied once from the shared
+ * dictionary into a local database (#741): every touched word, or the first
+ * `SLICE_COPY_WORDS` of them in the sample's order. Every slice of those
+ * words, or of fewer, is built from it, so the shared dictionary is read once
+ * however many slices a sample measures: the rows a set of words reads only
+ * grow with the set, so fewer words read a part of what the copy holds.
  */
 export class SliceSource {
   private constructor(
     private readonly db: DatabaseSync,
-    /** The lookup keys of every touched word, sorted. */
+    /** The lookup keys of the touched words copied, sorted. */
     readonly keys: readonly string[],
+    /** The lookup keys of the touched words past `SLICE_COPY_WORDS`, not copied, sorted: every slice leaves them out. */
+    readonly notCopied: readonly string[],
   ) {}
 
-  /** Copy what `words` read from the shared dictionary `reader` reads. Throws `SliceRefused` for no word. */
-  static copy({ reader, words, schema }: { reader: MasterReader; words: readonly string[]; schema: string }): SliceSource {
-    const keys = sliceKeys(words);
-    if (keys.length === 0) throw new SliceRefused("a slice needs at least one word");
-    return new SliceSource(copiedDatabase(reader, keys, schema, ""), keys);
+  /**
+   * Copy what `words` read from the shared dictionary `reader` reads: all of
+   * them, or the first `SLICE_COPY_WORDS` in the sample's order, the ones
+   * `named` names first. Throws `SliceRefused` for no word.
+   */
+  static copy({ reader, words, named = [], schema }: { reader: MasterReader; words: readonly string[]; named?: readonly string[]; schema: string }): SliceSource {
+    const order = sampleOrder(sliceKeys(words), named);
+    if (order.length === 0) throw new SliceRefused("a slice needs at least one word");
+    const keys = order.slice(0, SLICE_COPY_WORDS).sort();
+    return new SliceSource(copiedDatabase(reader, keys, schema, ""), keys, order.slice(SLICE_COPY_WORDS).sort());
   }
 
   /** The copy, read as the shared dictionary is: single SELECTs only. */
@@ -418,7 +439,8 @@ export class PreviewSlice {
 
   /**
    * The slice of every word `source` holds when it writes at most `cap`
-   * rows; else a sample of them that does (#741). The sample takes the
+   * rows; else a sample of them that does (#741). Either way the words
+   * `source` did not copy are left out. The sample takes the
    * touched words `named` names first, in their order, then the other
    * touched words in key order, while the slice built of them writes at most
    * `cap` rows: the first word past that, and every word after it, is left
@@ -432,11 +454,11 @@ export class PreviewSlice {
    * Throws `SliceRefused` when not even the first word fits under the cap.
    */
   static fitting({ source, named, cap, ...inputs }: { source: SliceSource; named: readonly string[]; cap: number } & SliceInputs): PreviewSlice {
-    const whole = PreviewSlice.assemble(source.reader, source.keys, [], inputs);
+    const whole = PreviewSlice.assemble(source.reader, source.keys, source.notCopied, inputs);
     if (whole.rowsWritten <= cap) return whole;
     whole.close();
     const order = sampleOrder(source.keys, named);
-    const sampleOf = (count: number) => PreviewSlice.assemble(source.reader, order.slice(0, count), order.slice(count), inputs);
+    const sampleOf = (count: number) => PreviewSlice.assemble(source.reader, order.slice(0, count), [...order.slice(count), ...source.notCopied], inputs);
     // `fits` is the longest run found that fits; a run of `over` words is known not to.
     let fits = sampleOf(1);
     if (fits.rowsWritten > cap) {

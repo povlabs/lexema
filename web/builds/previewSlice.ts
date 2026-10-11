@@ -19,6 +19,8 @@
 //    When the slice of every touched word is over it, the planner builds a
 //    sample (#741): the words the declarations name in `lookups` first, then
 //    others, as many as fit, and the line names the touched words left out.
+//    A branch touching more than `SLICE_COPY_WORDS` words always gets a
+//    sample of at most that many (#794), named the same way.
 //    When not even one word fits, or an answer is over the cap, nothing is
 //    written and no slice is bound. Otherwise the old slice is deleted, a new
 //    one created, and the SQL run on it.
@@ -38,6 +40,19 @@ import { listDatabases, required, type Wrangler } from "./wrangler.ts";
  * (https://developers.cloudflare.com/d1/platform/pricing/).
  */
 export const SLICE_ROWS_WRITTEN_CAP = 250_000;
+
+/**
+ * The most touched words the planner copies into a slice (#794, ADR 0018):
+ * `SLICE_COPY_WORDS` in src/deploy/previewSlice.ts, which owns the limit.
+ * Here it only says why a sample left words out.
+ */
+export const SLICE_COPY_WORDS = 1_000;
+
+/** Why a sample of `touched` words left some out: the planner's word limit, or else the row cap. */
+const sampleReason = (touched: number): string =>
+  touched > SLICE_COPY_WORDS
+    ? `the branch touches more than ${SLICE_COPY_WORDS} words, and a Preview copies at most ${SLICE_COPY_WORDS} of them`
+    : "the slice of every touched word is over the cap";
 
 /** What `preview:slice declared` answers: no slice and why, or the fingerprint the branch's slice must have. */
 export type SliceDeclared =
@@ -161,7 +176,7 @@ function slice(wrangler: Wrangler, preview: PreviewName, planner: SlicePlanner, 
   } else {
     log(
       `dictionary slice: wrote a sample, ${preview.sliceDatabase} (${written.id}): ${built.words} of ${built.words + built.leftOut.length} touched word(s), ${built.rowsWritten} rows written, under the cap of ${SLICE_ROWS_WRITTEN_CAP}; ` +
-        `the slice of every touched word is over the cap, so ${built.leftOut.length} word(s) read the shared dictionary: ${built.leftOut.join(", ")}`,
+        `${sampleReason(built.words + built.leftOut.length)}, so ${built.leftOut.length} word(s) read the shared dictionary: ${built.leftOut.join(", ")}`,
     );
   }
   return written;

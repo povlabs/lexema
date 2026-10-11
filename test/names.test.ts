@@ -13,7 +13,7 @@ import { join, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { gzipSync } from "node:zlib";
 import { seedSql } from "../src/import/seedSql.js";
-import { sliceKeys } from "../src/deploy/previewSlice.js";
+import { SLICE_COPY_WORDS, sampleOrder, sliceKeys } from "../src/deploy/previewSlice.js";
 import { builtSlice, readOnlyReader } from "../src/deploy/sliceCli.js";
 import { planWrite, readyChange, type WritePlan } from "../src/deploy/writePlan.js";
 import { touchedWords, wordsOfNames } from "../src/deploy/touchedWords.js";
@@ -401,13 +401,14 @@ test("the change declaration that loads the snapshot takes no inputs", () => {
   assert.throws(() => parseDeclaration("x.json", JSON.stringify({ command: "load:names", inputs: { snapshot: "x" }, expected: {} })), /inputs of load:names/);
 });
 
-test("a load:names branch's Preview slice serves every name it touches, with no read over D1's statement limit", async () => {
+test("a load:names branch's Preview slice copies exactly SLICE_COPY_WORDS of its touched words, its lookups first, with no read over D1's statement limit", async () => {
   const schema = await readFile(SCHEMA, "utf8");
   const db = await seeded();
   try {
     // The shared dictionary a Preview reads before the merge: no name_entry yet.
     db.exec("DROP INDEX name_entry_by_key; DROP TABLE name_entry;");
     // Enough labels that one read naming them all is over D1's 100,000 bytes, as the committed snapshot's 28,674 are.
+    // Their keys sort before `hormuz` and `mar mediterraneo`, so key order alone would leave the lookups out.
     const many = Array.from({ length: 7_000 }, (_, index) =>
       nameItem({ item: `Q${900_001 + index}`, label: `Comune di prova ${String(index).padStart(4, "0")}`, description: "comune di prova", category: "comune" }),
     );
@@ -418,22 +419,27 @@ test("a load:names branch's Preview slice serves every name it touches, with no 
         return db.prepare(sql).all() as Row[];
       },
     };
-    const text = JSON.stringify({ command: "load:names", lookups: [{ word: "Hormuz" }, { word: "mar Mediterraneo" }] });
+    const lookups = ["Hormuz", "mar Mediterraneo"];
+    const text = JSON.stringify({ command: "load:names", lookups: lookups.map((word) => ({ word })) });
     const declared = { state: "declared" as const, fingerprint: "f".repeat(64), declarations: [parseDraft("dictionary-changes/names.json", text)] };
     const plan = (declaration: DeclarationDraft): Promise<WritePlan> => planWrite(readyChange(declaration, null), reader, "2026-10-11T00:00:00Z", { names: [...SNAPSHOT, ...many] });
     const touched = (await plan(declared.declarations[0])).touched;
     assert.ok(touched.kind === "words" && touched.words.length > 7_000);
+    const keys = sliceKeys(touched.words);
+    for (const key of sliceKeys(lookups)) assert.ok(keys.indexOf(key) >= SLICE_COPY_WORDS, key);
 
+    // The Preview build's route, under its cap (SLICE_ROWS_WRITTEN_CAP, web/builds/previewSlice.ts).
     sent.length = 0;
-    // The Preview build's cap (SLICE_ROWS_WRITTEN_CAP, web/builds/previewSlice.ts).
     const built = await builtSlice(declared, schema, { reader: readOnlyReader(reader), plan, cap: 250_000 });
     assert.ok(built.state === "built", JSON.stringify(built));
     const { slice } = built;
     try {
       assert.deepEqual(sent.map((sql) => Buffer.byteLength(sql)).filter((bytes) => bytes > 100_000), []);
-      // Under the cap the slice is whole (ADR 0018): it serves every touched word and leaves none out.
-      assert.equal(slice.isSample, false);
-      assert.deepEqual(slice.keys, sliceKeys(touched.words));
+      // Past SLICE_COPY_WORDS the slice is a sample of exactly that many: the lookups first, then key order.
+      assert.equal(slice.isSample, true);
+      assert.deepEqual(slice.keys, sampleOrder(keys, lookups).slice(0, SLICE_COPY_WORDS).sort());
+      // Every other touched word is left out, and the log names each of them.
+      assert.deepEqual(slice.leftOut, sampleOrder(keys, lookups).slice(SLICE_COPY_WORDS).sort());
       const sliced = fromNodeSqlite(slice.db);
       const readings = async (word: string) => {
         const result = await lookup({ db: sliced, releaseId: RELEASE, query: word });
@@ -443,6 +449,18 @@ test("a load:names branch's Preview slice serves every name it touches, with no 
       assert.deepEqual(await readings("mar Mediterraneo"), [`Q4918 Nome proprio: ${SPECS.mediterraneo.description}`]);
     } finally {
       slice.close();
+    }
+
+    // With no cap the slice copies every touched word, still in reads under D1's statement limit.
+    sent.length = 0;
+    const whole = await builtSlice(declared, schema, { reader: readOnlyReader(reader), plan });
+    assert.ok(whole.state === "built", JSON.stringify(whole));
+    try {
+      assert.deepEqual(sent.map((sql) => Buffer.byteLength(sql)).filter((bytes) => bytes > 100_000), []);
+      assert.equal(whole.slice.isSample, false);
+      assert.deepEqual(whole.slice.keys, keys);
+    } finally {
+      whole.slice.close();
     }
   } finally {
     db.close();
