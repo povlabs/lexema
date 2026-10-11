@@ -10,8 +10,9 @@
 //   TSX_TSCONFIG_PATH=web/tsconfig.json NODE_ENV=production node --import tsx \
 //     web/pageDiff/renderPages.ts <dictionary.sqlite> <words file> <snapshot file>
 //
-// The words file holds one word per line. The snapshot gets one JSON line per
-// word with a page (pageDiff.ts); a word the search does not find has none.
+// The words file holds one word per line (pageWords.ts names which). The
+// snapshot gets one JSON line per word with a page (pageDiff.ts); a word the
+// search does not find has none.
 
 import { createHash } from "node:crypto";
 import { once } from "node:events";
@@ -26,21 +27,7 @@ import { fromNodeSqlite, type LookupDatabase } from "@lexema/lookup/database.ts"
 import { Outcome } from "@/components/dictionary/SearchPage";
 import { searchAttempt } from "@/lib/dictionary/searchAttempt.ts";
 import type { RenderedPage } from "./pageDiff.ts";
-
-/** Every headword of a release: each distinct `word` of an archive record or a page-only entry, as #699 counted them. */
-const HEADWORDS = `SELECT word FROM source_record WHERE release_id = ?1
-  UNION SELECT word FROM recovered_entry WHERE release_id = ?1
-  ORDER BY word`;
-
-export const headwordsOf = (db: DatabaseSync, releaseId: string): string[] =>
-  (db.prepare(HEADWORDS).all(releaseId) as { word: string }[]).map(({ word }) => word);
-
-/** The one release the dictionary serves. */
-export function servedReleaseOf(db: DatabaseSync): string {
-  const masters = db.prepare("SELECT DISTINCT master_release_id AS id FROM served_release").all() as { id: string }[];
-  if (masters.length !== 1) throw new Error(`the dictionary serves ${masters.length} releases, not one`);
-  return masters[0].id;
-}
+import { servedReleaseOf } from "./pageWords.ts";
 
 /** `word`'s page as the site renders it, or undefined when searching it opens none. */
 export async function renderPage(db: LookupDatabase, releaseId: string, word: string): Promise<string | undefined> {

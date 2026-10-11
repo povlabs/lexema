@@ -1,16 +1,21 @@
-// `pnpm run diff:pages [base] [head]` — render every word page at two commits
-// and print what changed (#808).
+// `pnpm run diff:pages [base] [head] [--words <file>]...` — render every word
+// page at two commits and print what changed (#808).
 //
 // For each commit in turn, it checks the commit out into a linked worktree
 // under a work directory (which installs its dependencies, ADR 0022), seeds a
 // local dictionary there with that commit's own `pnpm run seed:dev`, and
 // renders every word page with that commit's own site code
-// (renderPages.ts). The words are every headword of either seed, so a page
-// only one side has is still counted. Then it prints, in Markdown:
-// pages compared, changed, added and removed, and the words of each.
+// (renderPages.ts). The words are those of either seed (pageWords.ts: every
+// headword and every word a `form_of` edge names), so a page only one side
+// has is still counted. Then it prints, in Markdown: pages compared, changed,
+// added and removed, and the words of each.
 //
 // - `base` defaults to where `head` left `origin/main` (`git merge-base`);
 //   `head` defaults to `HEAD`. Both are any commit Git can name.
+// - `--words <file>` adds the words of a file, one per line, to those asked.
+//   A lookup change can open a page for a word no record heads and no edge
+//   names (a clitic form like `raccontarvi`); only a word asked can show as
+//   added. Give it more than once to add more files.
 // - `SEED_INPUT` is the seed's own: the development fixture by default, or
 //   `.data/source/it-extract.jsonl.gz` for the whole release.
 // - `PAGE_DIFF_WORK` names the work directory, which must not exist yet and
@@ -26,14 +31,11 @@ import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
 import { dictionaryFile } from "../../src/lookup/localDictionary.js";
 import { PageDiff, PageSnapshot } from "./pageDiff.ts";
+import { pageWordsOf, servedReleaseOf } from "./pageWords.ts";
 
 const REPO = fileURLToPath(new URL("../..", import.meta.url));
 const PAGE_DIFF_DIR = fileURLToPath(new URL(".", import.meta.url));
 const FRESH_CHECKOUT = "0".repeat(40);
-
-/** The same headwords renderPages.ts counts, read here without the site's code. */
-const HEADWORDS = `SELECT word FROM source_record WHERE release_id = ?1
-  UNION SELECT word FROM recovered_entry WHERE release_id = ?1`;
 
 const log = (line: string): void => void process.stderr.write(`${line}\n`);
 
@@ -98,17 +100,40 @@ class Side {
   }
 }
 
-function headwords(database: string): string[] {
+function pageWords(database: string): string[] {
   const db = new DatabaseSync(database, { readOnly: true });
   try {
-    const releases = db.prepare("SELECT DISTINCT master_release_id AS id FROM served_release").all() as { id: string }[];
-    return releases.flatMap(({ id }) => (db.prepare(HEADWORDS).all(id) as { word: string }[]).map(({ word }) => word));
+    return pageWordsOf(db, servedReleaseOf(db));
   } finally {
     db.close();
   }
 }
 
-async function main([baseArg, headArg]: string[]): Promise<void> {
+/** The command line: up to two commits, and each `--words <file>`. */
+function parseArgs(args: readonly string[]): { commits: string[]; wordFiles: string[] } {
+  const commits: string[] = [];
+  const wordFiles: string[] = [];
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === "--words") {
+      const file = args[++i];
+      if (file === undefined) throw new Error("--words needs a file");
+      wordFiles.push(resolve(file));
+    } else if (args[i].startsWith("-")) throw new Error(`unknown option ${args[i]}`);
+    else commits.push(args[i]);
+  }
+  if (commits.length > 2) throw new Error("usage: pnpm run diff:pages [base] [head] [--words <file>]...");
+  return { commits, wordFiles };
+}
+
+/** The words of each file, one per line, blank lines skipped. */
+async function extraWords(files: readonly string[]): Promise<string[]> {
+  const texts = await Promise.all(files.map((file) => readFile(file, "utf8")));
+  return texts.flatMap((text) => text.split("\n").map((line) => line.trim()).filter((word) => word !== ""));
+}
+
+async function main(args: readonly string[]): Promise<void> {
+  const { commits: [baseArg, headArg], wordFiles } = parseArgs(args);
+  const extra = await extraWords(wordFiles);
   const headRef = headArg ?? "HEAD";
   const head = git(["rev-parse", "--verify", `${headRef}^{commit}`]);
   const base = git(["rev-parse", "--verify", `${baseArg ?? git(["merge-base", "origin/main", head])}^{commit}`]);
@@ -130,9 +155,10 @@ async function main([baseArg, headArg]: string[]): Promise<void> {
       databases.push(await side.seed(seedInput));
     }
     const words = join(work, "words.txt");
-    const every = [...new Set(databases.flatMap(headwords))].sort();
+    const seeded = new Set(databases.flatMap(pageWords));
+    const every = [...new Set([...seeded, ...extra])].sort();
     await writeFile(words, `${every.join("\n")}\n`);
-    log(`${every.length} headwords across both seeds`);
+    log(`${seeded.size} words across both seeds, ${every.length - seeded.size} more from --words`);
     const [before, after] = [await sides[0].render(databases[0], words), await sides[1].render(databases[1], words)];
     process.stdout.write(`${PageDiff.between(before, after).summary(base.slice(0, 8), head.slice(0, 8), seedLabel)}\n`);
   } finally {
