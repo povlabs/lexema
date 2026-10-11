@@ -15,9 +15,9 @@ import { OneLine } from "./OneLine";
 import { GridFormBlockView, ReadingView, VerbFormBlockView } from "./Reading";
 import { ReportDialog } from "./ReportDialog";
 import { reportReadings, type ReportReading } from "@/lib/dictionary/report.ts";
-import { sourcePageUrl } from "@/lib/dictionary/sourcePage.ts";
+import { footerSourceLink, type FooterSource } from "@/lib/dictionary/footerSource.ts";
 import { WordList } from "./WordList";
-import { PRONUNCIATION_LABEL, READINGS_NAV, SECTION_LABEL, SOURCE_LABEL, sourceLinkName } from "@/lib/dictionary/wordPageText.ts";
+import { PRONUNCIATION_LABEL, READINGS_NAV, SECTION_LABEL, SOURCE_LABEL } from "@/lib/dictionary/wordPageText.ts";
 import {
   entryTitle,
   expressionRows,
@@ -122,8 +122,8 @@ function WordFactsView({
 
 /** What the footer needs of a result: the page its content is credited to, and the readings a report can name. */
 export interface FooterFacts {
-  /** The word whose Wiktionary page the one *Source* link opens; none when every reading is a name entry, which links its own (ADR 0032). */
-  sourceWord: string | undefined;
+  /** What the one *Source* link credits: a Wiktionary page, or the first name entry's Wikidata item. */
+  source: FooterSource;
   /** The word a report is about. */
   headword: string;
   /** Each reading a report can name, with its number on the page. */
@@ -131,25 +131,20 @@ export interface FooterFacts {
 }
 
 /**
- * One *Source*, to the Wiktionary page of the page's word, then *Segnala un
- * errore* (ADR 0009, amended on #281). A page whose readings are all name
- * entries has no Wiktionary source, so it shows *Segnala un errore* alone.
+ * The page's one *Source*, then *Segnala un errore* (ADR 0009, amended on
+ * #281 and #827): to the Wiktionary page of the page's word, or, on a page of
+ * name entries alone, to the first one's Wikidata item. No reading shows a
+ * *Source* of its own.
  */
 export function SourceLine({ page, siteKey }: { page: FooterFacts; siteKey: string | undefined }) {
+  const link = footerSourceLink(page.source);
   return (
     <footer className={SOURCE_LINE} lang="it">
-      {page.sourceWord !== undefined && (
-        <a
-          className={SOURCE_LINK}
-          href={sourcePageUrl(page.sourceWord)}
-          {...NEW_TAB}
-          aria-label={sourceLinkName(page.sourceWord)}
-        >
-          {SOURCE_LABEL}
-          <ExternalIcon className={ICON} />
-        </a>
-      )}
-      {page.sourceWord !== undefined && <span aria-hidden="true">·</span>}
+      <a className={SOURCE_LINK} href={link.href} {...NEW_TAB} aria-label={link.name}>
+        {SOURCE_LABEL}
+        <ExternalIcon className={ICON} />
+      </a>
+      <span aria-hidden="true">·</span>
       <ReportDialog
         word={page.headword}
         subject={{ kind: "mistake", readings: reportReadings(page.readings) }}

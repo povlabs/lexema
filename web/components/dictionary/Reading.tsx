@@ -11,12 +11,8 @@
 // article worked out by rule. Every Italian string carries `lang="it"`.
 
 import { Fragment, type ReactNode } from "react";
-import { wikidataItemUrl } from "@lexema/lookup/names.ts";
-import { entryKey, factRefKey, isNameEntry } from "@lexema/lookup/types.ts";
-import type { NameIdentity, RecoveredDefinition, Reading } from "@lexema/lookup/types.ts";
-import { ExternalIcon } from "@/components/shared/icons";
-import { NEW_TAB } from "@/components/shared/ExternalLink";
-import { nameSourceLinkName, SOURCE_LABEL } from "@/lib/dictionary/wordPageText.ts";
+import { entryKey, factRefKey } from "@lexema/lookup/types.ts";
+import type { RecoveredDefinition, Reading } from "@lexema/lookup/types.ts";
 import { conjugationOf } from "@/lib/dictionary/conjugation.ts";
 import { definitionsOf, shownSenseLabels, type DefinitionItem } from "@/lib/dictionary/definitions.ts";
 import { headingGrammar, placesGrammar } from "@/lib/dictionary/genderGrid.ts";
@@ -75,10 +71,7 @@ import {
   READING_HEADING,
   READING_NUMBER,
   SENSE_LABEL,
-  SOURCE_LINK,
   SUB_ITEMS,
-  ICON,
-  NAME_SOURCE,
 } from "@/components/shared/styles.ts";
 import { FORM_OF_LEAD, FORMS_OF_LEAD, formsOf, SECTION_LABEL } from "@/lib/dictionary/wordPageText.ts";
 
@@ -662,23 +655,6 @@ export function ReadingView({ entry }: { entry: PageReading | BareReading | Lone
       {parts.map((part) => (
         <ReadingPartView key={part.kind} reading={reading} owner={entryName(entry)} part={part} />
       ))}
-      {isNameEntry(reading) && <NameSource reading={reading} />}
     </article>
-  );
-}
-
-/**
- * A name entry's own *Fonte*, to its Wikidata item, under its definition
- * (ADR 0032, #794): the page's one *Fonte* opens a Wiktionary page, which is
- * not where a name entry comes from.
- */
-function NameSource({ reading }: { reading: NameIdentity & { word: string } }) {
-  return (
-    <p className={NAME_SOURCE} lang="it">
-      <a className={SOURCE_LINK} href={wikidataItemUrl(reading.nameItem)} {...NEW_TAB} aria-label={nameSourceLinkName(reading.word)}>
-        {SOURCE_LABEL}
-        <ExternalIcon className={ICON} />
-      </a>
-    </p>
   );
 }

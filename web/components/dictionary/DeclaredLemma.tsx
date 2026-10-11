@@ -75,7 +75,7 @@ export function DeclaredLemmaView({ page, siteKey }: { page: DeclaredLemmaPage; 
         ))}
       </div>
       {/* A report names the word; no record heads it, so there is no reading to choose. */}
-      <SourceLine page={{ sourceWord: page.sourceWord, headword: page.headword, readings: [] }} siteKey={siteKey} />
+      <SourceLine page={{ source: page.source, headword: page.headword, readings: [] }} siteKey={siteKey} />
     </>
   );
 }
