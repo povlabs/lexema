@@ -442,7 +442,10 @@ Commit the snapshot: its diff is the names that changed.
 master lacks or holds with other text, and removes the held ones it no longer
 serves. An item is left out when its label's search key already finds
 something to read: a record with a meaning, a table that lists it, a page-only
-entry or a hand-kept reading. So `Sale` the comune is left out (the salt noun
+entry, a hand-kept reading, or, for a key nothing spells, a multi-word headword
+or an essere agreement cell the lookup reaches through it ([ADR
+0032](../.decisions/0032-wikidata-names-fill-proper-name-gaps.md#decision)
+keeps the full rule). So `Sale` the comune is left out (the salt noun
 answers `sale`), and `Giulia` the river is added after `Giulia`'s record,
 whose one sense has no gloss. It prints the items written, removed and left
 out. `--plan-only` prints the counts and writes nothing. On a master without
