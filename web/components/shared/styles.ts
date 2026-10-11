@@ -510,6 +510,8 @@ export const MORE_PLACE: Readonly<Record<MorePlace, string>> = {
 export const SOURCE_LINE = "mt-9 sm:mt-12 flex flex-wrap items-center gap-x-3 gap-y-1 font-sans text-[0.8rem] text-text-muted";
 export const SOURCE_LINK = `inline-flex items-center gap-1.5 text-text-muted no-underline hover:text-text ${FOCUS_RING}`;
 export const ICON = "size-3.5";
+/** A name entry's own `Fonte ↗`, under its definition, in the footer's small muted type (ADR 0032). */
+export const NAME_SOURCE = `${BLOCK} font-sans text-[0.8rem] text-text-muted`;
 
 // A search that found nothing (board 24) ---------------------------------
 

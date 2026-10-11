@@ -351,8 +351,8 @@ export interface RecoveredRef {
  */
 export type FactRef = SourceRef | RecoveredRef;
 
-/** Whether a fact was read from the archive rather than from a raw page. */
-export const isSourceRef = (ref: FactRef): ref is SourceRef => "jsonPointer" in ref;
+/** Whether a fact was read from the archive rather than from a raw page, or from a name entry's Wikidata item. */
+export const isSourceRef = (ref: FactRef | NameRef): ref is SourceRef => "jsonPointer" in ref;
 
 /** The archive pointer a fact was read at; undefined for a raw page's line, which no query hits. */
 export const sourcePointerOf = (ref: FactRef): string | undefined => (isSourceRef(ref) ? ref.jsonPointer : undefined);
@@ -433,14 +433,50 @@ export function everyRecovered(reading: Pick<Reading, "senses" | "recovered">): 
 
 /**
  * What an entry is: a source record, pointed at by its archive line; a
- * page-only entry (ADR 0024, #403), pointed at by its page revision; or a
+ * page-only entry (ADR 0024, #403), pointed at by its page revision; a
  * hand-kept reading (ADR 0031, #745), pointed at by the en.wiktionary revision
- * it cites. Exactly one of the three.
+ * it cites; or a name entry (ADR 0032, #794), pointed at by its Wikidata item.
+ * Exactly one of the four.
  */
 export type EntryIdentity =
-  | { recordId: number; entryId?: never; handKeptId?: never; ref: SourceRef }
-  | { entryId: number; recordId?: never; handKeptId?: never; ref: PageEntryRef }
-  | { handKeptId: string; recordId?: never; entryId?: never; ref: PageEntryRef };
+  | { recordId: number; entryId?: never; handKeptId?: never; nameItem?: never; description?: never; ref: SourceRef }
+  | { entryId: number; recordId?: never; handKeptId?: never; nameItem?: never; description?: never; ref: PageEntryRef }
+  | { handKeptId: string; recordId?: never; entryId?: never; nameItem?: never; description?: never; ref: PageEntryRef }
+  | NameIdentity;
+
+/**
+ * A name entry (ADR 0032, #794): a proper name from Wikidata, pointed at by
+ * its item. Its one meaning is the item's Italian description, so a name entry
+ * without one is not a value this type can hold.
+ */
+export interface NameIdentity {
+  nameItem: `Q${number}`;
+  /** The item's Italian description, as Wikidata states it: the entry's one definition. */
+  description: string;
+  recordId?: never;
+  entryId?: never;
+  handKeptId?: never;
+  ref: NameRef;
+}
+
+/**
+ * Where a name entry was read: its Wikidata item, under the release the lookup
+ * serves, since it belongs to none. A *Fonte* link opens the item's page.
+ */
+export interface NameRef {
+  releaseId: string;
+  wiki: "www.wikidata.org";
+  item: `Q${number}`;
+  title?: never;
+  revisionId?: never;
+  line?: never;
+  lineNo?: never;
+  lineSha256?: never;
+  jsonPointer?: never;
+}
+
+/** Whether an entry is a name entry from Wikidata rather than a reading of Wiktionary's or Lexema's. */
+export const isNameEntry = (entry: EntryIdentity): entry is NameIdentity => entry.nameItem !== undefined;
 
 /**
  * Where a page-only entry was read: its page revision and the line that names
@@ -814,10 +850,11 @@ export type OtherReading = ReadingFacts & OtherPartOfSpeech;
 /** One source record that matched the query. */
 export type Reading = NounReading | OtherReading;
 
-/** Stable within one seeded database, without conflating page entries or hand-kept readings with source records. */
+/** Stable within one seeded database, without conflating page entries, hand-kept readings or name entries with source records. */
 export function entryKey(entry: EntryIdentity): string {
   if (entry.recordId !== undefined) return String(entry.recordId);
-  return entry.entryId !== undefined ? `page-${entry.entryId}` : `kept-${entry.handKeptId}`;
+  if (entry.entryId !== undefined) return `page-${entry.entryId}`;
+  return entry.handKeptId !== undefined ? `kept-${entry.handKeptId}` : `name-${entry.nameItem}`;
 }
 
 /**
@@ -827,12 +864,18 @@ export function entryKey(entry: EntryIdentity): string {
  * the entries one page gives (`lungo`, ADR 0028).
  */
 export type PublicEntryKey = { releaseId: string } & (
-  | { lineNo: number; revisionId?: never; pageLine?: never }
-  | { revisionId: number; pageLine: number; lineNo?: never }
+  | { lineNo: number; revisionId?: never; pageLine?: never; nameItem?: never }
+  | { revisionId: number; pageLine: number; lineNo?: never; nameItem?: never }
+  | { nameItem: `Q${number}`; lineNo?: never; revisionId?: never; pageLine?: never }
 );
 
-/** The id the API names an entry by: `<release>:<lineNo>`, or `<release>:page:<revisionId>:<pageLine>`. */
+/**
+ * The id the API names an entry by: `<release>:<lineNo>`,
+ * `<release>:page:<revisionId>:<pageLine>`, or, for a name entry (ADR 0032),
+ * `<release>:wikidata:<item>`.
+ */
 export function publicEntryId(key: PublicEntryKey): string {
+  if (key.nameItem !== undefined) return `${key.releaseId}:wikidata:${key.nameItem}`;
   return key.lineNo === undefined ? `${key.releaseId}:page:${key.revisionId}:${key.pageLine}` : `${key.releaseId}:${key.lineNo}`;
 }
 

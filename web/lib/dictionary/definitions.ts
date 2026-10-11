@@ -18,26 +18,34 @@ const shapeOf = (sense: Sense): SenseShape => ({
   opensRecoveredList: sense.recoveredItems.length > 0,
 });
 
-/** One numbered definition: a sense of the record, or one read back from the raw page. */
+/**
+ * One numbered definition: a sense of the record, one read back from the raw
+ * page, or a name entry's Wikidata description (ADR 0032), which Lexema reads
+ * no example for.
+ */
 export type DefinitionItem =
   | { from: "record"; sense: Sense; examples: string[] }
-  | { from: "page"; definition: RecoveredDefinition; examples: string[] };
+  | { from: "page"; definition: RecoveredDefinition; examples: string[] }
+  | { from: "name"; description: string; examples: string[] };
 
 /**
- * Where a definition sits: a sense of the record, by its index, or a line of
- * the raw page a page-only entry was read from (ADR 0026).
+ * Where a definition sits: a sense of the record, by its index, a line of the
+ * raw page a page-only entry was read from (ADR 0026), or a name entry's
+ * description, its only one.
  */
-export type DefinitionPlace = { sense: number } | { line: number };
+export type DefinitionPlace = { sense: number } | { line: number } | { description: true };
 
 /** Where `item` sits. */
-export const placeOf = (item: DefinitionItem): DefinitionPlace =>
-  item.from === "record" ? { sense: item.sense.index } : { line: item.definition.ref.line };
+export const placeOf = (item: DefinitionItem): DefinitionPlace => {
+  if (item.from === "record") return { sense: item.sense.index };
+  return item.from === "page" ? { line: item.definition.ref.line } : { description: true };
+};
 
-/** Whether a fact was read off the definition at `place`. */
-export const readAt = (ref: FactRef, place: DefinitionPlace): boolean =>
-  "sense" in place
-    ? isSourceRef(ref) && ref.jsonPointer.startsWith(`/senses/${place.sense}/`)
-    : !isSourceRef(ref) && ref.line === place.line;
+/** Whether a fact was read off the definition at `place`. A name entry's description has no facts. */
+export const readAt = (ref: FactRef, place: DefinitionPlace): boolean => {
+  if ("sense" in place) return isSourceRef(ref) && ref.jsonPointer.startsWith(`/senses/${place.sense}/`);
+  return "line" in place && !isSourceRef(ref) && ref.line === place.line;
+};
 
 /**
  * The reading's definitions in order, each with its examples, and the examples
@@ -46,7 +54,11 @@ export const readAt = (ref: FactRef, place: DefinitionPlace): boolean =>
  * no note about either. An example the record holds that is really a
  * recovered definition is shown once, as that definition.
  */
-export function definitionsOf(reading: Pick<Reading, "word" | "senses" | "recovered">): { items: DefinitionItem[]; looseExamples: string[] } {
+export function definitionsOf(
+  reading: Pick<Reading, "word" | "senses" | "recovered"> & { description?: string },
+): { items: DefinitionItem[]; looseExamples: string[] } {
+  // A name entry (ADR 0032) has no senses: its Wikidata description is its one definition.
+  if (reading.description !== undefined) return { items: [{ from: "name", description: reading.description, examples: [] }], looseExamples: [] };
   const heldAsDefinition = new Set(
     everyRecovered(reading).flatMap((definition) => definition.heldAsExample?.jsonPointer ?? []),
   );
@@ -101,6 +113,7 @@ export const shownSenseLabels = (sense: Pick<Sense, "labels">): string[] => ital
  * record's.
  */
 export function definitionTextKey(item: DefinitionItem): string {
+  if (item.from === "name") return JSON.stringify(["name", item.description]);
   return item.from === "record"
     ? JSON.stringify(["record", senseLabels(item.sense.labels.map((label) => label.label)), item.sense.glosses.map((gloss) => gloss.text), item.sense.recoveredItems])
     : JSON.stringify(["page", item.definition.labels, item.definition.text, item.definition.items]);

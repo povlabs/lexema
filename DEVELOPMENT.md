@@ -559,12 +559,14 @@ src/
 ├── italian/        # the Italian adapter: normalize, tags, articles, examples
 ├── log/            # the Worker's log: every line names its request id
 ├── lookup/         # exact surface lookup over the master: a release and the changes applied to it
+├── names/          # Wikidata name entries (ADR 0032): the categories, the snapshot; `pnpm run names:fetch`, `pnpm run load:names`
 ├── readerReport/   # readers' reports as a person reviews them; `pnpm run report`, and `report:issues` for production's
 ├── release/        # the monthly release CI runs: a new kaikki release stored, its facts added, a pull request opened; `pnpm run release:monthly`
 ├── source/         # gzip JSONL streaming and provenance refs
 └── update/         # a later release against the master; `pnpm run update:auto`, with optional `update:diff`, `update:select`, `update:apply`
 web/                # the @lexema/web workspace: the Worker and the search page
 test/               # unit tests, plus the dataset-backed adapter test
+names/              # the committed Wikidata snapshot, `wikidata-names.jsonl` (docs/RUN_AN_IMPORT.md)
 fixtures/           # the checked forms and the local release metadata
 docs/               # how the importer, the lookup and the page work
 reports/            # dated findings and measurements
@@ -635,7 +637,7 @@ gated job's paths.
 | Workflow | Runs on | Fails when |
 |---|---|---|
 | [ci.yml](./.github/workflows/ci.yml) `check`, `test-web` | a change to any file but Markdown (`docs/DEPLOY.md` and `docs/UPDATE_THE_DICTIONARY.md` still count, since a unit test reads them) | `check`: the root typecheck, a root unit test (`test:root`), or the `@lexema/web` typecheck fails; `test-web`: a web unit test (`test:web`) fails |
-| [ci.yml](./.github/workflows/ci.yml) `d1` | a change to `src/db/` or any source the seed, the sample-row check or the key CLI imports (`src/import/`, `src/source/`, `src/italian/`, `src/lookup/`, `src/billing/`, `src/api/`, `src/core/`, `src/commandLine.ts`), `fixtures/`, `drizzle.config.ts`, `web/wrangler.jsonc`, `.nvmrc`, the dependencies (`package.json`, `web/package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`), or `ci.yml` | local D1 refuses a statement of `pnpm run seed:dev`, a sample row of `pnpm run db:check-d1` or writing one API key, or an app table has no sample row |
+| [ci.yml](./.github/workflows/ci.yml) `d1` | a change to `src/db/` or any source the seed, the sample-row check or the key CLI imports (`src/import/`, `src/source/`, `src/italian/`, `src/lookup/`, `src/names/`, `src/billing/`, `src/api/`, `src/core/`, `src/commandLine.ts`), `fixtures/`, `drizzle.config.ts`, `web/wrangler.jsonc`, `.nvmrc`, the dependencies (`package.json`, `web/package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`), or `ci.yml` | local D1 refuses a statement of `pnpm run seed:dev`, a sample row of `pnpm run db:check-d1` or writing one API key, or an app table has no sample row |
 | [ci.yml](./.github/workflows/ci.yml) `validate the ADR corpus` | a change to `.decisions/`, `ci.yml`, `.fabrika.jsonc` or `pnpm-workspace.yaml` | two records share an ADR id, or a filename disagrees with its frontmatter |
 | [ci.yml](./.github/workflows/ci.yml) `ci-required` | every pull request, merge queue entry and push to `main`; it gates `check`, `test-web`, `d1` and `validate the ADR corpus` | `changes` failed, or a job the change needed failed, was cancelled or was skipped; on a merge queue entry also when the pull request carries `ready-for:human`, or its head ref or labels cannot be read ([ADR 0006](./.decisions/0006-codex-review-is-the-merge-gate.md)) |
 | [secrets.yml](./.github/workflows/secrets.yml) | every pull request and merge queue entry | a changed file carries a secret (gitleaks), or a changed doc or shell file carries a machine-local path (leak-guard) |

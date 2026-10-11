@@ -377,6 +377,7 @@ const GUIDE_TOPICS: Readonly<Record<Guide, (origins: SiteOrigins, signUp: SignUp
   attribution: (origins) => (
     <Topic page={{ kind: "guide", guide: "attribution" }}>
       <Paragraph>{"The API's text comes from Wikizionario, the Italian Wiktionary, under CC BY-SA 4.0. Every result carries `attribution`: `licence`, `licence_url`, `source`, and `source_url`, the word's Wikizionario page."}</Paragraph>
+      <Paragraph>{"A proper name Wikizionario does not explain may come from Wikidata instead: a result with `pos` `name` whose `id` is `<release_id>:wikidata:<item>`, its one definition the item's Italian description. Its `attribution` names `Wikidata`, `CC0 1.0` and the item's page."}</Paragraph>
       <p className={DOCS_PARAGRAPH}>
         <Text>{"Where you show or pass on that text, credit it with the source and its page, name the licence with its link, and share what you adapt from it under the same licence. "}</Text>
         <a className={LINK} href={`${origins.lexema}/licence`}>

@@ -68,7 +68,7 @@ test("a correct:records declaration takes no inputs and counts the correction ta
 test("a malformed declaration or an unknown command is refused with a message naming the file", () => {
   assert.match(refusal("{ command: "), /is not JSON/);
   assert.match(refusal("[]"), /JSON object/);
-  assert.match(refusal(declared({ command: "update:apply" })), /command must be one of update:upgrade, update:auto, hide:records, normalize:source-text, correct:records, load:page-entries, load:recovered-definitions, got "update:apply"/);
+  assert.match(refusal(declared({ command: "update:apply" })), /command must be one of update:upgrade, update:auto, hide:records, normalize:source-text, correct:records, load:page-entries, load:recovered-definitions, load:names, got "update:apply"/);
   assert.match(refusal(declared({})), /command must be one of/);
   assert.match(refusal(declared({ command: "update:auto", inputs: { feedRelease: "it-78385B62" } })), /inputs\.feedRelease must be a release id/);
   assert.match(refusal(declared({ command: "update:auto", inputs: {} })), /inputs\.feedRelease must be a release id/);
@@ -215,6 +215,11 @@ test("every declaration already in dictionary-changes parses as before, with no 
     // The meaning senses' edges (#755) name words whose edges point at the record's base word, then words whose edges are removed.
     if (name === "2026-10-09-correct-form-of-meaning-edges.json") {
       assert.deepEqual(parseDraft(path, text).lookups?.map((item) => item.word), ["mele", "scandinave", "fermi", "pampini", "scandinava", "andarsene"]);
+      continue;
+    }
+    // The Wikidata names (#794) name names they add, and words whose key the source already answers.
+    if (name === "2026-10-11-load-names-wikidata.json") {
+      assert.deepEqual(parseDraft(path, text).lookups?.map((item) => item.word), ["Hormuz", "mar Mediterraneo", "Brent", "Iran", "sale"]);
       continue;
     }
     // The hand-kept readings (#745) name each word they give a reading, with a definition of it.
