@@ -443,9 +443,14 @@ pnpm run load:names       # write that snapshot into the seeded dictionary
 `names:fetch` sends one SPARQL query per category of
 [`src/names/nameCategories.ts`](../src/names/nameCategories.ts) to
 query.wikidata.org, one at a time, and asks again after a pause when the
-service times out. It keeps every item with an Italian label, an Italian
+service times out. People are the exception: counting each person's
+Wikipedias times out there, so their query goes to the QLever mirror of
+Wikidata (`https://qlever.dev/api/wikidata`), a recent copy rather than the
+live data. It keeps every item with an Italian label, an Italian
 description and an Italian Wikipedia page, each once, and writes the snapshot
 in shown order: by category, then the older item first. It writes nothing else.
+`--category <id>` (for example `--category person`) asks for that one
+category and replaces only its lines, so every other line stays as committed.
 Commit the snapshot: its diff is the names that changed.
 
 `load:names` picks its database the way the seed does (`SEED_STATE`, or
@@ -460,9 +465,10 @@ keeps the full rule). So `Sale` the comune is left out (the salt noun
 answers `sale`), and `Giulia` the river is added after `Giulia`'s record,
 whose one sense has no gloss. It prints the items written, removed and left
 out. `--plan-only` prints the counts and writes nothing. On a master without
-`name_entry` it plans but refuses to write, and names `pnpm run update:upgrade`.
+`name_entry`, or with one from before `person` was a category, it plans but
+refuses to write, and names `pnpm run update:upgrade`.
 No source row is touched, and the full seed writes no names; `pnpm run
-seed:dev` writes the eight of `fixtures/names/dev-names.jsonl` the same way.
+seed:dev` writes the nine of `fixtures/names/dev-names.jsonl` the same way.
 
 On the shared `lexema-dictionary`, the dictionary deploy workflow runs it
 after a merged declaration `{"command": "load:names"}` names it, its

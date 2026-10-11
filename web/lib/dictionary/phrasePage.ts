@@ -12,6 +12,7 @@
 
 import type { EntryIdentity, FoundRoute, PhraseDefinition, PhraseForm, Reading } from "@lexema/lookup/types.ts";
 import { definitionsOf, type DefinitionItem } from "./definitions.ts";
+import { wiktionarySource, type WiktionarySource } from "./footerSource.ts";
 
 type NonEmpty<T> = [T, ...T[]];
 
@@ -64,12 +65,12 @@ export interface PhrasePage {
    */
   unnamed: string[];
   /**
-   * The word whose Wiktionary page the one *Source* link opens: the first
-   * expression the page shows, in display order, never the searched words'
-   * (Huey's hand check of 2026-09-30, 11:19Z on #214; one link per page, #281;
-   * display order, #291).
+   * The Wiktionary page the one *Source* link opens: the first expression the
+   * page shows, in display order, never the searched words' (Huey's hand
+   * check of 2026-09-30, 11:19Z on #214; one link per page, #281; display
+   * order, #291).
    */
-  sourceWord: string;
+  source: WiktionarySource;
 }
 
 /** The expression a reading shows first: its first form line's, else the headword its first meaning is copied from. */
@@ -125,6 +126,6 @@ export function phrasePage(
     headword: query,
     readings,
     unnamed,
-    sourceWord: first === undefined ? route.phrases[0].word : firstPhraseOf(first.text),
+    source: wiktionarySource(first === undefined ? route.phrases[0].word : firstPhraseOf(first.text)),
   };
 }

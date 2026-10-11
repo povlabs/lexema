@@ -19,6 +19,8 @@
 // release's normalizer, which the plan applies, since SQL cannot. So is
 // `corrected_edge` (#755): one from before an edge could be removed has a
 // target on every row, and is rebuilt with its rows so a row may name none.
+// So is `name_entry` (#794): one from before `person` was a category refuses
+// a person's row, and is rebuilt with its rows.
 //
 // The serving views are held to their schema.sql definition too (#525): when
 // one a dictionary stores differs, the upgrade replaces the views
@@ -104,6 +106,7 @@ export const REBUILT_GROUPS = [
   { tables: ["hidden_record"], indexes: [] },
   { tables: ["corrected_form"], indexes: ["corrected_form_by_key"] },
   { tables: ["corrected_edge"], indexes: ["corrected_edge_by_target"] },
+  { tables: NAME_TABLES, indexes: NAME_INDEXES },
 ] as const satisfies readonly { tables: readonly string[]; indexes: readonly string[] }[];
 
 /** A table the upgrade may rebuild. */
@@ -112,7 +115,8 @@ export type RebuiltTable = (typeof REBUILT_GROUPS)[number]["tables"][number];
 /**
  * Every table the upgrade may rebuild: the page-entry tables,
  * `corrected_definition`, `recovered_definition`, `recovered_label`,
- * `recovered_example`, `hidden_record`, `corrected_form` and `corrected_edge`.
+ * `recovered_example`, `hidden_record`, `corrected_form`, `corrected_edge` and
+ * `name_entry`.
  */
 export const REBUILT_TABLES: readonly RebuiltTable[] = REBUILT_GROUPS.flatMap((group) => group.tables);
 

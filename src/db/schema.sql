@@ -1138,7 +1138,8 @@ CREATE INDEX hand_kept_definition_by_key
 -- names the same way (ADR 0032). A lookup reads it
 -- beside the source's readings of its word, last (src/lookup/names.ts).
 -- Absent on a master seeded before it until `update:upgrade` creates it; a
--- lookup reads an absent one as empty.
+-- lookup reads an absent one as empty. One stored before `person` was a
+-- category is rebuilt by the upgrade with its rows (src/update/masterUpgrade.ts).
 CREATE TABLE name_entry (
   item        TEXT NOT NULL PRIMARY KEY CHECK (item GLOB 'Q[1-9]*' AND item NOT GLOB 'Q*[^0-9]*'),
   -- The Italian label, as Wikidata states it.
@@ -1147,7 +1148,7 @@ CREATE TABLE name_entry (
   -- The Italian description, as Wikidata states it: the entry's one meaning.
   description TEXT NOT NULL CHECK (description <> '' AND trim(description) = description),
   -- The category that admitted it (`NAME_CATEGORIES` in src/names/nameCategories.ts).
-  category    TEXT NOT NULL CHECK (category IN ('country', 'continent', 'sea', 'river', 'lake', 'mountain', 'island', 'comune', 'city', 'international-organization', 'political-party', 'listed-company', 'football-club', 'language', 'currency', 'holiday'))
+  category    TEXT NOT NULL CHECK (category IN ('country', 'continent', 'sea', 'river', 'lake', 'mountain', 'island', 'comune', 'city', 'international-organization', 'political-party', 'listed-company', 'football-club', 'language', 'currency', 'holiday', 'person'))
 ) STRICT;
 
 -- "Which name entry spells this?", as lookup_form_by_key.

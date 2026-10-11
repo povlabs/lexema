@@ -45,7 +45,7 @@ export const SOURCE_LABEL = "Fonte";
 export const sourceLinkName = (word: string): string =>
   `Pagina di Wikizionario per ${word}, la fonte di questa pagina (si apre in una nuova scheda)`;
 
-/** A name entry's own *Fonte* link's accessible name: its Wikidata item (ADR 0032). */
+/** The footer *Fonte*'s accessible name on a page of name entries alone: the first one's Wikidata item (ADR 0032, #827). */
 export const nameSourceLinkName = (label: string): string => `Voce di Wikidata per ${label}, la fonte di questa voce (si apre in una nuova scheda)`;
 
 /** An expressions list's filter, past thirty rows. */
