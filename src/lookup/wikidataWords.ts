@@ -8,9 +8,8 @@
 // both have a word. `/exists` reads them on their own (`wikidataWordsOf`).
 // Each is a reading of its own: its lemma, the part of speech its lexical
 // category maps to, and the Italian glosses of its senses as its definitions.
-// `paralimpico` reads lexeme L1247138.
+// `flebo` reads lexeme L1261627.
 
-import { normalizeItalianExact } from "../italian/normalize.js";
 import { isLexicalCategory, partOfSpeechOf, type LexicalCategory } from "../wikidataWords/lexicalCategories.js";
 import { lexemeNumber, type LexemeGloss as SnapshotGloss } from "../wikidataWords/wikidataWord.js";
 
@@ -107,16 +106,6 @@ export async function unlessDeclaredLemma<T>(
   if (words.length === 0 || (await isDeclaredLemma(db, releaseId, key, tables))) return [];
   return [...words];
 }
-
-/**
- * Whether any of `words` is headed by `key`: its lemma spells the key, so
- * Wikidata states the spelling a word of its own, not a form of another.
- * Rule `it-word-shape/v1` reads a key only as a form of another word, so it
- * does not read such a key (#815): `spinale`, lexeme L1158511, is no `spina`
- * + `le` of spinare. A key a lexeme spells only as a form, `ben` of bene,
- * stays the rule's to read.
- */
-export const headsKey = (key: string, words: readonly { word: string }[]): boolean => words.some((one) => normalizeItalianExact(one.word) === key);
 
 /** A Wikidata word named by its row: what a batch candidate carries. */
 export const wikidataWordHeadOf = (releaseId: string, row: Pick<WordRow, "lexeme" | "lemma"> & { category: LexicalCategory }): WikidataWordHead => {

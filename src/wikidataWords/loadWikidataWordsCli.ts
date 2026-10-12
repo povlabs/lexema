@@ -43,6 +43,7 @@ export async function main(
   log(`planning ${snapshot.length} Wikidata word(s) of the dump of ${plan.snapshot} for the master ${plan.masterReleaseId} in ${target.dictionary}`);
   const lines = [
     `written: ${plan.written.length}`,
+    `left out, no Italian gloss: ${plan.unglossed.length}`,
     `left out, the dictionary already answers every spelling: ${plan.answered.length}`,
     `held but no longer in the snapshot, left serving: ${plan.absent.length}${plan.absent.length === 0 ? "" : ` (${plan.absent.join(", ")})`}`,
   ];
@@ -50,6 +51,7 @@ export async function main(
   if (planOnly) {
     return planOnlyAnswer(planOnlyRun("load:wikidata-words", plan.counts, reader), plan.sql, out, `wikidata-words-${plan.masterReleaseId}`, {
       written: plan.written.length,
+      unglossed: plan.unglossed.length,
       answered: plan.answered.length,
       absent: plan.absent.length,
     });

@@ -32,7 +32,7 @@ This record transcribes that ruling. Until now every reading Lexema serves comes
 - **Refresh.** The input is a pinned snapshot of Wikidata's Italian lexemes, taken from the lexeme dump, with its dump date and SHA-256 recorded, as a Wiktionary release records its own. A newer snapshot is diffed against the layer by lexeme id, never re-imported whole, and the master is never re-seeded for it. In the spirit of ADR 0025, newer Wikidata data is authoritative for this layer and applied without per-word review: a new lexeme is added, and a changed lexeme replaces the one served while the older rows are kept as history. A lexeme absent from the newer snapshot is reported and left serving, as a lost source record is. Accuracy is investigated when a user reports a problem.
 - **Credit and link.** On a Wikidata word's page, *Fonte* links to its lexeme, `https://www.wikidata.org/wiki/Lexeme:L<n>`. The Licenza page carries one Wikidata credit, which every Wikidata layer shares ([ADR 0009](0009-two-licences-and-a-source-link.md), as amended by this record).
 - **API.** Each result's `attribution` field for a Wikidata word names Wikidata as the source, the lexeme URL as `source_url`, and CC0 1.0 (`https://creativecommons.org/publicdomain/zero/1.0/`) as the licence: Lexema passes a Wikidata word on under CC0, as it received it, so ADR 0009's CC BY-SA 4.0 for everything Lexema publishes does not reach it. A Wiktionary result's field is unchanged.
-- **No meta notes.** A Wikidata word shows as an ordinary entry, with no mark of where it came from ([ADR 0016](0016-page-shows-no-origin-marks.md)). A word with no Italian gloss shows its part of speech and forms, and no note about the meaning it lacks.
+- **No meta notes.** A Wikidata word shows as an ordinary entry, with no mark of where it came from ([ADR 0016](0016-page-shows-no-origin-marks.md)). A word with no Italian gloss shows its part of speech and forms, and no note about the meaning it lacks. The 2026-10-12 [amendment](#amendments) loads no such word.
 - **The source-data rule.** AGENTS.md's "Source-derived lexical data is read-only" rule holds for Wikidata words as for Wiktionary data: they are kept as imported, keep where each fact came from, and every valid candidate is returned.
 
 **Binding constraints.**
@@ -46,7 +46,7 @@ This record transcribes that ruling. Until now every reading Lexema serves comes
 
 ## Consequences
 
-- Words such as *stanotte*, *oddio* and *paralimpico* get an entry. Most of them show no meaning at first, because about two thirds of the counted lexemes carry no Italian gloss.
+- Words such as *stanotte*, *oddio* and *paralimpico* get an entry. Most of them show no meaning at first, because about two thirds of the counted lexemes carry no Italian gloss. The 2026-10-12 [amendment](#amendments) serves only the glossed ones instead.
 - Lexema has two sources. The Licenza page, the API and the *Fonte* link each say which one an entry comes from, while the page itself shows no origin mark.
 - Wikidata is edited openly, so a lexeme can carry a mistake or vandalism, and a refresh can bring one in. As with ADR 0025, that is investigated on a user report.
 - The layer adds rows to D1. The import ([#812](https://github.com/povlabs/lexema/issues/812)) checks their size and cost before it lands.
@@ -55,3 +55,7 @@ This record transcribes that ruling. Until now every reading Lexema serves comes
 ## Records
 
 New term **Wikidata word**, defined in [.glossary/TERMS.md](../.glossary/TERMS.md) in the same change.
+
+## Amendments
+
+- **Only a lexeme with an Italian gloss is served (2026-10-12).** A preview showed *paralimpico* as a bare "Aggettivo" with no meaning. 44 of the 63 lexemes of the first snapshot carry no Italian gloss. Huey was asked "Ship only the 19 Wikidata words that have a definition, and put the 44 on the add-by-hand list?" and answered "yes" ([ruling](https://github.com/povlabs/lexema/issues/802#issuecomment-6132217647)). So `load:wikidata-words` writes a lexeme only when at least one of its senses has an Italian gloss; a lexeme with none stays in the committed snapshot as imported and is not loaded. This narrows "What it adds" and replaces "A word with no Italian gloss shows its part of speech and forms" under *No meta notes*, and the first consequence: *stanotte*, *oddio* and *paralimpico* get no Wikidata entry, and the 44 go on the add-by-hand list ([#803](https://github.com/povlabs/lexema/issues/803)). *Wiktionary wins* and every binding constraint above stand as written.

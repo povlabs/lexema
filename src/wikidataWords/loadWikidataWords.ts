@@ -2,9 +2,10 @@
 // words in line with the committed snapshot. It reads the master and writes
 // nothing: the plan is the SQL a run applies, counted.
 //
-// A lexeme is kept when at least one of its spellings, lemma or form, is a
-// spelling the dictionary does not already answer with something to read
-// (`answeredKeys`, src/names/loadNames.ts). A lookup reads a Wikidata word
+// A lexeme is kept when it has an Italian gloss (`hasItalianGloss`, ADR
+// 0033's 2026-10-12 amendment) and at least one of its spellings, lemma or
+// form, is a spelling the dictionary does not already answer with something
+// to read (`answeredKeys`, src/names/loadNames.ts). A lookup reads a Wikidata word
 // only when no Wiktionary reading answers the spelling asked
 // (src/lookup/wikidataWords.ts), so a kept lexeme never shows where
 // Wiktionary has the word. Each run writes a lexeme the master lacks, and a
@@ -20,7 +21,7 @@ import { readMasterRelease, select, upgradeNeededFor, type MasterReader } from "
 import { WIKIDATA_WORD_TABLES } from "../update/masterUpgrade.js";
 import { PlanCounts } from "../update/planCounts.js";
 import { PINNED_LEXEME_DUMP } from "./lexemeDump.js";
-import { keysOfWord, type WikidataWord } from "./wikidataWord.js";
+import { hasItalianGloss, keysOfWord, type WikidataWord } from "./wikidataWord.js";
 import { snapshotOf } from "./wordSnapshot.js";
 
 /** One `wikidata_word` row, as stored. */
@@ -57,6 +58,8 @@ export interface WikidataWordPlan {
   written: WikidataWord[];
   /** Held lexemes the snapshot no longer has: reported, and left serving. */
   absent: string[];
+  /** Snapshot words left out: none has an Italian gloss. */
+  unglossed: WikidataWord[];
   /** Snapshot words left out: the dictionary already answers every spelling of each. */
   answered: WikidataWord[];
   /** Empty when there is nothing to do. */
@@ -122,7 +125,9 @@ function inserts(table: string, columns: readonly string[], tuples: readonly str
  */
 export async function planWikidataWords(reader: MasterReader, snapshot: readonly WikidataWord[], date: string = PINNED_LEXEME_DUMP.date): Promise<WikidataWordPlan> {
   const master = readMasterRelease(reader);
-  const words = snapshotOf(snapshot);
+  const all = snapshotOf(snapshot);
+  const words = all.filter(hasItalianGloss);
+  const unglossed = all.filter((word) => !hasItalianGloss(word));
   const answered = await answeredKeys(reader, master.releaseId, words.flatMap(keysOfWord));
   const left = words.filter((word) => keysOfWord(word).every((key) => answered.has(key)));
   const kept = words.filter((word) => !left.includes(word));
@@ -131,9 +136,9 @@ export async function planWikidataWords(reader: MasterReader, snapshot: readonly
     const row = held.get(word.lexeme);
     return row === undefined || !sameContent(row, wordRow(word, date));
   });
-  const inSnapshot = new Set<string>(words.map((word) => word.lexeme));
+  const inSnapshot = new Set<string>(all.map((word) => word.lexeme));
   const absent = [...held.keys()].filter((lexeme) => !inSnapshot.has(lexeme)).sort();
-  const base = { masterReleaseId: master.releaseId, snapshot: date, written, absent, answered: left };
+  const base = { masterReleaseId: master.releaseId, snapshot: date, written, absent, unglossed, answered: left };
   if (written.length === 0) return { ...base, sql: "", counts: PlanCounts.NONE };
 
   // A row of this very snapshot that differs is replaced; one of an older snapshot stays as history.

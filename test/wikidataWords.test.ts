@@ -1,6 +1,6 @@
 // Wikidata words (ADR 0033, #812): Italian lexemes from Wikidata's dump kept
-// as imported, `load:wikidata-words` writing the committed snapshot into a
-// seeded master, and a lookup reading a word only where no Wiktionary reading
+// as imported, `load:wikidata-words` writing the committed snapshot's words
+// with an Italian gloss into a seeded master, and a lookup reading a word only where no Wiktionary reading
 // answers the spelling. Inputs are verbatim: lexemes of the dump of
 // 2026-10-07 (fixtures/wikidata-words/), the development fixture
 // (fixtures/dev-seed.jsonl) and the declared lemma fixture
@@ -34,7 +34,7 @@ import { PlanCounts } from "../src/update/planCounts.js";
 import { POS_TITLE_BY_CATEGORY } from "../src/wikidataWords/lexicalCategories.js";
 import { LexemeDumpRefused, PINNED_LEXEME_DUMP, wikidataWordsOf, type LexemeDump } from "../src/wikidataWords/lexemeDump.js";
 import { missingForWikidataWords, planWikidataWords, unwrittenWikidataWords } from "../src/wikidataWords/loadWikidataWords.js";
-import { InvalidWikidataWord, keysOfWord, lexemePageUrl, wikidataWord, wikidataWordOfDump, type WikidataWord, type WikidataWordSpec } from "../src/wikidataWords/wikidataWord.js";
+import { hasItalianGloss, InvalidWikidataWord, keysOfWord, lexemePageUrl, wikidataWord, wikidataWordOfDump, type WikidataWord, type WikidataWordSpec } from "../src/wikidataWords/wikidataWord.js";
 import { askedKeysOf, ASKED_WORDS_PATH, isAsked, parseSnapshot, readWordSnapshot, snapshotText, WORD_SNAPSHOT_PATH } from "../src/wikidataWords/wordSnapshot.js";
 
 const RELEASE = "it-wikidata-words";
@@ -104,6 +104,8 @@ test("the committed snapshot holds every lexeme the count names, each once, in l
   const counted = [...new Set(group.match(/L\d+/g))].sort();
   assert.deepEqual(committed.map((one) => one.lexeme).sort(), counted);
   assert.equal(committed.length, 63);
+  // Only the 19 with an Italian gloss are loaded (ADR 0033's 2026-10-12 amendment).
+  assert.equal(committed.filter(hasItalianGloss).length, 19);
   // Each is spelled by an asked word; the four fixture lines are the snapshot's own.
   const asked = askedKeysOf(await readFile(ASKED_WORDS_PATH, "utf8"));
   assert.equal(asked.size, 60);
@@ -130,13 +132,12 @@ function execute(db: DatabaseSync, sql: string): void {
   }
 }
 
-/** `fixture`'s lines, or several fixtures' in order, seeded as a release, with no Wikidata word table, as a master from before #812. */
-async function seeded(fixture: string | readonly string[]): Promise<DatabaseSync> {
+/** `fixture` seeded as a release, with no Wikidata word table, as a master from before #812. */
+async function seeded(fixture: string): Promise<DatabaseSync> {
   const dir = await mkdtemp(join(tmpdir(), "lexema-wikidata-words-"));
   try {
     const archive = join(dir, "fixture.jsonl.gz");
-    const texts = await Promise.all((typeof fixture === "string" ? [fixture] : fixture).map((path) => readFile(path, "utf8")));
-    await writeFile(archive, gzipSync(texts.map((text) => text.trimEnd()).join("\n") + "\n"));
+    await writeFile(archive, gzipSync(await readFile(fixture)));
     const { parts } = await seedSql({ input: archive, outputDir: join(dir, "sql"), schema: SCHEMA, releaseId: RELEASE, license: "CC-BY-SA-4.0", onRejection: (rejection) => {
       throw new Error(`fixture line rejected: ${JSON.stringify(rejection)}`);
     } });
@@ -150,7 +151,7 @@ async function seeded(fixture: string | readonly string[]): Promise<DatabaseSync
 }
 
 /** The fixture seeded, upgraded and loaded with the fixture's lexemes. */
-async function loaded(fixture: string | readonly string[], words: readonly WikidataWord[] = WORDS): Promise<DatabaseSync> {
+async function loaded(fixture: string, words: readonly WikidataWord[] = WORDS): Promise<DatabaseSync> {
   const db = await seeded(fixture);
   execute(db, masterUpgradeSql(await readFile(SCHEMA, "utf8")));
   execute(db, (await planWikidataWords(readerOf(db), words)).sql);
@@ -168,18 +169,21 @@ async function readingsOf(db: DatabaseSync, query: string): Promise<string[]> {
   return result.outcome === "found" ? shown(result.readings) : [result.outcome];
 }
 
-test("load:wikidata-words writes each lexeme with a spelling the dictionary does not answer, after the upgrade, and only once", async () => {
+test("load:wikidata-words writes each glossed lexeme with a spelling the dictionary does not answer, after the upgrade, and only once", async () => {
   const db = await seeded("fixtures/dev-seed.jsonl");
   try {
     const reader = readerOf(db);
     const recordsBefore = db.prepare("SELECT * FROM source_record_json ORDER BY record_id").all();
     const plan = await planWikidataWords(reader, WORDS);
-    // Every fixture lexeme has a spelling the development fixture does not answer: `papino`, `c'`, `pento`.
-    assert.deepEqual(plan.written.map((one) => one.lexeme), ["L1144362", "L1165467", "L1247138", "L1255218", "L1422655"]);
+    // Only papà and pentirsi have an Italian gloss, and each has a spelling the development fixture does not answer: `papino`, `pento`.
+    const glossed = WORDS.filter(hasItalianGloss);
+    assert.deepEqual(plan.written.map((one) => one.lexeme), ["L1144362", "L1422655"]);
+    // ci, paralimpico and verbalizzare have none, so they are left out though the fixture answers none of `c'`, `paralimpico`, `verbalizzo`.
+    assert.deepEqual(plan.unglossed.map((one) => one.lexeme), ["L1165467", "L1247138", "L1255218"]);
     assert.deepEqual([plan.answered, plan.absent, plan.snapshot], [[], [], DATE]);
-    const keys = WORDS.reduce((sum, one) => sum + keysOfWord(one).length, 0);
-    assert.deepEqual(plan.counts.toJSON(), { records: { added: 0, changed: 0, removed: 0 }, written: { wikidata_word: 5, wikidata_word_key: keys }, deleted: {} });
-    assert.deepEqual(wordsOfWikidataWords(plan), touchedWords(WORDS.flatMap((one) => [one.lemma, ...one.forms.map((form) => form.spelling)])));
+    const keys = glossed.reduce((sum, one) => sum + keysOfWord(one).length, 0);
+    assert.deepEqual(plan.counts.toJSON(), { records: { added: 0, changed: 0, removed: 0 }, written: { wikidata_word: 2, wikidata_word_key: keys }, deleted: {} });
+    assert.deepEqual(wordsOfWikidataWords(plan), touchedWords(glossed.flatMap((one) => [one.lemma, ...one.forms.map((form) => form.spelling)])));
     // The SQL creates nothing (#509): the upgrade gives the master the tables, and the plan is the same after it.
     assert.doesNotMatch(plan.sql, /\b(CREATE|DROP|ALTER)\b/);
     assert.deepEqual(missingForWikidataWords(reader), ["wikidata_word", "wikidata_word_key"]);
@@ -195,7 +199,7 @@ test("load:wikidata-words writes each lexeme with a spelling the dictionary does
     assert.equal(again.counts, PlanCounts.NONE);
 
     // A lexeme whose every spelling the dictionary answers is left out: `sale` and `sala`, both records here.
-    const sale = wikidataWord({ lexeme: "L9999999", lemma: "sale", category: "Q1084", forms: [{ form: "L9999999-F1", spelling: "sale", features: [] }], glosses: [] });
+    const sale = wikidataWord({ lexeme: "L9999999", lemma: "sale", category: "Q1084", forms: [{ form: "L9999999-F1", spelling: "sale", features: [] }], glosses: [{ sense: "L9999999-S1", gloss: "condimento" }] });
     assert.deepEqual((await planWikidataWords(reader, [...WORDS, sale])).answered.map((one) => one.lexeme), ["L9999999"]);
   } finally {
     db.close();
@@ -206,11 +210,11 @@ test("a refresh writes a changed lexeme as a row of the newer dump, keeps the ol
   const db = await loaded("fixtures/dev-seed.jsonl");
   try {
     const reader = readerOf(db);
-    const changed = WORDS.filter((one) => one.lemma !== "ci").map((one) =>
+    const changed = WORDS.filter((one) => one.lemma !== "papà").map((one) =>
       one.lemma === "pentirsi" ? wikidataWord({ ...one, glosses: [{ sense: "L1422655-S1", gloss: "provare rimorso per un'azione sbagliata commessa" }] }) : one,
     );
     const refresh = await planWikidataWords(reader, changed, "2026-10-14");
-    assert.deepEqual([refresh.written.map((one) => one.lexeme), refresh.absent], [["L1422655"], ["L1165467"]]);
+    assert.deepEqual([refresh.written.map((one) => one.lexeme), refresh.absent], [["L1422655"], ["L1144362"]]);
     assert.deepEqual(refresh.counts.toJSON().deleted, {});
     execute(db, refresh.sql);
     assert.deepEqual(unwrittenWikidataWords(reader, refresh), []);
@@ -220,7 +224,8 @@ test("a refresh writes a changed lexeme as a row of the newer dump, keeps the ol
     );
     assert.deepEqual(await readingsOf(db, "pento"), ["L1422655 pentirsi Verbo: provare rimorso per un'azione sbagliata commessa"]);
     // The lexeme the newer snapshot dropped keeps its row, still served.
-    assert.deepEqual(db.prepare("SELECT snapshot FROM wikidata_word WHERE lexeme = 'L1165467'").all().map((row) => ({ ...row })), [{ snapshot: DATE }]);
+    assert.deepEqual(db.prepare("SELECT snapshot FROM wikidata_word WHERE lexeme = 'L1144362'").all().map((row) => ({ ...row })), [{ snapshot: DATE }]);
+    assert.deepEqual(await readingsOf(db, "paparino"), ["L1144362 papà Sostantivo: termine affettuoso per riferirsi al genitore di sesso maschile"]);
   } finally {
     db.close();
   }
@@ -233,37 +238,36 @@ test("Wiktionary wins: a word both have shows only the Wiktionary entry, and a s
     assert.deepEqual(await readingsOf(db, "papà"), ["papà noun"]);
     // paparino is one of that lexeme's forms and spells nothing of Wiktionary's: the lexeme answers it.
     assert.deepEqual(await readingsOf(db, "paparino"), ["L1144362 papà Sostantivo: termine affettuoso per riferirsi al genitore di sesso maschile"]);
-    // A lexeme with no Italian gloss is a reading all the same, with no definition.
-    assert.deepEqual(await readingsOf(db, "paralimpico"), ["L1247138 paralimpico Aggettivo: "]);
-    assert.deepEqual(await readingsOf(db, "Paralimpiche"), ["L1247138 paralimpico Aggettivo: "]);
-    // The fixture has no record of ci, so the lexeme answers it and its elided `c'`.
-    assert.deepEqual(await readingsOf(db, "c'"), ["L1165467 ci Avverbio: "]);
+    // A lexeme with no Italian gloss is not loaded, so it answers nothing.
+    assert.deepEqual(await readingsOf(db, "paralimpico"), ["not-found"]);
+    assert.deepEqual(await readingsOf(db, "Paralimpiche"), ["not-found"]);
 
-    const result = await lookup({ db: fromNodeSqlite(db), releaseId: RELEASE, query: "paralimpica" });
+    const result = await lookup({ db: fromNodeSqlite(db), releaseId: RELEASE, query: "Paparino" });
     assert.ok(result.outcome === "found");
-    const [paralimpico] = result.readings;
-    assert.ok(isWikidataWord(paralimpico));
+    const [papa] = result.readings;
+    assert.ok(isWikidataWord(papa));
     assert.deepEqual(
-      [paralimpico.word, paralimpico.pos, paralimpico.posTitle, paralimpico.ref, paralimpico.isAboutQuery, paralimpico.senses, paralimpico.recovered, paralimpico.lexemeGlosses],
-      ["paralimpico", "adj", "Aggettivo", { releaseId: RELEASE, wiki: "www.wikidata.org", lexeme: "L1247138", snapshot: DATE }, true, [], [], []],
+      [papa.word, papa.pos, papa.posTitle, papa.ref, papa.isAboutQuery, papa.senses, papa.recovered, papa.lexemeGlosses.map(({ text }) => text)],
+      ["papà", "noun", "Sostantivo", { releaseId: RELEASE, wiki: "www.wikidata.org", lexeme: "L1144362", snapshot: DATE }, true, [], [], ["termine affettuoso per riferirsi al genitore di sesso maschile"]],
     );
-    assert.equal(entryKey(paralimpico), "lexeme-L1247138");
-    assert.equal(publicEntryId({ releaseId: RELEASE, lexeme: paralimpico.lexeme }), `${RELEASE}:wikidata:L1247138`);
+    assert.equal(entryKey(papa), "lexeme-L1144362");
+    assert.equal(publicEntryId({ releaseId: RELEASE, lexeme: papa.lexeme }), `${RELEASE}:wikidata:L1144362`);
 
     // `/exists` credits the lexeme, and a word Wiktionary has stays credited to Wiktionary.
-    const present = await exists({ db: fromNodeSqlite(db), releaseId: RELEASE, query: "paralimpico" });
+    const present = await exists({ db: fromNodeSqlite(db), releaseId: RELEASE, query: "paparino" });
     assert.ok(present.outcome === "present");
-    assert.deepEqual([present.word, present.lexeme], ["paralimpico", "L1247138"]);
-    const papa = await exists({ db: fromNodeSqlite(db), releaseId: RELEASE, query: "papà" });
-    assert.ok(papa.outcome === "present");
-    assert.deepEqual([papa.word, papa.lexeme], ["papà", undefined]);
+    assert.deepEqual([present.word, present.lexeme], ["papà", "L1144362"]);
+    assert.equal((await exists({ db: fromNodeSqlite(db), releaseId: RELEASE, query: "paralimpico" })).outcome, "absent");
+    const record = await exists({ db: fromNodeSqlite(db), releaseId: RELEASE, query: "papà" });
+    assert.ok(record.outcome === "present");
+    assert.deepEqual([record.word, record.lexeme], ["papà", undefined]);
 
     // The batch answers each word as the lookup does, under the same ids.
     const { answers } = await lookupBatch({ db: fromNodeSqlite(db), releaseId: RELEASE, queries: ["papà", "paparino", "paralimpico", "pento", "qqqqqq"] });
     const ids = answers.map((answer) => (answer.outcome === "found" ? answer.candidates.map((candidate) => `${publicEntryId(candidate)} ${candidate.word} ${candidate.pos} ${candidate.posTitle}`) : answer.outcome));
     assert.deepEqual(ids.slice(1), [
       [`${RELEASE}:wikidata:L1144362 papà noun Sostantivo`],
-      [`${RELEASE}:wikidata:L1247138 paralimpico adj Aggettivo`],
+      "not-found",
       [`${RELEASE}:wikidata:L1422655 pentirsi verb Verbo`],
       "not-found",
     ]);
@@ -276,55 +280,23 @@ test("Wiktionary wins: a word both have shows only the Wiktionary entry, and a s
 test("a spelling only name entries answer shows its Wikidata words after them", async () => {
   const db = await loaded("fixtures/dev-seed.jsonl");
   try {
-    const island = nameItem({ item: "Q1000003", label: "Paralimpico", description: "isola", category: "island" });
+    const island = nameItem({ item: "Q1000003", label: "Paparino", description: "isola", category: "island" });
     execute(db, (await planNames(readerOf(db), [island])).sql);
-    const result = await lookup({ db: fromNodeSqlite(db), releaseId: RELEASE, query: "paralimpico" });
+    const result = await lookup({ db: fromNodeSqlite(db), releaseId: RELEASE, query: "paparino" });
     assert.ok(result.outcome === "found");
-    assert.deepEqual(result.readings.map((reading) => reading.nameItem ?? reading.lexeme), ["Q1000003", "L1247138"]);
-    const { answers } = await lookupBatch({ db: fromNodeSqlite(db), releaseId: RELEASE, queries: ["paralimpico"] });
+    assert.deepEqual(result.readings.map((reading) => reading.nameItem ?? reading.lexeme), ["Q1000003", "L1144362"]);
+    const { answers } = await lookupBatch({ db: fromNodeSqlite(db), releaseId: RELEASE, queries: ["paparino"] });
     assert.ok(answers[0].outcome === "found");
-    assert.deepEqual(answers[0].candidates.map((candidate) => candidate.nameItem ?? candidate.lexeme), ["Q1000003", "L1247138"]);
-  } finally {
-    db.close();
-  }
-});
-
-test("a key a Wikidata word heads is no word shape: spinale and memorial show their lexemes, and miglior, only a form, stays migliore's (#815)", async () => {
-  const committed = await readWordSnapshot();
-  const lexemes = committed.filter((one) => ["L1158511", "L1197243", "L1217823"].includes(one.lexeme));
-  assert.equal(lexemes.length, 3);
-  // fixtures/word-shapes.jsonl holds spinare, memoriale and migliore, lines of it-0c432803.
-  const db = await loaded(["fixtures/dev-seed.jsonl", "fixtures/word-shapes.jsonl"], lexemes);
-  try {
-    const lookupDb = fromNodeSqlite(db);
-    // spinale is the lemma of L1158511: it is not read as `spina` + `le` of spinare.
-    assert.deepEqual(await readingsOf(db, "spinale"), ["L1158511 spinale Aggettivo: "]);
-    // memorial is the lemma of L1197243: it is not read as a truncated memoriale.
-    assert.deepEqual(await readingsOf(db, "memorial"), ["L1197243 memorial Sostantivo: "]);
-    // miglior is only a form of L1217823: the rule still reads it as Wiktionary's migliore.
-    assert.deepEqual(await readingsOf(db, "miglior"), ["migliore adj"]);
-    // A shape the lexemes do not head still answers by rule: spinarle is spinare with a clitic.
-    assert.deepEqual(await readingsOf(db, "spinarle"), ["spinare verb"]);
-
-    const present = await exists({ db: lookupDb, releaseId: RELEASE, query: "spinale" });
-    assert.ok(present.outcome === "present");
-    assert.deepEqual([present.word, present.lexeme], ["spinale", "L1158511"]);
-    const miglior = await exists({ db: lookupDb, releaseId: RELEASE, query: "miglior" });
-    assert.ok(miglior.outcome === "present");
-    assert.deepEqual([miglior.word, miglior.lexeme], ["migliore", undefined]);
-
-    const { answers } = await lookupBatch({ db: lookupDb, releaseId: RELEASE, queries: ["spinale", "memorial", "miglior"] });
-    assert.deepEqual(
-      answers.map((answer) => (answer.outcome === "found" ? answer.candidates.map((candidate) => candidate.lexeme ?? `${candidate.word} ${candidate.pos}`) : answer.outcome)),
-      [["L1158511"], ["L1197243"], ["migliore adj"]],
-    );
+    assert.deepEqual(answers[0].candidates.map((candidate) => candidate.nameItem ?? candidate.lexeme), ["Q1000003", "L1144362"]);
   } finally {
     db.close();
   }
 });
 
 test("a declared lemma's page stays: a Wikidata word does not take a spelling the page answers as a declared lemma", async () => {
-  const db = await loaded("fixtures/declared-lemmas.jsonl");
+  // verbalizzare has no Italian gloss, so it is given one here, or the load would leave it out and prove nothing.
+  const glossed = WORDS.map((one) => (one.lemma === "verbalizzare" ? wikidataWord({ ...one, glosses: [{ sense: "L1255218-S1", gloss: "mettere a verbale" }] }) : one));
+  const db = await loaded("fixtures/declared-lemmas.jsonl", glossed);
   try {
     const db2 = fromNodeSqlite(db);
     const result = await lookup({ db: db2, releaseId: RELEASE, query: "verbalizzare" });
@@ -358,15 +330,15 @@ test("a lookup reads a key's Wikidata words by index, in the one statement that 
       return all(sql, params);
     };
     // A word Wiktionary answers and one only Wikidata has read the words in the same one statement, a lookup or a batch.
-    for (const query of ["casa", "paralimpico"]) await lookup({ db: recording, releaseId: RELEASE, query });
-    await lookupBatch({ db: recording, releaseId: RELEASE, queries: ["casa", "papà", "paralimpico", "pento", "qqqqqq"] });
+    for (const query of ["casa", "paparino"]) await lookup({ db: recording, releaseId: RELEASE, query });
+    await lookupBatch({ db: recording, releaseId: RELEASE, queries: ["casa", "papà", "paparino", "pento", "qqqqqq"] });
     assert.deepEqual(asked.filter((sql) => sql.includes("FROM wikidata_word")), [BESIDE_SOURCE_SQL, BESIDE_SOURCE_SQL, BESIDE_SOURCE_HEADS_SQL]);
     // A dictionary without the tables is sent none naming them.
     asked.length = 0;
     db.exec("DROP TABLE wikidata_word_key; DROP TABLE wikidata_word;");
-    assert.deepEqual(await readingsOf(db, "paralimpico"), ["not-found"]);
-    await lookup({ db: recording, releaseId: RELEASE, query: "paralimpico" });
-    await lookupBatch({ db: recording, releaseId: RELEASE, queries: ["paralimpico"] });
+    assert.deepEqual(await readingsOf(db, "paparino"), ["not-found"]);
+    await lookup({ db: recording, releaseId: RELEASE, query: "paparino" });
+    await lookupBatch({ db: recording, releaseId: RELEASE, queries: ["paparino"] });
     assert.ok(!asked.some((sql) => sql.includes("FROM wikidata_word")), asked.join("\n---\n"));
   } finally {
     db.close();
@@ -378,7 +350,7 @@ test("a declaration of load:wikidata-words takes no inputs and plans the committ
   const declaration = parseDeclaration(file, JSON.stringify({
     command: "load:wikidata-words",
     inputs: {},
-    expected: { records: { added: 0, changed: 0, removed: 0 }, written: { wikidata_word: 1, wikidata_word_key: 4 }, deleted: {} },
+    expected: { records: { added: 0, changed: 0, removed: 0 }, written: { wikidata_word: 1, wikidata_word_key: 7 }, deleted: {} },
   }));
   assert.equal(declaration.command, "load:wikidata-words");
   assert.throws(() => parseDeclaration(file, JSON.stringify({ command: "load:wikidata-words", inputs: { archive: "it-0c432803" }, expected: declaration.expected })), /inputs of load:wikidata-words/);
@@ -386,8 +358,9 @@ test("a declaration of load:wikidata-words takes no inputs and plans the committ
   try {
     execute(db, masterUpgradeSql(await readFile(SCHEMA, "utf8")));
     assert.ok(declaration.command === "load:wikidata-words");
-    const planned = await planWrite(readyChange(declaration, null), readerOf(db), "2026-10-11T00:00:00Z", { wikidataWords: [word("paralimpico")] });
-    assert.deepEqual(planned.run.counts.toJSON(), { records: { added: 0, changed: 0, removed: 0 }, written: { wikidata_word: 1, wikidata_word_key: 4 }, deleted: {} });
+    const planned = await planWrite(readyChange(declaration, null), readerOf(db), "2026-10-11T00:00:00Z", { wikidataWords: [word("papà"), word("paralimpico")] });
+    // paralimpico has no Italian gloss, so only papà and its seven spellings are written.
+    assert.deepEqual(planned.run.counts.toJSON(), { records: { added: 0, changed: 0, removed: 0 }, written: { wikidata_word: 1, wikidata_word_key: 7 }, deleted: {} });
     execute(db, planned.sql);
     assert.deepEqual(planned.readBack(readerOf(db)), []);
   } finally {

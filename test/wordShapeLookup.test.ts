@@ -9,9 +9,8 @@
 // it-0c432803, then studio (7581), game (11654), valigia (40921), tipa
 // (54777), tata (67171), marine (91893), valigie (111783), annettere
 // (115927), follia (134835), yankee (138159), fischiare (138386), aggrappare
-// (321151), crucco (423156), poverino (448712), fuggitivo (453277),
-// artificiere (458568), memoriale (41195), migliore (51769) and spinare
-// (70166), none of which the development fixture has.
+// (321151), crucco (423156), poverino (448712), fuggitivo (453277) and
+// artificiere (458568), none of which the development fixture has.
 // `raccontare` is a page-only entry there, read from
 // `fixtures/upstream-pages/raccontare.wikitext`.
 

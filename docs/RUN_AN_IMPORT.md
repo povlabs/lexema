@@ -506,11 +506,13 @@ and takes the snapshot again.
 `load:wikidata-words` picks its database the way the seed does (`SEED_STATE`,
 or `SEED_REMOTE`). It reads the master, then writes each lexeme the master
 lacks, and each one it holds with other content as a row of the snapshot's
-dump date beside the older row, which stays as history. A lexeme is left out
-when the dictionary already answers every one of its spellings with something
-to read, by the rule `load:names` applies to a label. A held lexeme the
-snapshot no longer has is reported and left serving. It prints the words
-written, left out and no longer in the snapshot. `--plan-only` prints the
+dump date beside the older row, which stays as history. A lexeme with no
+Italian gloss is left out, and stays in the snapshot as imported (ADR 0033's
+2026-10-12 amendment). So is a lexeme whose every spelling the dictionary
+already answers with something to read, by the rule `load:names` applies to a
+label. A held lexeme the snapshot no longer has is reported and left serving.
+It prints the words written, left out for no gloss, left out as answered, and
+no longer in the snapshot. `--plan-only` prints the
 counts and writes nothing. On a master without `wikidata_word` and
 `wikidata_word_key` it plans but refuses to write, and names `pnpm run
 update:upgrade`. No source row is touched, and no seed writes Wikidata words.

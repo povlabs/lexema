@@ -91,6 +91,13 @@ export const lexemeNumber = (lexeme: LexemeId): number => Number(lexeme.slice(1)
 /** The part of speech the word reads as, from its lexical category. */
 export const partOfSpeechOfWord = (word: Pick<WikidataWord, "category">): StatedPartOfSpeech => partOfSpeechOf(word.category);
 
+/**
+ * Whether the word has a meaning to show: at least one Italian gloss. Only
+ * such a word is served; one with none stays in the snapshot as imported and
+ * is left out of the load (ADR 0033's 2026-10-12 amendment).
+ */
+export const hasItalianGloss = (word: Pick<WikidataWord, "glosses">): boolean => word.glosses.length > 0;
+
 /** Every search key the word is spelled by, its lemma's first, each once: `paralimpico`, `paralimpici`, `paralimpica`, `paralimpiche`. */
 export const keysOfWord = (word: Pick<WikidataWord, "lemma" | "forms">): string[] => [
   ...new Set([word.lemma, ...word.forms.map((form) => form.spelling)].map(normalizeItalianExact)),

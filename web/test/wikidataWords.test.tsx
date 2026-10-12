@@ -1,7 +1,7 @@
 // Wikidata words on the word page, the Licence page and in the API (ADR 0033,
 // #812): a word Wiktionary lacks reads as an ordinary entry, its Italian
-// glosses its definitions and none shown when it has none, with no note about
-// the meaning it lacks; the page's one *Fonte* opens its lexeme; a word
+// glosses its definitions, and one with no Italian gloss is not loaded at all;
+// the page's one *Fonte* opens its lexeme; a word
 // Wiktionary has keeps its page; the Licence page has one Wikidata credit; and
 // the API names and credits a Wikidata word by its lexeme.
 // Seeded from the development fixture, then `load:wikidata-words` over the
@@ -91,13 +91,13 @@ test("a Wikidata word with an Italian gloss shows it as its definition, and its 
   assert.doesNotMatch(textOf(html), /Wikidata|lessema/i);
 });
 
-test("a Wikidata word with no gloss shows its part of speech and no note about the meaning it lacks", async () => {
-  const html = await render("paralimpico");
-  assert.deepEqual(headingsOf(html), ["Aggettivo"]);
-  assert.doesNotMatch(textOf(html), /Definizion|definizione|mancante|nessun|non (ha|è)|Wikidata/i);
-  assert.deepEqual(sourceLinks(html), ["https://www.wikidata.org/wiki/Lexeme:L1247138"]);
-  // Its forms find it too.
-  assert.deepEqual(sourceLinks(await render("paralimpiche")), ["https://www.wikidata.org/wiki/Lexeme:L1247138"]);
+test("a Wikidata word with no Italian gloss is not loaded, so its spellings get no Wikidata entry", async () => {
+  // paralimpico (L1247138) has no Italian gloss (ADR 0033's 2026-10-12 amendment).
+  for (const query of ["paralimpico", "paralimpiche"]) {
+    const html = await render(query);
+    assert.deepEqual(headingsOf(html), []);
+    assert.doesNotMatch(html, /wikidata\.org/);
+  }
 });
 
 test("a word Wiktionary has keeps its page: papà shows its record alone, credited to Wiktionary", async () => {
@@ -114,6 +114,8 @@ test("the Licence page carries exactly one Wikidata credit, in Italian, naming t
   assert.equal(credits.length, 1, credits.join("\n"));
   assert.match(credits[0], /e le parole italiane che il Wikizionario non ha provengono da Wikidata/);
   assert.match(credits[0], /e ogni parola al proprio lessema\./);
+  // Both Wikidata layers stay CC0 (Huey, 2026-10-12, #802).
+  assert.match(credits[0], /Questi dati restano nel pubblico dominio e si possono riutilizzare liberamente\.$/);
   assert.equal([...html.matchAll(/href="https:\/\/www\.wikidata\.org\/"/g)].length, 1);
 });
 

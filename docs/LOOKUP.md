@@ -239,15 +239,6 @@ read a stated `invariable`: the source states it on `follia`, whose plural
 shape: accents are meaning ([LOOKUP_DESIGN.md](LOOKUP_DESIGN.md#accents-are-meaning)),
 and the not-found answer offers the accented word.
 
-The rule does not read a key a Wikidata word heads, one whose lemma spells it
-([ADR 0033](../.decisions/0033-wikidata-words-fill-wiktionary-gaps.md),
-`headsKey` in [`src/lookup/wikidataWords.ts`](../src/lookup/wikidataWords.ts)):
-Wikidata states that spelling a word of its own. `spinale` is lexeme L1158511,
-the adjective, and not `spina` + `le` of spinare; `memorial` is lexeme
-L1197243, not a truncated `memoriale` (#815). A key a lexeme spells only as a
-form stays the rule's: `miglior` is a form of L1217823 *migliore*, and the
-rule reads it as Wiktionary's `migliore`.
-
 Every spelling is read in one statement, `shapeReadOf` (`SHAPE_READ_SQL` on a
 dictionary with every optional table): the source's rows as `SEARCH_SQL`
 reads them, the curated cells (#743), and the page-only entries and hand-kept

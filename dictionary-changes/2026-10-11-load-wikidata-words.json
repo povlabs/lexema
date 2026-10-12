@@ -2,18 +2,16 @@
   "command": "load:wikidata-words",
   "inputs": {},
   "lookups": [
-    { "word": "paralimpico" },
-    { "word": "paralimpiche" },
-    { "word": "stanotte" },
-    { "word": "domattina" },
-    { "word": "oddio" },
     { "word": "flebo", "gloss": "per via endovenosa" },
     { "word": "pento", "gloss": "un'azione sbagliata commessa" },
-    { "word": "papà" }
+    { "word": "magazine", "gloss": "pubblicazione periodica" },
+    { "word": "freccette", "gloss": "apposite piccole frecce" },
+    { "word": "papà" },
+    { "word": "paralimpico", "found": false }
   ],
   "expected": {
     "records": { "added": 0, "changed": 0, "removed": 0 },
-    "written": { "wikidata_word": 62, "wikidata_word_key": 191 },
+    "written": { "wikidata_word": 19, "wikidata_word_key": 90 },
     "deleted": {}
   }
 }

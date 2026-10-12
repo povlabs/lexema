@@ -36,7 +36,7 @@ import { answeringPairs } from "./pronominalPair.js";
 import { correctedEdgeServed, sourceEdgeServed } from "./correctedEdge.js";
 import { dictionaryTables, servedBy, type DictionaryTables } from "./served.js";
 import { besideSourceOf } from "./besideSource.js";
-import { headsKey, unlessDeclaredLemma } from "./wikidataWords.js";
+import { unlessDeclaredLemma } from "./wikidataWords.js";
 import { readTranslations } from "./sourceRecord.js";
 import { lemmasOfPartOfSpeech, sourceTagsAt, type QueryInfo, type RejectedResult, type ReleaseInfo, type Translation } from "./types.js";
 import { agreeingQuery, agreementProbes, namesCell, type AgreeingQuery } from "../italian/essereAgreement.js";
@@ -590,11 +590,10 @@ export async function lookupBatch({
     readShapeRows(db, releaseId, tables, shapeKeys),
     answeringPairs(db, releaseId, tables, unphrased),
   ]);
-  // A key a Wikidata word heads is no shape of another word (#815, `headsKey`).
   const shaped = new Map(
     unphrased
       .filter((key) => (agreements.get(key) ?? []).length === 0)
-      .map((key) => [key, headsKey(key, beside.wikidataWords.get(key) ?? []) ? [] : answeringShapes(key, shapeRows).flatMap(({ rows }) => rows)] as const),
+      .map((key) => [key, answeringShapes(key, shapeRows).flatMap(({ rows }) => rows)] as const),
   );
   const shapes = new Map([...shaped].map(([key, rows]) => [key, rows.length > 0 ? rows : (pairs.get(key) ?? []).flatMap((answering) => answering.rows)] as const));
   const shapeAboutIds = [

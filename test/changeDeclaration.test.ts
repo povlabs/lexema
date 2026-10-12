@@ -227,9 +227,9 @@ test("every declaration already in dictionary-changes parses as before, with no 
       assert.deepEqual(parseDeclaration(path, text).lookups?.map((item) => item.word), ["Dante Alighieri", "Alex Zanardi", "Hormuz", "sale"]);
       continue;
     }
-    // The Wikidata words (#812) name words they add, a form of one, two with a gloss, and a word Wiktionary answers.
+    // The Wikidata words (#812) name four they add with a gloss, a form among them, a word Wiktionary answers, and a word with no gloss they leave out.
     if (name === "2026-10-11-load-wikidata-words.json") {
-      assert.deepEqual(parseDraft(path, text).lookups?.map((item) => item.word), ["paralimpico", "paralimpiche", "stanotte", "domattina", "oddio", "flebo", "pento", "papà"]);
+      assert.deepEqual(parseDraft(path, text).lookups?.map((item) => item.word), ["flebo", "pento", "magazine", "freccette", "papà", "paralimpico"]);
       continue;
     }
     // The hand-kept readings (#745) name each word they give a reading, with a definition of it.

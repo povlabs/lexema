@@ -44,10 +44,8 @@
 // `suora` truncate an `-a`, and they are a closed list.
 //
 // The rule runs only on a query nothing else answers, so it never changes a
-// word the dictionary has. Nor does it run on a query a Wikidata word heads
-// (ADR 0033): Wikidata states that spelling a word of its own, so `spinale`
-// is the adjective, not `spina` + `le` of spinare (#815). Nothing derived is
-// stored: the rule reads the query at lookup time.
+// word the dictionary has. Nothing derived is stored: the rule reads the
+// query at lookup time.
 
 /** The rule's name and version. */
 export const WORD_SHAPE_RULE = "it-word-shape/v1" as const;
