@@ -130,12 +130,13 @@ function execute(db: DatabaseSync, sql: string): void {
   }
 }
 
-/** `fixture` seeded as a release, with no Wikidata word table, as a master from before #812. */
-async function seeded(fixture: string): Promise<DatabaseSync> {
+/** `fixture`'s lines, or several fixtures' in order, seeded as a release, with no Wikidata word table, as a master from before #812. */
+async function seeded(fixture: string | readonly string[]): Promise<DatabaseSync> {
   const dir = await mkdtemp(join(tmpdir(), "lexema-wikidata-words-"));
   try {
     const archive = join(dir, "fixture.jsonl.gz");
-    await writeFile(archive, gzipSync(await readFile(fixture)));
+    const texts = await Promise.all((typeof fixture === "string" ? [fixture] : fixture).map((path) => readFile(path, "utf8")));
+    await writeFile(archive, gzipSync(texts.map((text) => text.trimEnd()).join("\n") + "\n"));
     const { parts } = await seedSql({ input: archive, outputDir: join(dir, "sql"), schema: SCHEMA, releaseId: RELEASE, license: "CC-BY-SA-4.0", onRejection: (rejection) => {
       throw new Error(`fixture line rejected: ${JSON.stringify(rejection)}`);
     } });
@@ -149,7 +150,7 @@ async function seeded(fixture: string): Promise<DatabaseSync> {
 }
 
 /** The fixture seeded, upgraded and loaded with the fixture's lexemes. */
-async function loaded(fixture: string, words: readonly WikidataWord[] = WORDS): Promise<DatabaseSync> {
+async function loaded(fixture: string | readonly string[], words: readonly WikidataWord[] = WORDS): Promise<DatabaseSync> {
   const db = await seeded(fixture);
   execute(db, masterUpgradeSql(await readFile(SCHEMA, "utf8")));
   execute(db, (await planWikidataWords(readerOf(db), words)).sql);
@@ -283,6 +284,40 @@ test("a spelling only name entries answer shows its Wikidata words after them", 
     const { answers } = await lookupBatch({ db: fromNodeSqlite(db), releaseId: RELEASE, queries: ["paralimpico"] });
     assert.ok(answers[0].outcome === "found");
     assert.deepEqual(answers[0].candidates.map((candidate) => candidate.nameItem ?? candidate.lexeme), ["Q1000003", "L1247138"]);
+  } finally {
+    db.close();
+  }
+});
+
+test("a key a Wikidata word heads is no word shape: spinale and memorial show their lexemes, and miglior, only a form, stays migliore's (#815)", async () => {
+  const committed = await readWordSnapshot();
+  const lexemes = committed.filter((one) => ["L1158511", "L1197243", "L1217823"].includes(one.lexeme));
+  assert.equal(lexemes.length, 3);
+  // fixtures/word-shapes.jsonl holds spinare, memoriale and migliore, lines of it-0c432803.
+  const db = await loaded(["fixtures/dev-seed.jsonl", "fixtures/word-shapes.jsonl"], lexemes);
+  try {
+    const lookupDb = fromNodeSqlite(db);
+    // spinale is the lemma of L1158511: it is not read as `spina` + `le` of spinare.
+    assert.deepEqual(await readingsOf(db, "spinale"), ["L1158511 spinale Aggettivo: "]);
+    // memorial is the lemma of L1197243: it is not read as a truncated memoriale.
+    assert.deepEqual(await readingsOf(db, "memorial"), ["L1197243 memorial Sostantivo: "]);
+    // miglior is only a form of L1217823: the rule still reads it as Wiktionary's migliore.
+    assert.deepEqual(await readingsOf(db, "miglior"), ["migliore adj"]);
+    // A shape the lexemes do not head still answers by rule: spinarle is spinare with a clitic.
+    assert.deepEqual(await readingsOf(db, "spinarle"), ["spinare verb"]);
+
+    const present = await exists({ db: lookupDb, releaseId: RELEASE, query: "spinale" });
+    assert.ok(present.outcome === "present");
+    assert.deepEqual([present.word, present.lexeme], ["spinale", "L1158511"]);
+    const miglior = await exists({ db: lookupDb, releaseId: RELEASE, query: "miglior" });
+    assert.ok(miglior.outcome === "present");
+    assert.deepEqual([miglior.word, miglior.lexeme], ["migliore", undefined]);
+
+    const { answers } = await lookupBatch({ db: lookupDb, releaseId: RELEASE, queries: ["spinale", "memorial", "miglior"] });
+    assert.deepEqual(
+      answers.map((answer) => (answer.outcome === "found" ? answer.candidates.map((candidate) => candidate.lexeme ?? `${candidate.word} ${candidate.pos}`) : answer.outcome)),
+      [["L1158511"], ["L1197243"], ["migliore adj"]],
+    );
   } finally {
     db.close();
   }

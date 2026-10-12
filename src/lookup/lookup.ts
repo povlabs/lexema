@@ -12,7 +12,7 @@ import { phraseForms, phraseMatches } from "./phrase.js";
 import { besideSourceOf, type BesideReadings } from "./besideSource.js";
 import { handKeptReadingsOf } from "./handKept.js";
 import { nameEntriesOf } from "./names.js";
-import { unlessDeclaredLemma, wikidataWordsOf } from "./wikidataWords.js";
+import { headsKey, unlessDeclaredLemma, wikidataWordsOf } from "./wikidataWords.js";
 import { pageEntriesOf, type PageEntries } from "./pageEntry.js";
 import { readExpressions } from "./expressions.js";
 import { placeRecovered, type RecoveredOfRecord, type StoredRecovered } from "./recovered.js";
@@ -214,14 +214,17 @@ export async function exists({ db, releaseId, query }: LookupOptions): Promise<E
   if (word !== undefined) return { ...found, word };
   const [name] = (await nameEntriesOf(db, releaseId, tables).heads([key])).get(key) ?? [];
   if (name !== undefined) return { ...found, word: name.word, nameItem: name.nameItem };
-  const reached =
+  const compound =
     (await phraseHits(db, releaseId, tables, key))?.hits[0].record_word ??
-    (await agreementHits(db, releaseId, key, tables))?.hits[0].record_word ??
-    (await shapeWord(db, releaseId, key, tables)) ??
+    (await agreementHits(db, releaseId, key, tables))?.hits[0].record_word;
+  if (compound !== undefined) return { ...found, word: compound };
+  // A key a Wikidata word heads is no shape of another word (#815, `headsKey`).
+  const heads = (await wikidataWordsOf(db, releaseId, tables).heads([key])).get(key) ?? [];
+  const reached =
+    (headsKey(key, heads) ? undefined : await shapeWord(db, releaseId, key, tables)) ??
     wordOfRows(((await answeringPairs(db, releaseId, tables, [key])).get(key) ?? []).flatMap((answering) => answering.rows));
   if (reached !== undefined) return { ...found, word: reached };
   // Nothing of Wiktionary's answers it: a Wikidata word may (ADR 0033, #812).
-  const heads = (await wikidataWordsOf(db, releaseId, tables).heads([key])).get(key) ?? [];
   const [lexemeWord] = await unlessDeclaredLemma(db, releaseId, tables, key, heads);
   if (lexemeWord !== undefined) return { ...found, word: lexemeWord.word, lexeme: lexemeWord.lexeme };
   return { outcome: "absent", query: prepared.query, release: prepared.release };
@@ -306,7 +309,10 @@ export async function lookup({ db, releaseId, query }: LookupOptions): Promise<L
   // Nor a compound form. It may be a shape of a word the dictionary has that
   // the source lists nowhere: `raccontarvi` of `raccontare`, `quei` of
   // `quello`, `aver` of `avere` (rule `it-word-shape/v1`, #809).
-  const shaped = shapeRows === undefined ? undefined : await shapeResult(asTyped, answeringShapes(key, await shapeRows));
+  // A key a Wikidata word heads is a word of its own, which the rule does not
+  // read as a form of another: `spinale` (#815, `headsKey`).
+  const shaped =
+    shapeRows === undefined || headsKey(key, (await beside).wikidataWords) ? undefined : await shapeResult(asTyped, answeringShapes(key, await shapeRows));
   if (shaped !== undefined) return shaped;
 
   // Nor a shape. It may be `si` and a verb form, said for a pronominal verb
