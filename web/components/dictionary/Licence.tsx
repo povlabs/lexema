@@ -10,7 +10,11 @@
 // the section that replaced it. The Wikidata credit in section 3 and the
 // trademark line's Wikidata are added by #794 (ADR 0032), their wording for
 // Huey to approve on that pull request. #812 (ADR 0033) extends that one
-// credit to the Wikidata words rather than adding a second.
+// credit to the Wikidata words rather than adding a second. The section's
+// last two sentences, that a Wikidata-only page's Fonte opens its item or
+// lexeme and that this data stays in the public domain, follow Huey's ruling
+// of 2026-10-12 that both Wikidata layers stay CC0
+// (https://github.com/povlabs/lexema/issues/802#issuecomment-6132249641).
 
 import { ExternalLink } from "@/components/shared/ExternalLink";
 import { LEGAL_ITEMS, LEGAL_PARAGRAPH, LEGAL_UNBROKEN, LINK } from "@/components/shared/styles.ts";
@@ -114,7 +118,9 @@ export function Licence({ release }: { release: ServedRelease }) {
                   dedicazione Creative Commons CC0 1.0 Universale
                 </ExternalLink>
                 . Ogni nome tratto da Wikidata rimanda al proprio elemento su Wikidata, e ogni parola al proprio
-                lessema.
+                lessema. Quando una pagina mostra solo dati di Wikidata, il suo link Fonte rimanda all’elemento o al
+                lessema da cui provengono. Questi dati restano nel pubblico dominio e si possono riutilizzare
+                liberamente.
               </p>
             </>
           ),
