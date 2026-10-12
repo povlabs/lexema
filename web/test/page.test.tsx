@@ -1075,34 +1075,91 @@ test("a feminine nothing agrees with is not found, and masculine searches keep t
  */
 const WORD_SHAPE_LINES = (await readFile(join(REPO, "fixtures/word-shapes.jsonl"), "utf8")).trimEnd().split("\n");
 
-test("a form the source lists nowhere shows its word's page: quei and quegli quello, raccontarvi raccontare, dirlo dire, piaciute piacere (#809)", async () => {
-  const headedBy = (html: string, word: string) => assert.match(html, new RegExp(`<h1 class="${esc(WORD_HEADING)}" lang="it">${esc(word)}</h1>`), word);
+/**
+ * What a shape's page must hold, by rules 3 and 4 of #695 and manifest § 4 and
+ * § 5 (#802): the searched spelling as its title, each block's heading and
+ * its line built by rule, the word that line names linked to its search, the
+ * base word's table as *Forme di <word>* where it has one, and none of the base
+ * word's pronunciation, etymology, word lists or expressions.
+ */
+function assertShapePage(html: string, query: string, shown: { headings: string[]; lines: string[]; links: string[]; forms: string[] }): void {
+  assert.match(html, new RegExp(`<h1 class="${esc(WORD_HEADING)}" lang="it">${esc(query.replace(/'/g, "&#x27;"))}</h1>`), query);
+  assert.deepEqual(headingsOf(html), shown.headings, query);
+  assert.deepEqual(formLines(html), shown.lines, query);
+  const linked = [...html.matchAll(new RegExp(`<p class="${esc(FORM_LINE)}" lang="it">[^<]*<a [^>]*href="/\\?q=([^"]+)">`, "g"))].map((match) =>
+    decodeURIComponent(textOf(match[1] ?? "")),
+  );
+  assert.deepEqual(linked, shown.links, query);
+  assert.deepEqual(lemmaFormsOf(html), shown.forms.map((word) => `Forme di${word}`), query);
+  const { SECTION_LABEL, PRONUNCIATION_LABEL } = WORD_PAGE_TEXT;
+  for (const label of [SECTION_LABEL.etymology, SECTION_LABEL.synonyms, SECTION_LABEL.antonyms, SECTION_LABEL.derived, SECTION_LABEL.expressions, PRONUNCIATION_LABEL]) {
+    assert.ok(!html.includes(`>${label}<`), `${query} shows its base word's ${label}`);
+  }
+  assert.deepEqual(sourcePages(sourceLine(html)), [query], query);
+}
+
+test("a form rule it-word-shape/v1 reads is its base word's form block, titled as searched, with no base-word extras (#809, #802)", async () => {
   await withLines([...(await devSeedLines()), ...WORD_SHAPE_LINES], async ({ db }) => {
+    // The demonstrative adjective, never the pronoun: `quei libri`.
     for (const query of ["quei", "quegli"]) {
-      const html = await render(db, query);
-      headedBy(html, "quello");
-      // The demonstrative adjective, never the pronoun: `quei libri`.
-      assert.deepEqual(headingsOf(html), ["1·Aggettivo dimostrativo·maschile, singolare"], query);
+      assertShapePage(await render(db, query), query, {
+        headings: ["1·Aggettivo dimostrativo·quello"],
+        lines: ["maschile plurale di quello"],
+        links: ["quello"],
+        forms: ["quello"],
+      });
     }
-    const dirlo = await render(db, "dirlo");
-    headedBy(dirlo, "dire");
-    assert.deepEqual(headingsOf(dirlo), ["1·Verbo"]);
-    const bravissimo = await render(db, "bravissimo");
-    headedBy(bravissimo, "bravo");
-    assert.deepEqual(headingsOf(bravissimo), ["1·Aggettivo·maschile, singolare"]);
-    // A participle the table lists only as piaciuto is piacere's form block.
-    assert.deepEqual(headingsOf(await render(db, "piaciute")), ["1·Voce verbale·piacere"]);
+    assertShapePage(await render(db, "dirlo"), "dirlo", { headings: ["1·Voce verbale·dire"], lines: ["pronome lo unito a dire"], links: ["dire"], forms: ["dire"] });
+    assertShapePage(await render(db, "dammelo"), "dammelo", {
+      headings: ["1·Voce verbale·dare"],
+      lines: ["pronomi mi e lo uniti a da'"],
+      links: ["da'"],
+      forms: ["dare"],
+    });
+    assertShapePage(await render(db, "bravissimo"), "bravissimo", {
+      headings: ["1·Aggettivo·bravo"],
+      lines: ["superlativo assoluto di bravo"],
+      links: ["bravo"],
+      forms: ["bravo"],
+    });
+    // A participle the table lists only as piaciuto is piacere's, opened at piaciuto.
+    const piaciute = await render(db, "piaciute");
+    assertShapePage(piaciute, "piaciute", { headings: ["1·Voce verbale·piacere"], lines: ["femminile plurale di piaciuto"], links: ["piaciuto"], forms: ["piacere"] });
+    assert.deepEqual(searchedForms(piaciute), ["piaciuto"]);
+    // An elided word of two records is one block, its Definitions grouped by part of speech (#727).
+    assertShapePage(await render(db, "quell'"), "quell'", {
+      headings: ["1·Aggettivo dimostrativo·Pronome dimostrativo·quello"],
+      lines: ["forma elisa di quello", "forma elisa di quella"],
+      links: ["quello", "quella"],
+      forms: ["quello"],
+    });
     // A regular form of a word that lists none: a plural, a feminine, a verb form, an English plural.
-    for (const [query, word] of [["follie", "follia"], ["crucchi", "crucco"], ["poverina", "poverino"], ["fischia", "fischiare"], ["marines", "marine"]] as const) {
-      const html = await render(db, query);
-      headedBy(html, word);
-      assert.ok(!html.includes(NOT_FOUND_HEADING), query);
+    for (const [query, heading, line, forms] of [
+      ["follie", "1·Sostantivo·follia", "plurale di follia", ["follia"]],
+      ["crucchi", "1·Aggettivo·crucco", "plurale di crucco", []],
+      ["poverina", "1·Sostantivo·poverino", "femminile singolare di poverino", ["poverino"]],
+      ["fuggitive", "1·Aggettivo·fuggitivo", "femminile plurale di fuggitivo", ["fuggitivo"]],
+      ["fischia", "1·Voce verbale·fischiare", "voce del verbo fischiare", []],
+      ["marines", "1·Sostantivo·marine", "plurale di marine", ["marine"]],
+    ] as const) {
+      const word = line.split(" ").at(-1) ?? "";
+      assertShapePage(await render(db, query), query, { headings: [heading], lines: [line], links: [word], forms: [...forms] });
     }
+    // A plural spelling reaches a form record: the shape's line leads the record's own, under no grammar of the record's.
+    assertShapePage(await render(db, "valige"), "valige", {
+      headings: ["1·Sostantivo, forma flessa"],
+      lines: ["variante grafica di valigie", "plurale di valigia"],
+      links: ["valigie", "valigia"],
+      forms: ["valigia"],
+    });
   });
   await withDevSeedAndPages(async ({ db }) => {
-    const html = await render(db, "raccontarvi");
-    headedBy(html, "raccontare");
-    assert.deepEqual(headingsOf(html), ["1·Verbo"]);
+    assertShapePage(await render(db, "raccontarvi"), "raccontarvi", {
+      headings: ["1·Voce verbale·raccontare"],
+      lines: ["pronome vi unito a raccontare"],
+      links: ["raccontare"],
+      forms: [],
+    });
   });
 });
 
@@ -1297,7 +1354,7 @@ test("the rule-built line is kept apart from a source line in the page's data: i
       },
     ]);
     const [line] = block.lines;
-    assert.ok(line.kind === "rule");
+    assert.ok(line.kind === "rule" && line.rule === "it-verb-form-line/v2");
     assert.equal(line.ref.jsonPointer, "/forms/29/form");
     // A report names the verb record whose table the block shows, under the block's number.
     assert.deepEqual(reportReadings(shownRecords(page.readings)).map((reading) => [reading.number, reading.recordId]), [[1, verb.recordId]]);
@@ -1852,7 +1909,7 @@ async function withCorrectionLines(corrected: boolean, run: (f: Fixture) => Prom
  */
 async function ownGridRows(db: DatabaseSync, word: string, n = 1): Promise<string[][]> {
   const entry = wordPage(word, await readingsFor(db, word), [], SURFACE_ROUTE).readings[n - 1];
-  assert.ok(entry !== undefined && entry.kind !== "verb-form" && entry.kind !== "grid-form", `${word}: no reading ${n}`);
+  assert.ok(entry !== undefined && entry.kind !== "verb-form" && entry.kind !== "grid-form" && entry.kind !== "shape-form", `${word}: no reading ${n}`);
   const { grid } = agreementOf(entry.reading);
   return grid === undefined ? [] : gridRows(renderToStaticMarkup(<section><GridView grid={grid} label={word} /></section>));
 }
@@ -3650,8 +3707,11 @@ test("a declared lemma keeps its page when rule it-word-shape/v1 reads it as a s
     const html = await render(db, "aggrapparsi");
     assert.match(html, new RegExp(`<h1 class="${esc(WORD_HEADING)}" lang="it">aggrapparsi</h1>`));
     assert.deepEqual(declaredHeadings(html), ["Verbo"]);
-    // A clitic form no record names is still aggrappare's.
-    assert.match(await render(db, "aggrapparti"), new RegExp(`<h1 class="${esc(WORD_HEADING)}" lang="it">aggrappare</h1>`));
+    // A clitic form no record names is aggrappare's form block, titled as searched (#802).
+    const aggrapparti = await render(db, "aggrapparti");
+    assert.match(aggrapparti, new RegExp(`<h1 class="${esc(WORD_HEADING)}" lang="it">aggrapparti</h1>`));
+    assert.deepEqual(headingsOf(aggrapparti), ["1·Voce verbale·aggrappare"]);
+    assert.deepEqual(formLines(aggrapparti), ["pronome ti unito ad aggrappare"]);
   });
 });
 

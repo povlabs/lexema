@@ -353,7 +353,18 @@ then one line per cell built by rule `it-grid-form-line/v1`
 singolare di gravido", in the names the grid heads its rows and columns with,
 then gravido's *Definizioni* and *Forme di gravido* (`GridFormBlock`). Like a
 verb form line, the line is Lexema's text, built when the page is built, never
-stored, and unmarked on the page (ADR 0008, 0012, 0016). The other records
+stored, and unmarked on the page (ADR 0008, 0012, 0016). A query rule
+`it-word-shape/v1` reads (route `shape`, #809) is no record's word either:
+its page is titled as searched, and each word the shape reached is that
+word's form block (`ShapeFormBlock`, #802): `quei` shows `1 · Aggettivo
+dimostrativo · quello`, "maschile plurale di quello" built by rule
+`it-word-shape-line/v1` (`wordShapeLine` in `src/italian/wordShape.ts`),
+then quello's *Definizioni* and *Forme di quello*; `raccontarvi` shows
+`1 · Voce verbale · raccontare`. A form record the shape reached (`valigie`
+for `valige`) keeps its block, the shape's line leading its own and its
+heading naming no gender or number of its record's. The page shows no
+pronunciation, etymology, word list or expression: they are the base
+word's. The other records
 keep their readings, as every page did before #695, less two kinds of form;
 #696 ruled only that a lone one carries no number. A record
 that lists the query and declares itself a form of a reading about the query

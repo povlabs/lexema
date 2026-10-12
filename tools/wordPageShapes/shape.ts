@@ -78,6 +78,8 @@ export const COMPONENTS: Record<string, Ruling> = {
   "form-of 2+ base words": ruled(S4_NOUN_BLOCK),
   "verb-form": ruled(S4_VERB_BLOCK),
   "grid-form": ruled(S4_NO_RECORD),
+  /** A form rule it-word-shape/v1 read, which no record describes either (#802). */
+  "shape-form": ruled(S4_NO_RECORD),
   bare: ruled(S1_EMPTY_PAGE),
   "lone-bare": ruled(S1_EMPTY_PAGE),
   "1 reading": ruled(S2_LINKS),
@@ -145,7 +147,8 @@ function entryParts(entry: EntryFacts, query: string, ownShows: boolean): string
   return parts;
 }
 
-const isBlock = (entry: EntryFacts): boolean => entry.kind === "form-of" || entry.kind === "verb-form" || entry.kind === "grid-form";
+const isBlock = (entry: EntryFacts): boolean =>
+  entry.kind === "form-of" || entry.kind === "verb-form" || entry.kind === "grid-form" || entry.kind === "shape-form";
 
 /** A block of a verb's form: a verb block, or a form record the source heads as a verb's. */
 const isVerbBlock = (entry: EntryFacts): boolean => entry.kind === "verb-form" || (entry.kind === "form-of" && familyOf(entry.pos) === "verb");

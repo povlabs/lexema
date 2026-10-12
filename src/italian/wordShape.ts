@@ -259,20 +259,34 @@ const spelling = (shape: Shape, key: string, tier = 0): ShapedSpelling => ({ rul
  */
 function clitic(key: string): ShapedSpelling[] {
   if (!WORD.test(key)) return [];
-  const keys = CLUSTERS.flatMap((cluster) => {
-    if (!key.endsWith(cluster.text)) return [];
-    const stem = key.slice(0, -cluster.text.length);
-    if (stem.length < 2) return [];
-    if (/[aeiou]r$/u.test(stem)) {
-      const reflexive = pronominal(cluster);
-      return [`${stem}e`, ...(IN_RRE.test(stem) ? [`${stem}re`] : []), ...(reflexive === undefined ? [] : [`${stem}${reflexive}`])];
-    }
-    const undoubled = stem.slice(0, -1);
-    if (cluster.first !== "gli" && stem.at(-1) === cluster.text[0] && ONE_SYLLABLE_IMPERATIVES.has(undoubled)) return [`${undoubled}'`];
-    if (ONE_SYLLABLE_IMPERATIVES.has(stem)) return cluster.first === "gli" ? [`${stem}'`] : [];
-    return JOINS_CLITICS.test(stem) && !PARTICIPLE_PLURAL.test(stem) ? [stem] : [];
-  });
+  const keys = CLUSTERS.flatMap((cluster) => cliticKeys(key, cluster).map(({ key: one }) => one));
   return [...new Set(keys)].map((one) => spelling("clitic", one));
+}
+
+/** A spelling a clitic cluster joins, and whether it is the pronominal verb the cluster's reflexive names (`vergognarsi` of `vergognarti`). */
+interface CliticKey {
+  key: string;
+  pronominal: boolean;
+}
+
+/** The spellings `key` may be, read as `cluster` joined after a verb form; none when it does not end with `cluster`. */
+function cliticKeys(key: string, cluster: Cluster): CliticKey[] {
+  if (!key.endsWith(cluster.text)) return [];
+  const stem = key.slice(0, -cluster.text.length);
+  if (stem.length < 2) return [];
+  const plain = (one: string): CliticKey => ({ key: one, pronominal: false });
+  if (/[aeiou]r$/u.test(stem)) {
+    const reflexive = pronominal(cluster);
+    return [
+      plain(`${stem}e`),
+      ...(IN_RRE.test(stem) ? [plain(`${stem}re`)] : []),
+      ...(reflexive === undefined ? [] : [{ key: `${stem}${reflexive}`, pronominal: true }]),
+    ];
+  }
+  const undoubled = stem.slice(0, -1);
+  if (cluster.first !== "gli" && stem.at(-1) === cluster.text[0] && ONE_SYLLABLE_IMPERATIVES.has(undoubled)) return [plain(`${undoubled}'`)];
+  if (ONE_SYLLABLE_IMPERATIVES.has(stem)) return cluster.first === "gli" ? [plain(`${stem}'`)] : [];
+  return JOINS_CLITICS.test(stem) && !PARTICIPLE_PLURAL.test(stem) ? [plain(stem)] : [];
 }
 
 /** The cluster a pronominal infinitive ends with, when `cluster` opens with a reflexive: `ti` → `si`, `tene` → `sene`. */
@@ -437,4 +451,99 @@ function englishPlural(key: string): ShapedSpelling[] {
   if (!key.endsWith("s")) return [];
   const stem = key.slice(0, -1);
   return WORD.test(stem) && stem.length >= 3 ? [spelling("english-plural", stem)] : [];
+}
+
+/**
+ * The rule that writes what a typed form is of the word its shape names: the
+ * line a shape's page shows under each block's heading (#802). Lexema's text,
+ * built when the page renders and stored nowhere (ADR 0008, ADR 0012).
+ */
+export const WORD_SHAPE_LINE_RULE = "it-word-shape-line/v1" as const;
+
+/** A paired pronoun as it stands alone: `me` of `melo` is `mi`, `glie` of `glielo` is `gli`. */
+const ALONE_OF_PAIRED: ReadonlyMap<string, string> = new Map([
+  ["me", "mi"],
+  ["te", "ti"],
+  ["ce", "ci"],
+  ["ve", "vi"],
+  ["se", "si"],
+  ["glie", "gli"],
+]);
+
+/** A participle's agreement, by its last letter: `piaciuta`, `piaciuti`, `piaciute`. */
+const PARTICIPLE_AGREEMENT: ReadonlyMap<string, string> = new Map([
+  ["a", "femminile singolare"],
+  ["i", "maschile plurale"],
+  ["e", "femminile plurale"],
+]);
+
+/** An inflected form's grammar, by its tier: the gender kept, a feminine singular, a feminine plural. */
+const INFLECTED_GRAMMAR: ReadonlyMap<number, string> = new Map([
+  [0, "plurale"],
+  [INFLECTED_FEMININE, "femminile singolare"],
+  [INFLECTED_FEMININE_PLURAL, "femminile plurale"],
+]);
+
+/**
+ * What `key` is of the word `answering` spells, in Italian, ending with that
+ * spelling so a page can link it:
+ *
+ *   clitic           raccontarvi   "pronome vi unito a raccontare"
+ *                    dirmelo       "pronomi mi e lo uniti a dire"
+ *                    vergognarti   "infinito di vergognarsi"
+ *   elided           quell'        "forma elisa di quello"
+ *   truncated        aver          "forma tronca di avere"
+ *   demonstrative    quei          "maschile plurale di quello"
+ *   superlative      bravissimo    "superlativo assoluto di bravo"
+ *   participle       piaciute      "femminile plurale di piaciuto"
+ *   inflected        tate          "plurale di tata", poverina "femminile singolare di poverino"
+ *   conjugated       fischia       "voce del verbo fischiare"
+ *   plural-spelling  valige        "variante grafica di valigie"
+ *   english-plural   marines       "plurale di marine"
+ *
+ * `answering` is one of `shapedSpellings(key)`.
+ */
+export function wordShapeLine(key: string, answering: ShapedSpelling): string {
+  const word = answering.key;
+  switch (answering.shape) {
+    case "clitic":
+      return cliticLine(key, word);
+    case "elided":
+      return `forma elisa di ${word}`;
+    case "truncated":
+      return `forma tronca di ${word}`;
+    case "demonstrative":
+      return `maschile plurale di ${word}`;
+    case "superlative":
+      return `superlativo assoluto di ${word}`;
+    case "participle":
+      return `${PARTICIPLE_AGREEMENT.get(key.at(-1) ?? "") ?? "participio"} di ${word}`;
+    case "inflected":
+      return `${INFLECTED_GRAMMAR.get(answering.tier) ?? "plurale"} di ${word}`;
+    case "conjugated":
+      return `voce del verbo ${word}`;
+    case "plural-spelling":
+      return `variante grafica di ${word}`;
+    case "english-plural":
+      return `plurale di ${word}`;
+  }
+}
+
+/**
+ * A clitic form's line: the pronouns of the longest cluster that reads `key`
+ * as `word`, joined to it, or, for the pronominal verb a reflexive names, that
+ * verb's infinitive. `a` is `ad` before an `a`, as Italian writes it.
+ */
+function cliticLine(key: string, word: string): string {
+  const longestFirst = [...CLUSTERS].sort((a, b) => b.text.length - a.text.length);
+  for (const cluster of longestFirst) {
+    const read = cliticKeys(key, cluster).find((candidate) => candidate.key === word);
+    if (read === undefined) continue;
+    if (read.pronominal) return `infinito di ${word}`;
+    const to = word.startsWith("a") ? "ad" : "a";
+    return cluster.second === undefined
+      ? `pronome ${cluster.first} unito ${to} ${word}`
+      : `pronomi ${ALONE_OF_PAIRED.get(cluster.first) ?? cluster.first} e ${cluster.second} uniti ${to} ${word}`;
+  }
+  return `forma di ${word}`;
 }

@@ -5,7 +5,7 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { answeringSpellings, shapedSpellings, shapeAdmits, type ShapedRecord, type Shape } from "../src/italian/wordShape.js";
+import { answeringSpellings, shapedSpellings, shapeAdmits, wordShapeLine, type ShapedRecord, type Shape } from "../src/italian/wordShape.js";
 
 /** The keys the rule names for `key` under `shape`, in its order. */
 const keysOf = (key: string, shape: Shape): string[] =>
@@ -180,6 +180,38 @@ test("an inflected or conjugated word is a record that lists no forms; a plural 
   assert.equal(shapeAdmits("plural-spelling", record("verb", true)), false);
   assert.equal(shapeAdmits("english-plural", record("noun", false, false, true)), true, "studio lists only its Italian plural");
   assert.equal(shapeAdmits("english-plural", record("adj")), false);
+});
+
+test("rule it-word-shape-line/v1 says what each shape is of its word, ending with the word: one line per shape (#802)", () => {
+  /** The line for `key` read as `word` under `shape`. */
+  const lineOf = (key: string, shape: Shape, word: string): string => {
+    const spelling = shapedSpellings(key).find((one) => one.shape === shape && one.key === word);
+    assert.ok(spelling !== undefined, `${key} is no ${shape} of ${word}`);
+    return wordShapeLine(key, spelling);
+  };
+  assert.equal(lineOf("raccontarvi", "clitic", "raccontare"), "pronome vi unito a raccontare");
+  assert.equal(lineOf("aggrapparti", "clitic", "aggrappare"), "pronome ti unito ad aggrappare");
+  assert.equal(lineOf("dirglielo", "clitic", "dire"), "pronomi gli e lo uniti a dire");
+  assert.equal(lineOf("dammi", "clitic", "da'"), "pronome mi unito a da'");
+  assert.equal(lineOf("dicendomi", "clitic", "dicendo"), "pronome mi unito a dicendo");
+  assert.equal(lineOf("vergognarti", "clitic", "vergognarsi"), "infinito di vergognarsi");
+  assert.equal(lineOf("andartene", "clitic", "andarsene"), "infinito di andarsene");
+  assert.equal(lineOf("quell'", "elided", "quello"), "forma elisa di quello");
+  assert.equal(lineOf("m'", "elided", "mi"), "forma elisa di mi");
+  assert.equal(lineOf("aver", "truncated", "avere"), "forma tronca di avere");
+  assert.equal(lineOf("quei", "demonstrative", "quello"), "maschile plurale di quello");
+  assert.equal(lineOf("begli", "demonstrative", "bello"), "maschile plurale di bello");
+  assert.equal(lineOf("bravissimo", "superlative", "bravo"), "superlativo assoluto di bravo");
+  assert.equal(lineOf("piaciuta", "participle", "piaciuto"), "femminile singolare di piaciuto");
+  assert.equal(lineOf("piaciuti", "participle", "piaciuto"), "maschile plurale di piaciuto");
+  assert.equal(lineOf("piaciute", "participle", "piaciuto"), "femminile plurale di piaciuto");
+  assert.equal(lineOf("tate", "inflected", "tata"), "plurale di tata");
+  assert.equal(lineOf("crucchi", "inflected", "crucco"), "plurale di crucco");
+  assert.equal(lineOf("poverina", "inflected", "poverino"), "femminile singolare di poverino");
+  assert.equal(lineOf("fuggitive", "inflected", "fuggitivo"), "femminile plurale di fuggitivo");
+  assert.equal(lineOf("fischia", "conjugated", "fischiare"), "voce del verbo fischiare");
+  assert.equal(lineOf("valige", "plural-spelling", "valigie"), "variante grafica di valigie");
+  assert.equal(lineOf("marines", "english-plural", "marine"), "plurale di marine");
 });
 
 test("a regular inflection answers only when no other shape does, and its lowest tier wins: tipe is tipa, piaciute stays the participle (#809)", () => {

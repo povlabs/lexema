@@ -12,7 +12,7 @@ import { ExternalIcon } from "@/components/shared/icons";
 import { Expressions } from "./Expressions";
 import { NEW_TAB } from "@/components/shared/ExternalLink";
 import { OneLine } from "./OneLine";
-import { GridFormBlockView, ReadingView, VerbFormBlockView } from "./Reading";
+import { GridFormBlockView, ReadingView, ShapeFormBlockView, VerbFormBlockView } from "./Reading";
 import { ReportDialog } from "./ReportDialog";
 import { reportReadings, type ReportReading } from "@/lib/dictionary/report.ts";
 import { footerSourceLink, type FooterSource } from "@/lib/dictionary/footerSource.ts";
@@ -168,6 +168,8 @@ export function WordView({ page, siteKey }: { page: WordPage; siteKey?: string }
             <VerbFormBlockView key={readingAnchor(entry)} block={entry} />
           ) : entry.kind === "grid-form" ? (
             <GridFormBlockView key={readingAnchor(entry)} block={entry} />
+          ) : entry.kind === "shape-form" ? (
+            <ShapeFormBlockView key={readingAnchor(entry)} block={entry} />
           ) : (
             <ReadingView key={readingAnchor(entry)} entry={entry} />
           ),
