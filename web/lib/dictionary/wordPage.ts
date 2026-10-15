@@ -278,13 +278,16 @@ export type TakenConjugation =
   | { kind: "declared-conjugation"; conjugation: Conjugation<DeclaredVerbForm> }
   | PronominalConjugation;
 
-/** A pronominal verb's conjugation, built from its base verb's (#837). */
-export type PronominalConjugation = { kind: "pronominal-conjugation"; conjugation: Conjugation<PronominalForm> };
+/**
+ * A pronominal verb's conjugation, built from its base verb's (#837), and the
+ * one reading that draws it (`pronominalOf`).
+ */
+export type PronominalConjugation = { kind: "pronominal-conjugation"; conjugation: Conjugation<PronominalForm>; owner: Reading };
 
 /** The page's taken conjugation, when `reading` is one that may draw it. */
 function takenBy(reading: Reading, taken: TakenConjugation | undefined): TakenConjugation | undefined {
   if (taken === undefined) return undefined;
-  const takes = taken.kind === "declared-conjugation" ? takesDeclaredConjugation(reading) : takesPronominalConjugation(reading);
+  const takes = taken.kind === "declared-conjugation" ? takesDeclaredConjugation(reading) : taken.owner === reading;
   return takes ? taken : undefined;
 }
 
@@ -332,14 +335,18 @@ const takesPronominalConjugation = (reading: Reading): boolean =>
   !conjugates(reading.forms);
 
 /**
- * The pronominal verb a page may build a conjugation for: the word of its
- * first reading that may take one, when no verb record about the query draws
- * a table of its own.
+ * The pronominal verb a page may build a conjugation for, and the reading that
+ * draws it, when no verb record about the query draws a table of its own: the
+ * first reading that may take one and has text of its own, else the first
+ * that may take one. `figurarsi` has a record with no definition and one
+ * with; the table goes under the second, beside its meanings.
  */
-function pronominalOf(readings: readonly Reading[]): PronominalVerb | undefined {
+function pronominalOf(readings: readonly Reading[]): { verb: PronominalVerb; owner: Reading } | undefined {
   if (readings.some((reading) => reading.isAboutQuery && isVerbReading(reading) && conjugates(reading.forms))) return undefined;
-  const reading = readings.find(takesPronominalConjugation);
-  return reading === undefined ? undefined : pronominalVerb(reading.word);
+  const taking = readings.filter(takesPronominalConjugation);
+  const owner = taking.find((reading) => ownTextOf(reading) !== undefined) ?? taking[0];
+  const verb = owner === undefined ? undefined : pronominalVerb(owner.word);
+  return owner === undefined || verb === undefined ? undefined : { verb, owner };
 }
 
 /**
@@ -349,7 +356,7 @@ function pronominalOf(readings: readonly Reading[]): PronominalVerb | undefined 
  * `distrarsi`). Empty for any other page, so a search reads nothing more.
  */
 export function pronominalBaseWords(readings: readonly Reading[]): readonly string[] {
-  return pronominalOf(readings)?.bases ?? [];
+  return pronominalOf(readings)?.verb.bases ?? [];
 }
 
 /**
@@ -377,11 +384,11 @@ function takenConjugationOf(
     const conjugation = declaredConjugationOf(declared);
     if (placesAny(conjugation)) return { kind: "declared-conjugation", conjugation };
   }
-  const verb = pronominalOf(readings);
-  const base = verb === undefined ? undefined : pronominalBaseOf(verb, bases);
-  if (verb === undefined || base === undefined) return undefined;
-  const conjugation = pronominalConjugationOf(verb, base.forms);
-  return placesAny(conjugation) ? { kind: "pronominal-conjugation", conjugation } : undefined;
+  const pronominal = pronominalOf(readings);
+  const base = pronominal === undefined ? undefined : pronominalBaseOf(pronominal.verb, bases);
+  if (pronominal === undefined || base === undefined) return undefined;
+  const conjugation = pronominalConjugationOf(pronominal.verb, base.forms);
+  return placesAny(conjugation) ? { kind: "pronominal-conjugation", conjugation, owner: pronominal.owner } : undefined;
 }
 
 /** What any source reading may show after its own text, in this order on the page. */

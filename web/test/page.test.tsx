@@ -3819,8 +3819,9 @@ test("a sense label shows in the Italian the page wrote, not the extraction's En
 // archive lines 624 `arrendersi` and 770 `accorgersi`, which carry their own
 // table; 2061 `alzarsi`, 8179 `andarsene`, 50301 `trasferirsi` and 448681
 // `pentirsi`, which carry none; and the base verbs 47593 `alzare`, 2344 and
-// 2345 `andare`, 50299 `trasferire` and 532997 `arrendere`. `pentire` has no
-// record in the release.
+// 2345 `andare`, 50299 `trasferire` and 532997 `arrendere`; then 137017 and
+// 137018 `figurare`, and 464591 and 464592 `figurarsi`, whose first record has
+// no definition. `pentire` has no record in the release.
 
 const PRONOMINAL_LINES = (await readFile(join(REPO, "fixtures/pronominal-verb-tables.jsonl"), "utf8")).trimEnd().split("\n");
 const withPronominal = (run: (f: Fixture) => Promise<void>) => withLines(PRONOMINAL_LINES, run);
@@ -3893,6 +3894,19 @@ test("alzarsi and andarsene show their built tables; an -rsene verb takes me ne,
     assert.equal(textOf(firstCell(panel(andarsene, "Imperativo"), "tu") ?? ""), "vattene, non andartene");
     assert.equal(textOf(firstCell(panel(andarsene, "Imperativo"), "noi") ?? ""), "andiamocene");
     assert.equal(textOf(nonFinite(andarsene, "gerundio") ?? ""), "andandosene");
+  });
+});
+
+test("a pronominal verb's built table shows once, under its first record with a meaning: figurarsi (#837)", async () => {
+  await withPronominal(async ({ db }) => {
+    const html = await render(db, "figurarsi");
+    assert.equal(occurrencesOf(html, ">Forme<"), 1);
+    const [first, ...rest] = readingsOfPage(html);
+    // The record with no definition has nothing to show, and the table sits beside the meanings.
+    assert.equal(rest.length, 0);
+    assert.match(first, />Definizioni</);
+    assert.match(first, />Forme</);
+    assert.equal(tenseColumn(html, "Indicativo", "presente")[0], "io mi figuro");
   });
 });
 
