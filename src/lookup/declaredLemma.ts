@@ -27,7 +27,7 @@ import { readVerbFormGloss } from "../italian/verbFormGloss.js";
 import { correctionOf, correctionsByRecord, type CorrectionRow } from "./correctedClaim.js";
 import { correctedEdgeServed, sourceEdgeServed } from "./correctedEdge.js";
 import type { DictionaryRead, LookupDatabase } from "./database.js";
-import { dictionaryTables, servedBy } from "./served.js";
+import { dictionaryTables, servedBy, type DictionaryTables } from "./served.js";
 import { pluralDeclaration } from "./types.js";
 import type {
   DeclaredLemmaReading,
@@ -199,13 +199,32 @@ export async function declaredVerbForms(
 }
 
 /**
+ * Whether the page answers `key` as a declared lemma: some served edge names
+ * it and a gloss on one places a form. A Wikidata word (ADR 0033, #812) is
+ * read for a key only when this is false, so a declared lemma's page stays.
+ */
+export async function isDeclaredLemma(
+  db: LookupDatabase,
+  releaseId: string,
+  key: string,
+  tables: Pick<DictionaryTables, "corrections" | "edgeCorrections">,
+): Promise<boolean> {
+  return (await declaredReadings(db, releaseId, key, tables)).length > 0;
+}
+
+/**
  * One reading per part of speech whose forms the served edges naming `key`
  * declare, in the order the source first places a form of it; none when no
  * gloss on those edges places a form.
  */
-async function declaredReadings(db: LookupDatabase, releaseId: string, key: string): Promise<DeclaredLemmaReading[]> {
-  // Which reads to send depends on the tables, so they wait on that one statement.
-  const { corrections: corrected, edgeCorrections } = await dictionaryTables(db);
+async function declaredReadings(
+  db: LookupDatabase,
+  releaseId: string,
+  key: string,
+  known?: Pick<DictionaryTables, "corrections" | "edgeCorrections">,
+): Promise<DeclaredLemmaReading[]> {
+  // Which reads to send depends on the tables, so they wait on that one statement, unless the caller read it.
+  const { corrections: corrected, edgeCorrections } = known ?? (await dictionaryTables(db));
   const [edges, grammarRows, correctionRows] = await Promise.all([
     db.all<EdgeRow>(edgeCorrections ? CORRECTED_DECLARED_LEMMA_SQL : DECLARED_LEMMA_SQL, [releaseId, key]),
     db.all<GrammarRow>(edgeCorrections ? CORRECTED_DECLARED_LEMMA_GENDER_SQL : DECLARED_LEMMA_GENDER_SQL, [releaseId, key]),

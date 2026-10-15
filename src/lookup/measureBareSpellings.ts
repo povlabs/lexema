@@ -14,12 +14,12 @@
 // master, else the one master the database serves. The database is opened
 // read-only. Prints Markdown, so a run can be pasted into a report.
 
-import { readdir } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { isMain } from "../commandLine.js";
 import { bareSpelling,bareSpellingOutcome, type BareSpellingOutcome } from "./bareSpelling.js";
 import { fromNodeSqlite } from "./database.js";
+import { dictionaryFile, masterOf } from "./localDictionary.js";
 import { lookup } from "./lookup.js";
 import { findNearby, type Nearby } from "./nearby.js";
 
@@ -32,26 +32,6 @@ const OUTCOMES: readonly { outcome: BareSpellingOutcome; heading: string }[] = [
   { outcome: "offered", heading: "Not found, and the headword is offered but not first" },
   { outcome: "missed", heading: "Not found, and the headword is not offered" },
 ];
-
-/** The local D1 file under a Wrangler state directory that holds the dictionary. */
-async function dictionaryFile(state: string): Promise<string> {
-  const dir = join(state, "v3", "d1", "miniflare-D1DatabaseObject");
-  const files = (await readdir(dir)).filter((name) => name.endsWith(".sqlite") && name !== "metadata.sqlite");
-  for (const name of files) {
-    const db = new DatabaseSync(join(dir, name), { readOnly: true });
-    const holds = db.prepare("SELECT 1 FROM sqlite_schema WHERE type = 'table' AND name = 'lookup_form'").get() !== undefined;
-    db.close();
-    if (holds) return join(dir, name);
-  }
-  throw new Error(`no dictionary database under ${dir}; seed one first (docs/RUN_AN_IMPORT.md)`);
-}
-
-function masterOf(db: DatabaseSync, named: string | undefined): string {
-  if (named !== undefined) return named;
-  const masters = db.prepare("SELECT DISTINCT master_release_id AS id FROM served_release").all() as { id: string }[];
-  if (masters.length !== 1) throw new Error(`the database serves ${masters.length} masters; name one with LEXEMA_RELEASE`);
-  return masters[0].id;
-}
 
 interface Row {
   /** The headword's key, apostrophes made straight. */

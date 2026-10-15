@@ -25,6 +25,8 @@
     "load:recovered-definitions": "tsx src/import/loadRecoveredDefinitionsCli.ts",
     "load:names": "tsx src/names/loadNamesCli.ts",
     "names:fetch": "tsx src/names/fetchNamesCli.ts",
+    "load:wikidata-words": "tsx src/wikidataWords/loadWikidataWordsCli.ts",
+    "wikidata-words:snapshot": "tsx src/wikidataWords/snapshotWordsCli.ts",
     "update:auto": "tsx src/update/updateCli.ts auto",
     "update:upgrade": "tsx src/update/updateCli.ts upgrade",
     "update:diff": "tsx src/update/updateCli.ts diff",
@@ -45,10 +47,12 @@
     "measure:section-language": "tsx src/import/measureSectionLanguage.ts",
     "bench:lookup": "tsx src/bench/lookupBenchCli.ts",
     "measure:bare-spellings": "tsx src/lookup/measureBareSpellings.ts",
+    "measure:missing-words": "tsx src/lookup/measureMissingWords.ts",
     "measure:plural-gloss": "tsx src/import/measurePluralGloss.ts",
     "measure:form-of-gloss-edge": "tsx src/import/measureFormOfGlossEdge.ts",
     "measure:form-of-meaning-edge": "tsx src/import/measureFormOfMeaningEdge.ts",
-    "measure:page-entry-fields": "tsx src/import/measurePageEntryFields.ts"
+    "measure:page-entry-fields": "tsx src/import/measurePageEntryFields.ts",
+    "diff:pages": "tsx web/pageDiff/pageDiffCommand.ts"
   },
   "devDependencies": {
     "@kampus/fabrika-cli": "catalog:",

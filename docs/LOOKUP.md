@@ -93,8 +93,9 @@ When the key matches nothing and has two to `MAX_PHRASE_WORDS` (12) words,
 
 The readings are those headwords' records, and `route` says how they were
 reached: `{ kind: "surface" }` for a query found as typed,
-`{ kind: "phrase", phrases, forms }`, or `{ kind: "feminine", agreement }`
-and `{ kind: "first-spelling", agreement }` (below). Each phrase is the headword `key`, its
+`{ kind: "phrase", phrases, forms }`, `{ kind: "feminine", agreement }`
+and `{ kind: "first-spelling", agreement }`, or `{ kind: "shape", spellings }`
+(both below). Each phrase is the headword `key`, its
 `word` as the source spells it, and the typed `words` with the lemma each
 stood for and the one word that stands for it (`inflected`: the participle of
 a compound tense). A single word is never read this way, and neither is a
@@ -197,6 +198,92 @@ Nothing derived is stored
 reflexive verbs are in scope by
 [Huey's scope reply](https://github.com/povlabs/lexema/issues/676#issuecomment-6014794503)
 of 2026-10-06).
+
+### A shape of a word the dictionary has
+
+Italian writes some forms by changing a word's spelling in a regular way, and
+the source lists none of them: `raccontarvi`, `quei`, `quell'`, `aver`. When
+the key is still found by nothing above, `lookup()` reads it by rule
+`it-word-shape/v1` (#809,
+[`src/italian/wordShape.ts`](../src/italian/wordShape.ts), read in
+[`src/lookup/wordShape.ts`](../src/lookup/wordShape.ts)). The rule names
+the spellings of the words the key may be a form of, each with its shape:
+
+| Shape | Example | Spellings named | Records admitted |
+| --- | --- | --- | --- |
+| `clitic` | `raccontarvi`, `dammi`, `vergognarti`, `scusatemi`, `dicendomi` | the infinitive (`raccontare`), its pronominal verb when the pronouns open with a reflexive (`vergognarsi`), an imperative of one syllable (`da'`), or the imperative or gerund the pronouns join (`scusate`, `dicendo`) | verbs |
+| `elided` | `quell'`, `dov'`, `m'` | the word with `-o`, `-a` or `-e`; a one-letter pronoun names its pronoun (`mi`) | no noun |
+| `truncated` | `aver`, `cuor`, `han`, `ancor` | `-e` first, then `-o` and `-no` after `-an`; `ora` and its compounds and `suora` name `-a` alone; after `m` only `-iamo` (`siam`) | any |
+| `demonstrative` | `quei`, `quegli`, `bei`, `begli` | `quello`, `bello` | adjectives |
+| `superlative` | `bravissimo`, `ricchissimi` | `bravo`, `brave`; `ricco` | adjectives |
+| `participle` | `piaciute`, `valsa` | the masculine singular, `piaciuto` | a verb's past participle cell |
+
+Four more shapes read the regular forms of a word whose record lists none.
+They answer only when none of the six above does:
+
+| Shape | Example | Spellings named | Records admitted |
+| --- | --- | --- | --- |
+| `inflected` | `tate`, `follie`, `crucchi`, `artificieri`, `poverina` | tier 0, the same gender: `-i` names `-o`, `-e` and `-io`, `-chi` `-co`; `-e` names `-a`, `-che` `-ca`, `-ce` and `-ge` also `-cia` and `-gia`. Tier 1, a feminine singular: `-a` names `-o`. Tier 2, a feminine plural: `-e` names `-o` | nouns and adjectives that list no forms; tier 2 adjectives only |
+| `conjugated` | `fischia`, `annette` | the infinitive of each regular ending the key ends with; `-iare` drops its `i` before `i` and `e`, `-care` and `-gare` write `h` | verbs that list no forms |
+| `plural-spelling` | `valige` | `-ce` and `-ge` name `-cie` and `-gie`, and back | a noun's or adjective's plural |
+| `english-plural` | `marines`, `games`, `studios` | the key without its `-s`, three letters at least | nouns |
+
+No shape admits a proper name, an abbreviation, a symbol or a word part, and
+none but `plural-spelling` admits a spelling the source states a plural on a
+noun, adjective, pronoun or article record: `belle` is no `bell'`, `capitane`
+no `capitan`. A verb's plural is admitted (`devon` of `devono`). Of each shape
+only the lowest tier with an admitted record answers. `inflected` does not
+read a stated `invariable`: the source states it on `follia`, whose plural
+`follie` is regular. An accent written as an apostrophe
+(`citta'`) is no elision, and a word with an accent missing (`perche`) is no
+shape: accents are meaning ([LOOKUP_DESIGN.md](LOOKUP_DESIGN.md#accents-are-meaning)),
+and the not-found answer offers the accented word.
+
+Every spelling is read in one statement, `shapeReadOf` (`SHAPE_READ_SQL` on a
+dictionary with every optional table): the source's rows as `SEARCH_SQL`
+reads them, the curated cells (#743), and the page-only entries and hand-kept
+readings each spelling heads. It is sent in the call that reads the page-only
+entries spelled as typed, as soon as the source spells nothing as typed, so a
+query nothing answers pays one statement and no call; a query of none of the
+rule's shapes sends nothing more. The readings are the records the answering
+spellings reach, as a typed word's are made, then their page-only entries and
+hand-kept readings; `route` is `{ kind: "shape", spellings }`, the spellings that
+answered. `exists()` and `lookupBatch` answer the same way. Nothing derived is
+stored.
+
+The word page keeps a declared lemma's page (#453) for a query the rule reads
+as a shape: `aggrapparsi` is a declared lemma, so its page stays
+`aggrapparsi`, not `aggrappare` with a clitic
+([`searchAttempt.ts`](../web/lib/dictionary/searchAttempt.ts)).
+
+### A `si` + verb pair
+
+Italian says a pronominal verb's finite forms with `si` before the verb:
+`trasferirsi` is said `si trasferiscono`. The source lists `trasferiscono`
+in trasferire's table, and trasferirsi's record lists no forms, so the pair
+spells nothing. When the key is still found by nothing above, `lookup()`
+reads it by rule `it-pronominal-pair/v1` (#810,
+[`src/italian/pronominalPair.ts`](../src/italian/pronominalPair.ts), read in
+[`src/lookup/pronominalPair.ts`](../src/lookup/pronominalPair.ts)):
+
+1. The key must be `si` and one word of letters. Anything else sends nothing
+   more: `trasferiscono`, `mi trasferisco` and `si l'ha` cost exactly the
+   statements they cost before.
+2. `PAIRED_CELL_SQL` reads the verb table cells that spell the word, as
+   `SEARCH_SQL` reads them, with whether the source states each cell a third
+   person's. Only a verb's third person cell counts: `si` is the third
+   person's reflexive pronoun, so `si trasferisco` finds nothing.
+3. Each such verb names its pronominal infinitive: `-e` turns to `si`
+   (`trasferire`, `trasferirsi`), and `-rre` drops `re` for `si` (`porre`,
+   `porsi`). Those keys are read with the shape read (`readShapeRows`), and a
+   row answers only when it is a verb's headword. `si vive` finds nothing:
+   the dictionary has no `viversi`.
+
+The readings are those verbs, made as a shape's are; `route` is
+`{ kind: "pronominal", pairs }`, each pair the form, the verb whose table
+spells it, and the pronominal infinitive. `exists()` and `lookupBatch`
+answer the same way, the batch reading every pair of its words in the same
+two statements. Nothing derived is stored.
 
 ## Outcomes
 

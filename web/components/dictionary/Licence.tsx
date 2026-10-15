@@ -9,7 +9,16 @@
 // `/attribution` page's sections had, so a link to one of them still lands on
 // the section that replaced it. The Wikidata credit in section 3 and the
 // trademark line's Wikidata are added by #794 (ADR 0032), their wording for
-// Huey to approve on that pull request.
+// Huey to approve on that pull request. #812 (ADR 0033) extends that one
+// credit to the Wikidata words rather than adding a second. The section's
+// last two sentences, that a Wikidata-only page's Fonte opens its item or
+// lexeme and that this data stays in the public domain, follow Huey's ruling
+// of 2026-10-12 that both Wikidata layers stay CC0
+// (https://github.com/povlabs/lexema/issues/802#issuecomment-6132249641).
+// The paragraph is the wording Huey approved on 2026-10-12, which drops the
+// sentence that every Wikidata name and word links its own item or lexeme:
+// since #827 a name on a mixed page links none
+// (https://github.com/povlabs/lexema/issues/802#issuecomment-6133207273).
 
 import { ExternalLink } from "@/components/shared/ExternalLink";
 import { LEGAL_ITEMS, LEGAL_PARAGRAPH, LEGAL_UNBROKEN, LINK } from "@/components/shared/styles.ts";
@@ -104,7 +113,7 @@ export function Licence({ release }: { release: ServedRelease }) {
               </p>
               <p className={LEGAL_PARAGRAPH}>
                 I nomi propri che il Wikizionario non spiega, come luoghi, organizzazioni, lingue, valute e festività,
-                provengono da{" "}
+                e le parole italiane che il Wikizionario non ha provengono da{" "}
                 <ExternalLink language="it" className={LINK} href="https://www.wikidata.org/">
                   Wikidata
                 </ExternalLink>
@@ -112,7 +121,8 @@ export function Licence({ release }: { release: ServedRelease }) {
                 <ExternalLink language="it" className={LINK} href={CC0_URL}>
                   dedicazione Creative Commons CC0 1.0 Universale
                 </ExternalLink>
-                . Ogni nome tratto da Wikidata rimanda al proprio elemento su Wikidata.
+                . Quando una pagina mostra solo dati di Wikidata, il suo link Fonte rimanda all’elemento o al lessema
+                da cui provengono. Questi dati restano nel pubblico dominio e si possono riutilizzare liberamente.
               </p>
             </>
           ),

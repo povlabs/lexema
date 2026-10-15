@@ -101,9 +101,19 @@
 // word's, and no page shows them (rule 3 of #695: "No base-word extras on any
 // form page"; P5, P6, P14; #700). So a form's reading or block has no
 // Etymology or Synonyms of its own.
+//
+// A query rule `it-word-shape/v1` read (route `shape`, #809) is no record's
+// word: the records it reached are its base words', so it is a form page of
+// its own (#802). Its title is the spelling searched; each base word it
+// reached shows as that word's block (`ShapeFormBlock`), led by a line built
+// by rule `it-word-shape-line/v1` ("maschile plurale di quello" for `quei`),
+// then the word's *Definitions* and *Forme di quello*. A form record it
+// reached keeps its block, the shape's line leading its own. The page shows
+// none of the base words' facts, its pronunciation included.
 
 import { foldItalianApostrophes, normalizeItalianExact } from "@lexema/italian/normalize.ts";
 import { VERB_FORM_LINE_RULE, verbFormLine, type SpelledGender } from "@lexema/italian/verbFormLine.ts";
+import { WORD_SHAPE_LINE_RULE, wordShapeLine, type ShapedSpelling } from "@lexema/italian/wordShape.ts";
 import { mergeExpressions } from "@lexema/lookup/expressions.ts";
 import {
   entryKey,
@@ -111,10 +121,12 @@ import {
   formsOfQueryReadings,
   isAdjectiveReading,
   isFormOfReading,
+  isFromWikidata,
   isNameEntry,
   isNounReading,
   isSourceRef,
   isVerbReading,
+  isWikidataWord,
   lemmasOfPartOfSpeech,
   otherFormsOfQueryLemmas,
   searchedSpellings,
@@ -368,7 +380,13 @@ export type BlockDefinitions =
  * Etymology or Synonyms (rule 3, #695), so there is no part for either.
  */
 export type FormOfPart =
-  | { kind: "form-lines"; records: NonEmpty<RecordLines> }
+  /**
+   * Its records' own lines. On a shape's page `lead` is what the query is of
+   * this form, shown first with them (#802); it is empty on any other page.
+   */
+  | { kind: "form-lines"; lead: ShapeFormLine[]; records: NonEmpty<RecordLines> }
+  /** On a shape's page, what the query is of a form whose records have no line of their own (#802). */
+  | { kind: "shape-lines"; lines: NonEmpty<ShapeFormLine> }
   | { kind: "lemma-definitions"; definitions: BlockDefinitions }
   | SharedPart;
 
@@ -424,6 +442,12 @@ export interface FormOfReading extends ShownReading<"form-of", FormOfPart> {
    * record's other blocks.
    */
   part: string | undefined;
+  /**
+   * Whether its heading names its record's gender and number. On a shape's
+   * page it does not: they are the record's, not the spelling searched
+   * (`tipe` is no `femminile, singolare` as its record `tipa` is; #802).
+   */
+  recordGrammar: boolean;
 }
 
 /**
@@ -481,8 +505,26 @@ export interface SourceFormLine {
   item: DefinitionItem;
 }
 
-/** One form-of line of a verb form block: the source's, or built by rule. */
-export type FormLine = SourceFormLine | VerbFormLine;
+/**
+ * One line saying what a form rule `it-word-shape/v1` read is of the word it
+ * names (#809), built by rule `it-word-shape-line/v1`: "pronome vi unito a
+ * raccontare" for `raccontarvi`, "maschile plurale di quello" for `quei`
+ * (#802). Lexema's text, not the source's, which its type says and the page
+ * does not (ADR 0008, ADR 0016). It is built from the query and the rule
+ * alone, so it points at no source field.
+ */
+export interface ShapeFormLine {
+  kind: "rule";
+  /** The whole line, ending with `lemma`. */
+  text: string;
+  /** The spelling the line names, linked to its search. */
+  lemma: string;
+  sourceType: "lexema-deterministic";
+  rule: typeof WORD_SHAPE_LINE_RULE;
+}
+
+/** One form-of line of a verb form block: the source's, or built by rule from a verb's table or from a word's shape. */
+export type FormLine = SourceFormLine | VerbFormLine | ShapeFormLine;
 
 /**
  * A form record about the query whose definitions a block holds. A record
@@ -565,8 +607,33 @@ export interface GridFormBlock {
   tables: GridTable[];
 }
 
-/** One reading on a word's page: a source record's, or a verb's or a grid's form block. */
-export type PageEntry = PageReading | VerbFormBlock | GridFormBlock;
+/**
+ * A form rule `it-word-shape/v1` read as a shape of a word the dictionary
+ * has (#809), as the other form blocks read (rules 3 and 4 of Huey's ruling of
+ * 2026-10-06 on #695; #802): `quei` shows `1 · Aggettivo dimostrativo ·
+ * quello`, its line "maschile plurale di quello", then quello's
+ * *Definitions*, then *Forme di quello*; `raccontarvi` shows `1 · Voce verbale
+ * · raccontare` and raccontare's. The searched spelling is the page's title,
+ * and no base-word extra shows. One block per base word (rule 1).
+ */
+export interface ShapeFormBlock {
+  kind: "shape-form";
+  number: number;
+  /** `Voce verbale` for a verb, as a verb form's block is headed (frame 37); otherwise its records' parts of speech, each once (#727). */
+  heading: BlockHeading;
+  /** The base word: the headword of its records. */
+  word: string;
+  /** The base word's records the shape reached; the first heads the block. */
+  records: NonEmpty<Reading>;
+  lines: NonEmpty<ShapeFormLine>;
+  /** The base word's own definitions, grouped by part of speech when its records have several (#727): the block's *Definitions*. */
+  definitions: BlockDefinitions | undefined;
+  /** The base word's tables, as *Forme di <word>*, each once a page. */
+  tables: LemmaTable[];
+}
+
+/** One reading on a word's page: a source record's, or a verb's, a grid's or a shape's form block. */
+export type PageEntry = PageReading | VerbFormBlock | GridFormBlock | ShapeFormBlock;
 
 /** A page entry that carries a number: every one but a lone bare reading. */
 export type NumberedEntry = PageEntry | BareReading;
@@ -589,12 +656,13 @@ export const numberedEntries = (readings: WordReadings): NonEmpty<NumberedEntry>
 
 const isLoneBare = (readings: WordReadings): readings is [LoneBareReading] => readings[0].kind === "lone-bare";
 
-/** What follows a block's number in its heading and its jump link: `Voce verbale · salire`. */
-export const blockTitle = (block: VerbFormBlock): string => `${block.posTitle} · ${block.verb}`;
+/** What follows a block's number in its heading and its jump link: `Voce verbale · salire`, `Aggettivo dimostrativo · quello`. */
+export const blockTitle = (block: VerbFormBlock | ShapeFormBlock): string =>
+  block.kind === "verb-form" ? `${block.posTitle} · ${block.verb}` : `${headingTitle(block.heading)} · ${block.word}`;
 
-/** What an entry's jump link and report choice name it by: a verb block's title, or a part of speech. */
+/** What an entry's jump link and report choice name it by: a verb or shape block's title, or a part of speech. */
 export const entryTitle = (entry: ShownEntry): string => {
-  if (entry.kind === "verb-form") return blockTitle(entry);
+  if (entry.kind === "verb-form" || entry.kind === "shape-form") return blockTitle(entry);
   if (entry.kind === "grid-form") return entry.posTitle;
   return entry.kind === "source" && entry.role === "form-of" ? headingTitle(entry.heading) : entry.reading.posTitle;
 };
@@ -614,6 +682,8 @@ export function baseWordOf(entry: ShownEntry): string {
       return entry.verb;
     case "grid-form":
       return entry.records[0].word;
+    case "shape-form":
+      return entry.word;
     case "source":
       return entry.role === "form-of" ? entry.baseWord : entry.reading.word;
     case "bare":
@@ -643,7 +713,9 @@ export const entryName = (entry: ShownEntry): string =>
     ? `voce-verbale-${entry.verb.replace(/\s+/g, "_")}`
     : entry.kind === "grid-form"
       ? `forma-flessa-${entryKey(entry.records[0])}`
-      : entry.kind === "source" && entry.role === "form-of" && entry.part !== undefined
+      : entry.kind === "shape-form"
+        ? `forma-di-${entryKey(entry.records[0])}`
+        : entry.kind === "source" && entry.role === "form-of" && entry.part !== undefined
         ? `${entryKey(entry.reading)}-${entry.part.replace(/\s+/g, "_")}`
         : entryKey(entry.reading);
 
@@ -688,6 +760,10 @@ export function shownRecords(entries: readonly ShownEntry[]): ShownRecord[] {
     }
     if (entry.kind === "grid-form") {
       for (const reading of entry.records) add(entry.number, reading, entry.posTitle);
+      continue;
+    }
+    if (entry.kind === "shape-form") {
+      for (const reading of entry.records) add(entry.number, reading, blockTitle(entry));
       continue;
     }
     add(entry.number, entry.reading, entry.reading.posTitle);
@@ -1078,7 +1154,14 @@ export function wordPage(
   const declaredTable = conjugation !== undefined && placesAny(conjugation) ? conjugation : undefined;
   const forms = formsOfQueryReadings(readings);
   const siblings = otherFormsOfQueryLemmas(readings);
-  const ordered = pageOrder(readings.filter((reading) => !forms.has(reading) && !siblings.has(reading)));
+  const kept = readings.filter((reading) => !forms.has(reading) && !siblings.has(reading));
+  // A form rule `it-word-shape/v1` read (#809) is no record's word: the
+  // records it reached are its base word's, and each shows as that word's
+  // form block (`shapeBasesOf`, #802). Its form records and the lemmas they
+  // name are drawn as any form's are.
+  const shape: ShapePage | undefined =
+    route.kind === "shape" ? { key: normalizeItalianExact(query), spellings: route.spellings, bases: shapeBasesOf(kept) } : undefined;
+  const ordered = pageOrder(kept.filter((reading) => !shape?.bases.includes(reading)));
   const about = ordered.filter((reading) => reading.isAboutQuery);
   // The word's own facts are its own records': what a form record says of its
   // word, its etymology (`vedi bello`, `da andare`) and its word lists
@@ -1089,7 +1172,7 @@ export function wordPage(
   const ownRecords = about.filter((reading) => !isFormOfReading(reading));
   const merged = mergeWordFacts(about, ownRecords);
   const placed = placeWordFacts(about, ownRecords, merged);
-  const page: PageParts = { ordered, about, own: ownKeysOf(readings), lemmas, placed, gender, declared: declaredTable };
+  const page: PageParts = { ordered, about, own: ownKeysOf(readings), lemmas, placed, gender, declared: declaredTable, shape };
 
   // Only records about the searched word are readings (rule 2 of Huey's ruling
   // of 2026-10-06, #695): a record that only lists the query in its table is
@@ -1116,6 +1199,21 @@ export function wordPage(
   const shown = numbered(entries) ?? bareReadings(bare);
   if (shown === undefined) throw new Error("a found result renders at least one reading");
 
+  if (shape !== undefined) {
+    // A shape's page is the searched spelling's (rule 4 of #695: a form's
+    // title is the form), and every fact its records hold is a base word's:
+    // its pronunciation, etymology, word lists and expressions show nowhere
+    // (rule 3, P5, P6). The searched spelling has no Wiktionary page, so the
+    // one *Fonte* opens the base word's (`shapeSourceWord`).
+    return {
+      headword: shape.key,
+      readings: shown,
+      wordFacts: NO_WORD_FACTS,
+      wordLists: { synonyms: [], antonyms: [], derived: [] },
+      expressions: undefined,
+      source: footerSourceOf(readings, shown, shapeSourceWord(kept, shape, readings)),
+    };
+  }
   const headword = about[0]?.word ?? query;
   const expressions = nonEmpty(mergeExpressions(about.map((reading) => reading.wordFacts.expressions)));
   return {
@@ -1134,17 +1232,23 @@ export function wordPage(
 
 /**
  * What the footer's one *Fonte* credits; no reading credits its own (#827).
- * The Wiktionary page of the title, the spelling the page is about, whenever
+ * The Wiktionary page of `headword` (the title, the spelling the page is
+ * about, or on a shape's page its base word, `shapeSourceWord`) whenever
  * the lookup found a Wiktionary reading, shown or not, since its word facts
  * may show: that page holds every entry for the spelling, so one link covers
- * every reading (ADR 0009, amended on #281). A page of name entries alone
- * credits the Wikidata item of the first it shows (ADR 0032, #827).
+ * every reading (ADR 0009, amended on #281). A page of Wikidata entries alone
+ * credits the Wikidata page of the first it shows: a name entry's item (ADR
+ * 0032, #827), or a Wikidata word's lexeme (ADR 0033, #812).
  */
 function footerSourceOf(found: readonly [Reading, ...Reading[]], shown: WordReadings, headword: string): FooterSource {
-  if (!found.every(isNameEntry)) return wiktionarySource(headword);
-  const shownNames = shown.flatMap((entry) => (entry.kind !== "verb-form" && entry.kind !== "grid-form" && isNameEntry(entry.reading) ? [entry.reading] : []));
-  const first = shownNames[0] ?? found[0];
-  return { kind: "wikidata", item: first.nameItem, word: first.word };
+  if (!found.every(isFromWikidata)) return wiktionarySource(headword);
+  const shownWikidata = shown.flatMap((entry) =>
+    entry.kind !== "verb-form" && entry.kind !== "grid-form" && entry.kind !== "shape-form" && isFromWikidata(entry.reading) ? [entry.reading] : [],
+  );
+  const first = shownWikidata[0] ?? found[0];
+  if (isNameEntry(first)) return { kind: "wikidata", item: first.nameItem, word: first.word };
+  if (isWikidataWord(first)) return { kind: "lexeme", lexeme: first.lexeme, word: first.word };
+  return wiktionarySource(headword);
 }
 
 /** What a page's entries are drawn from. */
@@ -1161,6 +1265,126 @@ interface PageParts {
   gender: SpelledGender;
   /** The conjugation the query's form records declare, on a page whose verb records draw none (#799). */
   declared: DeclaredConjugation | undefined;
+  /** What rule `it-word-shape/v1` read the query as, on a shape's page (#809); none on any other. */
+  shape: ShapePage | undefined;
+}
+
+/** A shape's page: what the rule read the query as, and the records each shown as its word's shape block (`shapeBasesOf`). */
+interface ShapePage extends ShapeReading {
+  bases: readonly Reading[];
+}
+
+/** A word page with no facts of its own: a shape's, whose records' facts are its base words' (#802). */
+const NO_WORD_FACTS: WordFacts = {
+  pronunciations: [],
+  hyphenations: [],
+  etymologies: [],
+  synonyms: [],
+  synonymList: [],
+  antonyms: [],
+  derived: [],
+  expressions: [],
+};
+
+/** What rule `it-word-shape/v1` read a query as (#809): the query's key, and the spellings that answered. */
+interface ShapeReading {
+  key: string;
+  spellings: NonEmpty<ShapedSpelling>;
+}
+
+/**
+ * The records a shape's page shows as shape blocks (#802): every record the
+ * shape reached that is not itself a form, the query's word being a shape of
+ * it (`quello` for `quei`, `dare` for `dammi`). A record a form record of the
+ * spelling names stays that form's lemma (`dire` for `dicendomi`, through
+ * `dicendo`), as on any form's page.
+ */
+function shapeBasesOf(readings: readonly Reading[]): Reading[] {
+  const forms = readings.filter((reading) => reading.isAboutQuery && isFormOfReading(reading));
+  return readings.filter((reading) => !isFormOfReading(reading) && !formOfReadingAbout(reading, forms));
+}
+
+/**
+ * The word whose Wiktionary page a shape's *Fonte* opens: the base word whose
+ * record the page shows, the first record about the query in page order, as
+ * the title was before the shape got a page of its own (`quei` opens quello's,
+ * `raccontarvi` raccontare's; Huey's ruling of 2026-10-15 on #802). A word
+ * shape is a spelling the source lists nowhere, so its own page does not exist.
+ */
+function shapeSourceWord(kept: readonly Reading[], shape: ShapePage, found: readonly [Reading, ...Reading[]]): string {
+  return (pageOrder(kept).find((reading) => reading.isAboutQuery) ?? shape.bases[0] ?? found[0]).word;
+}
+
+/** The keys a record was found by: its headword's, and those of the forms the search hit in its table. */
+function foundKeys(record: Reading): string[] {
+  const hit = searchedSpellings(record);
+  const cells = record.forms.filter((form) => isSourceRef(form.ref) && hit.formPointers.has(form.ref.jsonPointer));
+  return [...(hit.headword ? [normalizeItalianExact(record.word)] : []), ...cells.map((form) => normalizeItalianExact(form.surface))];
+}
+
+/**
+ * What the query is of `records`, each line once (rule `it-word-shape-line/v1`,
+ * #802): the lines of the answering spellings the records were found by, or,
+ * for records found by none of them (a page-only entry), of every spelling.
+ */
+function shapeLinesOf(shape: ShapeReading, records: readonly Reading[]): NonEmpty<ShapeFormLine> {
+  const keys = new Set(records.flatMap(foundKeys));
+  const named = shape.spellings.filter((spelling) => keys.has(spelling.key));
+  const lines = new Map<string, ShapeFormLine>();
+  for (const spelling of named.length > 0 ? named : shape.spellings) {
+    const text = wordShapeLine(shape.key, spelling);
+    if (!lines.has(text)) lines.set(text, { kind: "rule", text, lemma: spelling.key, sourceType: "lexema-deterministic", rule: WORD_SHAPE_LINE_RULE });
+  }
+  const [first, ...rest] = lines.values();
+  // A shape's spellings are never empty, so neither are its lines.
+  if (first === undefined) throw new Error(`no shape line for ${shape.key}`);
+  return [first, ...rest];
+}
+
+/**
+ * A base word's table on a shape's page: a verb's conjugation, opened where
+ * the search hit it (`da'` in dare's for `dammi`) or, when it was found by its
+ * headword, as its own page opens it; a noun's or adjective's grid.
+ */
+function shapeTableOf(record: Reading): LemmaTable | undefined {
+  if (!isVerbReading(record)) return gridOf(record);
+  const hit = ownConjugation(record);
+  if (hit !== undefined) return hit;
+  const forms = nonEmpty([...record.forms]);
+  return forms === undefined
+    ? undefined
+    : { kind: "conjugation", lemma: record, listing: { forms }, definitions: { senses: record.senses, recovered: record.recovered, lemmaLinks: record.lemmaLinks } };
+}
+
+/**
+ * A shape's block for one base word (#802): `Voce verbale · raccontare` for a
+ * verb, else its records' parts of speech, each once; the lines of what the
+ * query is of it; its records' *Definitions*, grouped by part of speech when
+ * they have several, as a form's block groups them (#727); then its tables,
+ * each once a page (rule 1).
+ */
+function shapeFormBlock(records: NonEmpty<Reading>, shape: ShapeReading, drawn: Drawn): Unnumbered<ShapeFormBlock> {
+  const [first] = records;
+  const speech = new Map<string, SpeechPart>();
+  for (const record of records) {
+    const part = speech.get(record.posTitle) ?? { partOfSpeech: record.posTitle, bases: [] };
+    part.bases.push(record);
+    speech.set(record.posTitle, part);
+  }
+  const [one, two, ...more] = speech.keys();
+  return {
+    kind: "shape-form",
+    heading: records.every(isVerbReading)
+      ? { kind: "one", posTitle: VOCE_VERBALE }
+      : one !== undefined && two !== undefined
+        ? { kind: "several", partsOfSpeech: [one, two, ...more] }
+        : { kind: "one", posTitle: first.posTitle },
+    word: first.word,
+    records,
+    lines: shapeLinesOf(shape, records),
+    definitions: blockDefinitionsOf([...speech.values()], drawn),
+    tables: records.flatMap((record) => shapeTableOf(record) ?? []).filter((table) => drawsHere(table, drawn)),
+  };
 }
 
 /**
@@ -1168,16 +1392,34 @@ interface PageParts {
  * `which` names as readings, every verb's block, and, for a reading with
  * nothing to show, its bare heading.
  */
-function pageDrafts({ ordered, about, own, lemmas, placed, gender, declared }: PageParts, which: "about" | "every"): Unnumbered<PageEntry | BareReading>[] {
+function pageDrafts(
+  { ordered, about, own, lemmas, placed, gender, declared, shape }: PageParts,
+  which: "about" | "every",
+): Unnumbered<PageEntry | BareReading>[] {
   // Each verb the query is a form of gets one block, in the place its first
   // line puts it: the rule-built ones lead, as their lines did under #627, and
   // a form record's take its place in the source's order.
   const slots: Slot[] = [];
+  // On a shape's page each base word the shape reached leads with its block,
+  // in the order the lookup found it (#802).
+  const shapeSlots = new Map<string, ShapeSlot>();
+  if (shape !== undefined) {
+    for (const record of shape.bases) {
+      const slot = shapeSlots.get(record.word);
+      if (slot !== undefined) {
+        slot.records.push(record);
+        continue;
+      }
+      const created: ShapeSlot = { kind: "shape", records: [record], shape };
+      shapeSlots.set(record.word, created);
+      slots.push(created);
+    }
+  }
   const blocks = new Map<string, BlockDraft>();
   const blockOf = (verb: string): BlockDraft => {
     let block = blocks.get(verb);
     if (block === undefined) {
-      block = { verb, sourceLines: [], ruleLines: new Map(), formLines: [], sources: [], verbs: [], tables: new Map() };
+      block = { verb, shapeLines: new Map(), sourceLines: [], ruleLines: new Map(), formLines: [], sources: [], verbs: [], tables: new Map() };
       blocks.set(verb, block);
       slots.push({ kind: "block", block });
     }
@@ -1240,6 +1482,8 @@ function pageDrafts({ ordered, about, own, lemmas, placed, gender, declared }: P
     const elsewhere = reading.lemmaLinks.map((link) => link.targetWord).filter((word) => !blockVerbs.has(word));
     verbs.forEach(({ verb, tables, items }, i) => {
       const block = blockOf(verb);
+      // On a shape's page the block leads with what the query is of this form (#802): `dicendomi` of `dicendo`.
+      if (shape !== undefined) for (const line of shapeLinesOf(shape, [reading])) if (!block.shapeLines.has(line.text)) block.shapeLines.set(line.text, line);
       block.sourceLines.push(...items.map((item): SourceFormLine => ({ kind: "source", reading, item })));
       block.sources.push({ reading, first: i === 0, lemmaWords: [...new Set(i === 0 ? [verb, ...elsewhere] : [verb])] });
       addTables(block, tables);
@@ -1249,12 +1493,13 @@ function pageDrafts({ ordered, about, own, lemmas, placed, gender, declared }: P
   const drawn = new Drawn();
   return joinBlocksOfOneBaseWord(slots).flatMap((slot): Unnumbered<PageEntry | BareReading>[] => {
     if (slot.kind === "reading") {
-      const shown = shownReading(slot, lemmas, own, placed, drawn, declared);
+      const shown = shownReading(slot, lemmas, own, placed, drawn, declared, shape);
       return shown !== undefined ? [shown] : slot.readings.map((reading) => ({ kind: "bare", reading }));
     }
     if (slot.kind === "grid") return [gridFormBlock(slot, drawn)];
+    if (slot.kind === "shape") return [shapeFormBlock(slot.records, slot.shape, drawn)];
     const { block } = slot;
-    const lines = nonEmpty<FormLine>([...block.sourceLines, ...block.ruleLines.values(), ...block.formLines]);
+    const lines = nonEmpty<FormLine>([...block.shapeLines.values(), ...block.sourceLines, ...block.ruleLines.values(), ...block.formLines]);
     if (lines === undefined) return [];
     const tables = [...block.tables.values()];
     return [
@@ -1514,6 +1759,7 @@ function shownReading(
   placed: PlacedFacts,
   drawn: Drawn,
   declared: DeclaredConjugation | undefined,
+  shape: ShapeReading | undefined,
 ): Unnumbered<PageReading> | undefined {
   const [reading, ...rest] = records;
   const also = [...rest, ...joined.map(({ source }) => source.reading).filter((record) => !rest.includes(record))];
@@ -1560,14 +1806,19 @@ function shownReading(
   }));
   const formLines = nonEmpty(recordLinesOf([...records.map((record) => ({ reading: record, text: ownTextOf(record) })), ...joinedTexts]));
   const parts: FormOfPart[] = [];
-  if (formLines !== undefined) parts.push({ kind: "form-lines", records: formLines });
+  // On a shape's page, what the query is of this form leads its lines (#802): `valige` of `valigie`.
+  const shapeLines = shape === undefined ? undefined : shapeLinesOf(shape, records);
+  if (formLines !== undefined) parts.push({ kind: "form-lines", lead: shapeLines ?? [], records: formLines });
+  else if (shapeLines !== undefined) parts.push({ kind: "shape-lines", lines: shapeLines });
   parts.push(...lines);
   if (definitions !== undefined) parts.push({ kind: "lemma-definitions", definitions });
   parts.push(...tablesPart([...records.flatMap(conjugationTablesOf), ...grids, ...joinedTables]));
   const shown = nonEmpty(parts);
   const baseWord = lead?.word ?? reading.lemmaLinks[0]?.targetWord ?? reading.word;
   const heading = blockHeadingOf(speech, reading.posTitle);
-  return shown === undefined ? undefined : { kind: "source", role: "form-of", reading, also, heading, baseWord, part, parts: shown };
+  return shown === undefined
+    ? undefined
+    : { kind: "source", role: "form-of", reading, also, heading, baseWord, part, recordGrammar: shape === undefined, parts: shown };
 }
 
 /** One part of speech of a form's block: as its heading names it, and the base word's records of it, whose meanings show under it. */
@@ -1689,6 +1940,8 @@ function recordLinesOf(records: readonly RecordText[]): RecordLines[] {
 /** A verb form block as it is gathered, before it is numbered. */
 interface BlockDraft {
   verb: string;
+  /** On a shape's page, what the query is of the form records here, by text; they lead the block (#802). */
+  shapeLines: Map<string, ShapeFormLine>;
   sourceLines: SourceFormLine[];
   /** By text, so an identical line shows once. */
   ruleLines: Map<string, VerbFormLine>;
@@ -1737,8 +1990,15 @@ interface BlockSlot {
   block: BlockDraft;
 }
 
-/** One place on the page: a source reading, a verb's block, or a grid's. */
-type Slot = ReadingSlot | BlockSlot | GridSlot;
+/** A shape's block as it is gathered: one base word's records, the first heading it (#802). */
+interface ShapeSlot {
+  kind: "shape";
+  records: NonEmpty<Reading>;
+  shape: ShapeReading;
+}
+
+/** One place on the page: a source reading, a verb's block, a grid's, or a shape's. */
+type Slot = ReadingSlot | BlockSlot | GridSlot | ShapeSlot;
 
 const addTables = (block: BlockDraft, tables: readonly ConjugationTable[]): void => {
   for (const table of tables) if (!block.tables.has(conjugationKey(table))) block.tables.set(conjugationKey(table), table);

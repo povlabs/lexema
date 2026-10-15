@@ -68,7 +68,7 @@ test("a correct:records declaration takes no inputs and counts the correction ta
 test("a malformed declaration or an unknown command is refused with a message naming the file", () => {
   assert.match(refusal("{ command: "), /is not JSON/);
   assert.match(refusal("[]"), /JSON object/);
-  assert.match(refusal(declared({ command: "update:apply" })), /command must be one of update:upgrade, update:auto, hide:records, normalize:source-text, correct:records, load:page-entries, load:recovered-definitions, load:names, got "update:apply"/);
+  assert.match(refusal(declared({ command: "update:apply" })), /command must be one of update:upgrade, update:auto, hide:records, normalize:source-text, correct:records, load:page-entries, load:recovered-definitions, load:names, load:wikidata-words, got "update:apply"/);
   assert.match(refusal(declared({})), /command must be one of/);
   assert.match(refusal(declared({ command: "update:auto", inputs: { feedRelease: "it-78385B62" } })), /inputs\.feedRelease must be a release id/);
   assert.match(refusal(declared({ command: "update:auto", inputs: {} })), /inputs\.feedRelease must be a release id/);
@@ -225,6 +225,11 @@ test("every declaration already in dictionary-changes parses as before, with no 
     // The people (#794) name two people they add, a place the rebuilt table keeps, and a word the source answers.
     if (name === "2026-10-11-load-names-people.json") {
       assert.deepEqual(parseDeclaration(path, text).lookups?.map((item) => item.word), ["Dante Alighieri", "Alex Zanardi", "Hormuz", "sale"]);
+      continue;
+    }
+    // The Wikidata words (#812) name four they add with a gloss, a form among them, a word Wiktionary answers, and a word with no gloss they leave out.
+    if (name === "2026-10-11-load-wikidata-words.json") {
+      assert.deepEqual(parseDraft(path, text).lookups?.map((item) => item.word), ["flebo", "pento", "magazine", "freccette", "papà", "paralimpico"]);
       continue;
     }
     // The hand-kept readings (#745) name each word they give a reading, with a definition of it.

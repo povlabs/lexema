@@ -39,6 +39,8 @@ import {
   type OwnText,
   type PageReading,
   type RecordLines,
+  type ShapeFormBlock,
+  type ShapeFormLine,
   type VerbFormBlock,
   type VerbFormLine,
 } from "@/lib/dictionary/wordPage.ts";
@@ -93,7 +95,7 @@ const nestedExamples = (items: readonly RecoveredDefinition[]): boolean =>
   items.some((item) => item.examples.length > 0 || nestedExamples(item.items));
 
 const nestedItemsOf = (item: DefinitionItem): readonly RecoveredDefinition[] => {
-  if (item.from === "name") return [];
+  if (item.from === "name" || item.from === "lexeme") return [];
   return item.from === "record" ? item.sense.recoveredItems : item.definition.items;
 };
 
@@ -146,6 +148,13 @@ function DefinitionText({ item, reading, gloss = GLOSS }: { item: DefinitionItem
       </p>
     );
   }
+  if (item.from === "lexeme") {
+    return (
+      <p className={gloss} lang="it">
+        {item.gloss.text}
+      </p>
+    );
+  }
   if (item.from === "page") {
     const { definition } = item;
     return (
@@ -176,6 +185,7 @@ function DefinitionText({ item, reading, gloss = GLOSS }: { item: DefinitionItem
 
 export const definitionKey = (item: DefinitionItem): string => {
   if (item.from === "name") return "description";
+  if (item.from === "lexeme") return `lexeme-${item.gloss.sense}`;
   return item.from === "record" ? `sense-${item.sense.index}` : `page-${item.definition.ref.line}`;
 };
 
@@ -434,7 +444,7 @@ function LemmaForms({ owner, tables }: { owner: string; tables: readonly LemmaTa
 }
 
 /** A rule-built line, the word it names linked as a source gloss links its lemma. */
-function RuleFormLineText({ line }: { line: VerbFormLine | GridFormLine }) {
+function RuleFormLineText({ line }: { line: VerbFormLine | GridFormLine | ShapeFormLine }) {
   return (
     <p className={FORM_LINE} lang="it">
       {line.text.slice(0, line.text.length - line.lemma.length)}
@@ -537,13 +547,52 @@ export function GridFormBlockView({ block }: { block: GridFormBlock }) {
 }
 
 /**
+ * A form rule `it-word-shape/v1` read, as a verb form's block reads (#802):
+ * `1 · Aggettivo dimostrativo · quello`, the line built by rule saying what the
+ * searched spelling is of it, then the base word's *Definitions* and *Forme di
+ * quello*. Nothing marks a line as Lexema's (ADR 0016).
+ */
+export function ShapeFormBlockView({ block }: { block: ShapeFormBlock }) {
+  const anchor = readingAnchor(block);
+  return (
+    <article className={READING} id={anchor} aria-labelledby={readingHeadingId(block)} data-shape-form={block.word}>
+      <h2 className={READING_HEADING} id={readingHeadingId(block)}>
+        <span className={READING_NUMBER}>{block.number}</span>
+        <span className={READING_DOT} aria-hidden="true">
+          ·
+        </span>
+        <HeadingPartsOfSpeech heading={block.heading} />
+        {/* The dot travels with the word, so a wrapped heading never ends on it. */}
+        <span className={READING_GRAMMAR_GROUP}>
+          <span className={READING_DOT} aria-hidden="true">
+            ·
+          </span>
+          <span lang="it">{block.word}</span>
+        </span>
+      </h2>
+      <FormLines>
+        {block.lines.map((line) => (
+          <RuleFormLineText key={line.text} line={line} />
+        ))}
+      </FormLines>
+      <LemmaDefinitions owner={anchor} definitions={block.definitions} />
+      <LemmaForms owner={anchor} tables={block.tables} />
+    </article>
+  );
+}
+
+/**
  * A form block's records' own definitions as its form lines (`femminile
  * singolare di bello`, then `femminile di bello`), each record's in turn with
- * any examples its senses hold, each line linking as its own record does.
+ * any examples its senses hold, each line linking as its own record does. On
+ * a shape's page the lines built by rule for what the query is lead (#802).
  */
-function ReadingFormLines({ records }: { records: readonly RecordLines[] }) {
+function ReadingFormLines({ lead, records }: { lead: readonly ShapeFormLine[]; records: readonly RecordLines[] }) {
   return (
     <FormLines>
+      {lead.map((line) => (
+        <RuleFormLineText key={line.text} line={line} />
+      ))}
       {records.map(({ reading, text }) => (
         <Fragment key={entryKey(reading)}>
           {(text.kind === "definitions" ? text.items : []).map((item) => (
@@ -563,8 +612,16 @@ function ReadingPartView({ reading, owner, part }: { reading: Reading; owner: st
   switch (part.kind) {
     case "definitions":
       return <Definitions reading={reading} text={part.text} />;
+    case "shape-lines":
+      return (
+        <FormLines>
+          {part.lines.map((line) => (
+            <RuleFormLineText key={line.text} line={line} />
+          ))}
+        </FormLines>
+      );
     case "form-lines":
-      return <ReadingFormLines records={part.records} />;
+      return <ReadingFormLines lead={part.lead} records={part.records} />;
     case "lemma-lines":
       return <LemmaLineList words={part.words} />;
     case "own-forms":
@@ -620,7 +677,7 @@ function HeadingPartsOfSpeech({ heading }: { heading: BlockHeading }) {
  */
 export function ReadingView({ entry }: { entry: PageReading | BareReading | LoneBareReading }) {
   const { reading } = entry;
-  const grammar = headingGrammar(reading);
+  const grammar = entry.kind === "source" && entry.role === "form-of" && !entry.recordGrammar ? undefined : headingGrammar(reading);
   const parts: readonly (LemmaPart | FormOfPart)[] = entry.kind === "source" ? entry.parts : [];
   return (
     <article

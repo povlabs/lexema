@@ -18,6 +18,9 @@ import { readLanguageHeadings } from "../italian/sectionLanguage.js";
 import { planNames, unwrittenNames } from "../names/loadNames.js";
 import type { NameItem } from "../names/nameItem.js";
 import { readNameSnapshot } from "../names/nameSnapshot.js";
+import { planWikidataWords, unwrittenWikidataWords } from "../wikidataWords/loadWikidataWords.js";
+import type { WikidataWord } from "../wikidataWords/wikidataWord.js";
+import { readWordSnapshot } from "../wikidataWords/wordSnapshot.js";
 import { ARCHIVE_FACTS, archiveFactsFor, type ArchiveFactsCatalog } from "../source/archiveFacts.js";
 import { type DumpIdentity, KNOWN_DUMPS, VerifiedDump } from "../source/wiktionaryDump.js";
 import { checkApplied } from "../update/apply.js";
@@ -29,7 +32,7 @@ import { PlanCounts } from "../update/planCounts.js";
 import { planOnlyRun } from "../update/planOnly.js";
 import { type SourceCatalogs, withFeedDump } from "../update/select.js";
 import { DataRefused, type FetchedFiles, sha256Of } from "./dataFiles.js";
-import { NO_WORDS, type TouchedWords, unbounded, wordsOfApply, wordsOfCorrections, wordsOfHide, wordsOfNames, wordsOfPageEntries, wordsOfRecoveredDefinitions } from "./touchedWords.js";
+import { NO_WORDS, type TouchedWords, unbounded, wordsOfApply, wordsOfCorrections, wordsOfHide, wordsOfNames, wordsOfPageEntries, wordsOfRecoveredDefinitions, wordsOfWikidataWords } from "./touchedWords.js";
 
 /** The schema the upgrade reads and the language headings the plans read, from the repository root. */
 export const SCHEMA = resolve("src/db/schema.sql");
@@ -54,20 +57,22 @@ export interface WritePlan {
 
 /** A change and the files it reads: `update:auto`, `hide:records`, `load:page-entries` and `load:recovered-definitions` read an archive and a dump, the others none. */
 export type ReadyChange =
-  | { readonly change: Extract<DeclaredChange, { command: "update:upgrade" | "normalize:source-text" | "correct:records" | "load:names" }> }
+  | { readonly change: Extract<DeclaredChange, { command: "update:upgrade" | "normalize:source-text" | "correct:records" | "load:names" | "load:wikidata-words" }> }
   | { readonly change: Extract<DeclaredChange, { command: "update:auto" | "hide:records" | "load:page-entries" | "load:recovered-definitions" }>; readonly files: FetchedFiles };
 
 /**
  * What a plan reads besides the dictionary and the files: the archive facts
- * and dumps, the curated corrections, the hand-kept readings and the Wikidata
- * names. Each is the committed one unless given, so a test can plan against a
- * fixture's own.
+ * and dumps, the curated corrections, the hand-kept readings, the Wikidata
+ * names and the Wikidata words. Each is the committed one unless given, so a
+ * test can plan against a fixture's own.
  */
 export interface PlanSources extends SourceCatalogs {
   readonly corrections?: readonly CuratedCorrection[];
   readonly handKeptReadings?: readonly HandKeptReading[];
   /** The name items `load:names` writes; the committed snapshot (`names/wikidata-names.jsonl`) unless given. */
   readonly names?: readonly NameItem[];
+  /** The words `load:wikidata-words` writes; the committed snapshot (`wikidata-words/wikidata-words.jsonl`) unless given. */
+  readonly wikidataWords?: readonly WikidataWord[];
 }
 
 /** The dump the master's archive was built from, opened at `path` and held to its size and SHA-1. */
@@ -85,6 +90,7 @@ export function readyChange(change: DeclaredChange, files: FetchedFiles | null):
     case "normalize:source-text":
     case "correct:records":
     case "load:names":
+    case "load:wikidata-words":
       if (files !== null) throw new Error(`${change.command} reads no archive`);
       return { change };
     case "update:auto":
@@ -103,7 +109,7 @@ export function readyChange(change: DeclaredChange, files: FetchedFiles | null):
  * committed.
  */
 export async function planWrite(ready: ReadyChange, reader: MasterReader, appliedAt: string, sources: PlanSources = {}): Promise<WritePlan> {
-  const { catalog = ARCHIVE_FACTS, dumps = KNOWN_DUMPS, corrections = CURATED_CORRECTIONS, handKeptReadings = HAND_KEPT_READINGS, names } = sources;
+  const { catalog = ARCHIVE_FACTS, dumps = KNOWN_DUMPS, corrections = CURATED_CORRECTIONS, handKeptReadings = HAND_KEPT_READINGS, names, wikidataWords } = sources;
   if (!("files" in ready)) {
     const { change } = ready;
     switch (change.command) {
@@ -146,6 +152,15 @@ export async function planWrite(ready: ReadyChange, reader: MasterReader, applie
           sql: plan.sql,
           readBack: (after) => unwrittenNames(after, plan).map((item) => `name entry ${item} does not read back as planned`),
           touched: wordsOfNames(plan),
+        };
+      }
+      case "load:wikidata-words": {
+        const plan = await planWikidataWords(reader, wikidataWords ?? (await readWordSnapshot()));
+        return {
+          run: planOnlyRun(change.command, plan.counts, reader),
+          sql: plan.sql,
+          readBack: (after) => unwrittenWikidataWords(after, plan).map((word) => `Wikidata word ${word} does not read back as planned`),
+          touched: wordsOfWikidataWords(plan),
         };
       }
     }

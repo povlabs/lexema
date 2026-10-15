@@ -44,6 +44,7 @@ export const CARD_HEIGHT = 630;
 /** A definition's text as the page writes it, without its labels. */
 function definitionText(item: DefinitionItem): string {
   if (item.from === "name") return item.description;
+  if (item.from === "lexeme") return item.gloss.text;
   return item.from === "page" ? item.definition.text : item.sense.glosses.map((gloss) => gloss.text).join(" ");
 }
 
@@ -91,7 +92,20 @@ export function cardOf(attempt: Attempt): Card {
   // The reading the page's first meaning sits under: the first block, or the
   // first reading that has a definition. A page with neither falls back to its
   // first reading.
-  const entry = page.readings.find((one) => one.kind === "verb-form" || one.kind === "grid-form" || hasDefinitions(one.reading)) ?? page.readings[0];
+  const entry =
+    page.readings.find((one) => one.kind === "verb-form" || one.kind === "grid-form" || one.kind === "shape-form" || hasDefinitions(one.reading)) ??
+    page.readings[0];
+  if (entry.kind === "shape-form") {
+    // A form rule it-word-shape/v1 read (#802): its first line, built by rule.
+    return {
+      kind: "word",
+      headword: page.headword,
+      pronunciation: undefined,
+      gender: undefined,
+      partOfSpeech: headingTitle(entry.heading),
+      meaning: entry.lines[0].text,
+    };
+  }
   if (entry.kind === "grid-form") {
     // A form only its base word's grid spells (#700): its first line, built by rule.
     return {
@@ -121,7 +135,7 @@ export function cardOf(attempt: Attempt): Card {
     kind: "word",
     headword: page.headword,
     pronunciation: page.wordFacts.pronunciations[0]?.ipa,
-    gender: headingGender(reading),
+    gender: entry.kind === "source" && entry.role === "form-of" && !entry.recordGrammar ? undefined : headingGender(reading),
     partOfSpeech: entry.kind === "source" && entry.role === "form-of" ? headingTitle(entry.heading) : reading.posTitle,
     meaning: meaning === undefined ? undefined : definitionText(meaning),
   };

@@ -16,15 +16,18 @@ the archive's SHA-256, `it-0c432803`.
   [DEVELOPMENT.md](DEVELOPMENT.md)
   ([ADR 0002](.decisions/0002-pnpm-is-the-package-manager.md)).
 - Source-derived lexical data is read-only: keep it as imported, keep where each
-  fact came from, and return every valid candidate. There are three exceptions, and
+  fact came from, and return every valid candidate. There are four exceptions, and
   all keep `source_record_json` byte-for-byte: a small, rule-based rewrite for
   consistency ([ADR 0019](.decisions/0019-source-text-may-be-normalized.md));
   curated corrections, single facts set right beside the record, each cited and
   added only on a ruling
-  ([ADR 0027](.decisions/0027-curated-corrections-are-cited-exceptions.md)); and
+  ([ADR 0027](.decisions/0027-curated-corrections-are-cited-exceptions.md));
   hand-kept readings, whole readings the source lacks, kept beside it, each
   citing an en.wiktionary revision and added only on a ruling
-  ([ADR 0031](.decisions/0031-hand-kept-readings-fill-source-gaps.md)).
+  ([ADR 0031](.decisions/0031-hand-kept-readings-fill-source-gaps.md)); and
+  Wikidata words, Italian lexemes from Wikidata (CC0) kept as imported in their
+  own layer beside it, shown only for a word no Wiktionary reading answers
+  ([ADR 0033](.decisions/0033-wikidata-words-fill-wiktionary-gaps.md)).
   Wiktionary is the source; proper names it does not explain come from Wikidata
   as name entries, kept beside it under the same rule
   ([ADR 0032](.decisions/0032-wikidata-names-fill-proper-name-gaps.md)).
