@@ -1203,15 +1203,15 @@ export function wordPage(
     // A shape's page is the searched spelling's (rule 4 of #695: a form's
     // title is the form), and every fact its records hold is a base word's:
     // its pronunciation, etymology, word lists and expressions show nowhere
-    // (rule 3, P5, P6). The one *Fonte* is the Wiktionary page of the
-    // spelling in the title, as on every page (ADR 0009, #281).
+    // (rule 3, P5, P6). The searched spelling has no Wiktionary page, so the
+    // one *Fonte* opens the base word's (`shapeSourceWord`).
     return {
       headword: shape.key,
       readings: shown,
       wordFacts: NO_WORD_FACTS,
       wordLists: { synonyms: [], antonyms: [], derived: [] },
       expressions: undefined,
-      source: footerSourceOf(readings, shown, shape.key),
+      source: footerSourceOf(readings, shown, shapeSourceWord(kept, shape, readings)),
     };
   }
   const headword = about[0]?.word ?? query;
@@ -1232,7 +1232,8 @@ export function wordPage(
 
 /**
  * What the footer's one *Fonte* credits; no reading credits its own (#827).
- * The Wiktionary page of the title, the spelling the page is about, whenever
+ * The Wiktionary page of `headword` (the title, the spelling the page is
+ * about, or on a shape's page its base word, `shapeSourceWord`) whenever
  * the lookup found a Wiktionary reading, shown or not, since its word facts
  * may show: that page holds every entry for the spelling, so one link covers
  * every reading (ADR 0009, amended on #281). A page of Wikidata entries alone
@@ -1301,6 +1302,17 @@ interface ShapeReading {
 function shapeBasesOf(readings: readonly Reading[]): Reading[] {
   const forms = readings.filter((reading) => reading.isAboutQuery && isFormOfReading(reading));
   return readings.filter((reading) => !isFormOfReading(reading) && !formOfReadingAbout(reading, forms));
+}
+
+/**
+ * The word whose Wiktionary page a shape's *Fonte* opens: the base word whose
+ * record the page shows, the first record about the query in page order, as
+ * the title was before the shape got a page of its own (`quei` opens quello's,
+ * `raccontarvi` raccontare's; Huey's ruling of 2026-10-15 on #802). A word
+ * shape is a spelling the source lists nowhere, so its own page does not exist.
+ */
+function shapeSourceWord(kept: readonly Reading[], shape: ShapePage, found: readonly [Reading, ...Reading[]]): string {
+  return (pageOrder(kept).find((reading) => reading.isAboutQuery) ?? shape.bases[0] ?? found[0]).word;
 }
 
 /** The keys a record was found by: its headword's, and those of the forms the search hit in its table. */

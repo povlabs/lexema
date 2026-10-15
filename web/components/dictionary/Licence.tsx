@@ -15,6 +15,10 @@
 // lexeme and that this data stays in the public domain, follow Huey's ruling
 // of 2026-10-12 that both Wikidata layers stay CC0
 // (https://github.com/povlabs/lexema/issues/802#issuecomment-6132249641).
+// The paragraph is the wording Huey approved on 2026-10-12, which drops the
+// sentence that every Wikidata name and word links its own item or lexeme:
+// since #827 a name on a mixed page links none
+// (https://github.com/povlabs/lexema/issues/802#issuecomment-6133207273).
 
 import { ExternalLink } from "@/components/shared/ExternalLink";
 import { LEGAL_ITEMS, LEGAL_PARAGRAPH, LEGAL_UNBROKEN, LINK } from "@/components/shared/styles.ts";
@@ -117,10 +121,8 @@ export function Licence({ release }: { release: ServedRelease }) {
                 <ExternalLink language="it" className={LINK} href={CC0_URL}>
                   dedicazione Creative Commons CC0 1.0 Universale
                 </ExternalLink>
-                . Ogni nome tratto da Wikidata rimanda al proprio elemento su Wikidata, e ogni parola al proprio
-                lessema. Quando una pagina mostra solo dati di Wikidata, il suo link Fonte rimanda all’elemento o al
-                lessema da cui provengono. Questi dati restano nel pubblico dominio e si possono riutilizzare
-                liberamente.
+                . Quando una pagina mostra solo dati di Wikidata, il suo link Fonte rimanda all’elemento o al lessema
+                da cui provengono. Questi dati restano nel pubblico dominio e si possono riutilizzare liberamente.
               </p>
             </>
           ),

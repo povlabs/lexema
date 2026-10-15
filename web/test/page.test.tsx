@@ -1079,10 +1079,16 @@ const WORD_SHAPE_LINES = (await readFile(join(REPO, "fixtures/word-shapes.jsonl"
  * What a shape's page must hold, by rules 3 and 4 of #695 and manifest § 4 and
  * § 5 (#802): the searched spelling as its title, each block's heading and
  * its line built by rule, the word that line names linked to its search, the
- * base word's table as *Forme di <word>* where it has one, and none of the base
- * word's pronunciation, etymology, word lists or expressions.
+ * base word's table as *Forme di <word>* where it has one, none of the base
+ * word's pronunciation, etymology, word lists or expressions, and one *Fonte*
+ * to the Wiktionary page of the base word whose record it shows, since the
+ * searched spelling has none (Huey's ruling of 2026-10-15 on #802).
  */
-function assertShapePage(html: string, query: string, shown: { headings: string[]; lines: string[]; links: string[]; forms: string[] }): void {
+function assertShapePage(
+  html: string,
+  query: string,
+  shown: { headings: string[]; lines: string[]; links: string[]; forms: string[]; fonte: string },
+): void {
   assert.match(html, new RegExp(`<h1 class="${esc(WORD_HEADING)}" lang="it">${esc(query.replace(/'/g, "&#x27;"))}</h1>`), query);
   assert.deepEqual(headingsOf(html), shown.headings, query);
   assert.deepEqual(formLines(html), shown.lines, query);
@@ -1095,7 +1101,7 @@ function assertShapePage(html: string, query: string, shown: { headings: string[
   for (const label of [SECTION_LABEL.etymology, SECTION_LABEL.synonyms, SECTION_LABEL.antonyms, SECTION_LABEL.derived, SECTION_LABEL.expressions, PRONUNCIATION_LABEL]) {
     assert.ok(!html.includes(`>${label}<`), `${query} shows its base word's ${label}`);
   }
-  assert.deepEqual(sourcePages(sourceLine(html)), [query], query);
+  assert.deepEqual(sourcePages(sourceLine(html)), [shown.fonte], query);
 }
 
 test("a form rule it-word-shape/v1 reads is its base word's form block, titled as searched, with no base-word extras (#809, #802)", async () => {
@@ -1107,24 +1113,27 @@ test("a form rule it-word-shape/v1 reads is its base word's form block, titled a
         lines: ["maschile plurale di quello"],
         links: ["quello"],
         forms: ["quello"],
+        fonte: "quello",
       });
     }
-    assertShapePage(await render(db, "dirlo"), "dirlo", { headings: ["1·Voce verbale·dire"], lines: ["pronome lo unito a dire"], links: ["dire"], forms: ["dire"] });
+    assertShapePage(await render(db, "dirlo"), "dirlo", { headings: ["1·Voce verbale·dire"], lines: ["pronome lo unito a dire"], links: ["dire"], forms: ["dire"], fonte: "dire" });
     assertShapePage(await render(db, "dammelo"), "dammelo", {
       headings: ["1·Voce verbale·dare"],
       lines: ["pronomi mi e lo uniti a da'"],
       links: ["da'"],
       forms: ["dare"],
+      fonte: "dare",
     });
     assertShapePage(await render(db, "bravissimo"), "bravissimo", {
       headings: ["1·Aggettivo·bravo"],
       lines: ["superlativo assoluto di bravo"],
       links: ["bravo"],
       forms: ["bravo"],
+      fonte: "bravo",
     });
     // A participle the table lists only as piaciuto is piacere's, opened at piaciuto.
     const piaciute = await render(db, "piaciute");
-    assertShapePage(piaciute, "piaciute", { headings: ["1·Voce verbale·piacere"], lines: ["femminile plurale di piaciuto"], links: ["piaciuto"], forms: ["piacere"] });
+    assertShapePage(piaciute, "piaciute", { headings: ["1·Voce verbale·piacere"], lines: ["femminile plurale di piaciuto"], links: ["piaciuto"], forms: ["piacere"], fonte: "piacere" });
     assert.deepEqual(searchedForms(piaciute), ["piaciuto"]);
     // An elided word of two records is one block, its Definitions grouped by part of speech (#727).
     assertShapePage(await render(db, "quell'"), "quell'", {
@@ -1132,6 +1141,7 @@ test("a form rule it-word-shape/v1 reads is its base word's form block, titled a
       lines: ["forma elisa di quello", "forma elisa di quella"],
       links: ["quello", "quella"],
       forms: ["quello"],
+      fonte: "quello",
     });
     // A regular form of a word that lists none: a plural, a feminine, a verb form, an English plural.
     for (const [query, heading, line, forms] of [
@@ -1143,7 +1153,7 @@ test("a form rule it-word-shape/v1 reads is its base word's form block, titled a
       ["marines", "1·Sostantivo·marine", "plurale di marine", ["marine"]],
     ] as const) {
       const word = line.split(" ").at(-1) ?? "";
-      assertShapePage(await render(db, query), query, { headings: [heading], lines: [line], links: [word], forms: [...forms] });
+      assertShapePage(await render(db, query), query, { headings: [heading], lines: [line], links: [word], forms: [...forms], fonte: word });
     }
     // A plural spelling reaches a form record: the shape's line leads the record's own, under no grammar of the record's.
     assertShapePage(await render(db, "valige"), "valige", {
@@ -1151,6 +1161,7 @@ test("a form rule it-word-shape/v1 reads is its base word's form block, titled a
       lines: ["variante grafica di valigie", "plurale di valigia"],
       links: ["valigie", "valigia"],
       forms: ["valigia"],
+      fonte: "valigie",
     });
   });
   await withDevSeedAndPages(async ({ db }) => {
@@ -1159,6 +1170,7 @@ test("a form rule it-word-shape/v1 reads is its base word's form block, titled a
       lines: ["pronome vi unito a raccontare"],
       links: ["raccontare"],
       forms: [],
+      fonte: "raccontare",
     });
   });
 });
@@ -2899,8 +2911,9 @@ test("the Licence page reads, section by section, Huey's approved text in Italia
       [
         "Il contenuto deriva dal Wikizionario (il Wiktionary in italiano), un progetto della Wikimedia Foundation scritto da collaboratori volontari. La maggior parte delle voci proviene dall’estrazione pubblicata da kaikki.org, prodotta con wiktextract da Tatu Ylonen. Dove quell’estrazione non è riuscita a leggere una pagina, Lexema legge la voce dal testo della pagina stessa nel dump di Wikimedia.",
         "Gli autori di ogni voce sono registrati nella cronologia delle versioni della sua pagina del Wikizionario. Ogni voce di Lexema rimanda a quella pagina.",
-        // Added by #794 (ADR 0032): the Wikidata credit, extended by #812 (ADR 0033) to the Wikidata words.
-        "I nomi propri che il Wikizionario non spiega, come luoghi, organizzazioni, lingue, valute e festività, e le parole italiane che il Wikizionario non ha provengono da Wikidata, un altro progetto della Wikimedia Foundation, i cui dati sono rilasciati nel pubblico dominio con la dedicazione Creative Commons CC0 1.0 Universale. Ogni nome tratto da Wikidata rimanda al proprio elemento su Wikidata, e ogni parola al proprio lessema. Quando una pagina mostra solo dati di Wikidata, il suo link Fonte rimanda all’elemento o al lessema da cui provengono. Questi dati restano nel pubblico dominio e si possono riutilizzare liberamente.",
+        // Added by #794 (ADR 0032): the Wikidata credit, extended by #812 (ADR 0033) to the Wikidata words,
+        // in the wording Huey approved on 2026-10-12 (#802).
+        "I nomi propri che il Wikizionario non spiega, come luoghi, organizzazioni, lingue, valute e festività, e le parole italiane che il Wikizionario non ha provengono da Wikidata, un altro progetto della Wikimedia Foundation, i cui dati sono rilasciati nel pubblico dominio con la dedicazione Creative Commons CC0 1.0 Universale. Quando una pagina mostra solo dati di Wikidata, il suo link Fonte rimanda all’elemento o al lessema da cui provengono. Questi dati restano nel pubblico dominio e si possono riutilizzare liberamente.",
       ],
     ],
     [
@@ -3712,6 +3725,8 @@ test("a declared lemma keeps its page when rule it-word-shape/v1 reads it as a s
     assert.match(aggrapparti, new RegExp(`<h1 class="${esc(WORD_HEADING)}" lang="it">aggrapparti</h1>`));
     assert.deepEqual(headingsOf(aggrapparti), ["1·Voce verbale·aggrappare"]);
     assert.deepEqual(formLines(aggrapparti), ["pronome ti unito ad aggrappare"]);
+    // Its one Fonte opens aggrappare's Wiktionary page; aggrapparti has none (Huey, 2026-10-15, #802).
+    assert.deepEqual(sourcePages(sourceLine(aggrapparti)), ["aggrappare"]);
   });
 });
 

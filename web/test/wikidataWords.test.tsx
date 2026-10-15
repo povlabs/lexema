@@ -113,7 +113,9 @@ test("the Licence page carries exactly one Wikidata credit, in Italian, naming t
   const credits = [...html.matchAll(/<p[^>]*>((?:(?!<\/p>).)*provengono da(?:(?!<\/p>).)*)<\/p>/g)].map((match) => textOf(match[1]));
   assert.equal(credits.length, 1, credits.join("\n"));
   assert.match(credits[0], /e le parole italiane che il Wikizionario non ha provengono da Wikidata/);
-  assert.match(credits[0], /e ogni parola al proprio lessema\./);
+  // Huey's approved wording names no link per name or word: since #827 a name on a mixed page links none (2026-10-12, #802).
+  assert.doesNotMatch(credits[0], /Ogni nome tratto da Wikidata/);
+  assert.match(credits[0], /Quando una pagina mostra solo dati di Wikidata, il suo link Fonte rimanda all’elemento o al lessema da cui provengono\./);
   // Both Wikidata layers stay CC0 (Huey, 2026-10-12, #802).
   assert.match(credits[0], /Questi dati restano nel pubblico dominio e si possono riutilizzare liberamente\.$/);
   assert.equal([...html.matchAll(/href="https:\/\/www\.wikidata\.org\/"/g)].length, 1);
