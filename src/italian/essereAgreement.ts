@@ -1,5 +1,5 @@
 // Whether a compound spelling of a verb's table agrees with its subject's
-// gender, by rule `it-essere-agreement/v1` (#676).
+// gender, by rule `it-essere-agreement/v2` (#676; v2, #837).
 //
 // A compound tense built on essere agrees its participle with the subject: a
 // woman says `sono andata` or `mi sono accorta`, women say `siamo andate` or
@@ -10,6 +10,7 @@
 //   sono andato               singular  agrees, feminine `sono andata`
 //   ci siamo accorti          plural    agrees, feminine `ci siamo accorte`
 //   mi sono arreso, arresosi  singular  agrees, feminine `mi sono arresa, arresosi`
+//   me ne sono andato         singular  agrees, feminine `me ne sono andata` (v2)
 //   ho mangiato               singular  does not agree: avere never agrees with the subject
 //   mi arrendo                singular  does not agree: a simple tense
 //   siamo andato              plural    does not agree: the ending is not the row's number
@@ -25,9 +26,16 @@
 // essere form to anchor them, so they stay exactly as the source gives them.
 // The first spelling agrees when it is exactly two words, a finite form of
 // essere then a participle, or exactly three, a clitic then a finite form of
-// essere then a participle, and the participle ends in `-o` on a singular row
-// or `-i` on a plural one. The clitic is not checked against the row's person:
-// the number comes from the row and the ending.
+// essere then a participle, or exactly four, a clitic before `ne` (`me ne`,
+// `ce ne`) then a finite form of essere then a participle, and the participle
+// ends in `-o` on a singular row or `-i` on a plural one. The clitic is not
+// checked against the row's person: the number comes from the row and the
+// ending.
+//
+// v2 (#837) adds the four-word shape, which a verb in `-rsene` builds on
+// (`andarsene`: `me ne sono andato`, `it-pronominal-conjugation/v1`). No
+// source cell of it-0c432803 has that shape, so every spelling v1 read reads
+// the same.
 //
 // The feminine is Lexema's text, built by rule (ADR 0008) when the page is
 // built, and never stored (ADR 0012). Huey's ruling, 2026-10-06:
@@ -37,7 +45,7 @@ import type { VerbNumber } from "./moods.js";
 import { normalizeItalianExact } from "./normalize.js";
 
 /** The rule's name and version. */
-export const ESSERE_AGREEMENT_RULE = "it-essere-agreement/v1" as const;
+export const ESSERE_AGREEMENT_RULE = "it-essere-agreement/v2" as const;
 
 /**
  * Every one-word finite form of essere: the indicative, subjunctive and
@@ -61,6 +69,9 @@ export const ESSERE_FINITE_FORMS: ReadonlySet<string> = new Set([
 
 /** The reflexive clitics a compound spelling may open with: `mi sono accorto`. */
 export const ESSERE_CLITICS: ReadonlySet<string> = new Set(["mi", "ti", "si", "ci", "vi"]);
+
+/** The clitics that open a compound spelling before `ne`: `me ne sono andato`. */
+export const NE_CLITICS: ReadonlySet<string> = new Set(["me", "te", "se", "ce", "ve"]);
 
 /** What joins the spellings of one cell: `mi sono arreso, arresosi`. */
 const LATER_SPELLINGS = ", ";
@@ -100,16 +111,24 @@ const DOES_NOT_AGREE: EssereAgreement = { kind: "does-not-agree" };
 /** A cell spelling's first spelling: the text before the first `, `. */
 const firstSpellingOf = (spelling: string): string => spelling.split(LATER_SPELLINGS, 1)[0];
 
+/** Whether the words before a compound's essere form are clitics the rule reads: none, `mi`, or `me ne`. */
+function cliticsRead(clitics: readonly string[]): boolean {
+  if (clitics.length === 0) return true;
+  if (clitics.length === 1) return ESSERE_CLITICS.has(clitics[0]);
+  return clitics.length === 2 && NE_CLITICS.has(clitics[0]) && clitics[1] === "ne";
+}
+
 /**
  * A first spelling cut where its participle starts, when it has the rule's
- * shape: `[essere] participle` or `[clitic] [essere] participle`.
+ * shape: `[essere] participle`, `[clitic] [essere] participle` or `[clitic]
+ * ne [essere] participle`.
  */
 function compound(first: string): { head: string; participle: string } | undefined {
   const words = first.split(" ");
+  if (words.length < 2) return undefined;
   const participle = words.at(-1) ?? "";
-  const [auxiliary, clitic] = words.length === 2 ? [words[0], undefined] : words.length === 3 ? [words[1], words[0]] : [undefined, undefined];
-  if (auxiliary === undefined || !ESSERE_FINITE_FORMS.has(auxiliary)) return undefined;
-  if (clitic !== undefined && !ESSERE_CLITICS.has(clitic)) return undefined;
+  const auxiliary = words.at(-2) ?? "";
+  if (!ESSERE_FINITE_FORMS.has(auxiliary) || !cliticsRead(words.slice(0, -2))) return undefined;
   if (!PARTICIPLE.test(participle)) return undefined;
   return { head: words.slice(0, -1).join(" "), participle };
 }
@@ -140,8 +159,8 @@ export const bothGenders = (spelling: AgreeingSpelling): string =>
  * How a typed query reads under the rule, when it has the rule's shape: the
  * agreeing first spelling it names, and whether it was typed as that spelling
  * (`mi sono arreso`) or as its feminine (`mi sono arresa`, `siamo andate`).
- * Undefined when it cannot name one: not two words or three with a clitic, no
- * essere form, a last word ending in none of `-o`, `-i`, `-a`, `-e`, or a
+ * Undefined when it cannot name one: not two words, three with a clitic or
+ * four with a clitic and `ne`, no essere form, a last word ending in none of `-o`, `-i`, `-a`, `-e`, or a
  * spelling the rule does not read as agreeing (`ho mangiata`).
  */
 export type AgreeingQuery = { spelled: "masculine" | "feminine"; spelling: AgreeingSpelling };

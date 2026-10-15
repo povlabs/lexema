@@ -559,7 +559,7 @@ function modelBlock(p: SearchedPage): { heading: string[]; groups: string[] } | 
 const occurrencesIn = (html: string, text: string): number => html.split(text).length - 1;
 
 const S4_NO_OWN_FORMS: Rule = {
-  row: "§ 4 One block per base word: a form-of reading never shows a Forms table of its own.",
+  row: "§ 4 One block per base word: a form-of reading never shows a Forms table of its own, but a pronominal verb's built one (#837).",
   home: `${MANIFEST} (§ 4)`,
   words: ["costruttrici", "bella"],
   check(p) {
@@ -568,7 +568,10 @@ const S4_NO_OWN_FORMS: Rule = {
       if (entry.kind !== "source" || entry.role !== "form-of") return [];
       const own = entry.parts.flatMap((part) => (part.kind === "lemma-forms" ? part.tables.filter((table) => table.lemma.word === entry.reading.word) : []));
       return [
-        ...(partKindsOf(entry).includes("own-forms") ? [`${entry.reading.word}'s form-of reading shows its own Forms`] : []),
+        // The one exception: a pronominal verb whose edges name no verb draws its built table (#837).
+        ...(entry.parts.some((part) => part.kind === "own-forms" && part.forms.kind !== "pronominal-conjugation")
+          ? [`${entry.reading.word}'s form-of reading shows its own Forms`]
+          : []),
         ...own.map(() => `${entry.reading.word}'s form-of reading shows a table of ${entry.reading.word}`),
         ...(articleOf(p.html, entry).includes(`Forme di ${entry.reading.word}<`) ? [`the page draws Forme di ${entry.reading.word}`] : []),
       ];

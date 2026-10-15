@@ -12,7 +12,7 @@
 // entries (`name_entry`, ADR 0032, #794) where the dictionary has their
 // tables, the lemma links, for words nothing spells, the multi-word reading (src/lookup/phrase.ts), and for
 // words no phrase answers either, the essere agreement reading (rule
-// `it-essere-agreement/v1`, #676, #756): `sono andata` as the feminine of
+// `it-essere-agreement/v2`, #676, #756): `sono andata` as the feminine of
 // andare's `sono andato`. The search and the agreement reading read a curated
 // table cell's corrected spelling beside the source's where the master keys
 // it (#748), as `lookup()` does.
@@ -135,7 +135,7 @@ export const CORRECTED_CELL_BATCH_SEARCH_SQL: DictionaryRead = `${BATCH_SEARCH_S
 
 /**
  * One arm of the agreement read: the verb table cells one kind of probe of
- * rule `it-essere-agreement/v1` finds, each with the probe that found it and
+ * rule `it-essere-agreement/v2` finds, each with the probe that found it and
  * its own tags and raw tags, which say the row it sits on. An `exact` probe is
  * a key of the JSON array at `?2`, as `SEARCH_SQL` reads it; a `range` probe
  * is a `[from, to)` pair of the array at `?3`, as `FIRST_SPELLING_SQL` reads
@@ -174,7 +174,7 @@ function agreementArm(probe: "exact" | "range", cells: boolean): DictionaryRead 
 }
 
 /**
- * Every probe of rule `it-essere-agreement/v1` for the words neither the
+ * Every probe of rule `it-essere-agreement/v2` for the words neither the
  * search nor the multi-word reading answers, in one read (#756): the source's
  * cells each probe finds. Its exact and range probes go together, so a word
  * whose exact probe keeps no cell has its range probe's cells already read.
@@ -399,7 +399,7 @@ async function linksOf(db: LookupDatabase, reads: BatchReads, releaseId: string,
 }
 
 /**
- * The candidates of each key rule `it-essere-agreement/v1` reads as an
+ * The candidates of each key rule `it-essere-agreement/v2` reads as an
  * agreeing first spelling, as `agreementHits` (src/lookup/lookup.ts) and
  * `candidatesOf` make them: the verbs whose cell the key names, in source
  * order, from the exact probe's cells, or the range probe's where the exact
@@ -500,7 +500,7 @@ function candidatesOfReadings(readings: readonly Match[], links: ReadonlyMap<num
  * release and the dictionary's optional tables once, in one D1 call, then
  * the search and the hand-kept readings, the lemma links and, when some word nothing
  * spells has several words, the multi-word reading, then for a word that is
- * no phrase either and has the shape of rule `it-essere-agreement/v1`, the
+ * no phrase either and has the shape of rule `it-essere-agreement/v2`, the
  * agreement read.
  */
 export async function lookupBatch({

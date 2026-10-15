@@ -4,8 +4,8 @@
 // with an accent or apostrophe it lacks (#478), the records of the lemmas
 // whose grids its noun and adjective forms show (#626), the definitions of
 // the verbs its verb forms name (#686), and, for a verb whose records draw no
-// conjugation, the verb forms its form records declare (#799), all in one
-// wait. Free of the Workers runtime, so the page test runs the
+// conjugation, the verb forms its form records declare (#799) and, for a
+// pronominal one, its base verb's records (#837), all in one wait. Free of the Workers runtime, so the page test runs the
 // same code over a local database.
 
 import type { LookupDatabase } from "@lexema/lookup/database.ts";
@@ -16,26 +16,38 @@ import { findNearby, writtenSpellings } from "@lexema/lookup/nearby.ts";
 import { dictionaryTables } from "@lexema/lookup/served.ts";
 import type { Attempt } from "./attempt.ts";
 import { declaredLemmaPage } from "./declaredLemmaPage.ts";
-import { gridLemmaWords, wantsDeclaredConjugation } from "./wordPage.ts";
+import { gridLemmaWords, pronominalBaseWords, wantsDeclaredConjugation } from "./wordPage.ts";
 
 export async function searchAttempt(db: LookupDatabase, releaseId: string, query: string): Promise<Attempt> {
   // The tables are read beside the lookup, which reads them too: one statement in its first call.
   const [result, tables] = await Promise.all([lookup({ db, releaseId, query }), dictionaryTables(db)]);
   const written = () => writtenSpellings({ db, releaseId, query: result.query.raw });
   if (result.outcome === "found") {
-    const [spellings, lemmas, readings, declared] = await Promise.all([
+    const [spellings, lemmas, readings, declared, bases] = await Promise.all([
       written(),
       lemmaRecords(db, releaseId, result.readings),
       withVerbDefinitions(db, result.readings, tables),
       wantsDeclaredConjugation(result.readings) ? declaredVerbForms(db, releaseId, result.query.key) : undefined,
+      baseRecords(db, releaseId, pronominalBaseWords(result.readings)),
     ]);
-    return { ...result, readings, written: spellings, lemmas, declared: declared ?? [] };
+    return { ...result, readings, written: spellings, lemmas, declared: declared ?? [], bases };
   }
   if (result.outcome !== "not-found") return result;
   const declared = await declaredLemma(db, releaseId, result);
   const page = declared === undefined ? undefined : declaredLemmaPage(declared);
   if (declared !== undefined && page !== undefined) return { ...declared, page, written: await written() };
   return { ...result, nearby: await findNearby({ db, release: result.release, query: result.query.raw }) };
+}
+
+/**
+ * The records about each of `words`, in order, each read by the same lookup a
+ * search of that word runs: a pronominal verb's table is built from its base
+ * verb's own record, as the base verb's page reads it (#837). Nothing is read
+ * when `words` is empty, as it is for any page but a pronominal verb's.
+ */
+async function baseRecords(db: LookupDatabase, releaseId: string, words: readonly string[]): Promise<Reading[]> {
+  const found = await Promise.all(words.map((word) => lookup({ db, releaseId, query: word })));
+  return found.flatMap((result) => (result.outcome === "found" ? result.readings.filter((reading) => reading.isAboutQuery) : []));
 }
 
 /** How many rounds of reads a chain of forms may take: `bellissima` reads `bellissimo`, then `bello`. */

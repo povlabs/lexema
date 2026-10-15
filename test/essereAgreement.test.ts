@@ -49,9 +49,22 @@ test("an avere spelling, a simple tense and the wrong number do not agree (#676)
     assert.equal(essereAgreement(spelling, "plural").kind, "does-not-agree", spelling);
   }
   assert.equal(essereAgreement("sono andati", "singular").kind, "does-not-agree");
-  // Three words agree only with a clitic first.
+  // Three words agree only with a clitic first, and four only with a clitic and `ne`.
   assert.equal(essereAgreement("non sono andato", "singular").kind, "does-not-agree");
-  assert.equal(essereAgreement("me ne sono andato", "singular").kind, "does-not-agree");
+  for (const spelling of ["mi ne sono andato", "me lo sono andato", "non me ne sono andato", "ne sono andato"]) {
+    assert.equal(essereAgreement(spelling, "singular").kind, "does-not-agree", spelling);
+  }
+});
+
+test("a spelling with a clitic and ne agrees: me ne sono andato, ce ne siamo andati (v2, #837)", () => {
+  assert.equal(feminineAt("me ne sono andato", "singular"), "me ne sono andata");
+  assert.equal(shownAt("me ne sono andato", "singular"), "me ne sono andato/a");
+  assert.equal(shownAt("se ne è andato", "singular"), "se ne è andato/a");
+  assert.equal(shownAt("ce ne siamo andati", "plural"), "ce ne siamo andati/e");
+  assert.equal(shownAt("ve ne sareste andati", "plural"), "ve ne sareste andati/e");
+  assert.equal(essereAgreement("me ne sono andati", "singular").kind, "does-not-agree");
+  const query = agreeingQuery("me ne sono andata");
+  assert.deepEqual(query === undefined ? undefined : [query.spelled, query.spelling.number, query.spelling.first], ["feminine", "singular", "me ne sono andato"]);
 });
 
 test("a typed query reads as the agreeing first spelling it is, or is the feminine of (#676)", () => {
@@ -72,7 +85,7 @@ test("a typed query reads as the agreeing first spelling it is, or is the femini
 
 test("an agreeing spelling is built only by the rule (#676)", () => {
   // @ts-expect-error: an object literal carries no brand, so it is not an agreeing spelling.
-  const forged: AgreeingSpelling = { rule: "it-essere-agreement/v1", number: "singular", masculine: "ho mangiato", first: "ho mangiato", feminine: "ho mangiata" };
+  const forged: AgreeingSpelling = { rule: "it-essere-agreement/v2", number: "singular", masculine: "ho mangiato", first: "ho mangiato", feminine: "ho mangiata" };
   assert.ok(forged);
 });
 

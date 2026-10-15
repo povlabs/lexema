@@ -317,7 +317,7 @@ async function spelledResult({ db, releaseId, pages, query, release, tables }: S
 }
 
 /**
- * The rows of a query rule `it-essere-agreement/v1` reads as an agreeing first
+ * The rows of a query rule `it-essere-agreement/v2` reads as an agreeing first
  * spelling (#676), and the route that says how. A feminine is read as its
  * masculine, `sono andata` as `sono andato`, and that key is probed. When it
  * finds no cell, or the query was typed as the masculine and so already found
@@ -573,7 +573,7 @@ export const SEARCH_SQL: DictionaryRead = searchWhere("lf.surface_key = ?2");
  * The rows of every cell whose spelling starts with `?2`, read in one range of
  * `lookup_form_by_key`: `surface_key >= ?2 AND surface_key < ?3`, the bounds
  * `prefixUpperBound` gives. The first-spelling probe of rule
- * `it-essere-agreement/v1` (#676) sends `mi sono arreso, ` to reach the cell
+ * `it-essere-agreement/v2` (#676) sends `mi sono arreso, ` to reach the cell
  * `mi sono arreso, arresosi`. Exported so a test can assert the plan.
  */
 export const FIRST_SPELLING_SQL: DictionaryRead = searchWhere("lf.surface_key >= ?2 AND lf.surface_key < ?3");

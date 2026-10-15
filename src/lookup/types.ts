@@ -1186,7 +1186,7 @@ export interface PhraseForm {
  * in source order. `feminine`: it is none, and it is the feminine of an
  * agreeing first spelling verbs' tables list (`sono andata` of `sono andato`,
  * `mi sono arresa` of `mi sono arreso, arresosi`; rule
- * `it-essere-agreement/v1`, #676); the readings are those verbs, and their
+ * `it-essere-agreement/v2`, #676); the readings are those verbs, and their
  * evidence is only the cells of that spelling that agree. `first-spelling`:
  * it is none, and it is, as typed, the agreeing first spelling of cells that
  * hold more than one (`mi sono arreso` of `mi sono arreso, arresosi`).

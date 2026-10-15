@@ -154,13 +154,14 @@ A few cells also hold more than one spelling, joined by `, `
 (`mi sono arreso, arresosi`), and are indexed whole, so neither
 `mi sono arreso` nor `mi sono arresa` spells a key. When the key matches
 nothing and is no phrase either, `lookup()` reads it by rule
-`it-essere-agreement/v1` (#676,
+`it-essere-agreement/v2` (#676, #837,
 [`src/italian/essereAgreement.ts`](../src/italian/essereAgreement.ts), probe
 `agreementHits` in [`src/lookup/lookup.ts`](../src/lookup/lookup.ts)):
 
 1. The key must be two words, a finite form of essere then a participle, or
    three, a clitic (`mi`, `ti`, `si`, `ci`, `vi`) then a finite form of essere
-   then a participle. The rule owns both closed sets. The last word must end
+   then a participle, or four, a clitic before `ne` (`me ne`, `ce ne`) then a
+   finite form of essere then a participle (v2). The rule owns these closed sets. The last word must end
    in `-o` or `-a` (singular) or `-i` or `-e` (plural). Anything else sends
    nothing more: `casa`, `ho mangiata`, `mi arrendo` and `sono andat` cost
    exactly the statements they cost before.

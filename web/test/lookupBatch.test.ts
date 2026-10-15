@@ -144,7 +144,7 @@ test("the batch answers every word with the candidates candidatesOf makes of its
     ...spellings,
     ...["vado via", "sono andati via", "faccio l'abitudine", "hanno fatte fuori", "tiro fuori", "aerei a reazione"],
     ...["sale", "andavano", "qqqqqq", "vado viaa", "Casa", " sale "],
-    // Compound forms of essere verbs by rule `it-essere-agreement/v1` (#756), and two it does not read.
+    // Compound forms of essere verbs by rule `it-essere-agreement/v2` (#756), and two it does not read.
     ...["sono andata", "siamo andate", "Sono Andata", "ho mangiata", "sono andat"],
   ];
   const { release, answers } = await lookupBatch({ db, releaseId: RELEASE, queries: words });
@@ -344,7 +344,7 @@ test("the batch finds a curated table cell by its corrected spelling and by the 
 /** Whether a statement is the batch's agreement read, on either kind of master. */
 const readsAgreement = (sql: string): boolean => sql === BATCH_AGREEMENT_SQL || sql === CORRECTED_CELL_BATCH_AGREEMENT_SQL;
 
-test("the batch reads an essere verb's compound form by rule it-essere-agreement/v1, as the single lookup does (#756)", async () => {
+test("the batch reads an essere verb's compound form by rule it-essere-agreement/v2, as the single lookup does (#756)", async () => {
   // The development fixture and the lines of accorgersi, arrendersi, assorbire
   // and perdersi, with assorbire's corrected cells keyed where the master keys them.
   const releaseId = "it-batch-agreement";

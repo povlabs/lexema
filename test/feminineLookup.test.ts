@@ -1,7 +1,7 @@
 // A feminine compound form of an essere verb (#676): `sono andata` is found as
 // the feminine of `sono andato`, which andare's table lists, and `mi sono
 // arresa` as the feminine of the first spelling of arrendersi's `mi sono
-// arreso, arresosi`, by rule `it-essere-agreement/v1`. Read over the
+// arreso, arresosi`, by rule `it-essere-agreement/v2`. Read over the
 // development fixture and the release lines of accorgersi, arrendersi,
 // assorbire and perdersi (`fixtures/essere-compound-cells.jsonl`), seeded the
 // way `pnpm run seed:dev` seeds D1. The page over the same lines is tested in
