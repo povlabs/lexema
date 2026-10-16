@@ -3955,7 +3955,9 @@ test("a sense label shows in the Italian the page wrote, not the extraction's En
 // record in the release. Then the pronominal verbs no base verb record has a
 // table for (#838): 768 `appisolarsi`, 90544 `obliarsi`, 264711 `traversi`,
 // 422393 `accertare` (a record with no forms), 442416 `riarsi`, 449227
-// `smentirsi`, 456263 `accertarsi` and 596085 `abbuffarsi`.
+// `smentirsi`, 456263 `accertarsi` and 596085 `abbuffarsi`; then 595530
+// `pentita`, 596003 `pentite` and 597777 `pentiti`, which say they are
+// pentirsi's participles and imperative.
 
 const PRONOMINAL_LINES = (await readFile(join(REPO, "fixtures/pronominal-verb-tables.jsonl"), "utf8")).trimEnd().split("\n");
 const withPronominal = (run: (f: Fixture) => Promise<void>) => withLines(PRONOMINAL_LINES, run);
@@ -4065,6 +4067,8 @@ test("a pronominal verb whose base verb has no record takes the table its own {{
     assert.ok(answer.outcome === "found");
     // `pentire` has no record, so the search read none.
     assert.deepEqual(answer.bases, []);
+    // Its form records declare a few cells (#799); the built table goes before them.
+    assert.ok(answer.declared.length > 0);
     const html = await render(db, "pentirsi");
     assert.equal(occurrencesOf(html, ">Forme<"), 1);
     assert.deepEqual(tenseColumn(html, "Indicativo", "presente"), [

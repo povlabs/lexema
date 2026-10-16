@@ -7,7 +7,8 @@
 // it-0c432803 in fixtures/pronominal-verb-tables.jsonl: 448681 `pentirsi`,
 // 768 `appisolarsi`, 90544 `obliarsi`, 264711 `traversi`, 422393 `accertare`
 // (a record with no forms), 442416 `riarsi`, 449227 `smentirsi`, 456263
-// `accertarsi` and 596085 `abbuffarsi`. The regular tables are checked against
+// `accertarsi` and 596085 `abbuffarsi` (and pentirsi's form records 595530,
+// 596003 and 597777, which the page tests read). The regular tables are checked against
 // whole source tables of the same classes in fixtures/dev-seed.jsonl.
 
 import assert from "node:assert/strict";

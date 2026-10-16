@@ -140,7 +140,16 @@ import {
 } from "@lexema/lookup/types.ts";
 import { definitionTextKey, definitionsOf, placeOf, readAt, type DefinitionItem } from "./definitions.ts";
 import { wiktionarySource, type FooterSource } from "./footerSource.ts";
-import { conjugates, conjugationOf, declaredConjugationOf, placesAny, pronominalConjugationOf, type Conjugation, type PronominalForm } from "./conjugation.ts";
+import {
+  conjugates,
+  conjugationOf,
+  declaredConjugationOf,
+  placesAny,
+  pronominalConjugationOf,
+  type BaseCellOf,
+  type Conjugation,
+  type PronominalForm,
+} from "./conjugation.ts";
 import { agreementOf, placesOf, type Agreement, type GridPlace, type Spelling } from "./genderGrid.ts";
 import { GRID_FORM_LINE_RULE, gridFormLine } from "./gridFormLine.ts";
 import { unlinkedLemmas } from "./lemmaLines.ts";
@@ -284,13 +293,12 @@ function ownFormsOf(reading: Reading, taken: TakenConjugation | undefined): OwnF
  *
  * - For a pronominal verb, the one `it-pronominal-conjugation/v1` builds
  *   from its base verb's table (#837): `trasferirsi` from `trasferire`'s.
+ *   Where no base verb record has a table, it builds on the regular cells
+ *   `it-regular-conjugation/v1` gives the class the source settles (#838):
+ *   `pentirsi` from `{{It-conj|pent|irsi|essere}}`.
  * - Else the one its form records declare (#799), built as a declared lemma's
  *   is (#453): `bellare`'s record has no table, and some thirty records say
  *   "… di bellare".
- * - Else, for a pronominal verb no base verb record has a table for, the one
- *   `it-pronominal-conjugation/v1` builds from the regular cells
- *   `it-regular-conjugation/v1` gives the class the source settles (#838):
- *   `pentirsi` from `{{It-conj|pent|irsi|essere}}`.
  */
 export type TakenConjugation =
   | { kind: "declared-conjugation"; conjugation: Conjugation<DeclaredVerbForm> }
@@ -394,14 +402,13 @@ function pronominalBaseOf(verb: PronominalVerb, bases: readonly Reading[]): Read
 }
 
 /**
- * The page's taken conjugation: a pronominal verb's built one when its base
- * verb has a table (#837), else the declared one when it places a form (#799),
- * else a pronominal verb's built on regular cells when no base verb record has
- * a table and the source settles its class (#838). The built table goes before
- * the declared one because the form records a pronominal verb has name only a
- * few of its cells: `laurearsi`'s declared table is one imperative,
- * `laureati`, which the built table holds too. The regular one goes after it,
- * so a page that draws a declared table keeps it.
+ * The page's taken conjugation: a pronominal verb's built one, else the
+ * declared one when it places a form (#799). The built one is built on its
+ * base verb's table when a base verb record has one (#837), else on the
+ * regular cells of the class the source settles (#838). It goes before the
+ * declared one because the form records a pronominal verb has name only a few
+ * of its cells: `laurearsi`'s declared table is one imperative, `laureati`,
+ * and `pentirsi`'s the participles `pentito`, `pentita`, `pentiti`, `pentite`.
  */
 function takenConjugationOf(
   readings: readonly Reading[],
@@ -409,21 +416,29 @@ function takenConjugationOf(
   bases: readonly Reading[],
 ): TakenConjugation | undefined {
   const pronominal = pronominalOf(readings);
-  const base = pronominal === undefined ? undefined : pronominalBaseOf(pronominal.verb, bases);
-  if (pronominal !== undefined && base !== undefined) {
-    const conjugation = pronominalConjugationOf(pronominal.verb, base.forms);
+  const baseCells = pronominal === undefined ? undefined : pronominalBaseCells(pronominal, bases);
+  if (pronominal !== undefined && baseCells !== undefined) {
+    const conjugation = pronominalConjugationOf(pronominal.verb, baseCells);
     if (placesAny(conjugation)) return { kind: "pronominal-conjugation", conjugation, owner: pronominal.owner };
   }
-  if (wantsDeclaredConjugation(readings)) {
-    const conjugation = declaredConjugationOf(declared);
-    if (placesAny(conjugation)) return { kind: "declared-conjugation", conjugation };
-  }
-  if (pronominal === undefined || base !== undefined) return undefined;
+  if (!wantsDeclaredConjugation(readings)) return undefined;
+  const conjugation = declaredConjugationOf(declared);
+  return placesAny(conjugation) ? { kind: "declared-conjugation", conjugation } : undefined;
+}
+
+/**
+ * The base cells a pronominal verb's table is built on: its base verb
+ * record's forms when one has a table (#837), else the regular cells of the
+ * class the source settles for it (`it-regular-conjugation/v1`, #838), read
+ * off the owner's glosses and the pinned `{{It-conj}}` calls. None when the
+ * source settles no class.
+ */
+function pronominalBaseCells(pronominal: { verb: PronominalVerb; owner: Reading }, bases: readonly Reading[]): readonly BaseCellOf[] | undefined {
+  const base = pronominalBaseOf(pronominal.verb, bases);
+  if (base !== undefined) return base.forms;
   const glosses = pronominal.owner.senses.flatMap((sense) => sense.glosses.map((gloss) => gloss.text));
   const settled = regularClassOf(pronominal.verb, glosses, CONJUGATION_TEMPLATE_CALLS);
-  if (settled.kind === "declined") return undefined;
-  const conjugation = pronominalConjugationOf(pronominal.verb, regularCells(settled));
-  return placesAny(conjugation) ? { kind: "pronominal-conjugation", conjugation, owner: pronominal.owner } : undefined;
+  return settled.kind === "settled" ? regularCells(settled) : undefined;
 }
 
 /** What any source reading may show after its own text, in this order on the page. */
