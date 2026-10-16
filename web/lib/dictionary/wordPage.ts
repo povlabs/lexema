@@ -408,7 +408,7 @@ function pronominalBaseOf(verb: PronominalVerb, bases: readonly Reading[]): Read
  * regular cells of the class the source settles (#838). It goes before the
  * declared one because the form records a pronominal verb has name only a few
  * of its cells: `laurearsi`'s declared table is one imperative, `laureati`,
- * and `pentirsi`'s the participles `pentito`, `pentita`, `pentiti`, `pentite`.
+ * and `pentirsi`'s is one imperative too, `pentiti`.
  */
 function takenConjugationOf(
   readings: readonly Reading[],
