@@ -40,18 +40,41 @@ under `noneWords` in the output and filed as
 
 ## Every word page, before and after
 
-The release was seeded locally (`tools/measureEmptyWordPages.ts seed`, raw pages,
-recovered layer, hiding rules and curated corrections included). Every headword
-(541,433) and 7,515 sampled expression searches, 548,948 queries, were searched
-with `searchAttempt` and rendered with the real `SearchPage` and `Outcome`
-components, once at `origin/main` (4a13d9e) and once at this branch's head. The
-two HTML pages of each query were compared.
+`pnpm run diff:pages a94664d7 5bf93594` (`web/pageDiff/`) seeded the whole
+release at each commit with that commit's own `seed:dev`, and rendered every
+query's page with the real `searchAttempt` and `Outcome`. Base a94664d is
+`origin/main` after the Wikidata-words epic (#815); head 5bf9359 is this branch
+after merging it, so both sides carry the `it-word-shape/v1` and
+`it-pronominal-pair/v1` routes (#809, #810). The queries were every page word
+(550,466: each headword and each word a `form_of` edge names) and, by
+`--words`, 75,030 more read off the release for the 1,053 `-rsi`/`-rsene`
+words: `si` and each one-word third-person cell of a base verb's table (22,988,
+the pair route: `si trasferiscono`), every spelling the rule builds
+(`trasferendosi`, `mi sono alzato`, `me ne vado`), and each clitic infinitive
+(`alzarmi`, `andartene`, the shape route).
 
 | | Pages |
 |---|---:|
-| Unchanged | 548,205 |
-| Changed | 743 |
-| … of a word that is not `-rsi`/`-rsene` | **0** |
+| Compared (a page at both commits) | 569,026 |
+| Added or removed | 0 |
+| Changed | 6,727 |
+| … a `-rsi`/`-rsene` headword's page | 743 |
+| … a `si` + verb query, which the pair route answers with a `-rsi` verb's page (`si trasferiscono`: `trasferirsi`) | 5,984 |
+| … whose records about the query include no `-rsi`/`-rsene` verb | **0** |
+
+Each changed page was then rendered again at the head with its base verb's
+records taken away, so no rule-built table can be drawn. All 6,727 came back
+byte for byte the base page. So the built table, and the change it brings to its
+reading, is the whole change; no other page moved, and no pair, shape or built
+spelling query changed in any other way. The 5,984 pair pages belong to 740
+pronominal verbs; a pair whose verb keeps its source table (`si arrende`) did
+not change.
+
+An earlier run over the 743 headword pages, at 4a13d9e and bb8e357 (before the
+merge), split them three ways:
+
+| | Pages |
+|---|---:|
 | … gained one *Forme* section, the rest byte for byte the same | 474 |
 | … gained one *Forme* section, and the reading it sits in, which had nothing to show and was a bare unnumbered heading, now carries its number (`1 · Verbo`) | 250 |
 | … had a declared table of one to six cells (#799), now the built one | 19 |
