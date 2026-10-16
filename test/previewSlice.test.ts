@@ -224,9 +224,13 @@ test("on a slice with the pull request's changes, a word it adds or recovers is 
       assert.equal(await outcomeOf(shared, word), "not-found", word);
       assert.equal(await outcomeOf(sliced, word), "found", word);
     }
-    // Hidden: found in the shared dictionary, not on the slice.
+    // Hidden: found in the shared dictionary, not on the slice. There only
+    // rule it-word-shape/v1 reads it, as a regular form of dipendere, whose
+    // record lists no forms (#809); the hidden record is no reading.
     assert.equal(await outcomeOf(shared, "dipendo"), "found");
-    assert.equal(await outcomeOf(sliced, "dipendo"), "not-found");
+    const hidden = await lookup({ db: sliced, releaseId: RELEASE, query: "dipendo" });
+    assert.ok(hidden.outcome === "found" && hidden.route.kind === "shape", JSON.stringify(hidden).slice(0, 300));
+    assert.deepEqual(hidden.readings.map((reading) => reading.word), ["dipendere"]);
     // Changed: the slice reads the feed's record, with its new sense.
     const casa = await lookup({ db: sliced, releaseId: RELEASE, query: "casa" });
     assert.ok(casa.outcome === "found");

@@ -24,8 +24,8 @@ export const DECLARATIONS_DIR = "dictionary-changes";
 export const isDeclarationPath = (path: string): boolean =>
   path.startsWith(`${DECLARATIONS_DIR}/`) && path.endsWith(".json") && !path.slice(DECLARATIONS_DIR.length + 1).includes("/");
 
-/** The eight commands that write the dictionary. */
-export const DECLARED_COMMANDS = ["update:upgrade", "update:auto", "hide:records", "normalize:source-text", "correct:records", "load:page-entries", "load:recovered-definitions", "load:names"] as const;
+/** The nine commands that write the dictionary. */
+export const DECLARED_COMMANDS = ["update:upgrade", "update:auto", "hide:records", "normalize:source-text", "correct:records", "load:page-entries", "load:recovered-definitions", "load:names", "load:wikidata-words"] as const;
 export type DeclaredCommand = (typeof DECLARED_COMMANDS)[number];
 
 /** A release id: `it-` and the first eight hex digits of its archive's SHA-256. */
@@ -69,7 +69,13 @@ export type DeclaredChange =
    * (`names/wikidata-names.jsonl`, ADR 0032) as it stands at the deploy's
    * commit, and the expected counts pin what that snapshot writes.
    */
-  | Declared<"load:names", Record<string, never>>;
+  | Declared<"load:names", Record<string, never>>
+  /**
+   * No inputs: it writes the committed snapshot of Wikidata words
+   * (`wikidata-words/wikidata-words.jsonl`, ADR 0033) as it stands at the
+   * deploy's commit, and the expected counts pin what that snapshot writes.
+   */
+  | Declared<"load:wikidata-words", Record<string, never>>;
 
 /**
  * A word a declaration names and what the site's lookup must show for it once
@@ -292,6 +298,10 @@ function changeOf(file: string, value: Record<string, unknown>, reasons: string[
     }
     case "load:names": {
       reasons.push(...unknownKeys(inputs, [], "inputs of load:names"));
+      return { file, command, inputs: {} };
+    }
+    case "load:wikidata-words": {
+      reasons.push(...unknownKeys(inputs, [], "inputs of load:wikidata-words"));
       return { file, command, inputs: {} };
     }
     case "load:page-entries": {

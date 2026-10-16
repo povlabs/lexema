@@ -13,7 +13,11 @@
 // tables, the lemma links, for words nothing spells, the multi-word reading (src/lookup/phrase.ts), and for
 // words no phrase answers either, the essere agreement reading (rule
 // `it-essere-agreement/v2`, #676, #756): `sono andata` as the feminine of
-// andare's `sono andato`. The search and the agreement reading read a curated
+// andare's `sono andato`, and beside it the words rule `it-word-shape/v1`
+// reads them as a shape of (#809): `raccontarvi` of raccontare, and the
+// pronominal verbs rule `it-pronominal-pair/v1` reads a `si` + verb pair as
+// (#810): `si trasferiscono` of trasferirsi, with those words' lemma links
+// after. The search and the agreement reading read a curated
 // table cell's corrected spelling beside the source's where the master keys
 // it (#748), as `lookup()` does.
 //
@@ -21,14 +25,18 @@
 // in source order, a lemma the query also matched folded into the reading that
 // names it, a form-of reading answered with its lemmas of its own part of
 // speech (`lemmasOfPartOfSpeech`), then the word's hand-kept readings, each
-// record once.
+// record once; and a word no Wiktionary reading answers with its Wikidata
+// words (ADR 0033, #812), read in the statement beside the search.
 
 import { keyedRead, readKeys, type DictionaryRead, type KeyedRead, type LookupDatabase } from "./database.js";
 import { queryInfoOf, rejectionOf, servableRelease } from "./lookup.js";
+import { answeringShapes, shapeKeysOf, readShapeRows, type ShapeRow } from "./wordShape.js";
 import { phraseMatchesOf } from "./phrase.js";
+import { answeringPairs } from "./pronominalPair.js";
 import { correctedEdgeServed, sourceEdgeServed } from "./correctedEdge.js";
 import { dictionaryTables, servedBy, type DictionaryTables } from "./served.js";
 import { besideSourceOf } from "./besideSource.js";
+import { unlessDeclaredLemma } from "./wikidataWords.js";
 import { readTranslations } from "./sourceRecord.js";
 import { lemmasOfPartOfSpeech, sourceTagsAt, type QueryInfo, type RejectedResult, type ReleaseInfo, type Translation } from "./types.js";
 import { agreeingQuery, agreementProbes, namesCell, type AgreeingQuery } from "../italian/essereAgreement.js";
@@ -43,12 +51,13 @@ import { prefixUpperBound } from "./keyRange.js";
  * (ADR 0032) by its Wikidata item.
  */
 export type CandidateRecord = (
-  | { recordId: number; entryId?: never; handKeptId?: never; nameItem?: never; lineNo: number }
-  | { entryId: number; revisionId: number; pageLine: number; recordId?: never; handKeptId?: never; nameItem?: never; lineNo?: never }
-  | { handKeptId: string; revisionId: number; pageLine: number; recordId?: never; entryId?: never; nameItem?: never; lineNo?: never }
-  | { nameItem: `Q${number}`; recordId?: never; entryId?: never; handKeptId?: never; lineNo?: never; revisionId?: never; pageLine?: never }
+  | { recordId: number; entryId?: never; handKeptId?: never; nameItem?: never; lexeme?: never; lineNo: number }
+  | { entryId: number; revisionId: number; pageLine: number; recordId?: never; handKeptId?: never; nameItem?: never; lexeme?: never; lineNo?: never }
+  | { handKeptId: string; revisionId: number; pageLine: number; recordId?: never; entryId?: never; nameItem?: never; lexeme?: never; lineNo?: never }
+  | { nameItem: `Q${number}`; recordId?: never; entryId?: never; handKeptId?: never; lexeme?: never; lineNo?: never; revisionId?: never; pageLine?: never }
+  | { lexeme: `L${number}`; recordId?: never; entryId?: never; handKeptId?: never; nameItem?: never; lineNo?: never; revisionId?: never; pageLine?: never }
 ) & {
-  /** The record's own release, which `lineNo` counts in: the master's, or a feed's (src/lookup/served.ts); the served one for a hand-kept reading or a name entry, which belongs to none. */
+  /** The record's own release, which `lineNo` counts in: the master's, or a feed's (src/lookup/served.ts); the served one for a hand-kept reading, a name entry or a Wikidata word, which belongs to none. */
   releaseId: string;
   word: string;
   pos: string;
@@ -439,11 +448,12 @@ async function agreementsOf(db: LookupDatabase, reads: BatchReads, releaseId: st
   );
 }
 
-/** As `entryKey` (src/lookup/types.ts) names an entry: records, page entries, hand-kept readings and name entries apart. */
+/** As `entryKey` (src/lookup/types.ts) names an entry: records, page entries, hand-kept readings, name entries and Wikidata words apart. */
 const candidateKey = (record: CandidateRecord): string => {
   if (record.recordId !== undefined) return String(record.recordId);
   if (record.entryId !== undefined) return `page-${record.entryId}`;
-  return record.handKeptId !== undefined ? `kept-${record.handKeptId}` : `name-${record.nameItem}`;
+  if (record.handKeptId !== undefined) return `kept-${record.handKeptId}`;
+  return record.nameItem !== undefined ? `name-${record.nameItem}` : `lexeme-${record.lexeme}`;
 };
 
 /** Each record once, the first time it comes. */
@@ -495,13 +505,43 @@ function candidatesOfReadings(readings: readonly Match[], links: ReadonlyMap<num
 }
 
 /**
+ * The candidates of a word rule `it-word-shape/v1` reads as a shape of
+ * words the dictionary has (#809), or rule `it-pronominal-pair/v1` as a
+ * pronominal verb (#810), as `lookup()` and `candidatesOf` make them from the
+ * same rows (`readShapeRows`): the source's records and page-only entries the
+ * rows reach, as `readingsOf` orders and folds them, then the hand-kept
+ * readings.
+ */
+function shapeCandidates(answered: readonly ShapeRow[], links: ReadonlyMap<number, readonly LightLink[]>): CandidateRecord[] {
+  const matches = new Map<string, Match>();
+  const kept: Match[] = [];
+  for (const row of answered) {
+    if (row.from === "kept") {
+      kept.push({ record: row.head, about: true });
+      continue;
+    }
+    const record: CandidateRecord =
+      row.from === "source"
+        ? { recordId: row.hit.record_id, lineNo: row.hit.line_no, releaseId: row.hit.release_id, word: row.hit.record_word, pos: row.hit.record_pos, posTitle: row.hit.record_pos_title }
+        : { entryId: row.entry.entry_id, revisionId: row.entry.revision_id, pageLine: row.entry.page_line, releaseId: row.entry.release_id, word: row.entry.word, pos: row.entry.pos, posTitle: row.entry.pos_title };
+    const about = row.from === "page" || row.hit.origin === "headword";
+    matches.set(candidateKey(record), { record, about: about || matches.get(candidateKey(record))?.about === true });
+  }
+  return candidatesOfReadings([...readingsOf(matches.values(), links), ...kept], links);
+}
+
+/**
  * The words of a batch, each answered as `lookup()` and `candidatesOf` answer
  * it, in a fixed number of statements however many words there are: the
  * release and the dictionary's optional tables once, in one D1 call, then
  * the search and the hand-kept readings, the lemma links and, when some word nothing
  * spells has several words, the multi-word reading, then for a word that is
  * no phrase either and has the shape of rule `it-essere-agreement/v2`, the
- * agreement read.
+ * agreement read, and beside it, for a word that is no phrase and has a shape
+ * of rule `it-word-shape/v1`, the shape read (`readShapeRows`), and for a
+ * word that is `si` and a verb form, the two reads of rule
+ * `it-pronominal-pair/v1` (`answeringPairs`), then the lemma links of the
+ * records they answer with.
  */
 export async function lookupBatch({
   db,
@@ -521,10 +561,12 @@ export async function lookupBatch({
   });
   const keys = [...new Set(prepared.flatMap((query) => ("outcome" in query ? [] : [query.key])))];
 
-  // The hand-kept readings (ADR 0031, #776) and the name entries (ADR 0032,
-  // #794) are read beside the search, for the same keys, in one statement
-  // (src/lookup/besideSource.ts); a dictionary without their tables is sent none.
-  const [spelled, kept] = await Promise.all([search(db, reads, releaseId, keys), besideSourceOf(db, releaseId, tables).heads(keys)]);
+  // The hand-kept readings (ADR 0031, #776), the name entries (ADR 0032,
+  // #794) and the Wikidata words (ADR 0033, #812) are read beside the search,
+  // for the same keys, in one statement (src/lookup/besideSource.ts); a
+  // dictionary without their tables is sent none.
+  const [spelled, beside] = await Promise.all([search(db, reads, releaseId, keys), besideSourceOf(db, releaseId, tables).heads(keys)]);
+  const kept = beside.heads;
   const aboutIds = [...new Set([...spelled.values()].flatMap((matches) => [...matches.values()].filter((match) => match.about).flatMap((match) => match.record.recordId === undefined ? [] : [match.record.recordId])))];
 
   // A word nothing spells may still be a multi-word headword said the way a
@@ -535,7 +577,32 @@ export async function lookupBatch({
   // Nor a phrase: it may be a compound form of an essere verb the source
   // lists only as the masculine, or only beside a later spelling (#676, #756).
   const unphrased = unspelled.filter((key) => (phrases.get(key) ?? []).length === 0);
-  const [headwords, agreements] = await Promise.all([search(db, reads, releaseId, probeKeys), agreementsOf(db, reads, releaseId, unphrased)]);
+  // Nor a compound form: it may be a shape of a word the dictionary has (rule
+  // `it-word-shape/v1`, #809). Its spellings are read beside the agreement
+  // read, for every word that is no phrase, with `lookup()`'s own statements.
+  // Nor a shape: it may be `si` and a verb form, said for a pronominal verb
+  // the dictionary has (rule `it-pronominal-pair/v1`, #810), read beside them;
+  // a batch with no such word sends nothing for it.
+  const shapeKeys = [...new Set(unphrased.flatMap(shapeKeysOf))];
+  const [headwords, agreements, shapeRows, pairs] = await Promise.all([
+    search(db, reads, releaseId, probeKeys),
+    agreementsOf(db, reads, releaseId, unphrased),
+    readShapeRows(db, releaseId, tables, shapeKeys),
+    answeringPairs(db, releaseId, tables, unphrased),
+  ]);
+  const shaped = new Map(
+    unphrased
+      .filter((key) => (agreements.get(key) ?? []).length === 0)
+      .map((key) => [key, answeringShapes(key, shapeRows).flatMap(({ rows }) => rows)] as const),
+  );
+  const shapes = new Map([...shaped].map(([key, rows]) => [key, rows.length > 0 ? rows : (pairs.get(key) ?? []).flatMap((answering) => answering.rows)] as const));
+  const shapeAboutIds = [
+    ...new Set(
+      [...shapes.values()].flatMap((rows) => rows.flatMap((row) => (row.from === "source" && row.hit.origin === "headword" ? [row.hit.record_id] : []))),
+    ),
+  ].filter((recordId) => !aboutIds.includes(recordId));
+  const shapeLinks = await linksOf(db, reads, releaseId, shapeAboutIds);
+  const allLinks = new Map([...links, ...shapeLinks]);
 
   /**
    * The readings of everything that spells `key`, as `spelledResult`
@@ -560,12 +627,24 @@ export async function lookupBatch({
       return heads;
     });
     if (reached.length > 0) return eachOnce(inSourceOrder(reached).map((match) => match.record));
-    return agreements.get(key) ?? [];
+    const agreed = agreements.get(key) ?? [];
+    return agreed.length > 0 ? agreed : shapeCandidates(shapes.get(key) ?? [], allLinks);
   };
+
+  // A word no Wiktionary reading answers, nothing or only name entries, may be
+  // a Wikidata word (ADR 0033, #812), read beside the search: each one some
+  // Wikidata word spells is held to the page's declared lemma, as `lookup()`
+  // holds it, in one wait.
+  const answered = new Map(keys.map((key) => [key, candidatesOf(key)] as const));
+  const lexemes = new Map(
+    [...beside.wikidataWords].filter(([key]) => (answered.get(key) ?? []).every((candidate) => candidate.nameItem !== undefined)),
+  );
+  const shown = new Map(await Promise.all([...lexemes].map(async ([key, words]) => [key, await unlessDeclaredLemma(db, releaseId, tables, key, words)] as const)));
+  const finalCandidates = (key: string): CandidateRecord[] => [...(answered.get(key) ?? []), ...(shown.get(key) ?? [])];
 
   const answers = prepared.map((query): BatchAnswer => {
     if ("outcome" in query) return query;
-    const [first, ...rest] = candidatesOf(query.key);
+    const [first, ...rest] = finalCandidates(query.key);
     return first === undefined ? { outcome: "not-found", query } : { outcome: "found", query, candidates: [first, ...rest] };
   });
   return { release, answers };

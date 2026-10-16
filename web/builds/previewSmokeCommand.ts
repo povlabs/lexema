@@ -11,8 +11,9 @@
 // What each site must answer:
 // - the dictionary finds every word in `SMOKE_WORDS`: `/?q=<word>` is a 200
 //   whose page holds a reading: a source record's (`data-record`), a verb
-//   form block's (`data-verb-form`, #636) or a grid's form block's
-//   (`data-grid-form`, #700), all web/components/dictionary/Reading.tsx.
+//   form block's (`data-verb-form`, #636), a grid's form block's
+//   (`data-grid-form`, #700) or a word shape's (`data-shape-form`, #802), all
+//   web/components/dictionary/Reading.tsx.
 //   A word it cannot find is a 200 too, with no reading, so the status alone
 //   says nothing. The reading must be visible as sent, since the smoke runs no
 //   script (#115): React streams a result that is not ready at the first flush
@@ -100,8 +101,8 @@ export const SMOKE_ICONS = [
   { path: "/apple-touch-icon.png", contentTypes: ["image/png"] },
 ] as const;
 
-/** A reading on the dictionary's page, a record's, a verb form block's (#636) or a grid's form block (#700): only a found word renders one. */
-const READING = /<article\b[^>]*\bdata-(?:record|verb-form|grid-form)="/;
+/** A reading on the dictionary's page, a record's, a verb form block's (#636), a grid's form block (#700) or a word shape's (#802): only a found word renders one. */
+const READING = /<article\b[^>]*\bdata-(?:record|verb-form|grid-form|shape-form)="/;
 /** Where React's streamed, hidden segments begin: after everything the first flush showed. */
 const HIDDEN_SEGMENT = /<div hidden id="S:/;
 
@@ -139,6 +140,7 @@ const ONCE_PER_WORD: readonly { what: string; pattern: RegExp }[] = [
   { what: "conjugation", pattern: /\baria-label="Modi di ([^"]+)"/g },
   { what: "Voce verbale block", pattern: /<article\b[^>]*\bdata-verb-form="([^"]+)"/g },
   { what: "form block", pattern: /<article\b[^>]*\bdata-grid-form="([^"]+)"/g },
+  { what: "shape block", pattern: /<article\b[^>]*\bdata-shape-form="([^"]+)"/g },
 ];
 
 /** Each way a found word's page breaks the word-page law, naming the word; none when it keeps it. */

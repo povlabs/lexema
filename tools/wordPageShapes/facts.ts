@@ -5,17 +5,18 @@
 // `phrasePage()`, so these are the facts of the page a reader gets.
 
 import type { PhrasePage } from "../../web/lib/dictionary/phrasePage.ts";
-import { baseWordOf, showsJumpLinks, type ShownEntry, type WordPage } from "../../web/lib/dictionary/wordPage.ts";
+import { baseWordOf, headingTitle, showsJumpLinks, type ShownEntry, type WordPage } from "../../web/lib/dictionary/wordPage.ts";
 
 /** One reading or block a word page lists, as its shape reads it. */
 export interface EntryFacts {
   /**
    * `own`: a reading of a record that is not the query's form; `form-of`: the
    * query's own form record, as a noun or adjective form block reads it;
-   * `verb-form` and `grid-form`: the blocks built for a verb's or a grid's
-   * form; `bare` and `lone-bare`: readings with nothing to show (§ 1).
+   * `verb-form`, `grid-form` and `shape-form`: the blocks built for a verb's,
+   * a grid's or a word shape's form (#802); `bare` and `lone-bare`: readings
+   * with nothing to show (§ 1).
    */
-  kind: "own" | "form-of" | "verb-form" | "grid-form" | "bare" | "lone-bare";
+  kind: "own" | "form-of" | "verb-form" | "grid-form" | "shape-form" | "bare" | "lone-bare";
   /** The heading's part of speech: the record's `pos_title`, or a block's. */
   pos: string;
   /** The headword of the record the entry reads; a block's first record. */
@@ -41,6 +42,8 @@ function entryFacts(entry: ShownEntry): EntryFacts {
       return { kind: "verb-form", pos: entry.posTitle, word: entry.sources[0]?.reading.word ?? entry.verb, about, bases: [], parts: [] };
     case "grid-form":
       return { kind: "grid-form", pos: entry.posTitle, word: entry.records[0].word, about, bases: [], parts: [] };
+    case "shape-form":
+      return { kind: "shape-form", pos: headingTitle(entry.heading), word: entry.word, about, bases: [], parts: [] };
     case "bare":
     case "lone-bare":
       return { kind: entry.kind, pos: entry.reading.posTitle, word: entry.reading.word, about, bases: [], parts: [] };

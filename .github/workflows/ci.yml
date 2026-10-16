@@ -98,7 +98,7 @@ jobs:
               *) ci=true ;;
             esac
             case "$f" in
-              src/db/* | src/import/* | src/source/* | src/italian/* | src/lookup/* | src/names/* | \
+              src/db/* | src/import/* | src/source/* | src/italian/* | src/lookup/* | src/names/* | src/wikidataWords/* | \
               src/billing/* | src/api/* | src/core/* | src/commandLine.ts | fixtures/* | \
               drizzle.config.ts | web/wrangler.jsonc | package.json | web/package.json | \
               pnpm-lock.yaml | pnpm-workspace.yaml | .nvmrc | .github/workflows/ci.yml) d1=true ;;

@@ -477,6 +477,54 @@ check](DEPLOY.md#the-pull-request-plan-check) as for `correct:records`. A
 refresh is one pull request: `names:fetch`, the snapshot diff, and a new
 declaration.
 
+## Write the Wikidata words into a seeded database
+
+Wikidata words are Italian lexemes from Wikidata for words Wiktionary lacks
+([ADR 0033](../.decisions/0033-wikidata-words-fill-wiktionary-gaps.md),
+[#812](https://github.com/povlabs/lexema/issues/812)). Two commands handle
+them:
+
+```sh
+pnpm run wikidata-words:snapshot   # read the pinned lexeme dump, write wikidata-words/wikidata-words.jsonl
+pnpm run load:wikidata-words       # write that snapshot into the seeded dictionary
+```
+
+`wikidata-words:snapshot` fetches the lexeme dump `PINNED_LEXEME_DUMP` names
+([`src/wikidataWords/lexemeDump.ts`](../src/wikidataWords/lexemeDump.ts),
+about 650 MB) into the ignored `.data/wikidata/` on first use, and refuses it
+unless its size and SHA-256 are the pinned ones. It keeps every Italian lexeme
+of a lexical category the table maps
+([`src/wikidataWords/lexicalCategories.ts`](../src/wikidataWords/lexicalCategories.ts))
+with a spelling, lemma or form, among the words of `wikidata-words/words.txt`,
+and writes the snapshot in lexeme order. The words are those of the count's
+"in Wikidata's words" group
+([reports/2026-10-11-missing-common-words.md](../reports/2026-10-11-missing-common-words.md)).
+Reading the dump is a heavy job: run it alone. Commit the snapshot: its diff
+is the lexemes that changed. A refresh pins a newer dump in `lexemeDump.ts`
+and takes the snapshot again.
+
+`load:wikidata-words` picks its database the way the seed does (`SEED_STATE`,
+or `SEED_REMOTE`). It reads the master, then writes each lexeme the master
+lacks, and each one it holds with other content as a row of the snapshot's
+dump date beside the older row, which stays as history. A lexeme with no
+Italian gloss is left out, and stays in the snapshot as imported (ADR 0033's
+2026-10-12 amendment). So is a lexeme whose every spelling the dictionary
+already answers with something to read, by the rule `load:names` applies to a
+label. A held lexeme the snapshot no longer has is reported and left serving.
+It prints the words written, left out for no gloss, left out as answered, and
+no longer in the snapshot. `--plan-only` prints the
+counts and writes nothing. On a master without `wikidata_word` and
+`wikidata_word_key` it plans but refuses to write, and names `pnpm run
+update:upgrade`. No source row is touched, and no seed writes Wikidata words.
+
+A lookup shows a Wikidata word only where no Wiktionary reading answers the
+spelling ([src/lookup/wikidataWords.ts](../src/lookup/wikidataWords.ts)), so a
+later release or lookup fix that answers it hides the word without deleting a
+row. On the shared `lexema-dictionary`, the dictionary deploy workflow runs it
+after a merged declaration `{"command": "load:wikidata-words"}` names it, its
+`expected` counts copied from the [pull request plan
+check](DEPLOY.md#the-pull-request-plan-check).
+
 ## Page-only entries
 
 The seed also stores page-only entries: it reads every raw page whose title no

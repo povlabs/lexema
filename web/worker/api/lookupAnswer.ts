@@ -26,7 +26,7 @@ import { normalizeItalianExact } from "@lexema/italian/normalize.ts";
 import { expressionMeaning } from "@lexema/lookup/expressions.ts";
 import { bareKey, type Nearby } from "@lexema/lookup/nearby.ts";
 import type { PhraseOffer } from "@lexema/lookup/phrase.ts";
-import { entryKey, isFormOfReading, isNameEntry, isVerbReading, lemmasOfPartOfSpeech, publicEntryId, searchedSpellings, sourcePointerOf } from "@lexema/lookup/types.ts";
+import { entryKey, isFormOfReading, isNameEntry, isVerbReading, isWikidataWord, lemmasOfPartOfSpeech, publicEntryId, searchedSpellings, sourcePointerOf } from "@lexema/lookup/types.ts";
 import { wikidataItemUrl } from "@lexema/lookup/names.ts";
 import type {
   FoundResult,
@@ -50,7 +50,7 @@ import {
   numbersOf,
   type Grid,
 } from "@/lib/dictionary/genderGrid.ts";
-import { sourcePageUrl } from "@/lib/dictionary/sourcePage.ts";
+import { lexemePageUrl, sourcePageUrl } from "@/lib/dictionary/sourcePage.ts";
 import {
   admits,
   fits,
@@ -248,6 +248,7 @@ function recoveredJson(definition: RecoveredDefinition): DefinitionJson {
 
 function definitionJson(item: DefinitionItem): DefinitionJson {
   if (item.from === "name") return { definition: item.description, labels: [], examples: item.examples, items: [] };
+  if (item.from === "lexeme") return { definition: item.gloss.text, labels: [], examples: item.examples, items: [] };
   if (item.from === "page") return { ...recoveredJson(item.definition), examples: item.examples };
   return {
     definition: item.sense.glosses.map((gloss) => gloss.text).join("\n"),
@@ -284,16 +285,23 @@ export const attributionOf = (word: string): AttributionJson => ({
   source_url: sourcePageUrl(word),
 });
 
-/** The credit of one entry: its Wikidata item for a name entry, else its word's Wiktionary page. */
-export const entryAttribution = (entry: { word: string; nameItem?: `Q${number}` }): AttributionJson =>
-  entry.nameItem === undefined
-    ? attributionOf(entry.word)
-    : {
-        licence: "CC0 1.0",
-        licence_url: "https://creativecommons.org/publicdomain/zero/1.0/",
-        source: "Wikidata",
-        source_url: wikidataItemUrl(entry.nameItem),
-      };
+/**
+ * The credit of one entry: its Wikidata item for a name entry, its lexeme for
+ * a Wikidata word (ADR 0033), both under CC0, else its word's Wiktionary page.
+ */
+export const entryAttribution = (entry: { word: string; nameItem?: `Q${number}`; lexeme?: `L${number}` }): AttributionJson => {
+  if (entry.nameItem !== undefined) return wikidataAttribution(wikidataItemUrl(entry.nameItem));
+  if (entry.lexeme !== undefined) return wikidataAttribution(lexemePageUrl(entry.lexeme));
+  return attributionOf(entry.word);
+};
+
+/** The credit of a Wikidata page, which Lexema passes on under CC0 as it received it. */
+const wikidataAttribution = (sourceUrl: string): AttributionJson => ({
+  licence: "CC0 1.0",
+  licence_url: "https://creativecommons.org/publicdomain/zero/1.0/",
+  source: "Wikidata",
+  source_url: sourceUrl,
+});
 
 /** What every result carries, whatever `fields` asks for. */
 export interface ResultCoreJson {
@@ -552,6 +560,7 @@ export interface LemmaJson {
 
 export const idOf = (reading: Reading): string => {
   if (isNameEntry(reading)) return publicEntryId({ releaseId: reading.ref.releaseId, nameItem: reading.nameItem });
+  if (isWikidataWord(reading)) return publicEntryId({ releaseId: reading.ref.releaseId, lexeme: reading.lexeme });
   const { recordId, ref } = reading;
   return publicEntryId(
     recordId === undefined

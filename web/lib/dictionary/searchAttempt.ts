@@ -1,5 +1,6 @@
-// One search, as the page runs it: the exact lookup; when it finds nothing, a
-// word only form-of records name (#453); and when that has no table either,
+// One search, as the page runs it: the exact lookup; when it finds nothing, or
+// finds only a shape of another word (#809), a word only form-of records name
+// (#453); and when that has no table either,
 // what to offer instead. A word found also carries the headwords that write it
 // with an accent or apostrophe it lacks (#478), the records of the lemmas
 // whose grids its noun and adjective forms show (#626), the definitions of
@@ -23,13 +24,19 @@ export async function searchAttempt(db: LookupDatabase, releaseId: string, query
   const [result, tables] = await Promise.all([lookup({ db, releaseId, query }), dictionaryTables(db)]);
   const written = () => writtenSpellings({ db, releaseId, query: result.query.raw });
   if (result.outcome === "found") {
-    const [spellings, lemmas, readings, declared, bases] = await Promise.all([
+    const [spellings, lemmas, readings, declared, bases, shapedLemma] = await Promise.all([
       written(),
       lemmaRecords(db, releaseId, result.readings),
       withVerbDefinitions(db, result.readings, tables),
       wantsDeclaredConjugation(result.readings) ? declaredVerbForms(db, releaseId, result.query.key) : undefined,
       baseRecords(db, releaseId, pronominalBaseWords(result.readings)),
+      // A word the page answers as a declared lemma keeps that page: rule
+      // `it-word-shape/v1` answers only what nothing else does (#809), so
+      // `aggrapparsi` stays itself, not a clitic form of `aggrappare`.
+      result.route.kind === "shape" ? declaredLemma(db, releaseId, { outcome: "not-found", query: result.query, release: result.release }) : undefined,
     ]);
+    const shapedPage = shapedLemma === undefined ? undefined : declaredLemmaPage(shapedLemma);
+    if (shapedLemma !== undefined && shapedPage !== undefined) return { ...shapedLemma, page: shapedPage, written: spellings };
     return { ...result, readings, written: spellings, lemmas, declared: declared ?? [], bases };
   }
   if (result.outcome !== "not-found") return result;

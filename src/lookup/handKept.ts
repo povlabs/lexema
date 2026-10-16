@@ -102,8 +102,8 @@ export function handKeptReadingsFrom(releaseId: string, rows: readonly HandKeptD
   return [...byReading.values()].map((definitions) => readingOf(releaseId, definitions as [HandKeptDefinitionRow, ...HandKeptDefinitionRow[]]));
 }
 
-/** A reading named by its head row, as `HAND_KEPT_HEADS_SQL` reads it. */
-export const handKeptHeadOf = (releaseId: string, row: HandKeptHeadRow): HandKeptHead => ({
+/** A reading named by its head row, as `HAND_KEPT_HEADS_SQL` reads it or one read as it reads them; `releaseId` is the served release's. */
+export const handKeptHeadOf = (releaseId: string, row: Omit<HandKeptHeadRow, "set_key">): HandKeptHead => ({
   handKeptId: row.reading_id, releaseId, revisionId: revisionOf(row.evidence_url).revisionId, pageLine: row.section_line,
   word: row.word, pos: row.pos, posTitle: row.pos_title,
 });

@@ -93,6 +93,42 @@ join lookup uses. It stops without timing if the two return different rows.
 a real archive instead. Why the two forms differ is in
 [the lookup design](./docs/LOOKUP_DESIGN.md#the-view-that-costs-four-orders-of-magnitude).
 
+### Diff every word page before and after a change
+
+```sh
+pnpm run diff:pages                    # base: where HEAD left origin/main; head: HEAD
+pnpm run diff:pages <base> <head>      # any two commits
+SEED_INPUT=.data/source/it-extract.jsonl.gz pnpm run diff:pages   # the whole release
+pnpm run diff:pages --words <file>     # also ask the words in <file>, one per line
+```
+
+It checks each commit out into its own linked worktree, seeds a local
+dictionary there with that commit's `pnpm run seed:dev`, and renders the page
+of every word either seed knows with that commit's site code. Those words are
+every headword and every word a `form_of` edge names, so a declared lemma's
+page, like *verbalizzare*'s, is compared too
+([pageWords.ts](./web/pageDiff/pageWords.ts)). It renders through the page's
+search and its own
+`Outcome` component, which builds the page with
+[wordPage.ts](./web/lib/dictionary/wordPage.ts). Both sides render through the
+running tree's [renderPages.ts](./web/pageDiff/renderPages.ts). It prints
+Markdown: pages compared, changed, added and removed, and the words of each.
+The fixture takes about two minutes. The whole release is a heavy job: run it
+alone. `PAGE_DIFF_WORK=<new dir>` keeps the work directory and each side's
+snapshot.
+
+Pass `--words` when the change should open pages for words no record heads
+and no edge names, such as clitic forms like *raccontarvi*. Only a word the
+run asks for can show as added. Give it the words the change targets, for
+example the missing words of
+[the missing-word count](./reports/2026-10-11-missing-common-words.md) the
+change fixes. Repeat `--words` for more files.
+
+Every pull request that changes lookup or dictionary data posts the printed
+summary as a comment, from a run against the whole release. Say why each
+changed or removed page changed; a page already on the site that should not
+change is a bug in the pull request.
+
 ### Run the search page
 
 The page answers from a seeded local D1. `pnpm run seed:dev` seeds it from the
@@ -563,10 +599,12 @@ src/
 ├── readerReport/   # readers' reports as a person reviews them; `pnpm run report`, and `report:issues` for production's
 ├── release/        # the monthly release CI runs: a new kaikki release stored, its facts added, a pull request opened; `pnpm run release:monthly`
 ├── source/         # gzip JSONL streaming and provenance refs
-└── update/         # a later release against the master; `pnpm run update:auto`, with optional `update:diff`, `update:select`, `update:apply`
+├── update/         # a later release against the master; `pnpm run update:auto`, with optional `update:diff`, `update:select`, `update:apply`
+└── wikidataWords/  # Wikidata words (ADR 0033): the lexeme dump, the category table, the snapshot; `pnpm run wikidata-words:snapshot`, `pnpm run load:wikidata-words`
 web/                # the @lexema/web workspace: the Worker and the search page
 test/               # unit tests, plus the dataset-backed adapter test
 names/              # the committed Wikidata snapshot, `wikidata-names.jsonl` (docs/RUN_AN_IMPORT.md)
+wikidata-words/     # the committed Wikidata word snapshot, `wikidata-words.jsonl`, and the words it is taken for, `words.txt` (docs/RUN_AN_IMPORT.md)
 fixtures/           # the checked forms and the local release metadata
 docs/               # how the importer, the lookup and the page work
 reports/            # dated findings and measurements
@@ -637,7 +675,7 @@ gated job's paths.
 | Workflow | Runs on | Fails when |
 |---|---|---|
 | [ci.yml](./.github/workflows/ci.yml) `check`, `test-web` | a change to any file but Markdown (`docs/DEPLOY.md` and `docs/UPDATE_THE_DICTIONARY.md` still count, since a unit test reads them) | `check`: the root typecheck, a root unit test (`test:root`), or the `@lexema/web` typecheck fails; `test-web`: a web unit test (`test:web`) fails |
-| [ci.yml](./.github/workflows/ci.yml) `d1` | a change to `src/db/` or any source the seed, the sample-row check or the key CLI imports (`src/import/`, `src/source/`, `src/italian/`, `src/lookup/`, `src/names/`, `src/billing/`, `src/api/`, `src/core/`, `src/commandLine.ts`), `fixtures/`, `drizzle.config.ts`, `web/wrangler.jsonc`, `.nvmrc`, the dependencies (`package.json`, `web/package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`), or `ci.yml` | local D1 refuses a statement of `pnpm run seed:dev`, a sample row of `pnpm run db:check-d1` or writing one API key, or an app table has no sample row |
+| [ci.yml](./.github/workflows/ci.yml) `d1` | a change to `src/db/` or any source the seed, the sample-row check or the key CLI imports (`src/import/`, `src/source/`, `src/italian/`, `src/lookup/`, `src/names/`, `src/wikidataWords/`, `src/billing/`, `src/api/`, `src/core/`, `src/commandLine.ts`), `fixtures/`, `drizzle.config.ts`, `web/wrangler.jsonc`, `.nvmrc`, the dependencies (`package.json`, `web/package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`), or `ci.yml` | local D1 refuses a statement of `pnpm run seed:dev`, a sample row of `pnpm run db:check-d1` or writing one API key, or an app table has no sample row |
 | [ci.yml](./.github/workflows/ci.yml) `validate the ADR corpus` | a change to `.decisions/`, `ci.yml`, `.fabrika.jsonc` or `pnpm-workspace.yaml` | two records share an ADR id, or a filename disagrees with its frontmatter |
 | [ci.yml](./.github/workflows/ci.yml) `ci-required` | every pull request, merge queue entry and push to `main`; it gates `check`, `test-web`, `d1` and `validate the ADR corpus` | `changes` failed, or a job the change needed failed, was cancelled or was skipped; on a merge queue entry also when the pull request carries `ready-for:human`, or its head ref or labels cannot be read ([ADR 0006](./.decisions/0006-codex-review-is-the-merge-gate.md)) |
 | [secrets.yml](./.github/workflows/secrets.yml) | every pull request and merge queue entry | a changed file carries a secret (gitleaks), or a changed doc or shell file carries a machine-local path (leak-guard) |

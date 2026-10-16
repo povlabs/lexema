@@ -38,6 +38,7 @@ import { servedRelease, ServedReleaseUnknown, type ServedRelease } from "../../s
 import type { DeclaredChange, ReleaseId } from "../../src/update/declaration.js";
 import { readServedRelease } from "../../src/update/readServedRelease.js";
 import { fromNodeSqlite } from "../../src/lookup/database.js";
+import { lookup } from "../../src/lookup/lookup.js";
 import { formsOfQueryReadings, isFormOfReading, isSourceRef, type Reading, type SourceRef } from "../../src/lookup/types.js";
 import type { Attempt } from "@/lib/dictionary/attempt.ts";
 import { searchAttempt } from "@/lib/dictionary/searchAttempt.ts";
@@ -1068,6 +1069,113 @@ test("a feminine nothing agrees with is not found, and masculine searches keep t
 });
 
 /**
+ * `fixtures/word-shapes.jsonl`: dare, mi, piacere, quello and bravo, as
+ * release it-0c432803 has them (lines 2340, 2341, 12704, 33110, 33211, 33212
+ * and 70242). The dev seed has none of them (#809).
+ */
+const WORD_SHAPE_LINES = (await readFile(join(REPO, "fixtures/word-shapes.jsonl"), "utf8")).trimEnd().split("\n");
+
+/**
+ * What a shape's page must hold, by rules 3 and 4 of #695 and manifest § 4 and
+ * § 5 (#802): the searched spelling as its title, each block's heading and
+ * its line built by rule, the word that line names linked to its search, the
+ * base word's table as *Forme di <word>* where it has one, none of the base
+ * word's pronunciation, etymology, word lists or expressions, and one *Fonte*
+ * to the Wiktionary page of the base word whose record it shows, since the
+ * searched spelling has none (Huey's ruling of 2026-10-15 on #802).
+ */
+function assertShapePage(
+  html: string,
+  query: string,
+  shown: { headings: string[]; lines: string[]; links: string[]; forms: string[]; fonte: string },
+): void {
+  assert.match(html, new RegExp(`<h1 class="${esc(WORD_HEADING)}" lang="it">${esc(query.replace(/'/g, "&#x27;"))}</h1>`), query);
+  assert.deepEqual(headingsOf(html), shown.headings, query);
+  assert.deepEqual(formLines(html), shown.lines, query);
+  const linked = [...html.matchAll(new RegExp(`<p class="${esc(FORM_LINE)}" lang="it">[^<]*<a [^>]*href="/\\?q=([^"]+)">`, "g"))].map((match) =>
+    decodeURIComponent(textOf(match[1] ?? "")),
+  );
+  assert.deepEqual(linked, shown.links, query);
+  assert.deepEqual(lemmaFormsOf(html), shown.forms.map((word) => `Forme di${word}`), query);
+  const { SECTION_LABEL, PRONUNCIATION_LABEL } = WORD_PAGE_TEXT;
+  for (const label of [SECTION_LABEL.etymology, SECTION_LABEL.synonyms, SECTION_LABEL.antonyms, SECTION_LABEL.derived, SECTION_LABEL.expressions, PRONUNCIATION_LABEL]) {
+    assert.ok(!html.includes(`>${label}<`), `${query} shows its base word's ${label}`);
+  }
+  assert.deepEqual(sourcePages(sourceLine(html)), [shown.fonte], query);
+}
+
+test("a form rule it-word-shape/v1 reads is its base word's form block, titled as searched, with no base-word extras (#809, #802)", async () => {
+  await withLines([...(await devSeedLines()), ...WORD_SHAPE_LINES], async ({ db }) => {
+    // The demonstrative adjective, never the pronoun: `quei libri`.
+    for (const query of ["quei", "quegli"]) {
+      assertShapePage(await render(db, query), query, {
+        headings: ["1·Aggettivo dimostrativo·quello"],
+        lines: ["maschile plurale di quello"],
+        links: ["quello"],
+        forms: ["quello"],
+        fonte: "quello",
+      });
+    }
+    assertShapePage(await render(db, "dirlo"), "dirlo", { headings: ["1·Voce verbale·dire"], lines: ["pronome lo unito a dire"], links: ["dire"], forms: ["dire"], fonte: "dire" });
+    assertShapePage(await render(db, "dammelo"), "dammelo", {
+      headings: ["1·Voce verbale·dare"],
+      lines: ["pronomi mi e lo uniti a da'"],
+      links: ["da'"],
+      forms: ["dare"],
+      fonte: "dare",
+    });
+    assertShapePage(await render(db, "bravissimo"), "bravissimo", {
+      headings: ["1·Aggettivo·bravo"],
+      lines: ["superlativo assoluto di bravo"],
+      links: ["bravo"],
+      forms: ["bravo"],
+      fonte: "bravo",
+    });
+    // A participle the table lists only as piaciuto is piacere's, opened at piaciuto.
+    const piaciute = await render(db, "piaciute");
+    assertShapePage(piaciute, "piaciute", { headings: ["1·Voce verbale·piacere"], lines: ["femminile plurale di piaciuto"], links: ["piaciuto"], forms: ["piacere"], fonte: "piacere" });
+    assert.deepEqual(searchedForms(piaciute), ["piaciuto"]);
+    // An elided word of two records is one block, its Definitions grouped by part of speech (#727).
+    assertShapePage(await render(db, "quell'"), "quell'", {
+      headings: ["1·Aggettivo dimostrativo·Pronome dimostrativo·quello"],
+      lines: ["forma elisa di quello", "forma elisa di quella"],
+      links: ["quello", "quella"],
+      forms: ["quello"],
+      fonte: "quello",
+    });
+    // A regular form of a word that lists none: a plural, a feminine, a verb form, an English plural.
+    for (const [query, heading, line, forms] of [
+      ["follie", "1·Sostantivo·follia", "plurale di follia", ["follia"]],
+      ["crucchi", "1·Aggettivo·crucco", "plurale di crucco", []],
+      ["poverina", "1·Sostantivo·poverino", "femminile singolare di poverino", ["poverino"]],
+      ["fuggitive", "1·Aggettivo·fuggitivo", "femminile plurale di fuggitivo", ["fuggitivo"]],
+      ["fischia", "1·Voce verbale·fischiare", "voce del verbo fischiare", []],
+      ["marines", "1·Sostantivo·marine", "plurale di marine", ["marine"]],
+    ] as const) {
+      const word = line.split(" ").at(-1) ?? "";
+      assertShapePage(await render(db, query), query, { headings: [heading], lines: [line], links: [word], forms: [...forms], fonte: word });
+    }
+    // A plural spelling reaches a form record: the shape's line leads the record's own, under no grammar of the record's.
+    assertShapePage(await render(db, "valige"), "valige", {
+      headings: ["1·Sostantivo, forma flessa"],
+      lines: ["variante grafica di valigie", "plurale di valigia"],
+      links: ["valigie", "valigia"],
+      forms: ["valigia"],
+      fonte: "valigie",
+    });
+  });
+  await withDevSeedAndPages(async ({ db }) => {
+    assertShapePage(await render(db, "raccontarvi"), "raccontarvi", {
+      headings: ["1·Voce verbale·raccontare"],
+      lines: ["pronome vi unito a raccontare"],
+      links: ["raccontare"],
+      forms: [],
+      fonte: "raccontare",
+    });
+  });
+});
+
+/**
  * `fixtures/essere-compound-cells.jsonl`: arrendersi, accorgersi, assorbire and
  * perdersi, as release it-0c432803 has them (lines 624, 770, 113784, 137480).
  * The dev seed has no reflexive verb and no cell of two spellings (#676).
@@ -1258,7 +1366,7 @@ test("the rule-built line is kept apart from a source line in the page's data: i
       },
     ]);
     const [line] = block.lines;
-    assert.ok(line.kind === "rule");
+    assert.ok(line.kind === "rule" && line.rule === "it-verb-form-line/v2");
     assert.equal(line.ref.jsonPointer, "/forms/29/form");
     // A report names the verb record whose table the block shows, under the block's number.
     assert.deepEqual(reportReadings(shownRecords(page.readings)).map((reading) => [reading.number, reading.recordId]), [[1, verb.recordId]]);
@@ -1284,9 +1392,9 @@ const VIRA_LINES = (await readFile(join(REPO, "fixtures/vira.jsonl"), "utf8")).t
 /** The text of every sense a record has, in order: what its own page shows as its definitions when none is furniture. */
 const senseTexts = (reading: Reading): string[] => reading.senses.flatMap((sense) => sense.glosses.map((gloss) => gloss.text));
 
-/** Where a definition was read: its sense's pointer, or its raw page line; a name entry's description has neither. */
+/** Where a definition was read: its sense's pointer, or its raw page line; a name entry's description and a Wikidata word's gloss have neither. */
 const definitionRef = (item: DefinitionItem) => {
-  if (item.from === "name") return undefined;
+  if (item.from === "name" || item.from === "lexeme") return undefined;
   return item.from === "record" ? item.sense.ref : item.definition.ref;
 };
 
@@ -1813,7 +1921,7 @@ async function withCorrectionLines(corrected: boolean, run: (f: Fixture) => Prom
  */
 async function ownGridRows(db: DatabaseSync, word: string, n = 1): Promise<string[][]> {
   const entry = wordPage(word, await readingsFor(db, word), [], SURFACE_ROUTE).readings[n - 1];
-  assert.ok(entry !== undefined && entry.kind !== "verb-form" && entry.kind !== "grid-form", `${word}: no reading ${n}`);
+  assert.ok(entry !== undefined && entry.kind !== "verb-form" && entry.kind !== "grid-form" && entry.kind !== "shape-form", `${word}: no reading ${n}`);
   const { grid } = agreementOf(entry.reading);
   return grid === undefined ? [] : gridRows(renderToStaticMarkup(<section><GridView grid={grid} label={word} /></section>));
 }
@@ -2432,9 +2540,10 @@ test("a search that finds nothing offers, in order: an accent, one edit, words t
       assert.match(offers, /Altre grafie similimagnare/);
     });
 
-    // A three-letter query skips the typo step: `mar` is one edit from `mare`,
-    // but the words that begin with it are the better offer.
-    assert.match(textOf(await render(db, "mar")), /Parole che iniziano con “mar”:Suggerimentimare/);
+    // A three-letter query skips the typo step: `cas` is one edit from `casa`,
+    // but the words that begin with it are the better offer. (`mar` is now
+    // mare cut short, rule it-word-shape/v1, #809.)
+    assert.match(textOf(await render(db, "cas")), /Parole che iniziano con “cas”:Suggerimenticasa/);
 
     // D: nothing at all.
     const none = textOf(await render(db, "xqzt"));
@@ -2802,8 +2911,9 @@ test("the Licence page reads, section by section, Huey's approved text in Italia
       [
         "Il contenuto deriva dal Wikizionario (il Wiktionary in italiano), un progetto della Wikimedia Foundation scritto da collaboratori volontari. La maggior parte delle voci proviene dall’estrazione pubblicata da kaikki.org, prodotta con wiktextract da Tatu Ylonen. Dove quell’estrazione non è riuscita a leggere una pagina, Lexema legge la voce dal testo della pagina stessa nel dump di Wikimedia.",
         "Gli autori di ogni voce sono registrati nella cronologia delle versioni della sua pagina del Wikizionario. Ogni voce di Lexema rimanda a quella pagina.",
-        // Added by #794 (ADR 0032): the Wikidata credit.
-        "I nomi propri che il Wikizionario non spiega, come luoghi, organizzazioni, lingue, valute e festività, provengono da Wikidata, un altro progetto della Wikimedia Foundation, i cui dati sono rilasciati nel pubblico dominio con la dedicazione Creative Commons CC0 1.0 Universale. Ogni nome tratto da Wikidata rimanda al proprio elemento su Wikidata.",
+        // Added by #794 (ADR 0032): the Wikidata credit, extended by #812 (ADR 0033) to the Wikidata words,
+        // in the wording Huey approved on 2026-10-12 (#802).
+        "I nomi propri che il Wikizionario non spiega, come luoghi, organizzazioni, lingue, valute e festività, e le parole italiane che il Wikizionario non ha provengono da Wikidata, un altro progetto della Wikimedia Foundation, i cui dati sono rilasciati nel pubblico dominio con la dedicazione Creative Commons CC0 1.0 Universale. Quando una pagina mostra solo dati di Wikidata, il suo link Fonte rimanda all’elemento o al lessema da cui provengono. Questi dati restano nel pubblico dominio e si possono riutilizzare liberamente.",
       ],
     ],
     [
@@ -3599,6 +3709,24 @@ test("a declared lemma's page has no definitions and no note on what it lacks", 
       shown.push(word);
     }
     assert.equal(shown.length, 6);
+  });
+});
+
+test("a declared lemma keeps its page when rule it-word-shape/v1 reads it as a shape: aggrapparsi stays itself beside aggrappare (#809)", async () => {
+  await withLines([...DECLARED_LINES, ...WORD_SHAPE_LINES], async ({ db }) => {
+    // The lookup reads aggrapparsi as aggrappare with a clitic; the page answers the word itself.
+    const shaped = await lookup({ db: fromNodeSqlite(db), releaseId: RELEASE, query: "aggrapparsi" });
+    assert.ok(shaped.outcome === "found" && shaped.route.kind === "shape");
+    const html = await render(db, "aggrapparsi");
+    assert.match(html, new RegExp(`<h1 class="${esc(WORD_HEADING)}" lang="it">aggrapparsi</h1>`));
+    assert.deepEqual(declaredHeadings(html), ["Verbo"]);
+    // A clitic form no record names is aggrappare's form block, titled as searched (#802).
+    const aggrapparti = await render(db, "aggrapparti");
+    assert.match(aggrapparti, new RegExp(`<h1 class="${esc(WORD_HEADING)}" lang="it">aggrapparti</h1>`));
+    assert.deepEqual(headingsOf(aggrapparti), ["1·Voce verbale·aggrappare"]);
+    assert.deepEqual(formLines(aggrapparti), ["pronome ti unito ad aggrappare"]);
+    // Its one Fonte opens aggrappare's Wiktionary page; aggrapparti has none (Huey, 2026-10-15, #802).
+    assert.deepEqual(sourcePages(sourceLine(aggrapparti)), ["aggrappare"]);
   });
 });
 
