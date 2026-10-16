@@ -1,0 +1,17 @@
+==Italian==
+
+===Etymology===
+{{ety|it|:af|im-|battere|-si}}
+From {{af|it|im-|battere|-si}}.
+
+===Pronunciation===
+{{it-pr|imbàttersi}}
+
+===Verb===
+{{it-verb|\@}}
+
+# to [[run into]], [[bump into]], [[meet]] with, [[come across]], [[encounter]]
+#: {{syn|it|[[incontrare]] [[per caso]]}}
+
+====Conjugation====
+{{it-conj|\@}}

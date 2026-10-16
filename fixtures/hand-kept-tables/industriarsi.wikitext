@@ -1,0 +1,23 @@
+==Italian==
+
+===Etymology===
+{{ety|it|:af|industria|-are|-si}}
+From {{af|it|industria|-are|-si}}.
+
+===Pronunciation===
+{{it-pr|industriàrsi,industri.àrsi<r:DiPI:industria>}}
+
+===Verb===
+{{it-verb|ù}}
+
+# to [[try]] [[hard]]
+# to [[do one's best]]
+
+====Conjugation====
+{{it-conj|ù}}
+
+===References===
+{{reflist}}
+
+===Further reading===
+* {{R:it:Treccani}}

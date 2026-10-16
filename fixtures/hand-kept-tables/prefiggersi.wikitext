@@ -1,0 +1,12 @@
+==Italian==
+
+===Verb===
+{{it-verb|\@}}
+
+# {{reflexive of|it|prefiggere}}
+# to [[set]] oneself {{qualifier|an objective}}; to [[aim]] for
+#: {{uxi|it|'''prefiggersi''' di non fumare|to '''aim''' to stop smoking}}
+#: {{ux|it|'''si è prefisso''' una meta ambiziosa|he '''set''' an ambitious goal '''for himself'''}}
+
+====Conjugation====
+{{it-conj|\@}}

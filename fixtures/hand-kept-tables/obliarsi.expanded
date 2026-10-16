@@ -1,0 +1,124 @@
+<templatestyles src="Module:roa-verb/style.css"></templatestyles><div class="NavFrame">
+<div class="NavHead">&nbsp; &nbsp; Conjugation of <i class="Latn mention" lang="it">[[:obliare#Italian|obliàr]][[:si#Italian|si]]</i> (-are) (See [[Appendix:Italian verbs]])</div>
+<div class="NavContent">
+{| class="roa-inflection-table" data-toggle-category="inflection"
+|-
+! class="roa-nonfinite-header" | <span title="infinito">infinitive</span>
+| <span class="Latn" lang="it">[[:obliare#Italian|obliàr]][[:si#Italian|si]]</span>
+|-
+! colspan="2" class="roa-nonfinite-header" | <span title="verbo ausiliare">auxiliary verb</span>
+| <span class="Latn" lang="it">[[:essere#Italian|èssere]]</span>[[Category:Italian links with redundant wikilinks|OBLIARSI]]
+! colspan="2" class="roa-nonfinite-header" | <span title="gerundio">gerund</span>
+| colspan="2" | <span class="Latn form-of lang-it ger-form-of origin-obliàrsi" lang="it">[[:obliandosi#Italian|obliàndosi]]</span>[[Category:Italian links with redundant wikilinks|OBLIARSI]]
+|-
+! colspan="2" class="roa-nonfinite-header" |  <span title="participio presente">present participle</span>
+| <span class="Latn form-of lang-it pres|part-form-of origin-obliàrsi" lang="it">[[:obliantesi#Italian|obliàntesi]]</span>[[Category:Italian links with redundant wikilinks|OBLIARSI]]
+! colspan="2" class="roa-nonfinite-header" | <span title="participio passato">past participle</span>
+| colspan="2" | <span class="Latn form-of lang-it past|part-form-of origin-obliàrsi" lang="it">[[:obliatosi#Italian|obliàtosi]]</span>[[Category:Italian links with redundant wikilinks|OBLIARSI]]
+|-
+! rowspan="2" class="roa-person-number-header" | person
+! colspan="3" class="roa-person-number-header" | singular
+! colspan="3" class="roa-person-number-header" | plural
+|-
+! class="roa-person-number-header" style="width:12.5%;" | first
+! class="roa-person-number-header" style="width:12.5%;" | second
+! class="roa-person-number-header" style="width:12.5%;" | third
+! class="roa-person-number-header" style="width:12.5%;" | first
+! class="roa-person-number-header" style="width:12.5%;" | second
+! class="roa-person-number-header" style="width:12.5%;" | third
+|-
+! class="roa-indicative-left-rail" | <span title="indicativo">indicative</span>
+! class="roa-indicative-left-rail" | io
+! class="roa-indicative-left-rail" | tu
+! class="roa-indicative-left-rail" | lui/lei, esso/essa
+! class="roa-indicative-left-rail" | noi
+! class="roa-indicative-left-rail" | voi
+! class="roa-indicative-left-rail" | loro, essi/esse
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="presente">present</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:oblio#Italian|oblìo]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:oblii#Italian|oblìi]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:oblia#Italian|oblìa]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:obliamo#Italian|obliàmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:obliate#Italian|obliàte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:obliano#Italian|oblìano]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="imperfetto">imperfect</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:obliavo#Italian|obliàvo]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:obliavi#Italian|obliàvi]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:obliava#Italian|obliàva]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:obliavamo#Italian|obliavàmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:obliavate#Italian|obliavàte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:obliavano#Italian|obliàvano]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="passato remoto">past historic</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:obliai#Italian|obliài]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:obliasti#Italian|obliàsti]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:obliò#Italian|obliò]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:obliammo#Italian|obliàmmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:obliaste#Italian|obliàste]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:obliarono#Italian|obliàrono]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="futuro semplice">future</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:oblierò#Italian|oblierò]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:oblierai#Italian|oblierài]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:oblierà#Italian|oblierà]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:oblieremo#Italian|oblierémo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:oblierete#Italian|oblieréte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:oblieranno#Italian|oblierànno]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="condizionale presente">conditional</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:oblierei#Italian|oblierèi]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:oblieresti#Italian|oblierésti]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:oblierebbe#Italian|oblierèbbe]]</span>, <span class="Latn" lang="it">[[:si#Italian|si]] [[:oblierebbe#Italian|oblierébbe]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:oblieremmo#Italian|oblierémmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:obliereste#Italian|oblieréste]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:oblierebbero#Italian|oblierèbbero]]</span>, <span class="Latn" lang="it">[[:si#Italian|si]] [[:oblierebbero#Italian|oblierébbero]]</span>
+|-
+! class="roa-subjunctive-left-rail" | <span title="congiuntivo">subjunctive</span>
+! class="roa-subjunctive-left-rail" | che io
+! class="roa-subjunctive-left-rail" | che tu
+! class="roa-subjunctive-left-rail" | che lui/che lei, che esso/che essa
+! class="roa-subjunctive-left-rail" | che noi
+! class="roa-subjunctive-left-rail" | che voi
+! class="roa-subjunctive-left-rail" | che loro, che essi/che esse
+|-
+! class="roa-subjunctive-left-rail" style="height:3em;" | <span title="congiuntivo presente">present</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:oblii#Italian|oblìi]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:oblii#Italian|oblìi]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:oblii#Italian|oblìi]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:obliamo#Italian|obliàmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:obliate#Italian|obliàte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:obliino#Italian|oblìino]]</span>
+|-
+! class="roa-subjunctive-left-rail" style="height:3em;" | <span title="congiuntivo imperfetto">imperfect</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:obliassi#Italian|obliàssi]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:obliassi#Italian|obliàssi]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:obliasse#Italian|obliàsse]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:obliassimo#Italian|obliàssimo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:obliaste#Italian|obliàste]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:obliassero#Italian|obliàssero]]</span>
+|-
+! rowspan="2" class="roa-imperative-left-rail" style="height:3em;" | <span title="imperativo">imperative</span>
+! class="roa-imperative-left-rail" | &mdash;
+! class="roa-imperative-left-rail" | tu
+! class="roa-imperative-left-rail" | Lei
+! class="roa-imperative-left-rail" | noi
+! class="roa-imperative-left-rail" | voi
+! class="roa-imperative-left-rail" | Loro
+|-
+|
+| <span class="Latn form-of lang-it 2|s|imp-form-of origin-obliàrsi" lang="it">[[:obliati#Italian|oblìati]]</span>[[Category:Italian links with redundant wikilinks|OBLIARSI]]
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:oblii#Italian|oblìi]]</span>
+| <span class="Latn form-of lang-it 1|p|imp-form-of origin-obliàrsi" lang="it">[[:obliamoci#Italian|obliàmoci]]</span>[[Category:Italian links with redundant wikilinks|OBLIARSI]]
+| <span class="Latn form-of lang-it 2|p|imp-form-of origin-obliàrsi" lang="it">[[:obliatevi#Italian|obliàtevi]]</span>[[Category:Italian links with redundant wikilinks|OBLIARSI]]
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:obliino#Italian|oblìino]]</span>
+|-
+! class="roa-imperative-left-rail" style="height:3em;" | <span title="imperativo negativo">negative imperative</span>
+|
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:obliarti#Italian|obliàrti]]</span>, <span class="Latn" lang="it">[[:non#Italian|non]] [[:ti#Italian|ti]]  [[:obliare#Italian|obliàre]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:si#Italian|si]]  [[:oblii#Italian|oblìi]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:obliamoci#Italian|obliàmoci]]</span>, <span class="Latn" lang="it">[[:non#Italian|non]] [[:ci#Italian|ci]]  [[:obliamo#Italian|obliàmo]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:obliatevi#Italian|obliàtevi]]</span>, <span class="Latn" lang="it">[[:non#Italian|non]] [[:vi#Italian|vi]]  [[:obliate#Italian|obliàte]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:si#Italian|si]]  [[:obliino#Italian|oblìino]]</span>
+|}</div></div>[[Category:Italian verbs ending in -are|OBLIARSI]][[Category:Italian reflexive verbs|OBLIARSI]]

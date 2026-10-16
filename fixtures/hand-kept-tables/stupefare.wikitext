@@ -1,0 +1,22 @@
+==Italian==
+
+===Etymology===
+{{ety|it|:lbor|la:stupefacio<alt:stupefacere>}}
+{{lbor|it|la|stupefacio|stupefacere}}.
+
+===Pronunciation===
+{{it-pr}}
+
+===Verb===
+{{it-verb|a[transitive]:e[intransitive]/@}}
+
+# {{lb|it|transitive}} to [[stun]] or [[astound]]
+# {{lb|it|intransitive|uncommon}} to [[be]] [[stun]]ned or [[astound]]ed {{+aux|it|essere}}
+
+====Conjugation====
+{{it-conj|a[transitive]:e[intransitive]/@}}
+
+====Related terms====
+* {{l|it|stupefacente}}
+* {{l|it|stupefarsi}}
+* {{l|it|stupendo}}

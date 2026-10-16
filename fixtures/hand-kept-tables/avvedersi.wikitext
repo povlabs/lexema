@@ -1,0 +1,12 @@
+==Italian==
+
+===Pronunciation===
+{{it-pr|avvedérsi}}
+
+===Verb===
+{{it-verb|/@}}
+
+# {{lb|it|intransitive}} to [[notice]], to [[realize]]
+
+====Conjugation====
+{{it-conj|/@}}

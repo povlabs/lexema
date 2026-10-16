@@ -1,0 +1,128 @@
+<templatestyles src="Module:roa-verb/style.css"></templatestyles><div class="NavFrame">
+<div class="NavHead">&nbsp; &nbsp; Conjugation of <i class="Latn mention" lang="it">[[:genuflettere#Italian|genuflètter]][[:si#Italian|si]]</i> (root-stressed -ere; irregular) (See [[Appendix:Italian verbs]])</div>
+<div class="NavContent">
+{| class="roa-inflection-table" data-toggle-category="inflection"
+|-
+! class="roa-nonfinite-header" | <span title="infinito">infinitive</span>
+| <span class="Latn" lang="it">[[:genuflettere#Italian|genuflètter]][[:si#Italian|si]]</span>
+|-
+! colspan="2" class="roa-nonfinite-header" | <span title="verbo ausiliare">auxiliary verb</span>
+| <span class="Latn" lang="it">[[:essere#Italian|èssere]]</span>[[Category:Italian links with redundant wikilinks|GENUFLETTERSI]]
+! colspan="2" class="roa-nonfinite-header" | <span title="gerundio">gerund</span>
+| colspan="2" | <span class="Latn form-of lang-it ger-form-of origin-genuflèttersi" lang="it">[[:genuflettendosi#Italian|genuflettèndosi]]</span>[[Category:Italian links with redundant wikilinks|GENUFLETTERSI]]
+|-
+! colspan="2" class="roa-nonfinite-header" |  <span title="participio presente">present participle</span>
+| <span class="Latn form-of lang-it pres|part-form-of origin-genuflèttersi" lang="it">[[:genuflettentesi#Italian|genuflettèntesi]]</span>[[Category:Italian links with redundant wikilinks|GENUFLETTERSI]]
+! colspan="2" class="roa-nonfinite-header" | <span title="participio passato">past participle</span>
+| colspan="2" | <span class="Latn form-of lang-it past|part-form-of origin-genuflèttersi" lang="it">[[:genuflessosi#Italian|genuflèssosi]]</span>[[Category:Italian links with redundant wikilinks|GENUFLETTERSI]]
+|-
+! rowspan="2" class="roa-person-number-header" | person
+! colspan="3" class="roa-person-number-header" | singular
+! colspan="3" class="roa-person-number-header" | plural
+|-
+! class="roa-person-number-header" style="width:12.5%;" | first
+! class="roa-person-number-header" style="width:12.5%;" | second
+! class="roa-person-number-header" style="width:12.5%;" | third
+! class="roa-person-number-header" style="width:12.5%;" | first
+! class="roa-person-number-header" style="width:12.5%;" | second
+! class="roa-person-number-header" style="width:12.5%;" | third
+|-
+! class="roa-indicative-left-rail" | <span title="indicativo">indicative</span>
+! class="roa-indicative-left-rail" | io
+! class="roa-indicative-left-rail" | tu
+! class="roa-indicative-left-rail" | lui/lei, esso/essa
+! class="roa-indicative-left-rail" | noi
+! class="roa-indicative-left-rail" | voi
+! class="roa-indicative-left-rail" | loro, essi/esse
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="presente">present</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:genufletto#Italian|genuflètto]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:genufletti#Italian|genuflètti]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:genuflette#Italian|genuflètte]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:genuflettiamo#Italian|genuflettiàmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:genuflettete#Italian|genuflettéte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:genuflettono#Italian|genuflèttono]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="imperfetto">imperfect</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:genuflettevo#Italian|genuflettévo]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:genuflettevi#Italian|genuflettévi]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:genufletteva#Italian|genuflettéva]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:genuflettevamo#Italian|genuflettevàmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:genuflettevate#Italian|genuflettevàte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:genuflettevano#Italian|genuflettévano]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="passato remoto">past historic</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:genuflettei#Italian|genuflettéi]]</span>, <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:genuflessi#Italian|genuflèssi]]</span><sup style="color: var(--wikt-palette-red, red)">1</sup>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:genuflettesti#Italian|genuflettésti]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:genufletté#Italian|genufletté]]</span>, <span class="Latn" lang="it">[[:si#Italian|si]] [[:genuflesse#Italian|genuflèsse]]</span><sup style="color: var(--wikt-palette-red, red)">1</sup>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:genuflettemmo#Italian|genuflettémmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:genufletteste#Italian|genuflettéste]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:genufletterono#Italian|genuflettérono]]</span>, <span class="Latn" lang="it">[[:si#Italian|si]] [[:genuflessero#Italian|genuflèssero]]</span><sup style="color: var(--wikt-palette-red, red)">1</sup>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="futuro semplice">future</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:genufletterò#Italian|genufletterò]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:genufletterai#Italian|genufletterài]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:genufletterà#Italian|genufletterà]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:genufletteremo#Italian|genufletterémo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:genufletterete#Italian|genufletteréte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:genufletteranno#Italian|genufletterànno]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="condizionale presente">conditional</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:genufletterei#Italian|genufletterèi]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:genufletteresti#Italian|genufletterésti]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:genufletterebbe#Italian|genufletterèbbe]]</span>, <span class="Latn" lang="it">[[:si#Italian|si]] [[:genufletterebbe#Italian|genufletterébbe]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:genufletteremmo#Italian|genufletterémmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:genuflettereste#Italian|genufletteréste]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:genufletterebbero#Italian|genufletterèbbero]]</span>, <span class="Latn" lang="it">[[:si#Italian|si]] [[:genufletterebbero#Italian|genufletterébbero]]</span>
+|-
+! class="roa-subjunctive-left-rail" | <span title="congiuntivo">subjunctive</span>
+! class="roa-subjunctive-left-rail" | che io
+! class="roa-subjunctive-left-rail" | che tu
+! class="roa-subjunctive-left-rail" | che lui/che lei, che esso/che essa
+! class="roa-subjunctive-left-rail" | che noi
+! class="roa-subjunctive-left-rail" | che voi
+! class="roa-subjunctive-left-rail" | che loro, che essi/che esse
+|-
+! class="roa-subjunctive-left-rail" style="height:3em;" | <span title="congiuntivo presente">present</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:genufletta#Italian|genuflètta]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:genufletta#Italian|genuflètta]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:genufletta#Italian|genuflètta]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:genuflettiamo#Italian|genuflettiàmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:genuflettiate#Italian|genuflettiàte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:genuflettano#Italian|genuflèttano]]</span>
+|-
+! class="roa-subjunctive-left-rail" style="height:3em;" | <span title="congiuntivo imperfetto">imperfect</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:genuflettessi#Italian|genuflettéssi]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:genuflettessi#Italian|genuflettéssi]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:genuflettesse#Italian|genuflettésse]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:genuflettessimo#Italian|genuflettéssimo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:genufletteste#Italian|genuflettéste]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:genuflettessero#Italian|genuflettéssero]]</span>
+|-
+! rowspan="2" class="roa-imperative-left-rail" style="height:3em;" | <span title="imperativo">imperative</span>
+! class="roa-imperative-left-rail" | &mdash;
+! class="roa-imperative-left-rail" | tu
+! class="roa-imperative-left-rail" | Lei
+! class="roa-imperative-left-rail" | noi
+! class="roa-imperative-left-rail" | voi
+! class="roa-imperative-left-rail" | Loro
+|-
+|
+| <span class="Latn form-of lang-it 2|s|imp-form-of origin-genuflèttersi" lang="it">[[:genuflettiti#Italian|genuflèttiti]]</span>[[Category:Italian links with redundant wikilinks|GENUFLETTERSI]]
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:genufletta#Italian|genuflètta]]</span>
+| <span class="Latn form-of lang-it 1|p|imp-form-of origin-genuflèttersi" lang="it">[[:genuflettiamoci#Italian|genuflettiàmoci]]</span>[[Category:Italian links with redundant wikilinks|GENUFLETTERSI]]
+| <span class="Latn form-of lang-it 2|p|imp-form-of origin-genuflèttersi" lang="it">[[:genuflettetevi#Italian|genuflettétevi]]</span>[[Category:Italian links with redundant wikilinks|GENUFLETTERSI]]
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:genuflettano#Italian|genuflèttano]]</span>
+|-
+! class="roa-imperative-left-rail" style="height:3em;" | <span title="imperativo negativo">negative imperative</span>
+|
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:genufletterti#Italian|genuflètterti]]</span>, <span class="Latn" lang="it">[[:non#Italian|non]] [[:ti#Italian|ti]]  [[:genuflettere#Italian|genuflèttere]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:si#Italian|si]]  [[:genufletta#Italian|genuflètta]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:genuflettiamoci#Italian|genuflettiàmoci]]</span>, <span class="Latn" lang="it">[[:non#Italian|non]] [[:ci#Italian|ci]]  [[:genuflettiamo#Italian|genuflettiàmo]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:genuflettetevi#Italian|genuflettétevi]]</span>, <span class="Latn" lang="it">[[:non#Italian|non]] [[:vi#Italian|vi]]  [[:genuflettete#Italian|genuflettéte]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:si#Italian|si]]  [[:genuflettano#Italian|genuflèttano]]</span>
+|}<div class="roa-footnote-outer-div" style="width:100%;">
+<div class="roa-footnote-inner-div">
+<sup style="color: var(--wikt-palette-red, red)">1</sup>Less common.
+</div></div>
+</div></div>[[Category:Italian verbs with root-stressed infinitive|GENUFLETTERSI]][[Category:Italian verbs ending in -ere|GENUFLETTERSI]][[Category:Italian irregular verbs|GENUFLETTERSI]][[Category:Italian verbs with irregular past historic|GENUFLETTERSI]][[Category:Italian verbs with irregular past participle|GENUFLETTERSI]][[Category:Italian reflexive verbs|GENUFLETTERSI]]

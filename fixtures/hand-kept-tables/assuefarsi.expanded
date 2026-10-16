@@ -1,0 +1,128 @@
+<templatestyles src="Module:roa-verb/style.css"></templatestyles><div class="NavFrame">
+<div class="NavHead">&nbsp; &nbsp; Conjugation of <i class="Latn mention" lang="it">[[:assuefare#Italian|assuefàr]][[:si#Italian|si]]</i> (-ere; irregular) (See [[Appendix:Italian verbs]])</div>
+<div class="NavContent">
+{| class="roa-inflection-table" data-toggle-category="inflection"
+|-
+! class="roa-nonfinite-header" | <span title="infinito">infinitive</span>
+| <span class="Latn" lang="it">[[:assuefare#Italian|assuefàr]][[:si#Italian|si]]</span>
+|-
+! colspan="2" class="roa-nonfinite-header" | <span title="verbo ausiliare">auxiliary verb</span>
+| <span class="Latn" lang="it">[[:essere#Italian|èssere]]</span>[[Category:Italian links with redundant wikilinks|ASSUEFARSI]]
+! colspan="2" class="roa-nonfinite-header" | <span title="gerundio">gerund</span>
+| colspan="2" | <span class="Latn form-of lang-it ger-form-of origin-assuefàrsi" lang="it">[[:assuefacendosi#Italian|assuefacèndosi]]</span>[[Category:Italian links with redundant wikilinks|ASSUEFARSI]]
+|-
+! colspan="2" class="roa-nonfinite-header" |  <span title="participio presente">present participle</span>
+| <span class="Latn form-of lang-it pres|part-form-of origin-assuefàrsi" lang="it">[[:assuefacentesi#Italian|assuefacèntesi]]</span>[[Category:Italian links with redundant wikilinks|ASSUEFARSI]]
+! colspan="2" class="roa-nonfinite-header" | <span title="participio passato">past participle</span>
+| colspan="2" | <span class="Latn form-of lang-it past|part-form-of origin-assuefàrsi" lang="it">[[:assuefattosi#Italian|assuefàttosi]]</span>[[Category:Italian links with redundant wikilinks|ASSUEFARSI]]
+|-
+! rowspan="2" class="roa-person-number-header" | person
+! colspan="3" class="roa-person-number-header" | singular
+! colspan="3" class="roa-person-number-header" | plural
+|-
+! class="roa-person-number-header" style="width:12.5%;" | first
+! class="roa-person-number-header" style="width:12.5%;" | second
+! class="roa-person-number-header" style="width:12.5%;" | third
+! class="roa-person-number-header" style="width:12.5%;" | first
+! class="roa-person-number-header" style="width:12.5%;" | second
+! class="roa-person-number-header" style="width:12.5%;" | third
+|-
+! class="roa-indicative-left-rail" | <span title="indicativo">indicative</span>
+! class="roa-indicative-left-rail" | io
+! class="roa-indicative-left-rail" | tu
+! class="roa-indicative-left-rail" | lui/lei, esso/essa
+! class="roa-indicative-left-rail" | noi
+! class="roa-indicative-left-rail" | voi
+! class="roa-indicative-left-rail" | loro, essi/esse
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="presente">present</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:assuefaccio#Italian|assuefàccio]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:assuefai#Italian|assuefài]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:assuefà#Italian|assuefà]]</span><sup style="color: var(--wikt-palette-red, red)">1</sup>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:assuefacciamo#Italian|assuefacciàmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:assuefate#Italian|assuefàte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:assuefanno#Italian|assuefànno]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="imperfetto">imperfect</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:assuefacevo#Italian|assuefacévo]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:assuefacevi#Italian|assuefacévi]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:assuefaceva#Italian|assuefacéva]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:assuefacevamo#Italian|assuefacevàmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:assuefacevate#Italian|assuefacevàte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:assuefacevano#Italian|assuefacévano]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="passato remoto">past historic</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:assuefeci#Italian|assueféci]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:assuefacesti#Italian|assuefacésti]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:assuefece#Italian|assueféce]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:assuefacemmo#Italian|assuefacémmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:assuefaceste#Italian|assuefacéste]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:assuefecero#Italian|assuefécero]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="futuro semplice">future</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:assuefarò#Italian|assuefarò]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:assuefarai#Italian|assuefarài]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:assuefarà#Italian|assuefarà]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:assuefaremo#Italian|assuefarémo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:assuefarete#Italian|assuefaréte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:assuefaranno#Italian|assuefarànno]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="condizionale presente">conditional</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:assuefarei#Italian|assuefarèi]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:assuefaresti#Italian|assuefarésti]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:assuefarebbe#Italian|assuefarèbbe]]</span>, <span class="Latn" lang="it">[[:si#Italian|si]] [[:assuefarebbe#Italian|assuefarébbe]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:assuefaremmo#Italian|assuefarémmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:assuefareste#Italian|assuefaréste]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:assuefarebbero#Italian|assuefarèbbero]]</span>, <span class="Latn" lang="it">[[:si#Italian|si]] [[:assuefarebbero#Italian|assuefarébbero]]</span>
+|-
+! class="roa-subjunctive-left-rail" | <span title="congiuntivo">subjunctive</span>
+! class="roa-subjunctive-left-rail" | che io
+! class="roa-subjunctive-left-rail" | che tu
+! class="roa-subjunctive-left-rail" | che lui/che lei, che esso/che essa
+! class="roa-subjunctive-left-rail" | che noi
+! class="roa-subjunctive-left-rail" | che voi
+! class="roa-subjunctive-left-rail" | che loro, che essi/che esse
+|-
+! class="roa-subjunctive-left-rail" style="height:3em;" | <span title="congiuntivo presente">present</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:assuefaccia#Italian|assuefàccia]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:assuefaccia#Italian|assuefàccia]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:assuefaccia#Italian|assuefàccia]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:assuefacciamo#Italian|assuefacciàmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:assuefacciate#Italian|assuefacciàte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:assuefacciano#Italian|assuefàcciano]]</span>
+|-
+! class="roa-subjunctive-left-rail" style="height:3em;" | <span title="congiuntivo imperfetto">imperfect</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:assuefacessi#Italian|assuefacéssi]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:assuefacessi#Italian|assuefacéssi]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:assuefacesse#Italian|assuefacésse]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:assuefacessimo#Italian|assuefacéssimo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:assuefaceste#Italian|assuefacéste]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:assuefacessero#Italian|assuefacéssero]]</span>
+|-
+! rowspan="2" class="roa-imperative-left-rail" style="height:3em;" | <span title="imperativo">imperative</span>
+! class="roa-imperative-left-rail" | &mdash;
+! class="roa-imperative-left-rail" | tu
+! class="roa-imperative-left-rail" | Lei
+! class="roa-imperative-left-rail" | noi
+! class="roa-imperative-left-rail" | voi
+! class="roa-imperative-left-rail" | Loro
+|-
+|
+| <span class="Latn form-of lang-it 2|s|imp-form-of origin-assuefàrsi" lang="it">[[:assuefatti#Italian|assuefàtti]]</span>[[Category:Italian links with redundant wikilinks|ASSUEFARSI]]
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:assuefaccia#Italian|assuefàccia]]</span>
+| <span class="Latn form-of lang-it 1|p|imp-form-of origin-assuefàrsi" lang="it">[[:assuefacciamoci#Italian|assuefacciàmoci]]</span>[[Category:Italian links with redundant wikilinks|ASSUEFARSI]]
+| <span class="Latn form-of lang-it 2|p|imp-form-of origin-assuefàrsi" lang="it">[[:assuefatevi#Italian|assuefàtevi]]</span>[[Category:Italian links with redundant wikilinks|ASSUEFARSI]]
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:assuefacciano#Italian|assuefàcciano]]</span>
+|-
+! class="roa-imperative-left-rail" style="height:3em;" | <span title="imperativo negativo">negative imperative</span>
+|
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:assuefarti#Italian|assuefàrti]]</span>, <span class="Latn" lang="it">[[:non#Italian|non]] [[:ti#Italian|ti]]  [[:assuefare#Italian|assuefàre]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:si#Italian|si]]  [[:assuefaccia#Italian|assuefàccia]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:assuefacciamoci#Italian|assuefacciàmoci]]</span>, <span class="Latn" lang="it">[[:non#Italian|non]] [[:ci#Italian|ci]]  [[:assuefacciamo#Italian|assuefacciàmo]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:assuefatevi#Italian|assuefàtevi]]</span>, <span class="Latn" lang="it">[[:non#Italian|non]] [[:vi#Italian|vi]]  [[:assuefate#Italian|assuefàte]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:si#Italian|si]]  [[:assuefacciano#Italian|assuefàcciano]]</span>
+|}<div class="roa-footnote-outer-div" style="width:100%;">
+<div class="roa-footnote-inner-div">
+<sup style="color: var(--wikt-palette-red, red)">1</sup>With syntactic gemination after the verb.
+</div></div>
+</div></div>[[Category:Italian verbs ending in -ere|ASSUEFARSI]][[Category:Italian irregular verbs|ASSUEFARSI]][[Category:Italian verbs with irregular present indicative|ASSUEFARSI]][[Category:Italian verbs with irregular imperative|ASSUEFARSI]][[Category:Italian verbs with irregular past historic|ASSUEFARSI]][[Category:Italian verbs with irregular past participle|ASSUEFARSI]][[Category:Italian reflexive verbs|ASSUEFARSI]]

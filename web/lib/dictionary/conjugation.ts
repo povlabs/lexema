@@ -24,11 +24,14 @@
 // never taken for a source one (ADR 0016). Where no base verb record has a
 // table (`pentirsi`, #838), the base cells are the ones
 // `it-regular-conjugation/v1` (src/italian/regularConjugation.ts) builds for the
-// class the source settles, and the built cell carries one of those.
+// class the source settles, and the built cell carries one of those. Where the
+// source settles none, they are the verb's hand-kept table's
+// (src/italian/handKeptTables.ts, #844), and the page draws them the same way.
 
 import { groupByAuxiliary } from "@lexema/italian/compoundAuxiliary.ts";
 import { essereAgreement, type AgreeingSpelling } from "@lexema/italian/essereAgreement.ts";
 import { PRONOMINAL_CONJUGATION_RULE, pronominalSpellings, type PronominalVerb } from "@lexema/italian/pronominalConjugation.ts";
+import type { HandKeptCell } from "@lexema/italian/handKeptTables.ts";
 import type { RegularCell } from "@lexema/italian/regularConjugation.ts";
 import { factRefKey, sourcePointerOf, sourceTagsOf, type DeclaredForm, type DeclaredVerbForm, type SearchedSpellings, type SourceForm } from "@lexema/lookup/types.ts";
 import {
@@ -110,14 +113,24 @@ const NUMBER_OF: Record<Person, VerbNumber> = {
  * The base verb cell a pronominal one is built from: the base record's own
  * form (`trasferisco`, #837), or, where no base record has a table, the cell
  * `it-regular-conjugation/v1` built for the class the source settles (`pento`,
- * #838).
+ * #838), or else a cell of the verb's hand-kept table (`avvidi`, #844).
  */
-export type BaseCellOf = SourceForm | RegularCell;
+export type BaseCellOf = SourceForm | RegularCell | HandKeptCell;
 
 /** Whether a base cell was built by `it-regular-conjugation/v1` rather than read from a record. */
 export const isRegularCell = (from: BaseCellOf): from is RegularCell => "rule" in from;
 
-const tagsOfBase = (from: BaseCellOf): VerbFormTags => (isRegularCell(from) ? from : sourceTagsOf(from));
+/** Whether a base cell is one of a hand-kept table's (#844). */
+export const isHandKeptCell = (from: BaseCellOf): from is HandKeptCell => "kept" in from;
+
+/** A base cell Lexema built or keeps, rather than one a record holds. */
+const isLexemaCell = (from: BaseCellOf): from is RegularCell | HandKeptCell => isRegularCell(from) || isHandKeptCell(from);
+
+const tagsOfBase = (from: BaseCellOf): VerbFormTags => (isLexemaCell(from) ? from : sourceTagsOf(from));
+
+/** A key no other base cell of one table shares: its place in the source, or its place in the table Lexema built or keeps. */
+const baseCellKey = (from: BaseCellOf): string =>
+  isRegularCell(from) ? `${from.rule}\u0000${from.index}` : isHandKeptCell(from) ? `hand-kept:${from.kept.verb}\u0000${from.index}` : factRefKey(from.ref);
 
 /**
  * A cell `it-pronominal-conjugation/v1` built from a base verb's cell (#837):
@@ -146,9 +159,7 @@ export const isDeclaredForm = (form: TableForm): form is DeclaredForm => !isSour
 
 /** A key no other form of one table shares: its place in the source, or, for a built cell, the rule and the base cell it was built from. */
 export const tableFormKey = (form: TableForm): string =>
-  isRuleBuilt(form)
-    ? `${form.rule}\u0000${isRegularCell(form.from) ? `${form.from.rule}\u0000${form.from.index}` : factRefKey(form.from.ref)}`
-    : factRefKey(form.ref);
+  isRuleBuilt(form) ? `${form.rule}\u0000${baseCellKey(form.from)}` : factRefKey(form.ref);
 
 /** The source pointer of a form a search can hit: a record's own entry or a declared form; a built cell has none. */
 export const tableFormPointer = (form: TableForm): string | undefined => (isRuleBuilt(form) ? undefined : sourcePointerOf(form.ref));
@@ -372,7 +383,7 @@ export function declaredConjugationOf(forms: readonly DeclaredVerbForm[]): Conju
 export function pronominalConjugationOf(verb: PronominalVerb, base: readonly BaseCellOf[]): Conjugation<PronominalForm> {
   const spellings = pronominalSpellings(
     verb,
-    base.map((from) => ({ spelling: isRegularCell(from) ? from.spelling : from.surface, ...tagsOfBase(from) })),
+    base.map((from) => ({ spelling: isLexemaCell(from) ? from.spelling : from.surface, ...tagsOfBase(from) })),
   );
   const built = base.flatMap((from, i): PronominalForm[] => {
     const surface = spellings[i];

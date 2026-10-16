@@ -1,0 +1,15 @@
+==Italian==
+
+===Pronunciation===
+{{it-pr}}
+
+===Verb===
+{{it-verb|ì-}} {{+obj|it|:di}}
+
+# {{lb|it|rare}} to not [[care]] or [[worry]] (about)
+
+====Conjugation====
+{{it-conj|ì-}}
+
+====Derived terms====
+* {{l|it|infischiarsene}}

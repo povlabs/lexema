@@ -1,0 +1,124 @@
+<templatestyles src="Module:roa-verb/style.css"></templatestyles><div class="NavFrame">
+<div class="NavHead">&nbsp; &nbsp; Conjugation of <i class="Latn mention" lang="it">[[:susseguire#Italian|susseguìr]][[:si#Italian|si]]</i> (-ire) (See [[Appendix:Italian verbs]])</div>
+<div class="NavContent">
+{| class="roa-inflection-table" data-toggle-category="inflection"
+|-
+! class="roa-nonfinite-header" | <span title="infinito">infinitive</span>
+| <span class="Latn" lang="it">[[:susseguire#Italian|susseguìr]][[:si#Italian|si]]</span>
+|-
+! colspan="2" class="roa-nonfinite-header" | <span title="verbo ausiliare">auxiliary verb</span>
+| <span class="Latn" lang="it">[[:essere#Italian|èssere]]</span>[[Category:Italian links with redundant wikilinks|SUSSEGUIRSI]]
+! colspan="2" class="roa-nonfinite-header" | <span title="gerundio">gerund</span>
+| colspan="2" | <span class="Latn form-of lang-it ger-form-of origin-susseguìrsi" lang="it">[[:susseguendosi#Italian|susseguèndosi]]</span>[[Category:Italian links with redundant wikilinks|SUSSEGUIRSI]]
+|-
+! colspan="2" class="roa-nonfinite-header" |  <span title="participio presente">present participle</span>
+| <span class="Latn form-of lang-it pres|part-form-of origin-susseguìrsi" lang="it">[[:susseguentesi#Italian|susseguèntesi]]</span>[[Category:Italian links with redundant wikilinks|SUSSEGUIRSI]]
+! colspan="2" class="roa-nonfinite-header" | <span title="participio passato">past participle</span>
+| colspan="2" | <span class="Latn form-of lang-it past|part-form-of origin-susseguìrsi" lang="it">[[:susseguitosi#Italian|susseguìtosi]]</span>[[Category:Italian links with redundant wikilinks|SUSSEGUIRSI]]
+|-
+! rowspan="2" class="roa-person-number-header" | person
+! colspan="3" class="roa-person-number-header" | singular
+! colspan="3" class="roa-person-number-header" | plural
+|-
+! class="roa-person-number-header" style="width:12.5%;" | first
+! class="roa-person-number-header" style="width:12.5%;" | second
+! class="roa-person-number-header" style="width:12.5%;" | third
+! class="roa-person-number-header" style="width:12.5%;" | first
+! class="roa-person-number-header" style="width:12.5%;" | second
+! class="roa-person-number-header" style="width:12.5%;" | third
+|-
+! class="roa-indicative-left-rail" | <span title="indicativo">indicative</span>
+! class="roa-indicative-left-rail" | io
+! class="roa-indicative-left-rail" | tu
+! class="roa-indicative-left-rail" | lui/lei, esso/essa
+! class="roa-indicative-left-rail" | noi
+! class="roa-indicative-left-rail" | voi
+! class="roa-indicative-left-rail" | loro, essi/esse
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="presente">present</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:susseguo#Italian|susséguo]]</span>, <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:susseguo#Italian|sussèguo]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:sussegui#Italian|susségui]]</span>, <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:sussegui#Italian|sussègui]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:sussegue#Italian|susségue]]</span>, <span class="Latn" lang="it">[[:si#Italian|si]] [[:sussegue#Italian|sussègue]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:susseguiamo#Italian|susseguiàmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:susseguite#Italian|susseguìte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:susseguono#Italian|susséguono]]</span>, <span class="Latn" lang="it">[[:si#Italian|si]] [[:susseguono#Italian|sussèguono]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="imperfetto">imperfect</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:susseguivo#Italian|susseguìvo]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:susseguivi#Italian|susseguìvi]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:susseguiva#Italian|susseguìva]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:susseguivamo#Italian|susseguivàmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:susseguivate#Italian|susseguivàte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:susseguivano#Italian|susseguìvano]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="passato remoto">past historic</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:susseguii#Italian|susseguìi]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:susseguisti#Italian|susseguìsti]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:susseguì#Italian|susseguì]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:susseguimmo#Italian|susseguìmmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:susseguiste#Italian|susseguìste]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:susseguirono#Italian|susseguìrono]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="futuro semplice">future</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:susseguirò#Italian|susseguirò]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:susseguirai#Italian|susseguirài]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:susseguirà#Italian|susseguirà]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:susseguiremo#Italian|susseguirémo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:susseguirete#Italian|susseguiréte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:susseguiranno#Italian|susseguirànno]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="condizionale presente">conditional</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:susseguirei#Italian|susseguirèi]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:susseguiresti#Italian|susseguirésti]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:susseguirebbe#Italian|susseguirèbbe]]</span>, <span class="Latn" lang="it">[[:si#Italian|si]] [[:susseguirebbe#Italian|susseguirébbe]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:susseguiremmo#Italian|susseguirémmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:susseguireste#Italian|susseguiréste]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:susseguirebbero#Italian|susseguirèbbero]]</span>, <span class="Latn" lang="it">[[:si#Italian|si]] [[:susseguirebbero#Italian|susseguirébbero]]</span>
+|-
+! class="roa-subjunctive-left-rail" | <span title="congiuntivo">subjunctive</span>
+! class="roa-subjunctive-left-rail" | che io
+! class="roa-subjunctive-left-rail" | che tu
+! class="roa-subjunctive-left-rail" | che lui/che lei, che esso/che essa
+! class="roa-subjunctive-left-rail" | che noi
+! class="roa-subjunctive-left-rail" | che voi
+! class="roa-subjunctive-left-rail" | che loro, che essi/che esse
+|-
+! class="roa-subjunctive-left-rail" style="height:3em;" | <span title="congiuntivo presente">present</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:sussegua#Italian|susségua]]</span>, <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:sussegua#Italian|sussègua]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:sussegua#Italian|susségua]]</span>, <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:sussegua#Italian|sussègua]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:sussegua#Italian|susségua]]</span>, <span class="Latn" lang="it">[[:si#Italian|si]] [[:sussegua#Italian|sussègua]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:susseguiamo#Italian|susseguiàmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:susseguiate#Italian|susseguiàte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:susseguano#Italian|susséguano]]</span>, <span class="Latn" lang="it">[[:si#Italian|si]] [[:susseguano#Italian|sussèguano]]</span>
+|-
+! class="roa-subjunctive-left-rail" style="height:3em;" | <span title="congiuntivo imperfetto">imperfect</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:susseguissi#Italian|susseguìssi]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:susseguissi#Italian|susseguìssi]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:susseguisse#Italian|susseguìsse]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:susseguissimo#Italian|susseguìssimo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:susseguiste#Italian|susseguìste]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:susseguissero#Italian|susseguìssero]]</span>
+|-
+! rowspan="2" class="roa-imperative-left-rail" style="height:3em;" | <span title="imperativo">imperative</span>
+! class="roa-imperative-left-rail" | &mdash;
+! class="roa-imperative-left-rail" | tu
+! class="roa-imperative-left-rail" | Lei
+! class="roa-imperative-left-rail" | noi
+! class="roa-imperative-left-rail" | voi
+! class="roa-imperative-left-rail" | Loro
+|-
+|
+| <span class="Latn form-of lang-it 2|s|imp-form-of origin-susseguìrsi" lang="it">[[:susseguiti#Italian|susséguiti]]</span>[[Category:Italian links with redundant wikilinks|SUSSEGUIRSI]], <span class="Latn form-of lang-it 2|s|imp-form-of origin-susseguìrsi" lang="it">[[:susseguiti#Italian|sussèguiti]]</span>[[Category:Italian links with redundant wikilinks|SUSSEGUIRSI]]
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:sussegua#Italian|susségua]]</span>, <span class="Latn" lang="it">[[:si#Italian|si]] [[:sussegua#Italian|sussègua]]</span>
+| <span class="Latn form-of lang-it 1|p|imp-form-of origin-susseguìrsi" lang="it">[[:susseguiamoci#Italian|susseguiàmoci]]</span>[[Category:Italian links with redundant wikilinks|SUSSEGUIRSI]]
+| <span class="Latn form-of lang-it 2|p|imp-form-of origin-susseguìrsi" lang="it">[[:susseguitevi#Italian|susseguìtevi]]</span>[[Category:Italian links with redundant wikilinks|SUSSEGUIRSI]]
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:susseguano#Italian|susséguano]]</span>, <span class="Latn" lang="it">[[:si#Italian|si]] [[:susseguano#Italian|sussèguano]]</span>
+|-
+! class="roa-imperative-left-rail" style="height:3em;" | <span title="imperativo negativo">negative imperative</span>
+|
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:susseguirti#Italian|susseguìrti]]</span>, <span class="Latn" lang="it">[[:non#Italian|non]] [[:ti#Italian|ti]]  [[:susseguire#Italian|susseguìre]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:si#Italian|si]]  [[:sussegua#Italian|susségua]]</span>, <span class="Latn" lang="it">[[:non#Italian|non]] [[:si#Italian|si]]  [[:sussegua#Italian|sussègua]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:susseguiamoci#Italian|susseguiàmoci]]</span>, <span class="Latn" lang="it">[[:non#Italian|non]] [[:ci#Italian|ci]]  [[:susseguiamo#Italian|susseguiàmo]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:susseguitevi#Italian|susseguìtevi]]</span>, <span class="Latn" lang="it">[[:non#Italian|non]] [[:vi#Italian|vi]]  [[:susseguite#Italian|susseguìte]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:si#Italian|si]]  [[:susseguano#Italian|susséguano]]</span>, <span class="Latn" lang="it">[[:non#Italian|non]] [[:si#Italian|si]]  [[:susseguano#Italian|sussèguano]]</span>
+|}</div></div>[[Category:Italian verbs ending in -ire|SUSSEGUIRSI]][[Category:Italian reflexive verbs|SUSSEGUIRSI]]

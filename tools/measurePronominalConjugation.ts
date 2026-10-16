@@ -12,9 +12,11 @@
 //
 // Each `none` record then gets its outcome under `it-regular-conjugation/v1`
 // (#838), under `noneOutcomes`: the class it settles and the evidence, or why it
-// declines. A record whose word has another record with its own table is
-// counted apart, as the page draws that table. It reads the `{{It-conj}}` calls
-// pinned in src/italian/conjugationTemplateCalls.ts, as the page does.
+// declines. A declined record whose verb has a hand-kept table (#844,
+// src/italian/handKeptTables.ts) gets that table, as its page does. A record
+// whose word has another record with its own table is counted apart, as the
+// page draws that table. It reads the `{{It-conj}}` calls pinned in
+// src/italian/conjugationTemplateCalls.ts, as the page does.
 //
 // A base verb record is picked as the page picks it (`pronominalBaseOf`,
 // web/lib/dictionary/wordPage.ts): a verb record, about the base word, whose
@@ -31,7 +33,9 @@
 
 import { CONJUGATION_TEMPLATE_CALLS } from "../src/italian/conjugationTemplateCalls.js";
 import { pronominalSpellings, pronominalVerb, PRONOMINAL_CONJUGATION_RULE } from "../src/italian/pronominalConjugation.js";
-import { REGULAR_CONJUGATION_RULE, regularCells, regularClassOf } from "../src/italian/regularConjugation.js";
+import { handKeptCells, handKeptTableOf } from "../src/italian/handKeptTables.js";
+import { evidenceUrl } from "../src/italian/curatedCorrections.js";
+import { REGULAR_CONJUGATION_RULE, regularCells, regularClassOf, type ParadigmCell } from "../src/italian/regularConjugation.js";
 import { baseOf, cellOf, fillsCell, namesVerb as namesVerbIn, readVerbs, slotKey, type RawRecord } from "./pronominalArchive.js";
 
 const [archive] = process.argv.slice(2);
@@ -109,6 +113,7 @@ const glossesOf = (record: RawRecord): string[] =>
 /** What `it-regular-conjugation/v1` gives a `none` record, as its page shows it. */
 type NoneOutcome =
   | { outcome: "rule-built"; class: string; stem: string; base: string; evidence: string; cells: number; sample: Record<string, string> }
+  | { outcome: "hand-kept"; kept: string; base: string; evidence: string[]; cells: number; sample: Record<string, string> }
   | { outcome: "not-a-pronominal-verb"; glosses: string[] }
   | { outcome: "listed-for-huey"; reason: string; evidence?: string }
   | { outcome: "own-table-on-another-record" };
@@ -125,6 +130,13 @@ function noneOutcomeOf(record: RawRecord, records: readonly RawRecord[]): NoneOu
   const answer = regularClassOf(verb, glosses, CONJUGATION_TEMPLATE_CALLS);
   if (answer.kind === "declined") {
     if (answer.reason === "form-of-another-word") return { outcome: "not-a-pronominal-verb", glosses };
+    const kept = handKeptTableOf(record.word);
+    if (kept !== undefined) {
+      const cells = handKeptCells(kept);
+      const { count, sample } = builtOf(verb, cells);
+      const what = kept.conjugation.kind === "class" ? `class ${kept.conjugation.conjugationClass} on ${kept.conjugation.stem}` : "cells";
+      return { outcome: "hand-kept", kept: what, base: kept.base, evidence: kept.evidence.map((one) => `${evidenceUrl(one)}: ${one.shows}`), cells: count, sample };
+    }
     const page = answer.page === undefined ? {} : { evidence: `${answer.page.title}@${answer.page.revisionId}: ${answer.page.call}` };
     return { outcome: "listed-for-huey", reason: answer.reason, ...page };
   }
@@ -132,7 +144,12 @@ function noneOutcomeOf(record: RawRecord, records: readonly RawRecord[]): NoneOu
     answer.evidence.kind === "template"
       ? `${answer.evidence.page.title}@${answer.evidence.page.revisionId}: ${answer.evidence.page.call}`
       : `ending ${answer.evidence.ending} of ${answer.evidence.base}`;
-  const cells = regularCells(answer);
+  const { count, sample } = builtOf(verb, regularCells(answer));
+  return { outcome: "rule-built", class: answer.conjugationClass, stem: answer.stem, base: answer.base, evidence, cells: count, sample };
+}
+
+/** How many cells the pronominal rule builds on `cells`, and the sample slots of them. */
+function builtOf(verb: NonNullable<ReturnType<typeof pronominalVerb>>, cells: readonly ParadigmCell[]): { count: number; sample: Record<string, string> } {
   const built = pronominalSpellings(verb, cells);
   const sample: Record<string, string> = {};
   cells.forEach((cell, i) => {
@@ -141,8 +158,7 @@ function noneOutcomeOf(record: RawRecord, records: readonly RawRecord[]): NoneOu
     if (key === undefined || spelling === undefined || !SAMPLE.includes(key)) return;
     sample[key] = sample[key] === undefined ? spelling : `${sample[key]}, ${spelling}`;
   });
-  const count = built.filter((one) => one !== undefined).length;
-  return { outcome: "rule-built", class: answer.conjugationClass, stem: answer.stem, base: answer.base, evidence, cells: count, sample };
+  return { count: built.filter((one) => one !== undefined).length, sample };
 }
 
 /** The key a `none` outcome is counted under. */

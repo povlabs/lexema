@@ -1,0 +1,128 @@
+<templatestyles src="Module:roa-verb/style.css"></templatestyles><div class="NavFrame">
+<div class="NavHead">&nbsp; &nbsp; Conjugation of <i class="Latn mention" lang="it">[[:avvedere#Italian|avvedér]][[:si#Italian|si]]</i> (-ere; irregular) (See [[Appendix:Italian verbs]])</div>
+<div class="NavContent">
+{| class="roa-inflection-table" data-toggle-category="inflection"
+|-
+! class="roa-nonfinite-header" | <span title="infinito">infinitive</span>
+| <span class="Latn" lang="it">[[:avvedere#Italian|avvedér]][[:si#Italian|si]]</span>
+|-
+! colspan="2" class="roa-nonfinite-header" | <span title="verbo ausiliare">auxiliary verb</span>
+| <span class="Latn" lang="it">[[:essere#Italian|èssere]]</span>[[Category:Italian links with redundant wikilinks|AVVEDERSI]]
+! colspan="2" class="roa-nonfinite-header" | <span title="gerundio">gerund</span>
+| colspan="2" | <span class="Latn form-of lang-it ger-form-of origin-avvedérsi" lang="it">[[:avvedendosi#Italian|avvedèndosi]]</span>[[Category:Italian links with redundant wikilinks|AVVEDERSI]]
+|-
+! colspan="2" class="roa-nonfinite-header" |  <span title="participio presente">present participle</span>
+| <span class="Latn form-of lang-it pres|part-form-of origin-avvedérsi" lang="it">[[:avvedentesi#Italian|avvedèntesi]]</span>[[Category:Italian links with redundant wikilinks|AVVEDERSI]], <span class="Latn form-of lang-it pres|part-form-of origin-avvedérsi" lang="it">[[:avveggentesi#Italian|avveggèntesi]]</span>[[Category:Italian links with redundant wikilinks|AVVEDERSI]]
+! colspan="2" class="roa-nonfinite-header" | <span title="participio passato">past participle</span>
+| colspan="2" | <span class="Latn form-of lang-it past|part-form-of origin-avvedérsi" lang="it">[[:avvistosi#Italian|avvìstosi]]</span>[[Category:Italian links with redundant wikilinks|AVVEDERSI]], <span class="Latn form-of lang-it past|part-form-of origin-avvedérsi" lang="it">[[:avvedutosi#Italian|avvedùtosi]]</span>[[Category:Italian links with redundant wikilinks|AVVEDERSI]]<sup style="color: var(--wikt-palette-red, red)">1</sup>
+|-
+! rowspan="2" class="roa-person-number-header" | person
+! colspan="3" class="roa-person-number-header" | singular
+! colspan="3" class="roa-person-number-header" | plural
+|-
+! class="roa-person-number-header" style="width:12.5%;" | first
+! class="roa-person-number-header" style="width:12.5%;" | second
+! class="roa-person-number-header" style="width:12.5%;" | third
+! class="roa-person-number-header" style="width:12.5%;" | first
+! class="roa-person-number-header" style="width:12.5%;" | second
+! class="roa-person-number-header" style="width:12.5%;" | third
+|-
+! class="roa-indicative-left-rail" | <span title="indicativo">indicative</span>
+! class="roa-indicative-left-rail" | io
+! class="roa-indicative-left-rail" | tu
+! class="roa-indicative-left-rail" | lui/lei, esso/essa
+! class="roa-indicative-left-rail" | noi
+! class="roa-indicative-left-rail" | voi
+! class="roa-indicative-left-rail" | loro, essi/esse
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="presente">present</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:avvedo#Italian|avvédo]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:avvedi#Italian|avvédi]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:avvede#Italian|avvéde]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:avvediamo#Italian|avvediàmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:avvedete#Italian|avvedéte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:avvedono#Italian|avvédono]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="imperfetto">imperfect</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:avvedevo#Italian|avvedévo]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:avvedevi#Italian|avvedévi]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:avvedeva#Italian|avvedéva]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:avvedevamo#Italian|avvedevàmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:avvedevate#Italian|avvedevàte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:avvedevano#Italian|avvedévano]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="passato remoto">past historic</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:avvidi#Italian|avvìdi]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:avvedesti#Italian|avvedésti]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:avvide#Italian|avvìde]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:avvedemmo#Italian|avvedémmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:avvedeste#Italian|avvedéste]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:avvidero#Italian|avvìdero]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="futuro semplice">future</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:avvedrò#Italian|avvedrò]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:avvedrai#Italian|avvedrài]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:avvedrà#Italian|avvedrà]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:avvedremo#Italian|avvedrémo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:avvedrete#Italian|avvedréte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:avvedranno#Italian|avvedrànno]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="condizionale presente">conditional</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:avvedrei#Italian|avvedrèi]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:avvedresti#Italian|avvedrésti]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:avvedrebbe#Italian|avvedrèbbe]]</span>, <span class="Latn" lang="it">[[:si#Italian|si]] [[:avvedrebbe#Italian|avvedrébbe]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:avvedremmo#Italian|avvedrémmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:avvedreste#Italian|avvedréste]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:avvedrebbero#Italian|avvedrèbbero]]</span>, <span class="Latn" lang="it">[[:si#Italian|si]] [[:avvedrebbero#Italian|avvedrébbero]]</span>
+|-
+! class="roa-subjunctive-left-rail" | <span title="congiuntivo">subjunctive</span>
+! class="roa-subjunctive-left-rail" | che io
+! class="roa-subjunctive-left-rail" | che tu
+! class="roa-subjunctive-left-rail" | che lui/che lei, che esso/che essa
+! class="roa-subjunctive-left-rail" | che noi
+! class="roa-subjunctive-left-rail" | che voi
+! class="roa-subjunctive-left-rail" | che loro, che essi/che esse
+|-
+! class="roa-subjunctive-left-rail" style="height:3em;" | <span title="congiuntivo presente">present</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:avveda#Italian|avvéda]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:avveda#Italian|avvéda]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:avveda#Italian|avvéda]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:avvediamo#Italian|avvediàmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:avvediate#Italian|avvediàte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:avvedano#Italian|avvédano]]</span>
+|-
+! class="roa-subjunctive-left-rail" style="height:3em;" | <span title="congiuntivo imperfetto">imperfect</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:avvedessi#Italian|avvedéssi]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:avvedessi#Italian|avvedéssi]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:avvedesse#Italian|avvedésse]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:avvedessimo#Italian|avvedéssimo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:avvedeste#Italian|avvedéste]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:avvedessero#Italian|avvedéssero]]</span>
+|-
+! rowspan="2" class="roa-imperative-left-rail" style="height:3em;" | <span title="imperativo">imperative</span>
+! class="roa-imperative-left-rail" | &mdash;
+! class="roa-imperative-left-rail" | tu
+! class="roa-imperative-left-rail" | Lei
+! class="roa-imperative-left-rail" | noi
+! class="roa-imperative-left-rail" | voi
+! class="roa-imperative-left-rail" | Loro
+|-
+|
+| <span class="Latn form-of lang-it 2|s|imp-form-of origin-avvedérsi" lang="it">[[:avvediti#Italian|avvéditi]]</span>[[Category:Italian links with redundant wikilinks|AVVEDERSI]]
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:avveda#Italian|avvéda]]</span>
+| <span class="Latn form-of lang-it 1|p|imp-form-of origin-avvedérsi" lang="it">[[:avvediamoci#Italian|avvediàmoci]]</span>[[Category:Italian links with redundant wikilinks|AVVEDERSI]]
+| <span class="Latn form-of lang-it 2|p|imp-form-of origin-avvedérsi" lang="it">[[:avvedetevi#Italian|avvedétevi]]</span>[[Category:Italian links with redundant wikilinks|AVVEDERSI]]
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:avvedano#Italian|avvédano]]</span>
+|-
+! class="roa-imperative-left-rail" style="height:3em;" | <span title="imperativo negativo">negative imperative</span>
+|
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:avvederti#Italian|avvedérti]]</span>, <span class="Latn" lang="it">[[:non#Italian|non]] [[:ti#Italian|ti]]  [[:avvedere#Italian|avvedére]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:si#Italian|si]]  [[:avveda#Italian|avvéda]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:avvediamoci#Italian|avvediàmoci]]</span>, <span class="Latn" lang="it">[[:non#Italian|non]] [[:ci#Italian|ci]]  [[:avvediamo#Italian|avvediàmo]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:avvedetevi#Italian|avvedétevi]]</span>, <span class="Latn" lang="it">[[:non#Italian|non]] [[:vi#Italian|vi]]  [[:avvedete#Italian|avvedéte]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:si#Italian|si]]  [[:avvedano#Italian|avvédano]]</span>
+|}<div class="roa-footnote-outer-div" style="width:100%;">
+<div class="roa-footnote-inner-div">
+<sup style="color: var(--wikt-palette-red, red)">1</sup>Less popular.
+</div></div>
+</div></div>[[Category:Italian verbs ending in -ere|AVVEDERSI]][[Category:Italian irregular verbs|AVVEDERSI]][[Category:Italian verbs with irregular past historic|AVVEDERSI]][[Category:Italian verbs with irregular future|AVVEDERSI]][[Category:Italian verbs with irregular past participle|AVVEDERSI]][[Category:Italian verbs with irregular present participle|AVVEDERSI]][[Category:Italian reflexive verbs|AVVEDERSI]]

@@ -1,0 +1,124 @@
+<templatestyles src="Module:roa-verb/style.css"></templatestyles><div class="NavFrame">
+<div class="NavHead">&nbsp; &nbsp; Conjugation of <i class="Latn mention" lang="it">[[:adastiare#Italian|adastiàr]][[:si#Italian|si]]</i> (-are) (See [[Appendix:Italian verbs]])</div>
+<div class="NavContent">
+{| class="roa-inflection-table" data-toggle-category="inflection"
+|-
+! class="roa-nonfinite-header" | <span title="infinito">infinitive</span>
+| <span class="Latn" lang="it">[[:adastiare#Italian|adastiàr]][[:si#Italian|si]]</span>
+|-
+! colspan="2" class="roa-nonfinite-header" | <span title="verbo ausiliare">auxiliary verb</span>
+| <span class="Latn" lang="it">[[:essere#Italian|èssere]]</span>[[Category:Italian links with redundant wikilinks|ADASTIARSI]]
+! colspan="2" class="roa-nonfinite-header" | <span title="gerundio">gerund</span>
+| colspan="2" | <span class="Latn form-of lang-it ger-form-of origin-adastiàrsi" lang="it">[[:adastiandosi#Italian|adastiàndosi]]</span>[[Category:Italian links with redundant wikilinks|ADASTIARSI]]
+|-
+! colspan="2" class="roa-nonfinite-header" |  <span title="participio presente">present participle</span>
+| <span class="Latn form-of lang-it pres|part-form-of origin-adastiàrsi" lang="it">[[:adastiantesi#Italian|adastiàntesi]]</span>[[Category:Italian links with redundant wikilinks|ADASTIARSI]]
+! colspan="2" class="roa-nonfinite-header" | <span title="participio passato">past participle</span>
+| colspan="2" | <span class="Latn form-of lang-it past|part-form-of origin-adastiàrsi" lang="it">[[:adastiatosi#Italian|adastiàtosi]]</span>[[Category:Italian links with redundant wikilinks|ADASTIARSI]]
+|-
+! rowspan="2" class="roa-person-number-header" | person
+! colspan="3" class="roa-person-number-header" | singular
+! colspan="3" class="roa-person-number-header" | plural
+|-
+! class="roa-person-number-header" style="width:12.5%;" | first
+! class="roa-person-number-header" style="width:12.5%;" | second
+! class="roa-person-number-header" style="width:12.5%;" | third
+! class="roa-person-number-header" style="width:12.5%;" | first
+! class="roa-person-number-header" style="width:12.5%;" | second
+! class="roa-person-number-header" style="width:12.5%;" | third
+|-
+! class="roa-indicative-left-rail" | <span title="indicativo">indicative</span>
+! class="roa-indicative-left-rail" | io
+! class="roa-indicative-left-rail" | tu
+! class="roa-indicative-left-rail" | lui/lei, esso/essa
+! class="roa-indicative-left-rail" | noi
+! class="roa-indicative-left-rail" | voi
+! class="roa-indicative-left-rail" | loro, essi/esse
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="presente">present</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:adastio#Italian|adàstio]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:adasti#Italian|adàsti]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:adastia#Italian|adàstia]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:adastiamo#Italian|adastiàmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:adastiate#Italian|adastiàte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:adastiano#Italian|adàstiano]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="imperfetto">imperfect</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:adastiavo#Italian|adastiàvo]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:adastiavi#Italian|adastiàvi]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:adastiava#Italian|adastiàva]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:adastiavamo#Italian|adastiavàmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:adastiavate#Italian|adastiavàte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:adastiavano#Italian|adastiàvano]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="passato remoto">past historic</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:adastiai#Italian|adastiài]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:adastiasti#Italian|adastiàsti]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:adastiò#Italian|adastiò]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:adastiammo#Italian|adastiàmmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:adastiaste#Italian|adastiàste]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:adastiarono#Italian|adastiàrono]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="futuro semplice">future</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:adastierò#Italian|adastierò]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:adastierai#Italian|adastierài]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:adastierà#Italian|adastierà]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:adastieremo#Italian|adastierémo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:adastierete#Italian|adastieréte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:adastieranno#Italian|adastierànno]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="condizionale presente">conditional</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:adastierei#Italian|adastierèi]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:adastieresti#Italian|adastierésti]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:adastierebbe#Italian|adastierèbbe]]</span>, <span class="Latn" lang="it">[[:si#Italian|si]] [[:adastierebbe#Italian|adastierébbe]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:adastieremmo#Italian|adastierémmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:adastiereste#Italian|adastieréste]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:adastierebbero#Italian|adastierèbbero]]</span>, <span class="Latn" lang="it">[[:si#Italian|si]] [[:adastierebbero#Italian|adastierébbero]]</span>
+|-
+! class="roa-subjunctive-left-rail" | <span title="congiuntivo">subjunctive</span>
+! class="roa-subjunctive-left-rail" | che io
+! class="roa-subjunctive-left-rail" | che tu
+! class="roa-subjunctive-left-rail" | che lui/che lei, che esso/che essa
+! class="roa-subjunctive-left-rail" | che noi
+! class="roa-subjunctive-left-rail" | che voi
+! class="roa-subjunctive-left-rail" | che loro, che essi/che esse
+|-
+! class="roa-subjunctive-left-rail" style="height:3em;" | <span title="congiuntivo presente">present</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:adasti#Italian|adàsti]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:adasti#Italian|adàsti]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:adasti#Italian|adàsti]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:adastiamo#Italian|adastiàmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:adastiate#Italian|adastiàte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:adastino#Italian|adàstino]]</span>
+|-
+! class="roa-subjunctive-left-rail" style="height:3em;" | <span title="congiuntivo imperfetto">imperfect</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:adastiassi#Italian|adastiàssi]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:adastiassi#Italian|adastiàssi]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:adastiasse#Italian|adastiàsse]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:adastiassimo#Italian|adastiàssimo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:adastiaste#Italian|adastiàste]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:adastiassero#Italian|adastiàssero]]</span>
+|-
+! rowspan="2" class="roa-imperative-left-rail" style="height:3em;" | <span title="imperativo">imperative</span>
+! class="roa-imperative-left-rail" | &mdash;
+! class="roa-imperative-left-rail" | tu
+! class="roa-imperative-left-rail" | Lei
+! class="roa-imperative-left-rail" | noi
+! class="roa-imperative-left-rail" | voi
+! class="roa-imperative-left-rail" | Loro
+|-
+|
+| <span class="Latn form-of lang-it 2|s|imp-form-of origin-adastiàrsi" lang="it">[[:adastiati#Italian|adàstiati]]</span>[[Category:Italian links with redundant wikilinks|ADASTIARSI]]
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:adasti#Italian|adàsti]]</span>
+| <span class="Latn form-of lang-it 1|p|imp-form-of origin-adastiàrsi" lang="it">[[:adastiamoci#Italian|adastiàmoci]]</span>[[Category:Italian links with redundant wikilinks|ADASTIARSI]]
+| <span class="Latn form-of lang-it 2|p|imp-form-of origin-adastiàrsi" lang="it">[[:adastiatevi#Italian|adastiàtevi]]</span>[[Category:Italian links with redundant wikilinks|ADASTIARSI]]
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:adastino#Italian|adàstino]]</span>
+|-
+! class="roa-imperative-left-rail" style="height:3em;" | <span title="imperativo negativo">negative imperative</span>
+|
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:adastiarti#Italian|adastiàrti]]</span>, <span class="Latn" lang="it">[[:non#Italian|non]] [[:ti#Italian|ti]]  [[:adastiare#Italian|adastiàre]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:si#Italian|si]]  [[:adasti#Italian|adàsti]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:adastiamoci#Italian|adastiàmoci]]</span>, <span class="Latn" lang="it">[[:non#Italian|non]] [[:ci#Italian|ci]]  [[:adastiamo#Italian|adastiàmo]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:adastiatevi#Italian|adastiàtevi]]</span>, <span class="Latn" lang="it">[[:non#Italian|non]] [[:vi#Italian|vi]]  [[:adastiate#Italian|adastiàte]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:si#Italian|si]]  [[:adastino#Italian|adàstino]]</span>
+|}</div></div>[[Category:Italian verbs ending in -are|ADASTIARSI]][[Category:Italian reflexive verbs|ADASTIARSI]]

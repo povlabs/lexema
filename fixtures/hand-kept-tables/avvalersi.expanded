@@ -1,0 +1,124 @@
+<templatestyles src="Module:roa-verb/style.css"></templatestyles><div class="NavFrame">
+<div class="NavHead">&nbsp; &nbsp; Conjugation of <i class="Latn mention" lang="it">[[:avvalere#Italian|avvalér]][[:si#Italian|si]]</i> (-ere; irregular) (See [[Appendix:Italian verbs]])</div>
+<div class="NavContent">
+{| class="roa-inflection-table" data-toggle-category="inflection"
+|-
+! class="roa-nonfinite-header" | <span title="infinito">infinitive</span>
+| <span class="Latn" lang="it">[[:avvalere#Italian|avvalér]][[:si#Italian|si]]</span>
+|-
+! colspan="2" class="roa-nonfinite-header" | <span title="verbo ausiliare">auxiliary verb</span>
+| <span class="Latn" lang="it">[[:essere#Italian|èssere]]</span>[[Category:Italian links with redundant wikilinks|AVVALERSI]]
+! colspan="2" class="roa-nonfinite-header" | <span title="gerundio">gerund</span>
+| colspan="2" | <span class="Latn form-of lang-it ger-form-of origin-avvalérsi" lang="it">[[:avvalendosi#Italian|avvalèndosi]]</span>[[Category:Italian links with redundant wikilinks|AVVALERSI]]
+|-
+! colspan="2" class="roa-nonfinite-header" |  <span title="participio presente">present participle</span>
+| <span class="Latn form-of lang-it pres|part-form-of origin-avvalérsi" lang="it">[[:avvalentesi#Italian|avvalèntesi]]</span>[[Category:Italian links with redundant wikilinks|AVVALERSI]]
+! colspan="2" class="roa-nonfinite-header" | <span title="participio passato">past participle</span>
+| colspan="2" | <span class="Latn form-of lang-it past|part-form-of origin-avvalérsi" lang="it">[[:avvalsosi#Italian|avvàlsosi]]</span>[[Category:Italian links with redundant wikilinks|AVVALERSI]]
+|-
+! rowspan="2" class="roa-person-number-header" | person
+! colspan="3" class="roa-person-number-header" | singular
+! colspan="3" class="roa-person-number-header" | plural
+|-
+! class="roa-person-number-header" style="width:12.5%;" | first
+! class="roa-person-number-header" style="width:12.5%;" | second
+! class="roa-person-number-header" style="width:12.5%;" | third
+! class="roa-person-number-header" style="width:12.5%;" | first
+! class="roa-person-number-header" style="width:12.5%;" | second
+! class="roa-person-number-header" style="width:12.5%;" | third
+|-
+! class="roa-indicative-left-rail" | <span title="indicativo">indicative</span>
+! class="roa-indicative-left-rail" | io
+! class="roa-indicative-left-rail" | tu
+! class="roa-indicative-left-rail" | lui/lei, esso/essa
+! class="roa-indicative-left-rail" | noi
+! class="roa-indicative-left-rail" | voi
+! class="roa-indicative-left-rail" | loro, essi/esse
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="presente">present</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:avvalgo#Italian|avvàlgo]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:avvali#Italian|avvàli]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:avvale#Italian|avvàle]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:avvaliamo#Italian|avvaliàmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:avvalete#Italian|avvaléte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:avvalgono#Italian|avvàlgono]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="imperfetto">imperfect</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:avvalevo#Italian|avvalévo]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:avvalevi#Italian|avvalévi]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:avvaleva#Italian|avvaléva]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:avvalevamo#Italian|avvalevàmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:avvalevate#Italian|avvalevàte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:avvalevano#Italian|avvalévano]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="passato remoto">past historic</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:avvalsi#Italian|avvàlsi]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:avvalesti#Italian|avvalésti]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:avvalse#Italian|avvàlse]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:avvalemmo#Italian|avvalémmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:avvaleste#Italian|avvaléste]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:avvalsero#Italian|avvàlsero]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="futuro semplice">future</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:avvarrò#Italian|avvarrò]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:avvarrai#Italian|avvarrài]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:avvarrà#Italian|avvarrà]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:avvarremo#Italian|avvarrémo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:avvarrete#Italian|avvarréte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:avvarranno#Italian|avvarrànno]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="condizionale presente">conditional</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:avvarrei#Italian|avvarrèi]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:avvarresti#Italian|avvarrésti]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:avvarrebbe#Italian|avvarrèbbe]]</span>, <span class="Latn" lang="it">[[:si#Italian|si]] [[:avvarrebbe#Italian|avvarrébbe]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:avvarremmo#Italian|avvarrémmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:avvarreste#Italian|avvarréste]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:avvarrebbero#Italian|avvarrèbbero]]</span>, <span class="Latn" lang="it">[[:si#Italian|si]] [[:avvarrebbero#Italian|avvarrébbero]]</span>
+|-
+! class="roa-subjunctive-left-rail" | <span title="congiuntivo">subjunctive</span>
+! class="roa-subjunctive-left-rail" | che io
+! class="roa-subjunctive-left-rail" | che tu
+! class="roa-subjunctive-left-rail" | che lui/che lei, che esso/che essa
+! class="roa-subjunctive-left-rail" | che noi
+! class="roa-subjunctive-left-rail" | che voi
+! class="roa-subjunctive-left-rail" | che loro, che essi/che esse
+|-
+! class="roa-subjunctive-left-rail" style="height:3em;" | <span title="congiuntivo presente">present</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:avvalga#Italian|avvàlga]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:avvalga#Italian|avvàlga]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:avvalga#Italian|avvàlga]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:avvaliamo#Italian|avvaliàmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:avvaliate#Italian|avvaliàte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:avvalgano#Italian|avvàlgano]]</span>
+|-
+! class="roa-subjunctive-left-rail" style="height:3em;" | <span title="congiuntivo imperfetto">imperfect</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:avvalessi#Italian|avvaléssi]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:avvalessi#Italian|avvaléssi]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:avvalesse#Italian|avvalésse]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:avvalessimo#Italian|avvaléssimo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:avvaleste#Italian|avvaléste]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:avvalessero#Italian|avvaléssero]]</span>
+|-
+! rowspan="2" class="roa-imperative-left-rail" style="height:3em;" | <span title="imperativo">imperative</span>
+! class="roa-imperative-left-rail" | &mdash;
+! class="roa-imperative-left-rail" | tu
+! class="roa-imperative-left-rail" | Lei
+! class="roa-imperative-left-rail" | noi
+! class="roa-imperative-left-rail" | voi
+! class="roa-imperative-left-rail" | Loro
+|-
+|
+| <span class="Latn form-of lang-it 2|s|imp-form-of origin-avvalérsi" lang="it">[[:avvaliti#Italian|avvàliti]]</span>[[Category:Italian links with redundant wikilinks|AVVALERSI]]
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:avvalga#Italian|avvàlga]]</span>
+| <span class="Latn form-of lang-it 1|p|imp-form-of origin-avvalérsi" lang="it">[[:avvaliamoci#Italian|avvaliàmoci]]</span>[[Category:Italian links with redundant wikilinks|AVVALERSI]]
+| <span class="Latn form-of lang-it 2|p|imp-form-of origin-avvalérsi" lang="it">[[:avvaletevi#Italian|avvalétevi]]</span>[[Category:Italian links with redundant wikilinks|AVVALERSI]]
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:avvalgano#Italian|avvàlgano]]</span>
+|-
+! class="roa-imperative-left-rail" style="height:3em;" | <span title="imperativo negativo">negative imperative</span>
+|
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:avvalerti#Italian|avvalérti]]</span>, <span class="Latn" lang="it">[[:non#Italian|non]] [[:ti#Italian|ti]]  [[:avvalere#Italian|avvalére]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:si#Italian|si]]  [[:avvalga#Italian|avvàlga]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:avvaliamoci#Italian|avvaliàmoci]]</span>, <span class="Latn" lang="it">[[:non#Italian|non]] [[:ci#Italian|ci]]  [[:avvaliamo#Italian|avvaliàmo]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:avvaletevi#Italian|avvalétevi]]</span>, <span class="Latn" lang="it">[[:non#Italian|non]] [[:vi#Italian|vi]]  [[:avvalete#Italian|avvaléte]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:si#Italian|si]]  [[:avvalgano#Italian|avvàlgano]]</span>
+|}</div></div>[[Category:Italian verbs ending in -ere|AVVALERSI]][[Category:Italian irregular verbs|AVVALERSI]][[Category:Italian verbs with irregular past historic|AVVALERSI]][[Category:Italian verbs with irregular future|AVVALERSI]][[Category:Italian verbs with irregular past participle|AVVALERSI]][[Category:Italian reflexive verbs|AVVALERSI]]

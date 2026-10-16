@@ -1,0 +1,9 @@
+==Italian==
+
+===Verb===
+{{it-verb|à}}
+
+# to [[perch]]
+
+====Conjugation====
+{{it-conj|à}}

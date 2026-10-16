@@ -72,8 +72,10 @@ export class InvalidHandKeptReading extends Error {
   override readonly name = "InvalidHandKeptReading";
 }
 
-const PERMANENT_LINK = /^https:\/\/en\.wiktionary\.org\/w\/index\.php\?title=[^&]+&oldid=[1-9]\d*$/;
-const RULING = /^https:\/\/github\.com\/povlabs\/lexema\/issues\/\d+#issuecomment-\d+$/;
+/** An en.wiktionary permanent link: a title and a revision id. */
+export const PERMANENT_LINK = /^https:\/\/en\.wiktionary\.org\/w\/index\.php\?title=[^&]+&oldid=[1-9]\d*$/;
+/** A ruling: a comment on a povlabs/lexema issue. */
+export const RULING = /^https:\/\/github\.com\/povlabs\/lexema\/issues\/\d+#issuecomment-\d+$/;
 
 const isLine = ({ line, wikitext }: CitedLine): boolean => Number.isInteger(line) && line > 0 && wikitext.trim() !== "";
 

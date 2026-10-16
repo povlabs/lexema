@@ -1,0 +1,28 @@
+==Italian==
+
+===Etymology===
+From {{uder|it|la|assuēfaciō|assuēfacere|t=to accustom, habituate, inure to}}.
+
+===Pronunciation===
+{{it-pr|assu.efàre,assuefàre<r:DiPI:consueto>}}
+
+===Verb===
+{{it-verb|a/@}} {{tlb|it|transitive}}
+
+# to [[get used]] (to)
+# to [[accustom]] (to)
+
+====Conjugation====
+{{it-conj|a/@}}
+
+====Derived terms====
+* {{l|it|assuefabile}}
+* {{l|it|assuefarsi}}
+* {{l|it|assuefazione}}
+
+===References===
+{{reflist}}
+
+===Further reading===
+* {{R:it:Collins}}
+* {{R:it:Treccani}}

@@ -1,0 +1,124 @@
+<templatestyles src="Module:roa-verb/style.css"></templatestyles><div class="NavFrame">
+<div class="NavHead">&nbsp; &nbsp; Conjugation of <i class="Latn mention" lang="it">[[:prefiggere#Italian|prefìgger]][[:si#Italian|si]]</i> (root-stressed -ere; irregular) (See [[Appendix:Italian verbs]])</div>
+<div class="NavContent">
+{| class="roa-inflection-table" data-toggle-category="inflection"
+|-
+! class="roa-nonfinite-header" | <span title="infinito">infinitive</span>
+| <span class="Latn" lang="it">[[:prefiggere#Italian|prefìgger]][[:si#Italian|si]]</span>
+|-
+! colspan="2" class="roa-nonfinite-header" | <span title="verbo ausiliare">auxiliary verb</span>
+| <span class="Latn" lang="it">[[:essere#Italian|èssere]]</span>[[Category:Italian links with redundant wikilinks|PREFIGGERSI]]
+! colspan="2" class="roa-nonfinite-header" | <span title="gerundio">gerund</span>
+| colspan="2" | <span class="Latn form-of lang-it ger-form-of origin-prefìggersi" lang="it">[[:prefiggendosi#Italian|prefiggèndosi]]</span>[[Category:Italian links with redundant wikilinks|PREFIGGERSI]]
+|-
+! colspan="2" class="roa-nonfinite-header" |  <span title="participio presente">present participle</span>
+| <span class="Latn form-of lang-it pres|part-form-of origin-prefìggersi" lang="it">[[:prefiggentesi#Italian|prefiggèntesi]]</span>[[Category:Italian links with redundant wikilinks|PREFIGGERSI]]
+! colspan="2" class="roa-nonfinite-header" | <span title="participio passato">past participle</span>
+| colspan="2" | <span class="Latn form-of lang-it past|part-form-of origin-prefìggersi" lang="it">[[:prefissosi#Italian|prefìssosi]]</span>[[Category:Italian links with redundant wikilinks|PREFIGGERSI]]
+|-
+! rowspan="2" class="roa-person-number-header" | person
+! colspan="3" class="roa-person-number-header" | singular
+! colspan="3" class="roa-person-number-header" | plural
+|-
+! class="roa-person-number-header" style="width:12.5%;" | first
+! class="roa-person-number-header" style="width:12.5%;" | second
+! class="roa-person-number-header" style="width:12.5%;" | third
+! class="roa-person-number-header" style="width:12.5%;" | first
+! class="roa-person-number-header" style="width:12.5%;" | second
+! class="roa-person-number-header" style="width:12.5%;" | third
+|-
+! class="roa-indicative-left-rail" | <span title="indicativo">indicative</span>
+! class="roa-indicative-left-rail" | io
+! class="roa-indicative-left-rail" | tu
+! class="roa-indicative-left-rail" | lui/lei, esso/essa
+! class="roa-indicative-left-rail" | noi
+! class="roa-indicative-left-rail" | voi
+! class="roa-indicative-left-rail" | loro, essi/esse
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="presente">present</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:prefiggo#Italian|prefìggo]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:prefiggi#Italian|prefìggi]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:prefigge#Italian|prefìgge]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:prefiggiamo#Italian|prefiggiàmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:prefiggete#Italian|prefiggéte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:prefiggono#Italian|prefìggono]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="imperfetto">imperfect</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:prefiggevo#Italian|prefiggévo]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:prefiggevi#Italian|prefiggévi]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:prefiggeva#Italian|prefiggéva]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:prefiggevamo#Italian|prefiggevàmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:prefiggevate#Italian|prefiggevàte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:prefiggevano#Italian|prefiggévano]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="passato remoto">past historic</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:prefissi#Italian|prefìssi]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:prefiggesti#Italian|prefiggésti]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:prefisse#Italian|prefìsse]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:prefiggemmo#Italian|prefiggémmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:prefiggeste#Italian|prefiggéste]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:prefissero#Italian|prefìssero]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="futuro semplice">future</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:prefiggerò#Italian|prefiggerò]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:prefiggerai#Italian|prefiggerài]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:prefiggerà#Italian|prefiggerà]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:prefiggeremo#Italian|prefiggerémo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:prefiggerete#Italian|prefiggeréte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:prefiggeranno#Italian|prefiggerànno]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="condizionale presente">conditional</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:prefiggerei#Italian|prefiggerèi]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:prefiggeresti#Italian|prefiggerésti]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:prefiggerebbe#Italian|prefiggerèbbe]]</span>, <span class="Latn" lang="it">[[:si#Italian|si]] [[:prefiggerebbe#Italian|prefiggerébbe]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:prefiggeremmo#Italian|prefiggerémmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:prefiggereste#Italian|prefiggeréste]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:prefiggerebbero#Italian|prefiggerèbbero]]</span>, <span class="Latn" lang="it">[[:si#Italian|si]] [[:prefiggerebbero#Italian|prefiggerébbero]]</span>
+|-
+! class="roa-subjunctive-left-rail" | <span title="congiuntivo">subjunctive</span>
+! class="roa-subjunctive-left-rail" | che io
+! class="roa-subjunctive-left-rail" | che tu
+! class="roa-subjunctive-left-rail" | che lui/che lei, che esso/che essa
+! class="roa-subjunctive-left-rail" | che noi
+! class="roa-subjunctive-left-rail" | che voi
+! class="roa-subjunctive-left-rail" | che loro, che essi/che esse
+|-
+! class="roa-subjunctive-left-rail" style="height:3em;" | <span title="congiuntivo presente">present</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:prefigga#Italian|prefìgga]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:prefigga#Italian|prefìgga]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:prefigga#Italian|prefìgga]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:prefiggiamo#Italian|prefiggiàmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:prefiggiate#Italian|prefiggiàte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:prefiggano#Italian|prefìggano]]</span>
+|-
+! class="roa-subjunctive-left-rail" style="height:3em;" | <span title="congiuntivo imperfetto">imperfect</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:prefiggessi#Italian|prefiggéssi]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:prefiggessi#Italian|prefiggéssi]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:prefiggesse#Italian|prefiggésse]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:prefiggessimo#Italian|prefiggéssimo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:prefiggeste#Italian|prefiggéste]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:prefiggessero#Italian|prefiggéssero]]</span>
+|-
+! rowspan="2" class="roa-imperative-left-rail" style="height:3em;" | <span title="imperativo">imperative</span>
+! class="roa-imperative-left-rail" | &mdash;
+! class="roa-imperative-left-rail" | tu
+! class="roa-imperative-left-rail" | Lei
+! class="roa-imperative-left-rail" | noi
+! class="roa-imperative-left-rail" | voi
+! class="roa-imperative-left-rail" | Loro
+|-
+|
+| <span class="Latn form-of lang-it 2|s|imp-form-of origin-prefìggersi" lang="it">[[:prefiggiti#Italian|prefìggiti]]</span>[[Category:Italian links with redundant wikilinks|PREFIGGERSI]]
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:prefigga#Italian|prefìgga]]</span>
+| <span class="Latn form-of lang-it 1|p|imp-form-of origin-prefìggersi" lang="it">[[:prefiggiamoci#Italian|prefiggiàmoci]]</span>[[Category:Italian links with redundant wikilinks|PREFIGGERSI]]
+| <span class="Latn form-of lang-it 2|p|imp-form-of origin-prefìggersi" lang="it">[[:prefiggetevi#Italian|prefiggétevi]]</span>[[Category:Italian links with redundant wikilinks|PREFIGGERSI]]
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:prefiggano#Italian|prefìggano]]</span>
+|-
+! class="roa-imperative-left-rail" style="height:3em;" | <span title="imperativo negativo">negative imperative</span>
+|
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:prefiggerti#Italian|prefìggerti]]</span>, <span class="Latn" lang="it">[[:non#Italian|non]] [[:ti#Italian|ti]]  [[:prefiggere#Italian|prefìggere]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:si#Italian|si]]  [[:prefigga#Italian|prefìgga]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:prefiggiamoci#Italian|prefiggiàmoci]]</span>, <span class="Latn" lang="it">[[:non#Italian|non]] [[:ci#Italian|ci]]  [[:prefiggiamo#Italian|prefiggiàmo]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:prefiggetevi#Italian|prefiggétevi]]</span>, <span class="Latn" lang="it">[[:non#Italian|non]] [[:vi#Italian|vi]]  [[:prefiggete#Italian|prefiggéte]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:si#Italian|si]]  [[:prefiggano#Italian|prefìggano]]</span>
+|}</div></div>[[Category:Italian verbs with root-stressed infinitive|PREFIGGERSI]][[Category:Italian verbs ending in -ere|PREFIGGERSI]][[Category:Italian irregular verbs|PREFIGGERSI]][[Category:Italian verbs with irregular past historic|PREFIGGERSI]][[Category:Italian verbs with irregular past participle|PREFIGGERSI]][[Category:Italian reflexive verbs|PREFIGGERSI]]

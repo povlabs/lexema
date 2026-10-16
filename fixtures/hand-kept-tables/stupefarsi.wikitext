@@ -1,0 +1,13 @@
+==Italian==
+
+===Pronunciation===
+{{it-pr}}
+
+===Verb===
+{{it-verb|@}}
+
+# {{reflexive of|it|stupefare}}
+# to be [[stunned]] or [[astounded]]
+
+====Conjugation====
+{{it-conj|@}}

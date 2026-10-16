@@ -1,0 +1,124 @@
+<templatestyles src="Module:roa-verb/style.css"></templatestyles><div class="NavFrame">
+<div class="NavHead">&nbsp; &nbsp; Conjugation of <i class="Latn mention" lang="it">[[:imbattere#Italian|imbàtter]][[:si#Italian|si]]</i> (root-stressed -ere) (See [[Appendix:Italian verbs]])</div>
+<div class="NavContent">
+{| class="roa-inflection-table" data-toggle-category="inflection"
+|-
+! class="roa-nonfinite-header" | <span title="infinito">infinitive</span>
+| <span class="Latn" lang="it">[[:imbattere#Italian|imbàtter]][[:si#Italian|si]]</span>
+|-
+! colspan="2" class="roa-nonfinite-header" | <span title="verbo ausiliare">auxiliary verb</span>
+| <span class="Latn" lang="it">[[:essere#Italian|èssere]]</span>[[Category:Italian links with redundant wikilinks|IMBATTERSI]]
+! colspan="2" class="roa-nonfinite-header" | <span title="gerundio">gerund</span>
+| colspan="2" | <span class="Latn form-of lang-it ger-form-of origin-imbàttersi" lang="it">[[:imbattendosi#Italian|imbattèndosi]]</span>[[Category:Italian links with redundant wikilinks|IMBATTERSI]]
+|-
+! colspan="2" class="roa-nonfinite-header" |  <span title="participio presente">present participle</span>
+| <span class="Latn form-of lang-it pres|part-form-of origin-imbàttersi" lang="it">[[:imbattentesi#Italian|imbattèntesi]]</span>[[Category:Italian links with redundant wikilinks|IMBATTERSI]]
+! colspan="2" class="roa-nonfinite-header" | <span title="participio passato">past participle</span>
+| colspan="2" | <span class="Latn form-of lang-it past|part-form-of origin-imbàttersi" lang="it">[[:imbattutosi#Italian|imbattùtosi]]</span>[[Category:Italian links with redundant wikilinks|IMBATTERSI]]
+|-
+! rowspan="2" class="roa-person-number-header" | person
+! colspan="3" class="roa-person-number-header" | singular
+! colspan="3" class="roa-person-number-header" | plural
+|-
+! class="roa-person-number-header" style="width:12.5%;" | first
+! class="roa-person-number-header" style="width:12.5%;" | second
+! class="roa-person-number-header" style="width:12.5%;" | third
+! class="roa-person-number-header" style="width:12.5%;" | first
+! class="roa-person-number-header" style="width:12.5%;" | second
+! class="roa-person-number-header" style="width:12.5%;" | third
+|-
+! class="roa-indicative-left-rail" | <span title="indicativo">indicative</span>
+! class="roa-indicative-left-rail" | io
+! class="roa-indicative-left-rail" | tu
+! class="roa-indicative-left-rail" | lui/lei, esso/essa
+! class="roa-indicative-left-rail" | noi
+! class="roa-indicative-left-rail" | voi
+! class="roa-indicative-left-rail" | loro, essi/esse
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="presente">present</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:imbatto#Italian|imbàtto]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:imbatti#Italian|imbàtti]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:imbatte#Italian|imbàtte]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:imbattiamo#Italian|imbattiàmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:imbattete#Italian|imbattéte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:imbattono#Italian|imbàttono]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="imperfetto">imperfect</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:imbattevo#Italian|imbattévo]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:imbattevi#Italian|imbattévi]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:imbatteva#Italian|imbattéva]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:imbattevamo#Italian|imbattevàmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:imbattevate#Italian|imbattevàte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:imbattevano#Italian|imbattévano]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="passato remoto">past historic</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:imbattei#Italian|imbattéi]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:imbattesti#Italian|imbattésti]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:imbatté#Italian|imbatté]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:imbattemmo#Italian|imbattémmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:imbatteste#Italian|imbattéste]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:imbatterono#Italian|imbattérono]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="futuro semplice">future</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:imbatterò#Italian|imbatterò]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:imbatterai#Italian|imbatterài]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:imbatterà#Italian|imbatterà]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:imbatteremo#Italian|imbatterémo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:imbatterete#Italian|imbatteréte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:imbatteranno#Italian|imbatterànno]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="condizionale presente">conditional</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:imbatterei#Italian|imbatterèi]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:imbatteresti#Italian|imbatterésti]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:imbatterebbe#Italian|imbatterèbbe]]</span>, <span class="Latn" lang="it">[[:si#Italian|si]] [[:imbatterebbe#Italian|imbatterébbe]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:imbatteremmo#Italian|imbatterémmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:imbattereste#Italian|imbatteréste]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:imbatterebbero#Italian|imbatterèbbero]]</span>, <span class="Latn" lang="it">[[:si#Italian|si]] [[:imbatterebbero#Italian|imbatterébbero]]</span>
+|-
+! class="roa-subjunctive-left-rail" | <span title="congiuntivo">subjunctive</span>
+! class="roa-subjunctive-left-rail" | che io
+! class="roa-subjunctive-left-rail" | che tu
+! class="roa-subjunctive-left-rail" | che lui/che lei, che esso/che essa
+! class="roa-subjunctive-left-rail" | che noi
+! class="roa-subjunctive-left-rail" | che voi
+! class="roa-subjunctive-left-rail" | che loro, che essi/che esse
+|-
+! class="roa-subjunctive-left-rail" style="height:3em;" | <span title="congiuntivo presente">present</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:imbatta#Italian|imbàtta]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:imbatta#Italian|imbàtta]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:imbatta#Italian|imbàtta]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:imbattiamo#Italian|imbattiàmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:imbattiate#Italian|imbattiàte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:imbattano#Italian|imbàttano]]</span>
+|-
+! class="roa-subjunctive-left-rail" style="height:3em;" | <span title="congiuntivo imperfetto">imperfect</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:imbattessi#Italian|imbattéssi]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:imbattessi#Italian|imbattéssi]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:imbattesse#Italian|imbattésse]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:imbattessimo#Italian|imbattéssimo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:imbatteste#Italian|imbattéste]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:imbattessero#Italian|imbattéssero]]</span>
+|-
+! rowspan="2" class="roa-imperative-left-rail" style="height:3em;" | <span title="imperativo">imperative</span>
+! class="roa-imperative-left-rail" | &mdash;
+! class="roa-imperative-left-rail" | tu
+! class="roa-imperative-left-rail" | Lei
+! class="roa-imperative-left-rail" | noi
+! class="roa-imperative-left-rail" | voi
+! class="roa-imperative-left-rail" | Loro
+|-
+|
+| <span class="Latn form-of lang-it 2|s|imp-form-of origin-imbàttersi" lang="it">[[:imbattiti#Italian|imbàttiti]]</span>[[Category:Italian links with redundant wikilinks|IMBATTERSI]]
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:imbatta#Italian|imbàtta]]</span>
+| <span class="Latn form-of lang-it 1|p|imp-form-of origin-imbàttersi" lang="it">[[:imbattiamoci#Italian|imbattiàmoci]]</span>[[Category:Italian links with redundant wikilinks|IMBATTERSI]]
+| <span class="Latn form-of lang-it 2|p|imp-form-of origin-imbàttersi" lang="it">[[:imbattetevi#Italian|imbattétevi]]</span>[[Category:Italian links with redundant wikilinks|IMBATTERSI]]
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:imbattano#Italian|imbàttano]]</span>
+|-
+! class="roa-imperative-left-rail" style="height:3em;" | <span title="imperativo negativo">negative imperative</span>
+|
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:imbatterti#Italian|imbàtterti]]</span>, <span class="Latn" lang="it">[[:non#Italian|non]] [[:ti#Italian|ti]]  [[:imbattere#Italian|imbàttere]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:si#Italian|si]]  [[:imbatta#Italian|imbàtta]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:imbattiamoci#Italian|imbattiàmoci]]</span>, <span class="Latn" lang="it">[[:non#Italian|non]] [[:ci#Italian|ci]]  [[:imbattiamo#Italian|imbattiàmo]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:imbattetevi#Italian|imbattétevi]]</span>, <span class="Latn" lang="it">[[:non#Italian|non]] [[:vi#Italian|vi]]  [[:imbattete#Italian|imbattéte]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:si#Italian|si]]  [[:imbattano#Italian|imbàttano]]</span>
+|}</div></div>[[Category:Italian verbs with root-stressed infinitive|IMBATTERSI]][[Category:Italian verbs ending in -ere|IMBATTERSI]][[Category:Italian reflexive verbs|IMBATTERSI]]

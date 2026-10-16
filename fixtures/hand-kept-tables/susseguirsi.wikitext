@@ -1,0 +1,22 @@
+==Italian==
+
+===Etymology===
+{{ety|it|:af|susseguire|-si}}
+From {{af|it|susseguire|-si}}.
+
+===Pronunciation===
+{{it-pr|[ìr]}}
+
+===Verb===
+{{it-verb|@}}
+
+# to [[succeed]] one another
+# {{&lit|it|{{it-compound of}}}}
+
+====Usage notes====
+* Often used as a noun, as in:
+*: {{uxi|it|un '''susseguirsi''' di immagini|a '''succession''' of images}}
+*: {{uxi|it|La tecnica adoperata si limita a raccontare in modo tagliente il '''susseguirsi''' di vicende.|The technique used limits itself to retelling the '''succession''' of events in a succinct way.}}
+
+====Conjugation====
+{{it-conj|@}}
