@@ -1,5 +1,6 @@
-// The dump reader (#28): a MediaWiki export read page by page, main namespace
-// only, into the same `RawPage` the committed fixtures give. The export here
+// The dump reader (#28): a MediaWiki export read page by page, one namespace
+// at a time, the main one unless asked for another (the Appendice pages,
+// #838), into the same `RawPage` the committed fixtures give. The export here
 // is a hand-made miniature of the real one's layout; no case needs the dump.
 
 import assert from "node:assert/strict";
@@ -11,7 +12,7 @@ import { join, resolve } from "node:path";
 import { Readable } from "node:stream";
 import test from "node:test";
 import { RAW_PAGE_WIKI, type RawPage } from "../src/source/rawPage.js";
-import { type DumpIdentity, loadDumpPages, openRawPages, readDumpPages, VerifiedDump } from "../src/source/wiktionaryDump.js";
+import { APPENDIX_NAMESPACE, type DumpIdentity, loadDumpPages, openRawPages, readDumpPages, VerifiedDump } from "../src/source/wiktionaryDump.js";
 
 /** One `<page>` as `pages-articles` writes it, contributor id and all. */
 const page = (title: string, ns: number, revisionId: number, text: string): string => `  <page>
@@ -44,6 +45,7 @@ ${page("casa", 0, 4051358, `<text bytes="80" xml:space="preserve">== {{-it-}} ==
 #* [[dimora]] &amp; &lt;ref&gt;x&lt;/ref&gt; &quot;casa&quot; &#233; &#x2014; fine</text>`)}
 ${page("vuota", 0, 12, `<text bytes="0" xml:space="preserve" />`)}
 ${page("riga", 0, 13, `<text bytes="5" xml:space="preserve">riga\r</text>`)}
+${page("Appendice:Coniugazioni/Italiano/pentirsi", 100, 3997081, `<text bytes="30" xml:space="preserve">{{It-conj|pent|irsi|essere}}</text>`)}
 </mediawiki>
 `;
 
@@ -79,6 +81,14 @@ test("reads each main-namespace page's title, revision, timestamp and wikitext, 
   assert.equal(pages[2].wikitext, "riga\r");
 });
 
+test("asked for the Appendice namespace, it reads only those pages: a verb's conjugation page (#838)", async () => {
+  const pages = await all(readDumpPages(Readable.from([EXPORT]), APPENDIX_NAMESPACE));
+  assert.deepEqual(
+    pages.map((page) => [page.title, page.revisionId, page.wikitext]),
+    [["Appendice:Coniugazioni/Italiano/pentirsi", 3997081, "{{It-conj|pent|irsi|essere}}"]],
+  );
+});
+
 test("a page split across stream chunks mid-line reads the same", async () => {
   const chunks = EXPORT.match(/[\s\S]{1,7}/g) ?? [];
   const whole = await all(readDumpPages(Readable.from([EXPORT])));
@@ -100,6 +110,7 @@ test("a bz2 dump is streamed through bzip2 and gives the same pages; the source 
     const dump = await VerifiedDump.open(`${xml}.bz2`, await identityOf(`${xml}.bz2`));
     try {
       assert.deepEqual(await all(dump.pages()), plain);
+      assert.deepEqual(await all(dump.pages(APPENDIX_NAMESPACE)), await all(readDumpPages(Readable.from([EXPORT]), APPENDIX_NAMESPACE)));
     } finally {
       await dump.close();
     }

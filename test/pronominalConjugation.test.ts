@@ -21,7 +21,7 @@ const recordsOf = async (fixture: string): Promise<RawRecord[]> =>
 // 8179 `andarsene`, 47593 `alzare`, 50299 `trasferire`, 50301 `trasferirsi`,
 // 448681 `pentirsi`, 532997 `arrendere`, 137017 and 137018 `figurare`, 464591
 // and 464592 `figurarsi`, 59328 `laureati`, 463524 `laurearsi`, 547967
-// `laureare`.
+// `laureare`; then the #838 lines test/regularConjugation.test.ts names.
 const PRONOMINAL = await recordsOf("pronominal-verb-tables.jsonl");
 
 const cellsOf = (word: string): BaseCell[] => {

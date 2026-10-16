@@ -112,7 +112,9 @@
 // none of the base words' facts, its pronunciation included.
 
 import { foldItalianApostrophes, normalizeItalianExact } from "@lexema/italian/normalize.ts";
+import { CONJUGATION_TEMPLATE_CALLS } from "@lexema/italian/conjugationTemplateCalls.ts";
 import { pronominalVerb, type PronominalVerb } from "@lexema/italian/pronominalConjugation.ts";
+import { regularCells, regularClassOf } from "@lexema/italian/regularConjugation.ts";
 import { VERB_FORM_LINE_RULE, verbFormLine, type SpelledGender } from "@lexema/italian/verbFormLine.ts";
 import { WORD_SHAPE_LINE_RULE, wordShapeLine, type ShapedSpelling } from "@lexema/italian/wordShape.ts";
 import { mergeExpressions } from "@lexema/lookup/expressions.ts";
@@ -138,7 +140,16 @@ import {
 } from "@lexema/lookup/types.ts";
 import { definitionTextKey, definitionsOf, placeOf, readAt, type DefinitionItem } from "./definitions.ts";
 import { wiktionarySource, type FooterSource } from "./footerSource.ts";
-import { conjugates, conjugationOf, declaredConjugationOf, placesAny, pronominalConjugationOf, type Conjugation, type PronominalForm } from "./conjugation.ts";
+import {
+  conjugates,
+  conjugationOf,
+  declaredConjugationOf,
+  placesAny,
+  pronominalConjugationOf,
+  type BaseCellOf,
+  type Conjugation,
+  type PronominalForm,
+} from "./conjugation.ts";
 import { agreementOf, placesOf, type Agreement, type GridPlace, type Spelling } from "./genderGrid.ts";
 import { GRID_FORM_LINE_RULE, gridFormLine } from "./gridFormLine.ts";
 import { unlinkedLemmas } from "./lemmaLines.ts";
@@ -282,6 +293,9 @@ function ownFormsOf(reading: Reading, taken: TakenConjugation | undefined): OwnF
  *
  * - For a pronominal verb, the one `it-pronominal-conjugation/v1` builds
  *   from its base verb's table (#837): `trasferirsi` from `trasferire`'s.
+ *   Where no base verb record has a table, it builds on the regular cells
+ *   `it-regular-conjugation/v1` gives the class the source settles (#838):
+ *   `pentirsi` from `{{It-conj|pent|irsi|essere}}`.
  * - Else the one its form records declare (#799), built as a declared lemma's
  *   is (#453): `bellare`'s record has no table, and some thirty records say
  *   "… di bellare".
@@ -291,8 +305,8 @@ export type TakenConjugation =
   | PronominalConjugation;
 
 /**
- * A pronominal verb's conjugation, built from its base verb's (#837), and the
- * one reading that draws it (`pronominalOf`).
+ * A pronominal verb's conjugation, built from its base verb's (#837) or from a
+ * regular one (#838), and the one reading that draws it (`pronominalOf`).
  */
 export type PronominalConjugation = { kind: "pronominal-conjugation"; conjugation: Conjugation<PronominalForm>; owner: Reading };
 
@@ -378,7 +392,8 @@ export function pronominalBaseWords(readings: readonly Reading[]): readonly stri
  * (`trasferirsi (coniugazione)`, the source's pointer to it) goes first; else
  * the first in the order the words were read (`andare`, which lists no
  * `andarsene (coniugazione)`). None when no record has a table: `pentirsi`,
- * whose `pentire` has no record, gets no table.
+ * whose `pentire` has no record, takes a regular one instead, when the source
+ * settles its class (#838).
  */
 function pronominalBaseOf(verb: PronominalVerb, bases: readonly Reading[]): Reading | undefined {
   const tables = bases.filter((base) => base.isAboutQuery && isVerbReading(base) && !isFormOfReading(base) && conjugates(base.forms));
@@ -387,11 +402,13 @@ function pronominalBaseOf(verb: PronominalVerb, bases: readonly Reading[]): Read
 }
 
 /**
- * The page's taken conjugation: a pronominal verb's built one when its base
- * verb has a table (#837), else the declared one when it places a form (#799).
- * The built table goes first because the form records a pronominal verb has
- * name only a few of its cells: `laurearsi`'s declared table is one
- * imperative, `laureati`, which the built table holds too.
+ * The page's taken conjugation: a pronominal verb's built one, else the
+ * declared one when it places a form (#799). The built one is built on its
+ * base verb's table when a base verb record has one (#837), else on the
+ * regular cells of the class the source settles (#838). It goes before the
+ * declared one because the form records a pronominal verb has name only a few
+ * of its cells: `laurearsi`'s declared table is one imperative, `laureati`,
+ * and `pentirsi`'s is one imperative too, `pentiti`.
  */
 function takenConjugationOf(
   readings: readonly Reading[],
@@ -399,14 +416,29 @@ function takenConjugationOf(
   bases: readonly Reading[],
 ): TakenConjugation | undefined {
   const pronominal = pronominalOf(readings);
-  const base = pronominal === undefined ? undefined : pronominalBaseOf(pronominal.verb, bases);
-  if (pronominal !== undefined && base !== undefined) {
-    const conjugation = pronominalConjugationOf(pronominal.verb, base.forms);
+  const baseCells = pronominal === undefined ? undefined : pronominalBaseCells(pronominal, bases);
+  if (pronominal !== undefined && baseCells !== undefined) {
+    const conjugation = pronominalConjugationOf(pronominal.verb, baseCells);
     if (placesAny(conjugation)) return { kind: "pronominal-conjugation", conjugation, owner: pronominal.owner };
   }
   if (!wantsDeclaredConjugation(readings)) return undefined;
   const conjugation = declaredConjugationOf(declared);
   return placesAny(conjugation) ? { kind: "declared-conjugation", conjugation } : undefined;
+}
+
+/**
+ * The base cells a pronominal verb's table is built on: its base verb
+ * record's forms when one has a table (#837), else the regular cells of the
+ * class the source settles for it (`it-regular-conjugation/v1`, #838), read
+ * off the owner's glosses and the pinned `{{It-conj}}` calls. None when the
+ * source settles no class.
+ */
+function pronominalBaseCells(pronominal: { verb: PronominalVerb; owner: Reading }, bases: readonly Reading[]): readonly BaseCellOf[] | undefined {
+  const base = pronominalBaseOf(pronominal.verb, bases);
+  if (base !== undefined) return base.forms;
+  const glosses = pronominal.owner.senses.flatMap((sense) => sense.glosses.map((gloss) => gloss.text));
+  const settled = regularClassOf(pronominal.verb, glosses, CONJUGATION_TEMPLATE_CALLS);
+  return settled.kind === "settled" ? regularCells(settled) : undefined;
 }
 
 /** What any source reading may show after its own text, in this order on the page. */

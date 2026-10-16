@@ -36,7 +36,9 @@ source's own pointer; the other 7 (`dirsi`, `sottrarsi`, `uscirsene`, ...) take
 the first base record with a table. 54 have two base records; in every one of
 those the two records' tables are identical, form for form. The 152 are listed
 under `noneWords` in the output and filed as
-[#838](https://github.com/povlabs/lexema/issues/838).
+[#838](https://github.com/povlabs/lexema/issues/838); each one's outcome under
+`it-regular-conjugation/v1` is in
+[2026-10-16-pronominal-regular-tables.md](2026-10-16-pronominal-regular-tables.md).
 
 ## Every word page, before and after
 

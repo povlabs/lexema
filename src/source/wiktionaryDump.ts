@@ -45,8 +45,11 @@ export const KNOWN_DUMPS: Readonly<Record<string, DumpIdentity & { file: string;
   },
 };
 
-/** The main namespace: dictionary entries. Every other namespace is skipped. */
+/** The main namespace: dictionary entries. A read takes one namespace and skips every other. */
 const MAIN_NAMESPACE = 0;
+
+/** The `Appendice` namespace, which holds each verb's conjugation page (`Appendice:Coniugazioni/Italiano/pentirsi`, #838). */
+export const APPENDIX_NAMESPACE = 100;
 
 /** Split a text stream on `\n` only; a lone `\r` inside wikitext stays in its line. */
 async function* linesOf(stream: Readable): AsyncGenerator<string> {
@@ -107,11 +110,12 @@ function finished(draft: PageDraft, lineNo: number): RawPage {
 }
 
 /**
- * Every main-namespace page in a MediaWiki export, in dump order: its title,
- * the revision's id and timestamp, and the revision's wikitext. A
- * `pages-articles` dump holds one revision per page, the latest at dump time.
+ * Every page of one namespace in a MediaWiki export, the main one unless
+ * `namespace` names another, in dump order: its title, the revision's id and
+ * timestamp, and the revision's wikitext. A `pages-articles` dump holds one
+ * revision per page, the latest at dump time.
  */
-export async function* readDumpPages(xml: Readable): AsyncGenerator<RawPage> {
+export async function* readDumpPages(xml: Readable, namespace: number = MAIN_NAMESPACE): AsyncGenerator<RawPage> {
   let draft: PageDraft | undefined;
   let lineNo = 0;
   for await (const line of linesOf(xml)) {
@@ -129,7 +133,7 @@ export async function* readDumpPages(xml: Readable): AsyncGenerator<RawPage> {
     const trimmed = line.trim();
     if (trimmed === "</page>") {
       if (draft.ns === undefined) throw new Error(`dump line ${lineNo}: page without a namespace`);
-      if (draft.ns === MAIN_NAMESPACE) yield finished(draft, lineNo);
+      if (draft.ns === namespace) yield finished(draft, lineNo);
       draft = undefined;
       continue;
     }
@@ -223,11 +227,11 @@ export class VerifiedDump {
     }
   }
 
-  /** Every main-namespace page, a `.bz2` dump decompressed as it is read. */
-  async *pages(): AsyncGenerator<RawPage> {
+  /** Every page of one namespace, the main one unless `namespace` names another, a `.bz2` dump decompressed as it is read. */
+  async *pages(namespace: number = MAIN_NAMESPACE): AsyncGenerator<RawPage> {
     const bytes = this.handle.createReadStream({ start: 0, autoClose: false });
-    if (this.path.endsWith(".bz2")) yield* decompressed(bytes, this.path);
-    else yield* readDumpPages(bytes);
+    if (this.path.endsWith(".bz2")) yield* decompressed(bytes, this.path, namespace);
+    else yield* readDumpPages(bytes, namespace);
     if (stampOf(await this.handle.stat()) !== this.stamp) {
       throw new Error(`${this.path} changed while it was being read; its pages are not the checked dump's. Re-run it.`);
     }
@@ -242,7 +246,7 @@ export class VerifiedDump {
 const stampOf = (stats: Stats): string => `${stats.size}:${stats.mtimeMs}`;
 
 /** The pages of a bz2 byte stream, decompressed through `bzip2 -dc`. */
-async function* decompressed(bytes: Readable, path: string): AsyncGenerator<RawPage> {
+async function* decompressed(bytes: Readable, path: string, namespace: number): AsyncGenerator<RawPage> {
   const bzip2 = spawn("bzip2", ["-dc"], { stdio: ["pipe", "pipe", "pipe"] });
   const stderr: Buffer[] = [];
   bzip2.stderr.on("data", (chunk: Buffer) => stderr.push(chunk));
@@ -259,7 +263,7 @@ async function* decompressed(bytes: Readable, path: string): AsyncGenerator<RawP
   bzip2.stdin.on("error", () => {});
   bytes.pipe(bzip2.stdin);
   try {
-    yield* readDumpPages(bzip2.stdout);
+    yield* readDumpPages(bzip2.stdout, namespace);
     await exited;
   } finally {
     bytes.unpipe(bzip2.stdin);
