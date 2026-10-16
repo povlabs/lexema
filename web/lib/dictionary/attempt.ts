@@ -34,12 +34,16 @@ import type { DeclaredLemmaPage } from "./declaredLemmaPage.ts";
  * its form records declare (#799, `wantsDeclaredConjugation` in wordPage.ts):
  * `bellare`'s table is built from them. Empty for any other word.
  *
+ * A pronominal verb found whose records draw no conjugation also carries the
+ * records of its base verb (#837, `pronominalBaseWords` in wordPage.ts):
+ * `trasferirsi`'s table is built from `trasferire`'s. Empty for any other word.
+ *
  * The failure is a value rather than a thrown error so the page has to render
  * it. It carries no detail on purpose: the reason is a database message meant
  * for whoever runs the Worker, and it goes to the log, not to the reader.
  */
 export type Attempt =
-  | (FoundResult & { written: string[]; lemmas: Reading[]; declared: DeclaredVerbForm[] })
+  | (FoundResult & { written: string[]; lemmas: Reading[]; declared: DeclaredVerbForm[]; bases: Reading[] })
   | (DeclaredLemmaResult & { page: DeclaredLemmaPage; written: string[] })
   | RejectedResult
   | (NotFoundResult & { nearby: Nearby })

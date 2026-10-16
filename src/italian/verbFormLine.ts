@@ -20,7 +20,7 @@
 //   stato         "participio di essere"
 //
 // A searched feminine compound form (`sono andata`, #676) reaches the cell of
-// its masculine through `it-essere-agreement/v1` (src/italian/essereAgreement.ts),
+// its masculine through `it-essere-agreement/v2` (src/italian/essereAgreement.ts),
 // and its line names the gender after the number. A masculine line names none:
 //
 //   sono andata   "prima persona singolare femminile del passato prossimo indicativo di andare"
@@ -60,7 +60,7 @@ const NUMBER: Record<VerbNumber, string> = { singular: "singolare", plural: "plu
 
 /**
  * The gender the query spelled the form in: as the cell spells it, or its
- * feminine, read by `it-essere-agreement/v1`. Only the feminine is named.
+ * feminine, read by `it-essere-agreement/v2`. Only the feminine is named.
  */
 export type SpelledGender = "as-listed" | "feminine";
 

@@ -88,7 +88,7 @@ export function cardOf(attempt: Attempt): Card {
       meaning: first === undefined ? undefined : phraseText(first.text),
     };
   }
-  const page = wordPage(searched, attempt.readings, attempt.lemmas, attempt.route, attempt.declared);
+  const page = wordPage(searched, attempt.readings, attempt.lemmas, attempt.route, attempt.declared, attempt.bases);
   // The reading the page's first meaning sits under: the first block, or the
   // first reading that has a definition. A page with neither falls back to its
   // first reading.

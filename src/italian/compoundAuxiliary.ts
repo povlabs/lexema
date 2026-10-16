@@ -15,7 +15,7 @@
 //
 // The spelling's first word is the auxiliary, or its second when the first is
 // a reflexive clitic (`ESSERE_CLITICS`). The switch is the spelling, never the
-// record's `ausiliare` line, for the reason `it-essere-agreement/v1` gives.
+// record's `ausiliare` line, for the reason `it-essere-agreement/v2` gives.
 // Nothing is stored: the table groups the source's spellings as it is built.
 // Huey's ruling, 2026-10-06: https://github.com/povlabs/lexema/issues/683
 

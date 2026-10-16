@@ -235,7 +235,7 @@ test("every corrected cell's spelling finds assorbire's verb reading, found as t
       assert.notEqual(feminine, first);
       // The whole cell, as `SEARCH_SQL`'s exact route reads it.
       assert.deepEqual(await foundSorted(corrected, surface), asCells("surface", surface, pointers), surface);
-      // Its first spelling, `siamo assorbiti`, through rule it-essere-agreement/v1's first-spelling range.
+      // Its first spelling, `siamo assorbiti`, through rule it-essere-agreement/v2's first-spelling range.
       assert.deepEqual(await foundSorted(corrected, first), asCells("first-spelling", surface, pointers), first);
       // Its feminine, `siamo assorbite`, read as that masculine by the same rule.
       assert.deepEqual(await foundSorted(corrected, feminine), asCells("feminine", surface, pointers), feminine);

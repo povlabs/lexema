@@ -39,7 +39,7 @@ import type { DeclaredChange, ReleaseId } from "../../src/update/declaration.js"
 import { readServedRelease } from "../../src/update/readServedRelease.js";
 import { fromNodeSqlite } from "../../src/lookup/database.js";
 import { lookup } from "../../src/lookup/lookup.js";
-import { formsOfQueryReadings, isFormOfReading, type Reading, type SourceRef } from "../../src/lookup/types.js";
+import { formsOfQueryReadings, isFormOfReading, isSourceRef, type Reading, type SourceRef } from "../../src/lookup/types.js";
 import type { Attempt } from "@/lib/dictionary/attempt.ts";
 import { searchAttempt } from "@/lib/dictionary/searchAttempt.ts";
 import { definitionsOf, type DefinitionItem } from "@/lib/dictionary/definitions.ts";
@@ -3938,6 +3938,179 @@ test("a sense label shows in the Italian the page wrote, not the extraction's En
       assert.match(text, new RegExp(`\\(${esc(label)}\\) `), word);
       assert.doesNotMatch(text, new RegExp(`\\b${tag}\\b`), word);
     }
+  });
+});
+
+// Pronominal verbs whose record has no table (#837) ------------------------------
+//
+// `fixtures/pronominal-verb-tables.jsonl` holds real lines of it-0c432803:
+// archive lines 624 `arrendersi` and 770 `accorgersi`, which carry their own
+// table; 2061 `alzarsi`, 8179 `andarsene`, 50301 `trasferirsi` and 448681
+// `pentirsi`, which carry none; and the base verbs 47593 `alzare`, 2344 and
+// 2345 `andare`, 50299 `trasferire` and 532997 `arrendere`; then 137017 and
+// 137018 `figurare`, and 464591 and 464592 `figurarsi`, whose first record has
+// no definition; then 59328 `laureati`, whose record says it is laurearsi's
+// imperative, 463524 `laurearsi` and 547967 `laureare`. `pentire` has no
+// record in the release.
+
+const PRONOMINAL_LINES = (await readFile(join(REPO, "fixtures/pronominal-verb-tables.jsonl"), "utf8")).trimEnd().split("\n");
+const withPronominal = (run: (f: Fixture) => Promise<void>) => withLines(PRONOMINAL_LINES, run);
+
+/** The line of a record in that fixture, which its forms' refs name. */
+const pronominalLine = (word: string): number =>
+  PRONOMINAL_LINES.findIndex((line) => (JSON.parse(line) as { word: string; pos: string }).word === word) + 1;
+
+/** A conjugation link built by rule: it links to its own search and names no record's form or line. */
+const builtLink = (spelling: string, shown = spelling): RegExp =>
+  new RegExp(`href="/\\?q=${esc(encodeURIComponent(spelling))}" lang="it">${esc(shown)}</a>`);
+
+test("a pronominal verb with no table shows one built from its base verb's: trasferirsi (#837)", async () => {
+  await withPronominal(async ({ db }) => {
+    const html = await render(db, "trasferirsi");
+    assert.equal(occurrencesOf(html, ">Forme<"), 1);
+    assert.deepEqual(tenseColumn(html, "Indicativo", "presente"), [
+      "io mi trasferisco",
+      "tu ti trasferisci",
+      "lui, lei si trasferisce",
+      "noi ci trasferiamo",
+      "voi vi trasferite",
+      "loro si trasferiscono",
+    ]);
+    assert.deepEqual(tenseColumn(html, "Indicativo", "passato prossimo"), [
+      "io mi sono trasferito/a",
+      "tu ti sei trasferito/a",
+      "lui, lei si è trasferito/a",
+      "noi ci siamo trasferiti/e",
+      "voi vi siete trasferiti/e",
+      "loro si sono trasferiti/e",
+    ]);
+    for (const [mood, tense] of COMPOUND_TENSES) {
+      const cells = tenseColumn(html, mood, tense);
+      assert.equal(cells.length, 6, `${mood} ${tense}`);
+      cells.forEach((cell, row) => assert.match(cell, row < 3 ? /^\S.* [mts]i \S+ trasferito\/a$/ : /^\S.* [cvs]i \S+ trasferiti\/e$/, `${mood} ${tense}`));
+    }
+    assert.equal(textOf(nonFinite(html, "gerundio") ?? ""), "trasferendosi");
+    assert.equal(textOf(nonFinite(html, "participio") ?? ""), "trasferitosi");
+    assert.equal(textOf(nonFinite(html, "ausiliare") ?? ""), "essere");
+    assert.equal(textOf(firstCell(panel(html, "Imperativo"), "tu") ?? ""), "trasferisciti, non trasferirti");
+    assert.equal(textOf(firstCell(panel(html, "Imperativo"), "noi") ?? ""), "trasferiamoci");
+    // Each built spelling links to its own search; nothing is marked, and nothing says how it was made.
+    assert.match(html, builtLink("mi trasferisco"));
+    assert.match(html, builtLink("mi sono trasferito", "mi sono trasferito/a"));
+    assert.doesNotMatch(html, /data-searched=""/);
+    assert.doesNotMatch(textOf(html), /pronominal|it-pronominal|regola|derivat|costruit|calcolat/i);
+  });
+});
+
+test("alzarsi and andarsene show their built tables; an -rsene verb takes me ne, te ne, se ne (#837)", async () => {
+  await withPronominal(async ({ db }) => {
+    const alzarsi = await render(db, "alzarsi");
+    assert.equal(occurrencesOf(alzarsi, ">Forme<"), 1);
+    assert.equal(tenseColumn(alzarsi, "Indicativo", "presente")[0], "io mi alzo");
+    assert.equal(tenseColumn(alzarsi, "Indicativo", "passato prossimo")[3], "noi ci siamo alzati/e");
+    // alzare's own table is built on avere; the pronominal one is built on essere.
+    assert.equal(textOf(nonFinite(alzarsi, "ausiliare") ?? ""), "essere");
+
+    // andarsene's record names only gloss words in its form_of edges, so it
+    // is a form-of reading, and still draws its own built table.
+    const andarsene = await render(db, "andarsene");
+    assert.equal(occurrencesOf(andarsene, ">Forme<"), 1);
+    const presente = tenseColumn(andarsene, "Indicativo", "presente");
+    assert.equal(presente[0], "io me ne vado, me ne vo");
+    assert.equal(presente[5], "loro se ne vanno");
+    const passato = tenseColumn(andarsene, "Indicativo", "passato prossimo");
+    assert.equal(passato[0], "io me ne sono andato/a");
+    assert.equal(passato[3], "noi ce ne siamo andati/e");
+    assert.equal(textOf(firstCell(panel(andarsene, "Imperativo"), "tu") ?? ""), "vattene, non andartene");
+    assert.equal(textOf(firstCell(panel(andarsene, "Imperativo"), "noi") ?? ""), "andiamocene");
+    assert.equal(textOf(nonFinite(andarsene, "gerundio") ?? ""), "andandosene");
+  });
+});
+
+test("a pronominal verb's built table shows once, under its first record with a meaning: figurarsi (#837)", async () => {
+  await withPronominal(async ({ db }) => {
+    const html = await render(db, "figurarsi");
+    assert.equal(occurrencesOf(html, ">Forme<"), 1);
+    const [first, ...rest] = readingsOfPage(html);
+    // The record with no definition has nothing to show, and the table sits beside the meanings.
+    assert.equal(rest.length, 0);
+    assert.match(first, />Definizioni</);
+    assert.match(first, />Forme</);
+    assert.equal(tenseColumn(html, "Indicativo", "presente")[0], "io mi figuro");
+  });
+});
+
+test("a pronominal verb's built table goes before the few cells its form records declare: laurearsi (#837)", async () => {
+  await withPronominal(async ({ db }) => {
+    const answer = await attempt(db, "laurearsi");
+    assert.ok(answer.outcome === "found");
+    // laureati's record declares one cell, the tu imperative.
+    assert.equal(answer.declared.length, 1);
+    const html = await render(db, "laurearsi");
+    assert.equal(occurrencesOf(html, ">Forme<"), 1);
+    assert.equal(tenseColumn(html, "Indicativo", "presente")[0], "io mi laureo");
+    assert.equal(textOf(firstCell(panel(html, "Imperativo"), "tu") ?? ""), "laureati, non laurearti");
+    // The built cell links to its search and names no declaring record's line.
+    assert.match(html, builtLink("laureati"));
+  });
+});
+
+test("a pronominal verb whose base verb has no record gets no table: pentirsi (#837)", async () => {
+  await withPronominal(async ({ db }) => {
+    const answer = await attempt(db, "pentirsi");
+    assert.ok(answer.outcome === "found");
+    // `pentire` has no record, so the search read none.
+    assert.deepEqual(answer.bases, []);
+    const html = await render(db, "pentirsi");
+    assert.doesNotMatch(html, />Forme</);
+    assert.doesNotMatch(textOf(html), /mancan|missing|nessuna voce|nessun dato/i);
+  });
+});
+
+test("a pronominal verb that carries its own table shows exactly that table: arrendersi, accorgersi (#837)", async () => {
+  // The fixture's first two lines, arrendersi and accorgersi, with no base
+  // verb beside them; their lines keep their numbers, so their refs match.
+  const own = PRONOMINAL_LINES.slice(0, 2);
+  assert.deepEqual(own.map((line) => (JSON.parse(line) as { word: string }).word), ["arrendersi", "accorgersi"]);
+  for (const word of ["arrendersi", "accorgersi"]) {
+    let alone = "";
+    await withLines(own, async ({ db }) => {
+      alone = await render(db, word);
+    });
+    await withPronominal(async ({ db }) => {
+      const answer = await attempt(db, word);
+      assert.ok(answer.outcome === "found");
+      // Its own record draws a table, so the search reads no base verb for it.
+      assert.deepEqual(answer.bases, [], word);
+      const html = await render(db, word);
+      assert.equal(html, alone, word);
+      // Every cell is the record's own form, named by its index.
+      assert.match(html, /data-form="\d+"/);
+      assert.equal(tenseColumn(html, "Indicativo", "presente")[0], word === "arrendersi" ? "io mi arrendo" : "io mi accorgo");
+    });
+  }
+});
+
+test("a built cell is the rule's in the page model, carrying the base verb's cell it was built from (#837)", async () => {
+  await withPronominal(async ({ db }) => {
+    const answer = await attempt(db, "trasferirsi");
+    assert.ok(answer.outcome === "found" && answer.route.kind !== "phrase");
+    const page = wordPage("trasferirsi", answer.readings, answer.lemmas, answer.route, answer.declared, answer.bases);
+    const [entry] = page.readings;
+    assert.ok(entry.kind === "source");
+    const own = entry.parts.find((part) => part.kind === "own-forms");
+    assert.ok(own?.kind === "own-forms" && own.forms.kind === "pronominal-conjugation");
+    const forms = [
+      ...own.forms.conjugation.nonFinite.flatMap((item) => item.forms),
+      ...own.forms.conjugation.moods.flatMap((mood) => [...mood.simple, ...mood.compound].flatMap((tense) => tense.cells.flatMap((cell) => cell.forms))),
+    ];
+    assert.ok(forms.length > 90);
+    for (const form of forms) {
+      assert.equal(form.rule, "it-pronominal-conjugation/v1");
+      assert.ok(isSourceRef(form.from.ref) && form.from.ref.lineNo === pronominalLine("trasferire"), form.surface);
+    }
+    const io = forms.find((form) => form.surface === "mi trasferisco");
+    assert.equal(io?.from.surface, "trasferisco");
   });
 });
 

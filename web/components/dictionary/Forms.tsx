@@ -9,10 +9,12 @@
 
 import type { ReactNode } from "react";
 import { bothGenders, type AgreeingSpelling } from "@lexema/italian/essereAgreement.ts";
-import { factRefKey, sourcePointerOf, type DeclaredForm } from "@lexema/lookup/types.ts";
 import {
+  isDeclaredForm,
   isSourceForm,
   splitsByAuxiliary,
+  tableFormKey,
+  tableFormPointer,
   type Conjugation,
   type MoodTable,
   type NonFinite,
@@ -65,8 +67,6 @@ import {
 
 export const searchHref = (word: string): string => `/?q=${encodeURIComponent(word)}`;
 
-/** A form's place in the source, which no other form in a table shares. */
-const formKey = ({ ref }: TableForm): string => factRefKey(ref);
 
 function Dash() {
   return (
@@ -167,9 +167,10 @@ export function SuperlativeGrid({ grid }: { grid: Grid }) {
  */
 function FormLink({ forms, searched, shown }: { forms: readonly TableForm[]; searched: boolean; shown: string }) {
   // A record's own entry is named by its index in `forms[]`; a declared
-  // lemma's form is a record of its own, named by its line.
+  // lemma's form is a record of its own, named by its line. A cell built by
+  // rule (#837) is named by neither: it is in no record.
   const own = forms.filter(isSourceForm);
-  const declared = forms.filter((form): form is DeclaredForm => !isSourceForm(form));
+  const declared = forms.filter(isDeclaredForm);
   return (
     <a
       className={searched ? FORM_LINK_SEARCHED : FORM_LINK}
@@ -239,7 +240,7 @@ function FormLinks({
   return (
     <>
       {spellings.map((group, i) => (
-        <span key={formKey(group[0])}>
+        <span key={tableFormKey(group[0])}>
           {i > 0 && <span className={CELL_SEPARATOR}>, </span>}
           <FormLink forms={group} searched={group.some(searched)} shown={shownSpelling(group[0].surface, agreeing)} />
         </span>
@@ -395,7 +396,7 @@ export function ConjugationView({
   searchedPointers: ReadonlySet<string>;
   word: string;
 }): ReactNode {
-  const searched = (form: TableForm) => searchedPointers.has(sourcePointerOf(form.ref) ?? "");
+  const searched = (form: TableForm) => searchedPointers.has(tableFormPointer(form) ?? "");
   return (
     <>
       <NonFiniteLine items={conjugation.nonFinite} searched={searched} />

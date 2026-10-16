@@ -536,7 +536,7 @@ const plural = (index: number): CorrectedFacts => ({ number: { overrides: tag(in
  * A plural essere cell of `assorbire` (#723). The line spells it `<auxiliary>
  * assorbito, assorti, assorti`, and it reads `<auxiliary> assorbiti, assorti`:
  * the plural participle first, as in every other plural essere cell, and the
- * second spelling once. `it-essere-agreement/v1` then shows its feminine too.
+ * second spelling once. `it-essere-agreement/v2` then shows its feminine too.
  */
 const assorbireCell = (index: number, auxiliary: string): CorrectedCell => ({
   index,

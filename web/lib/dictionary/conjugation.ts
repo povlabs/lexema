@@ -9,17 +9,24 @@
 // (coniugazione)`, the link to the reflexive verb) is not shown.
 //
 // A compound spelling built on essere is shown with both genders, `sono
-// andato/a`, `siamo andati/e`, where `it-essere-agreement/v1`
+// andato/a`, `siamo andati/e`, where `it-essere-agreement/v2`
 // (src/italian/essereAgreement.ts) says it agrees (#676). The form stays the
 // source's spelling and links to its own search; only the text shown changes.
 //
 // A declared lemma's forms (#453) carry no tags: each is placed by the slot its
 // gloss names (`it-verb-form-gloss/v1`, src/italian/verbFormGloss.ts), into the
 // same grid.
+//
+// A pronominal verb whose record has no table (`trasferirsi`, #837) takes one
+// built from its base verb's (`trasferire`) by `it-pronominal-conjugation/v1`
+// (src/italian/pronominalConjugation.ts): each built cell sits where the base
+// cell it was built from sits, and carries that cell, so a built spelling is
+// never taken for a source one (ADR 0016).
 
 import { groupByAuxiliary } from "@lexema/italian/compoundAuxiliary.ts";
 import { essereAgreement, type AgreeingSpelling } from "@lexema/italian/essereAgreement.ts";
-import { sourcePointerOf, sourceTagsOf, type DeclaredForm, type DeclaredVerbForm, type SearchedSpellings, type SourceForm } from "@lexema/lookup/types.ts";
+import { PRONOMINAL_CONJUGATION_RULE, pronominalSpellings, type PronominalVerb } from "@lexema/italian/pronominalConjugation.ts";
+import { factRefKey, sourcePointerOf, sourceTagsOf, type DeclaredForm, type DeclaredVerbForm, type SearchedSpellings, type SourceForm } from "@lexema/lookup/types.ts";
 import {
   NON_FINITE_NAMES,
   personOfItalianVerbForm,
@@ -94,15 +101,40 @@ const NUMBER_OF: Record<Person, VerbNumber> = {
   loro: "plural",
 };
 
-/** A form a table can hold: a record's own `forms[]` entry, or a declared lemma's form record. */
-export type TableForm = SourceForm | DeclaredForm;
+/**
+ * A cell `it-pronominal-conjugation/v1` built from a base verb's cell (#837):
+ * the spelling it built, `mi trasferisco`, and the base verb's own form it was
+ * built from, `trasferisco`, with that form's place in the source. It is
+ * Lexema's text, built when the page is built and never stored (ADR 0012).
+ */
+export interface PronominalForm {
+  surface: string;
+  rule: typeof PRONOMINAL_CONJUGATION_RULE;
+  from: SourceForm;
+}
+
+/** A form a table can hold: a record's own `forms[]` entry, a declared lemma's form record, or a cell built by rule from a base verb's. */
+export type TableForm = SourceForm | DeclaredForm | PronominalForm;
 
 /** Whether a table's form is a record's own `forms[]` entry, which alone has an index there. */
 export const isSourceForm = (form: TableForm): form is SourceForm => "index" in form;
 
+/** Whether a table's form was built by rule rather than read from a record (#837). */
+export const isRuleBuilt = (form: TableForm): form is PronominalForm => "rule" in form;
+
+/** Whether a table's form is a declared lemma's form record, which is named by its own line. */
+export const isDeclaredForm = (form: TableForm): form is DeclaredForm => !isSourceForm(form) && !isRuleBuilt(form);
+
+/** A key no other form of one table shares: its place in the source, or, for a built cell, the rule and the base cell it was built from. */
+export const tableFormKey = (form: TableForm): string =>
+  isRuleBuilt(form) ? `${form.rule}\u0000${factRefKey(form.from.ref)}` : factRefKey(form.ref);
+
+/** The source pointer of a form a search can hit: a record's own entry or a declared form; a built cell has none. */
+export const tableFormPointer = (form: TableForm): string | undefined => (isRuleBuilt(form) ? undefined : sourcePointerOf(form.ref));
+
 const NONE_AGREE: ReadonlyMap<string, AgreeingSpelling> = new Map();
 
-/** The spellings of a compound cell on a row of `number` that `it-essere-agreement/v1` says agree, by spelling. */
+/** The spellings of a compound cell on a row of `number` that `it-essere-agreement/v2` says agree, by spelling. */
 function agreeingOf(forms: readonly TableForm[], number: VerbNumber): ReadonlyMap<string, AgreeingSpelling> {
   const agreeing = new Map<string, AgreeingSpelling>();
   for (const { surface } of forms) {
@@ -125,7 +157,7 @@ export interface Cell<F extends TableForm = SourceForm> {
   /**
    * The cell's spellings that agree with the subject's gender, keyed by the
    * source's spelling: the table shows `sono andato` as `sono andato/a`
-   * (`it-essere-agreement/v1`, #676). Only a compound tense has any.
+   * (`it-essere-agreement/v2`, #676). Only a compound tense has any.
    */
   agreeing: ReadonlyMap<string, AgreeingSpelling>;
 }
@@ -304,6 +336,21 @@ export function conjugationOf(forms: readonly SourceForm[], searched: SearchedSp
  */
 export function declaredConjugationOf(forms: readonly DeclaredVerbForm[]): Conjugation<DeclaredVerbForm> {
   return layOut(placedBy(forms, (form) => placeOfGloss(form.slot)), () => false);
+}
+
+/**
+ * A pronominal verb's conjugation, built from its base verb's forms by
+ * `it-pronominal-conjugation/v1` (#837): each built cell where its base cell
+ * sits. The query is the pronominal verb itself, which no cell holds, so no
+ * cell is marked.
+ */
+export function pronominalConjugationOf(verb: PronominalVerb, base: readonly SourceForm[]): Conjugation<PronominalForm> {
+  const spellings = pronominalSpellings(verb, base.map((form) => ({ spelling: form.surface, ...sourceTagsOf(form) })));
+  const built = base.flatMap((from, i): PronominalForm[] => {
+    const surface = spellings[i];
+    return surface === undefined ? [] : [{ surface, rule: PRONOMINAL_CONJUGATION_RULE, from }];
+  });
+  return layOut(placedBy(built, (form) => placeOf(form.from)), () => false);
 }
 
 /** Whether a conjugation places any form at all. */
