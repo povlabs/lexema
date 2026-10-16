@@ -59,7 +59,7 @@ class in `fixtures/dev-seed.jsonl` (`parlare`, `unificare`, `litigare`,
 | A rule-built table, its class from an `{{It-conj}}` call | 51 |
 | A rule-built table, its class from the `-are` ending | 55 |
 | Not a pronominal verb: every gloss says it is another verb's form | 21 |
-| Listed for Huey: the source does not settle the class | 24 |
+| Listed for Huey: the source does not settle the class (since #844: 21 hand-kept tables, 3 listed) | 24 |
 | The word's other record has its own table, which the page already draws | 1 |
 | **Total** | **152** |
 
@@ -102,7 +102,9 @@ smorsi, traversi.
 No call is pinned for these, or the one pinned overrides forms, and the
 ending does not settle the class. Each needs a hand-kept table citing an
 en.wiktionary revision (ADR 0031, which would need amending for forms), or
-stays without one:
+stays without one. Since #844, 21 of them have a hand-kept table and 3 are
+listed for Huey: [the #844 report](2026-10-16-hand-kept-pronominal-tables.md)
+gives each one's outcome, and the JSON's `noneOutcomes` carries it.
 
 | Why the source does not settle it | Records |
 |---|---|
