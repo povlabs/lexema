@@ -10,6 +10,12 @@
 // - `rule`: none do, and a base verb record has a table, so the rule builds one;
 // - `none`: none do, and no base verb record has a table (`pentirsi`).
 //
+// Each `none` record then gets its outcome under `it-regular-conjugation/v1`
+// (#838), under `noneOutcomes`: the class it settles and the evidence, or why it
+// declines. A record whose word has another record with its own table is
+// counted apart, as the page draws that table. It reads the `{{It-conj}}` calls
+// pinned in src/italian/conjugationTemplateCalls.ts, as the page does.
+//
 // A base verb record is picked as the page picks it (`pronominalBaseOf`,
 // web/lib/dictionary/wordPage.ts): a verb record, about the base word, whose
 // forms fill a cell, the one listing `<word> (coniugazione)` first, else the
@@ -23,43 +29,13 @@
 // auxiliary, tense and row, imperative row). Every cell that differs is
 // listed, with both sides. It changes nothing.
 
-import { createReadStream } from "node:fs";
-import { createInterface } from "node:readline";
-import { createGunzip } from "node:zlib";
-import { personOfItalianVerbForm, placeItalianVerbForm, type VerbFormTags } from "../src/italian/moods.js";
-import { pronominalSpellings, pronominalVerb, PRONOMINAL_CONJUGATION_RULE, type BaseCell } from "../src/italian/pronominalConjugation.js";
-
-interface RawForm {
-  form: string;
-  tags?: string[];
-  raw_tags?: string[];
-}
-
-interface RawRecord {
-  word: string;
-  lang_code?: string;
-  pos?: string;
-  forms?: RawForm[];
-  senses?: { form_of?: { word: string }[] }[];
-}
+import { CONJUGATION_TEMPLATE_CALLS } from "../src/italian/conjugationTemplateCalls.js";
+import { pronominalSpellings, pronominalVerb, PRONOMINAL_CONJUGATION_RULE } from "../src/italian/pronominalConjugation.js";
+import { REGULAR_CONJUGATION_RULE, regularCells, regularClassOf } from "../src/italian/regularConjugation.js";
+import { baseOf, cellOf, fillsCell, namesVerb as namesVerbIn, readVerbs, slotKey, type RawRecord } from "./pronominalArchive.js";
 
 const [archive] = process.argv.slice(2);
 if (!archive) throw new Error("usage: tools/measurePronominalConjugation.ts <it-extract.jsonl.gz>");
-
-const cellOf = (form: RawForm): BaseCell => ({ spelling: form.form, tags: form.tags ?? [], rawTags: form.raw_tags ?? [] });
-
-/** The cell a form fills, as the page's grid keys it, or undefined when it fills none (web/lib/dictionary/conjugation.ts `placeOf`). */
-function slotKey(tags: VerbFormTags): string | undefined {
-  const slot = placeItalianVerbForm(tags);
-  if (slot.kind === "auxiliary") return "ausiliare";
-  if (slot.kind === "non-finite") return slot.role === "participio passato" ? "participio" : slot.role;
-  if (slot.kind !== "tense" && slot.kind !== "imperative") return undefined;
-  const row = personOfItalianVerbForm(tags);
-  if (row === undefined) return undefined;
-  return `${slot.kind === "imperative" ? "imperativo" : slot.box} · ${row.person} ${row.number}`;
-}
-
-const fillsCell = (record: RawRecord): boolean => (record.forms ?? []).some((form) => slotKey(cellOf(form)) !== undefined);
 
 /** Every cell of a table, its spellings in source order: the comma-joined spellings of one form are each a spelling. */
 function tableOf(cells: readonly { spelling: string; key: string | undefined }[]): Map<string, string[]> {
@@ -122,17 +98,60 @@ function reasonOf(cell: string, source: readonly string[], rule: readonly string
   return "base-lists-other-spellings";
 }
 
-const verbs = new Map<string, RawRecord[]>();
-const lines = createInterface({ input: createReadStream(archive).pipe(createGunzip()), crlfDelay: Infinity });
-for await (const line of lines) {
-  if (!line.includes('"pos": "verb"')) continue;
-  const record = JSON.parse(line) as RawRecord;
-  if (record.lang_code !== "it" || record.pos !== "verb") continue;
-  verbs.set(record.word, [...(verbs.get(record.word) ?? []), record]);
+const verbs = await readVerbs(archive);
+const namesVerb = (record: RawRecord): boolean => namesVerbIn(verbs, record);
+
+/** A record's glosses as a page reads them: Wikizionario's missing-definition notice is no gloss (#255). */
+const MISSING = "definizione mancante; se vuoi, aggiungila tu";
+const glossesOf = (record: RawRecord): string[] =>
+  (record.senses ?? []).flatMap((sense) => (sense.glosses ?? []).filter((gloss) => gloss.trim() !== MISSING));
+
+/** What `it-regular-conjugation/v1` gives a `none` record, as its page shows it. */
+type NoneOutcome =
+  | { outcome: "rule-built"; class: string; stem: string; base: string; evidence: string; cells: number; sample: Record<string, string> }
+  | { outcome: "not-a-pronominal-verb"; glosses: string[] }
+  | { outcome: "listed-for-huey"; reason: string; evidence?: string }
+  | { outcome: "own-table-on-another-record" };
+const noneOutcomes: ({ word: string } & NoneOutcome)[] = [];
+
+const SAMPLE = ["presente · first singular", "presente · second singular", "passato prossimo · first plural", "imperativo · second singular", "ausiliare", "gerundio"];
+
+/** The outcome of a `none` record: the page's table, if any, and what it was built from. */
+function noneOutcomeOf(record: RawRecord, records: readonly RawRecord[]): NoneOutcome {
+  if (records.some(fillsCell)) return { outcome: "own-table-on-another-record" };
+  const verb = pronominalVerb(record.word);
+  if (verb === undefined) throw new Error(`not pronominal: ${record.word}`);
+  const glosses = glossesOf(record);
+  const answer = regularClassOf(verb, glosses, CONJUGATION_TEMPLATE_CALLS);
+  if (answer.kind === "declined") {
+    if (answer.reason === "form-of-another-word") return { outcome: "not-a-pronominal-verb", glosses };
+    const page = answer.page === undefined ? {} : { evidence: `${answer.page.title}@${answer.page.revisionId}: ${answer.page.call}` };
+    return { outcome: "listed-for-huey", reason: answer.reason, ...page };
+  }
+  const evidence =
+    answer.evidence.kind === "template"
+      ? `${answer.evidence.page.title}@${answer.evidence.page.revisionId}: ${answer.evidence.page.call}`
+      : `ending ${answer.evidence.ending} of ${answer.evidence.base}`;
+  const cells = regularCells(answer);
+  const built = pronominalSpellings(verb, cells);
+  const sample: Record<string, string> = {};
+  cells.forEach((cell, i) => {
+    const key = slotKey(cell);
+    const spelling = built[i];
+    if (key === undefined || spelling === undefined || !SAMPLE.includes(key)) return;
+    sample[key] = sample[key] === undefined ? spelling : `${sample[key]}, ${spelling}`;
+  });
+  const count = built.filter((one) => one !== undefined).length;
+  return { outcome: "rule-built", class: answer.conjugationClass, stem: answer.stem, base: answer.base, evidence, cells: count, sample };
 }
 
-const namesVerb = (record: RawRecord): boolean =>
-  (record.senses ?? []).some((sense) => (sense.form_of ?? []).some((edge) => (verbs.get(edge.word) ?? []).length > 0));
+/** The key a `none` outcome is counted under. */
+const outcomeKey = (one: NoneOutcome): string =>
+  one.outcome === "listed-for-huey"
+    ? `${one.outcome} · ${one.reason}`
+    : one.outcome === "rule-built"
+      ? `${one.outcome} · ${one.evidence.startsWith("ending") ? "ending" : "template"}`
+      : one.outcome;
 
 const counts = { records: 0, words: 0, source: 0, rule: 0, none: 0, formOfAVerb: 0, ruleBaseLinked: 0, ruleBaseOfSeveral: 0 };
 const compared: { word: string; base: string; cells: number; same: number; differ: { cell: string; reason: Reason; source: string[]; rule: string[] }[] }[] = [];
@@ -144,9 +163,7 @@ for (const [word, records] of [...verbs].sort(([a], [b]) => a.localeCompare(b)))
   const verb = pronominalVerb(word);
   if (verb === undefined) continue;
   counts.words++;
-  const candidates = verb.bases.flatMap((base) => (verbs.get(base) ?? []).filter((record) => !namesVerb(record) && fillsCell(record)));
-  const linked = candidates.find((record) => (record.forms ?? []).some((form) => form.form === `${word} (coniugazione)`));
-  const base = linked ?? candidates[0];
+  const { candidates, linked, base } = baseOf(verbs, verb);
   for (const record of records) {
     counts.records++;
     if (fillsCell(record)) {
@@ -172,6 +189,7 @@ for (const [word, records] of [...verbs].sort(([a], [b]) => a.localeCompare(b)))
     } else if (base === undefined) {
       counts.none++;
       noneWords.push(word);
+      noneOutcomes.push({ word, ...noneOutcomeOf(record, records) });
     } else {
       counts.rule++;
       if (!ruleWords.includes(word)) ruleWords.push(word);
@@ -188,6 +206,13 @@ console.log(
       counts,
       sourceWithoutBase,
       noneWords,
+      regularRule: REGULAR_CONJUGATION_RULE,
+      noneOutcomeCounts: Object.fromEntries(
+        [...noneOutcomes.reduce((n, one) => n.set(outcomeKey(one), (n.get(outcomeKey(one)) ?? 0) + 1), new Map<string, number>())].sort(([a], [b]) =>
+          a.localeCompare(b),
+        ),
+      ),
+      noneOutcomes,
       ruleWords,
       compared: {
         records: compared.length,

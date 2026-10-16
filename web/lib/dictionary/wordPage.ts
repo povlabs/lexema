@@ -112,7 +112,9 @@
 // none of the base words' facts, its pronunciation included.
 
 import { foldItalianApostrophes, normalizeItalianExact } from "@lexema/italian/normalize.ts";
+import { CONJUGATION_TEMPLATE_CALLS } from "@lexema/italian/conjugationTemplateCalls.ts";
 import { pronominalVerb, type PronominalVerb } from "@lexema/italian/pronominalConjugation.ts";
+import { regularCells, regularClassOf } from "@lexema/italian/regularConjugation.ts";
 import { VERB_FORM_LINE_RULE, verbFormLine, type SpelledGender } from "@lexema/italian/verbFormLine.ts";
 import { WORD_SHAPE_LINE_RULE, wordShapeLine, type ShapedSpelling } from "@lexema/italian/wordShape.ts";
 import { mergeExpressions } from "@lexema/lookup/expressions.ts";
@@ -285,14 +287,18 @@ function ownFormsOf(reading: Reading, taken: TakenConjugation | undefined): OwnF
  * - Else the one its form records declare (#799), built as a declared lemma's
  *   is (#453): `bellare`'s record has no table, and some thirty records say
  *   "… di bellare".
+ * - Else, for a pronominal verb no base verb record has a table for, the one
+ *   `it-pronominal-conjugation/v1` builds from the regular cells
+ *   `it-regular-conjugation/v1` gives the class the source settles (#838):
+ *   `pentirsi` from `{{It-conj|pent|irsi|essere}}`.
  */
 export type TakenConjugation =
   | { kind: "declared-conjugation"; conjugation: Conjugation<DeclaredVerbForm> }
   | PronominalConjugation;
 
 /**
- * A pronominal verb's conjugation, built from its base verb's (#837), and the
- * one reading that draws it (`pronominalOf`).
+ * A pronominal verb's conjugation, built from its base verb's (#837) or from a
+ * regular one (#838), and the one reading that draws it (`pronominalOf`).
  */
 export type PronominalConjugation = { kind: "pronominal-conjugation"; conjugation: Conjugation<PronominalForm>; owner: Reading };
 
@@ -378,7 +384,8 @@ export function pronominalBaseWords(readings: readonly Reading[]): readonly stri
  * (`trasferirsi (coniugazione)`, the source's pointer to it) goes first; else
  * the first in the order the words were read (`andare`, which lists no
  * `andarsene (coniugazione)`). None when no record has a table: `pentirsi`,
- * whose `pentire` has no record, gets no table.
+ * whose `pentire` has no record, takes a regular one instead, when the source
+ * settles its class (#838).
  */
 function pronominalBaseOf(verb: PronominalVerb, bases: readonly Reading[]): Reading | undefined {
   const tables = bases.filter((base) => base.isAboutQuery && isVerbReading(base) && !isFormOfReading(base) && conjugates(base.forms));
@@ -388,10 +395,13 @@ function pronominalBaseOf(verb: PronominalVerb, bases: readonly Reading[]): Read
 
 /**
  * The page's taken conjugation: a pronominal verb's built one when its base
- * verb has a table (#837), else the declared one when it places a form (#799).
- * The built table goes first because the form records a pronominal verb has
- * name only a few of its cells: `laurearsi`'s declared table is one
- * imperative, `laureati`, which the built table holds too.
+ * verb has a table (#837), else the declared one when it places a form (#799),
+ * else a pronominal verb's built on regular cells when no base verb record has
+ * a table and the source settles its class (#838). The built table goes before
+ * the declared one because the form records a pronominal verb has name only a
+ * few of its cells: `laurearsi`'s declared table is one imperative,
+ * `laureati`, which the built table holds too. The regular one goes after it,
+ * so a page that draws a declared table keeps it.
  */
 function takenConjugationOf(
   readings: readonly Reading[],
@@ -404,9 +414,16 @@ function takenConjugationOf(
     const conjugation = pronominalConjugationOf(pronominal.verb, base.forms);
     if (placesAny(conjugation)) return { kind: "pronominal-conjugation", conjugation, owner: pronominal.owner };
   }
-  if (!wantsDeclaredConjugation(readings)) return undefined;
-  const conjugation = declaredConjugationOf(declared);
-  return placesAny(conjugation) ? { kind: "declared-conjugation", conjugation } : undefined;
+  if (wantsDeclaredConjugation(readings)) {
+    const conjugation = declaredConjugationOf(declared);
+    if (placesAny(conjugation)) return { kind: "declared-conjugation", conjugation };
+  }
+  if (pronominal === undefined || base !== undefined) return undefined;
+  const glosses = pronominal.owner.senses.flatMap((sense) => sense.glosses.map((gloss) => gloss.text));
+  const settled = regularClassOf(pronominal.verb, glosses, CONJUGATION_TEMPLATE_CALLS);
+  if (settled.kind === "declined") return undefined;
+  const conjugation = pronominalConjugationOf(pronominal.verb, regularCells(settled));
+  return placesAny(conjugation) ? { kind: "pronominal-conjugation", conjugation, owner: pronominal.owner } : undefined;
 }
 
 /** What any source reading may show after its own text, in this order on the page. */

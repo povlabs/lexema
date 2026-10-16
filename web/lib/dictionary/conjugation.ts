@@ -21,11 +21,15 @@
 // built from its base verb's (`trasferire`) by `it-pronominal-conjugation/v1`
 // (src/italian/pronominalConjugation.ts): each built cell sits where the base
 // cell it was built from sits, and carries that cell, so a built spelling is
-// never taken for a source one (ADR 0016).
+// never taken for a source one (ADR 0016). Where no base verb record has a
+// table (`pentirsi`, #838), the base cells are the ones
+// `it-regular-conjugation/v1` (src/italian/regularConjugation.ts) builds for the
+// class the source settles, and the built cell carries one of those.
 
 import { groupByAuxiliary } from "@lexema/italian/compoundAuxiliary.ts";
 import { essereAgreement, type AgreeingSpelling } from "@lexema/italian/essereAgreement.ts";
 import { PRONOMINAL_CONJUGATION_RULE, pronominalSpellings, type PronominalVerb } from "@lexema/italian/pronominalConjugation.ts";
+import type { RegularCell } from "@lexema/italian/regularConjugation.ts";
 import { factRefKey, sourcePointerOf, sourceTagsOf, type DeclaredForm, type DeclaredVerbForm, type SearchedSpellings, type SourceForm } from "@lexema/lookup/types.ts";
 import {
   NON_FINITE_NAMES,
@@ -37,6 +41,7 @@ import {
   type TenseBox,
   type VerbNumber,
   type VerbPerson,
+  type VerbFormTags,
   type VerbSlot,
 } from "@lexema/italian/moods.ts";
 import type { VerbFormGloss } from "@lexema/italian/verbFormGloss.ts";
@@ -102,15 +107,29 @@ const NUMBER_OF: Record<Person, VerbNumber> = {
 };
 
 /**
+ * The base verb cell a pronominal one is built from: the base record's own
+ * form (`trasferisco`, #837), or, where no base record has a table, the cell
+ * `it-regular-conjugation/v1` built for the class the source settles (`pento`,
+ * #838).
+ */
+export type BaseCellOf = SourceForm | RegularCell;
+
+/** Whether a base cell was built by `it-regular-conjugation/v1` rather than read from a record. */
+export const isRegularCell = (from: BaseCellOf): from is RegularCell => "rule" in from;
+
+const tagsOfBase = (from: BaseCellOf): VerbFormTags => (isRegularCell(from) ? from : sourceTagsOf(from));
+
+/**
  * A cell `it-pronominal-conjugation/v1` built from a base verb's cell (#837):
- * the spelling it built, `mi trasferisco`, and the base verb's own form it was
- * built from, `trasferisco`, with that form's place in the source. It is
- * Lexema's text, built when the page is built and never stored (ADR 0012).
+ * the spelling it built, `mi trasferisco`, and the base cell it was built
+ * from, `trasferisco`, with that cell's place in the source or in the regular
+ * table it was built in. It is Lexema's text, built when the page is built and
+ * never stored (ADR 0012).
  */
 export interface PronominalForm {
   surface: string;
   rule: typeof PRONOMINAL_CONJUGATION_RULE;
-  from: SourceForm;
+  from: BaseCellOf;
 }
 
 /** A form a table can hold: a record's own `forms[]` entry, a declared lemma's form record, or a cell built by rule from a base verb's. */
@@ -127,7 +146,9 @@ export const isDeclaredForm = (form: TableForm): form is DeclaredForm => !isSour
 
 /** A key no other form of one table shares: its place in the source, or, for a built cell, the rule and the base cell it was built from. */
 export const tableFormKey = (form: TableForm): string =>
-  isRuleBuilt(form) ? `${form.rule}\u0000${factRefKey(form.from.ref)}` : factRefKey(form.ref);
+  isRuleBuilt(form)
+    ? `${form.rule}\u0000${isRegularCell(form.from) ? `${form.from.rule}\u0000${form.from.index}` : factRefKey(form.from.ref)}`
+    : factRefKey(form.ref);
 
 /** The source pointer of a form a search can hit: a record's own entry or a declared form; a built cell has none. */
 export const tableFormPointer = (form: TableForm): string | undefined => (isRuleBuilt(form) ? undefined : sourcePointerOf(form.ref));
@@ -214,20 +235,23 @@ interface Placed<F> {
 export const slotOf = (form: SourceForm): VerbSlot => placeItalianVerbForm(sourceTagsOf(form));
 
 /** The row a finite form sits in, as `personOfItalianVerbForm` reads it. */
-function personOf(form: SourceForm): Person | undefined {
-  const row = personOfItalianVerbForm(sourceTagsOf(form));
+function personOf(tags: VerbFormTags): Person | undefined {
+  const row = personOfItalianVerbForm(tags);
   return row === undefined ? undefined : ROW[`${row.person} ${row.number}`];
 }
 
 /** Where a record's own form goes, or undefined when no cell takes it. */
-function placeOf(form: SourceForm): Place | undefined {
-  const slot = slotOf(form);
+const placeOf = (form: SourceForm): Place | undefined => placeOfTags(sourceTagsOf(form));
+
+/** Where a form tagged as the source tags a record's goes, or undefined when no cell takes it. */
+function placeOfTags(tags: VerbFormTags): Place | undefined {
+  const slot = placeItalianVerbForm(tags);
   if (slot.kind === "auxiliary") return { kind: "non-finite", label: "ausiliare" };
   if (slot.kind === "non-finite") {
     return { kind: "non-finite", label: NON_FINITE_NAMES[slot.role] };
   }
   if (slot.kind !== "imperative" && slot.kind !== "tense") return undefined;
-  const person = personOf(form);
+  const person = personOf(tags);
   if (person === undefined) return undefined;
   if (slot.kind === "imperative") return { kind: "finite", mood: "Imperativo", tense: "presente", person };
   return { kind: "finite", ...tensePlace(slot.box), person };
@@ -339,18 +363,22 @@ export function declaredConjugationOf(forms: readonly DeclaredVerbForm[]): Conju
 }
 
 /**
- * A pronominal verb's conjugation, built from its base verb's forms by
+ * A pronominal verb's conjugation, built from its base verb's cells by
  * `it-pronominal-conjugation/v1` (#837): each built cell where its base cell
- * sits. The query is the pronominal verb itself, which no cell holds, so no
- * cell is marked.
+ * sits. The base cells are a base record's forms, or the ones
+ * `it-regular-conjugation/v1` built (#838). The query is the pronominal verb
+ * itself, which no cell holds, so no cell is marked.
  */
-export function pronominalConjugationOf(verb: PronominalVerb, base: readonly SourceForm[]): Conjugation<PronominalForm> {
-  const spellings = pronominalSpellings(verb, base.map((form) => ({ spelling: form.surface, ...sourceTagsOf(form) })));
+export function pronominalConjugationOf(verb: PronominalVerb, base: readonly BaseCellOf[]): Conjugation<PronominalForm> {
+  const spellings = pronominalSpellings(
+    verb,
+    base.map((from) => ({ spelling: isRegularCell(from) ? from.spelling : from.surface, ...tagsOfBase(from) })),
+  );
   const built = base.flatMap((from, i): PronominalForm[] => {
     const surface = spellings[i];
     return surface === undefined ? [] : [{ surface, rule: PRONOMINAL_CONJUGATION_RULE, from }];
   });
-  return layOut(placedBy(built, (form) => placeOf(form.from)), () => false);
+  return layOut(placedBy(built, (form) => placeOfTags(tagsOfBase(form.from))), () => false);
 }
 
 /** Whether a conjugation places any form at all. */
