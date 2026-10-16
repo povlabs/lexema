@@ -138,6 +138,7 @@ const counts = { records: 0, words: 0, source: 0, rule: 0, none: 0, formOfAVerb:
 const compared: { word: string; base: string; cells: number; same: number; differ: { cell: string; reason: Reason; source: string[]; rule: string[] }[] }[] = [];
 const sourceWithoutBase: string[] = [];
 const noneWords: string[] = [];
+const ruleWords: string[] = [];
 
 for (const [word, records] of [...verbs].sort(([a], [b]) => a.localeCompare(b))) {
   const verb = pronominalVerb(word);
@@ -173,6 +174,7 @@ for (const [word, records] of [...verbs].sort(([a], [b]) => a.localeCompare(b)))
       noneWords.push(word);
     } else {
       counts.rule++;
+      if (!ruleWords.includes(word)) ruleWords.push(word);
       if (linked !== undefined) counts.ruleBaseLinked++;
       if (candidates.length > 1) counts.ruleBaseOfSeveral++;
     }
@@ -186,6 +188,7 @@ console.log(
       counts,
       sourceWithoutBase,
       noneWords,
+      ruleWords,
       compared: {
         records: compared.length,
         cells: compared.reduce((n, one) => n + one.cells, 0),

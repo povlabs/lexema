@@ -268,11 +268,11 @@ function ownFormsOf(reading: Reading, taken: TakenConjugation | undefined): OwnF
  * The one conjugation a page draws for a verb whose records draw none. The
  * query is the verb itself, which no cell holds, so no cell is marked.
  *
- * - The one its form records declare (#799), built as a declared lemma's is
- *   (#453): `bellare`'s record has no table, and some thirty records say "…
- *   di bellare".
- * - Else, for a pronominal verb, the one `it-pronominal-conjugation/v1` builds
+ * - For a pronominal verb, the one `it-pronominal-conjugation/v1` builds
  *   from its base verb's table (#837): `trasferirsi` from `trasferire`'s.
+ * - Else the one its form records declare (#799), built as a declared lemma's
+ *   is (#453): `bellare`'s record has no table, and some thirty records say
+ *   "… di bellare".
  */
 export type TakenConjugation =
   | { kind: "declared-conjugation"; conjugation: Conjugation<DeclaredVerbForm> }
@@ -374,21 +374,27 @@ function pronominalBaseOf(verb: PronominalVerb, bases: readonly Reading[]): Read
   return tables.find((base) => base.forms.some((form) => form.surface === link)) ?? tables[0];
 }
 
-/** The page's taken conjugation: the declared one when it places a form (#799), else a pronominal verb's built one (#837). */
+/**
+ * The page's taken conjugation: a pronominal verb's built one when its base
+ * verb has a table (#837), else the declared one when it places a form (#799).
+ * The built table goes first because the form records a pronominal verb has
+ * name only a few of its cells: `laurearsi`'s declared table is one
+ * imperative, `laureati`, which the built table holds too.
+ */
 function takenConjugationOf(
   readings: readonly Reading[],
   declared: readonly DeclaredVerbForm[],
   bases: readonly Reading[],
 ): TakenConjugation | undefined {
-  if (wantsDeclaredConjugation(readings)) {
-    const conjugation = declaredConjugationOf(declared);
-    if (placesAny(conjugation)) return { kind: "declared-conjugation", conjugation };
-  }
   const pronominal = pronominalOf(readings);
   const base = pronominal === undefined ? undefined : pronominalBaseOf(pronominal.verb, bases);
-  if (pronominal === undefined || base === undefined) return undefined;
-  const conjugation = pronominalConjugationOf(pronominal.verb, base.forms);
-  return placesAny(conjugation) ? { kind: "pronominal-conjugation", conjugation, owner: pronominal.owner } : undefined;
+  if (pronominal !== undefined && base !== undefined) {
+    const conjugation = pronominalConjugationOf(pronominal.verb, base.forms);
+    if (placesAny(conjugation)) return { kind: "pronominal-conjugation", conjugation, owner: pronominal.owner };
+  }
+  if (!wantsDeclaredConjugation(readings)) return undefined;
+  const conjugation = declaredConjugationOf(declared);
+  return placesAny(conjugation) ? { kind: "declared-conjugation", conjugation } : undefined;
 }
 
 /** What any source reading may show after its own text, in this order on the page. */

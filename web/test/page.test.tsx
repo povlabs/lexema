@@ -3821,7 +3821,9 @@ test("a sense label shows in the Italian the page wrote, not the extraction's En
 // `pentirsi`, which carry none; and the base verbs 47593 `alzare`, 2344 and
 // 2345 `andare`, 50299 `trasferire` and 532997 `arrendere`; then 137017 and
 // 137018 `figurare`, and 464591 and 464592 `figurarsi`, whose first record has
-// no definition. `pentire` has no record in the release.
+// no definition; then 59328 `laureati`, whose record says it is laurearsi's
+// imperative, 463524 `laurearsi` and 547967 `laureare`. `pentire` has no
+// record in the release.
 
 const PRONOMINAL_LINES = (await readFile(join(REPO, "fixtures/pronominal-verb-tables.jsonl"), "utf8")).trimEnd().split("\n");
 const withPronominal = (run: (f: Fixture) => Promise<void>) => withLines(PRONOMINAL_LINES, run);
@@ -3907,6 +3909,21 @@ test("a pronominal verb's built table shows once, under its first record with a 
     assert.match(first, />Definizioni</);
     assert.match(first, />Forme</);
     assert.equal(tenseColumn(html, "Indicativo", "presente")[0], "io mi figuro");
+  });
+});
+
+test("a pronominal verb's built table goes before the few cells its form records declare: laurearsi (#837)", async () => {
+  await withPronominal(async ({ db }) => {
+    const answer = await attempt(db, "laurearsi");
+    assert.ok(answer.outcome === "found");
+    // laureati's record declares one cell, the tu imperative.
+    assert.equal(answer.declared.length, 1);
+    const html = await render(db, "laurearsi");
+    assert.equal(occurrencesOf(html, ">Forme<"), 1);
+    assert.equal(tenseColumn(html, "Indicativo", "presente")[0], "io mi laureo");
+    assert.equal(textOf(firstCell(panel(html, "Imperativo"), "tu") ?? ""), "laureati, non laurearti");
+    // The built cell links to its search and names no declaring record's line.
+    assert.match(html, builtLink("laureati"));
   });
 });
 
