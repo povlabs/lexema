@@ -1,0 +1,12 @@
+==Italian==
+
+===Etymology===
+Minced oath for {{m|it|incazzarsi}}.
+
+===Verb===
+{{it-verb|à}}
+
+# {{lb|it|informal|minced oath}} to get [[pissed off]], to get [[tick off|ticked off]]
+
+====Conjugation====
+{{it-conj|à}}

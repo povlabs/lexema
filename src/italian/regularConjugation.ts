@@ -138,6 +138,12 @@ const INFINITIVE: Readonly<Record<ConjugationClass, { ending: string; stemEnds: 
   "ire-b": { ending: "ire", stemEnds: /\p{L}$/u },
 };
 
+/** The infinitive a class writes on `stem` (`sment` + `ire-b` → `smentire`), or undefined when the stem cannot take that class. */
+export function infinitiveOf(conjugationClass: ConjugationClass, stem: string): string | undefined {
+  const { ending, stemEnds } = INFINITIVE[conjugationClass];
+  return stemEnds.test(stem) ? `${stem}${ending}` : undefined;
+}
+
 /** The class a pinned call names for one of `verb`'s bases, or why it names none this rule reads. */
 function classOfCall(verb: PronominalVerb, page: PinnedTemplateCall): ClassAnswer {
   const [call] = templatesOn(page.call.replace(/\n/g, ""));
@@ -145,9 +151,8 @@ function classOfCall(verb: PronominalVerb, page: PinnedTemplateCall): ClassAnswe
   if (call === undefined || call.name !== "It-conj" || Object.keys(call.named).length > 0 || call.positional.length > 3) return declined;
   const [stem, type] = call.positional;
   const conjugationClass = TEMPLATE_CLASS[type ?? ""];
-  if (stem === undefined || conjugationClass === undefined || !INFINITIVE[conjugationClass].stemEnds.test(stem)) return declined;
-  const base = `${stem}${INFINITIVE[conjugationClass].ending}`;
-  if (!verb.bases.includes(base)) return declined;
+  const base = stem === undefined || conjugationClass === undefined ? undefined : infinitiveOf(conjugationClass, stem);
+  if (stem === undefined || conjugationClass === undefined || base === undefined || !verb.bases.includes(base)) return declined;
   return { kind: "settled", conjugationClass, stem, base, evidence: { kind: "template", page } };
 }
 
@@ -204,23 +209,33 @@ export function regularClassOf(verb: PronominalVerb, glosses: readonly string[],
   return { kind: "declined", reason: "second-conjugation" };
 }
 
-/** One cell this rule built for a base verb: its spelling, its tags as the source would write them, and the class evidence. */
-export interface RegularCell extends VerbFormTags {
+/** One base verb cell, as a record's table lists it: its spelling, its tags as the source would write them, and its place. */
+export interface ParadigmCell extends VerbFormTags {
   spelling: string;
   /** Its place in the built table, which no other cell of it shares. */
   index: number;
+}
+
+/** One cell this rule built for a base verb: a paradigm cell, and the evidence that chose its class. */
+export interface RegularCell extends ParadigmCell {
   rule: typeof REGULAR_CONJUGATION_RULE;
   evidence: ClassEvidence;
 }
 
-type Six = readonly [string, string, string, string, string, string];
+/** One form per row: io, tu, lui, noi, voi, loro. */
+export type Six = readonly [string, string, string, string, string, string];
 
-/** The endings a class adds to its stem, slot by slot, as Modulo:It-conj writes them. */
-interface Endings {
+/**
+ * A base verb's simple forms, slot by slot: everything its table holds but
+ * avere, which builds each compound tense on `pastParticiple`. A slot may hold
+ * several spellings, joined by `, ` as a record's cell joins them (`avvisto,
+ * avveduto`).
+ */
+export interface Paradigm {
+  infinitive: string;
   gerund: string;
   presentParticiple: string;
   pastParticiple: string;
-  infinitive: string;
   present: Six;
   imperfect: Six;
   pastRemote: Six;
@@ -231,6 +246,9 @@ interface Endings {
   /** tu, lui, noi, voi, loro. */
   imperative: readonly [string, string, string, string, string];
 }
+
+/** The endings a class adds to its stem, slot by slot, as Modulo:It-conj writes them. */
+type Endings = Paradigm;
 
 const FIRST: Endings = {
   gerund: "ando",
@@ -330,43 +348,68 @@ const PRONOUNS: Six = ["io", "tu", "lui/lei", "noi", "voi", "essi/esse"];
 const CHE: Six = ["che io", "che tu", "che lui/che lei", "che noi", "che voi", "che essi/che esse"];
 
 /**
- * The base verb's cells for a settled class, in the order a record's table
- * lists them: auxiliary, gerund, participles, the indicative's simple and
- * compound tenses, the conditional, the subjunctive, the imperative. The
- * auxiliary is avere, as every regular table of these classes writes it;
+ * A base verb's cells, in the order a record's table lists them: auxiliary,
+ * gerund, participles, the indicative's simple and compound tenses, the
+ * conditional, the subjunctive, the imperative. The auxiliary is avere, as
+ * every regular table of these classes writes it;
  * `it-pronominal-conjugation/v1` turns it, and every compound tense, to essere.
  */
-export function regularCells(settled: SettledClass): RegularCell[] {
-  const { stem, evidence } = settled;
-  const endings = ENDINGS[settled.conjugationClass];
-  const cells: Omit<RegularCell, "index" | "rule" | "evidence">[] = [];
+export function paradigmCells(paradigm: Paradigm): ParadigmCell[] {
+  const cells: Omit<ParadigmCell, "index">[] = [];
   const add = (spelling: string, tags: readonly string[], rawTags: readonly string[] = []) => cells.push({ spelling, tags, rawTags });
-  const pastParticiple = `${stem}${endings.pastParticiple}`;
+  const { pastParticiple } = paradigm;
   const personal = (six: Six, tense: readonly string[], compound?: Six) =>
-    six.forEach((ending, i) => add(compound === undefined ? `${stem}${ending}` : `${compound[i]} ${pastParticiple}`, [NUMBERS[i], PERSONS[i], ...tense], [PRONOUNS[i]]));
+    six.forEach((form, i) => add(compound === undefined ? form : `${compound[i]} ${pastParticiple}`, [NUMBERS[i], PERSONS[i], ...tense], [PRONOUNS[i]]));
   const pronouned = (six: Six, tense: readonly string[], pronouns: Six, compound?: Six) =>
-    six.forEach((ending, i) => add(compound === undefined ? `${stem}${ending}` : `${compound[i]} ${pastParticiple}`, tense, [pronouns[i]]));
+    six.forEach((form, i) => add(compound === undefined ? form : `${compound[i]} ${pastParticiple}`, tense, [pronouns[i]]));
 
   add("avere", ["auxiliary"]);
-  add(`${stem}${endings.gerund}`, ["gerund"]);
-  add(`${stem}${endings.presentParticiple}`, ["present", "participle"]);
+  add(paradigm.gerund, ["gerund"]);
+  add(paradigm.presentParticiple, ["present", "participle"]);
   add(pastParticiple, ["past", "participle"]);
-  personal(endings.present, ["present"]);
-  personal(endings.imperfect, ["imperfect"]);
-  personal(endings.pastRemote, ["past-remote"]);
-  personal(endings.future, ["future"]);
+  personal(paradigm.present, ["present"]);
+  personal(paradigm.imperfect, ["imperfect"]);
+  personal(paradigm.pastRemote, ["past-remote"]);
+  personal(paradigm.future, ["future"]);
   for (const avere of AVERE.filter((one) => !one.subjunctive && !one.conditional)) personal(avere.forms, avere.tags, avere.forms);
-  pronouned(endings.conditional, ["present"], PRONOUNS);
+  pronouned(paradigm.conditional, ["present"], PRONOUNS);
   for (const avere of AVERE.filter((one) => one.conditional)) pronouned(avere.forms, avere.tags, PRONOUNS, avere.forms);
-  pronouned(endings.subjunctive, ["present"], CHE);
-  pronouned(endings.subjunctiveImperfect, ["imperfect"], CHE);
+  pronouned(paradigm.subjunctive, ["present"], CHE);
+  pronouned(paradigm.subjunctiveImperfect, ["imperfect"], CHE);
   for (const avere of AVERE.filter((one) => one.subjunctive)) pronouned(avere.forms, avere.tags, CHE, avere.forms);
-  const [tu, lui, noi, voi, loro] = endings.imperative;
-  add(`${stem}${tu}`, ["imperative"], ["tu"]);
-  add(`non ${stem}${endings.infinitive}`, ["imperative"], ["tu"]);
-  add(`${stem}${lui}`, ["imperative"], ["lui/lei"]);
-  add(`${stem}${noi}`, ["imperative"], ["noi"]);
-  add(`${stem}${voi}`, ["imperative"], ["voi"]);
-  add(`${stem}${loro}`, ["imperative"], ["essi/esse"]);
-  return cells.map((cell, index) => ({ ...cell, index, rule: REGULAR_CONJUGATION_RULE, evidence }));
+  const [tu, lui, noi, voi, loro] = paradigm.imperative;
+  add(tu, ["imperative"], ["tu"]);
+  add(`non ${paradigm.infinitive}`, ["imperative"], ["tu"]);
+  add(lui, ["imperative"], ["lui/lei"]);
+  add(noi, ["imperative"], ["noi"]);
+  add(voi, ["imperative"], ["voi"]);
+  add(loro, ["imperative"], ["essi/esse"]);
+  return cells.map((cell, index) => ({ ...cell, index }));
+}
+
+const withStem = <T extends readonly string[]>(stem: string, endings: T): T => endings.map((ending) => `${stem}${ending}`) as readonly string[] as T;
+
+/** The paradigm of a regular class on `stem`: the stem before each of the class's endings. */
+export function classParadigm(conjugationClass: ConjugationClass, stem: string): Paradigm {
+  const endings = ENDINGS[conjugationClass];
+  return {
+    infinitive: `${stem}${endings.infinitive}`,
+    gerund: `${stem}${endings.gerund}`,
+    presentParticiple: `${stem}${endings.presentParticiple}`,
+    pastParticiple: `${stem}${endings.pastParticiple}`,
+    present: withStem(stem, endings.present),
+    imperfect: withStem(stem, endings.imperfect),
+    pastRemote: withStem(stem, endings.pastRemote),
+    future: withStem(stem, endings.future),
+    conditional: withStem(stem, endings.conditional),
+    subjunctive: withStem(stem, endings.subjunctive),
+    subjunctiveImperfect: withStem(stem, endings.subjunctiveImperfect),
+    imperative: withStem(stem, endings.imperative),
+  };
+}
+
+/** The base verb's cells for a settled class (`paradigmCells`), each carrying what settled it. */
+export function regularCells(settled: SettledClass): RegularCell[] {
+  const { evidence } = settled;
+  return paradigmCells(classParadigm(settled.conjugationClass, settled.stem)).map((cell) => ({ ...cell, rule: REGULAR_CONJUGATION_RULE, evidence }));
 }

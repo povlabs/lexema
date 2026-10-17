@@ -1,0 +1,128 @@
+<templatestyles src="Module:roa-verb/style.css"></templatestyles><div class="NavFrame">
+<div class="NavHead">&nbsp; &nbsp; Conjugation of <i class="Latn mention" lang="it">[[:stupefare#Italian|stupefàre]]</i>[[Category:Italian links with redundant wikilinks|STUPEFARE]] (-ere; irregular) (See [[Appendix:Italian verbs]])</div>
+<div class="NavContent">
+{| class="roa-inflection-table" data-toggle-category="inflection"
+|-
+! class="roa-nonfinite-header" | <span title="infinito">infinitive</span>
+| <span class="Latn form-of lang-it inf-form-of origin-stupefàre" lang="it">[[:stupefare#Italian|stupefàre]]</span>[[Category:Italian links with redundant wikilinks|STUPEFARE]]
+|-
+! colspan="2" class="roa-nonfinite-header" | <span title="verbo ausiliare">auxiliary verb</span>
+| <span class="Latn" lang="it">[[:avere#Italian|avére]]</span>[[Category:Italian links with redundant wikilinks|STUPEFARE]]<sup style="color: var(--wikt-palette-red, red)">1</sup>, <span class="Latn" lang="it">[[:essere#Italian|èssere]]</span>[[Category:Italian links with redundant wikilinks|STUPEFARE]]<sup style="color: var(--wikt-palette-red, red)">2</sup>
+! colspan="2" class="roa-nonfinite-header" | <span title="gerundio">gerund</span>
+| colspan="2" | <span class="Latn form-of lang-it ger-form-of origin-stupefàre" lang="it">[[:stupefacendo#Italian|stupefacèndo]]</span>[[Category:Italian links with redundant wikilinks|STUPEFARE]]
+|-
+! colspan="2" class="roa-nonfinite-header" |  <span title="participio presente">present participle</span>
+| <span class="Latn form-of lang-it pres|part-form-of origin-stupefàre" lang="it">[[:stupefacente#Italian|stupefacènte]]</span>[[Category:Italian links with redundant wikilinks|STUPEFARE]]
+! colspan="2" class="roa-nonfinite-header" | <span title="participio passato">past participle</span>
+| colspan="2" | <span class="Latn form-of lang-it past|part-form-of origin-stupefàre" lang="it">[[:stupefatto#Italian|stupefàtto]]</span>[[Category:Italian links with redundant wikilinks|STUPEFARE]]
+|-
+! rowspan="2" class="roa-person-number-header" | person
+! colspan="3" class="roa-person-number-header" | singular
+! colspan="3" class="roa-person-number-header" | plural
+|-
+! class="roa-person-number-header" style="width:12.5%;" | first
+! class="roa-person-number-header" style="width:12.5%;" | second
+! class="roa-person-number-header" style="width:12.5%;" | third
+! class="roa-person-number-header" style="width:12.5%;" | first
+! class="roa-person-number-header" style="width:12.5%;" | second
+! class="roa-person-number-header" style="width:12.5%;" | third
+|-
+! class="roa-indicative-left-rail" | <span title="indicativo">indicative</span>
+! class="roa-indicative-left-rail" | io
+! class="roa-indicative-left-rail" | tu
+! class="roa-indicative-left-rail" | lui/lei, esso/essa
+! class="roa-indicative-left-rail" | noi
+! class="roa-indicative-left-rail" | voi
+! class="roa-indicative-left-rail" | loro, essi/esse
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="presente">present</span>
+| <span class="Latn form-of lang-it 1|s|pres|ind-form-of origin-stupefàre" lang="it">[[:stupefaccio#Italian|stupefàccio]]</span>[[Category:Italian links with redundant wikilinks|STUPEFARE]]
+| <span class="Latn form-of lang-it 2|s|pres|ind-form-of origin-stupefàre" lang="it">[[:stupefai#Italian|stupefài]]</span>[[Category:Italian links with redundant wikilinks|STUPEFARE]]
+| <span class="Latn form-of lang-it 3|s|pres|ind-form-of origin-stupefàre" lang="it">[[:stupefà#Italian|stupefà]]</span><sup style="color: var(--wikt-palette-red, red)">3</sup>
+| <span class="Latn form-of lang-it 1|p|pres|ind-form-of origin-stupefàre" lang="it">[[:stupefacciamo#Italian|stupefacciàmo]]</span>[[Category:Italian links with redundant wikilinks|STUPEFARE]]
+| <span class="Latn form-of lang-it 2|p|pres|ind-form-of origin-stupefàre" lang="it">[[:stupefate#Italian|stupefàte]]</span>[[Category:Italian links with redundant wikilinks|STUPEFARE]]
+| <span class="Latn form-of lang-it 3|p|pres|ind-form-of origin-stupefàre" lang="it">[[:stupefanno#Italian|stupefànno]]</span>[[Category:Italian links with redundant wikilinks|STUPEFARE]]
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="imperfetto">imperfect</span>
+| <span class="Latn form-of lang-it 1|s|impf|ind-form-of origin-stupefàre" lang="it">[[:stupefacevo#Italian|stupefacévo]]</span>[[Category:Italian links with redundant wikilinks|STUPEFARE]]
+| <span class="Latn form-of lang-it 2|s|impf|ind-form-of origin-stupefàre" lang="it">[[:stupefacevi#Italian|stupefacévi]]</span>[[Category:Italian links with redundant wikilinks|STUPEFARE]]
+| <span class="Latn form-of lang-it 3|s|impf|ind-form-of origin-stupefàre" lang="it">[[:stupefaceva#Italian|stupefacéva]]</span>[[Category:Italian links with redundant wikilinks|STUPEFARE]]
+| <span class="Latn form-of lang-it 1|p|impf|ind-form-of origin-stupefàre" lang="it">[[:stupefacevamo#Italian|stupefacevàmo]]</span>[[Category:Italian links with redundant wikilinks|STUPEFARE]]
+| <span class="Latn form-of lang-it 2|p|impf|ind-form-of origin-stupefàre" lang="it">[[:stupefacevate#Italian|stupefacevàte]]</span>[[Category:Italian links with redundant wikilinks|STUPEFARE]]
+| <span class="Latn form-of lang-it 3|p|impf|ind-form-of origin-stupefàre" lang="it">[[:stupefacevano#Italian|stupefacévano]]</span>[[Category:Italian links with redundant wikilinks|STUPEFARE]]
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="passato remoto">past historic</span>
+| <span class="Latn form-of lang-it 1|s|phis-form-of origin-stupefàre" lang="it">[[:stupefeci#Italian|stupeféci]]</span>[[Category:Italian links with redundant wikilinks|STUPEFARE]]
+| <span class="Latn form-of lang-it 2|s|phis-form-of origin-stupefàre" lang="it">[[:stupefacesti#Italian|stupefacésti]]</span>[[Category:Italian links with redundant wikilinks|STUPEFARE]]
+| <span class="Latn form-of lang-it 3|s|phis-form-of origin-stupefàre" lang="it">[[:stupefece#Italian|stupeféce]]</span>[[Category:Italian links with redundant wikilinks|STUPEFARE]]
+| <span class="Latn form-of lang-it 1|p|phis-form-of origin-stupefàre" lang="it">[[:stupefacemmo#Italian|stupefacémmo]]</span>[[Category:Italian links with redundant wikilinks|STUPEFARE]]
+| <span class="Latn form-of lang-it 2|p|phis-form-of origin-stupefàre" lang="it">[[:stupefaceste#Italian|stupefacéste]]</span>[[Category:Italian links with redundant wikilinks|STUPEFARE]]
+| <span class="Latn form-of lang-it 3|p|phis-form-of origin-stupefàre" lang="it">[[:stupefecero#Italian|stupefécero]]</span>[[Category:Italian links with redundant wikilinks|STUPEFARE]]
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="futuro semplice">future</span>
+| <span class="Latn form-of lang-it 1|s|fut-form-of origin-stupefàre" lang="it">[[:stupefarò#Italian|stupefarò]]</span>
+| <span class="Latn form-of lang-it 2|s|fut-form-of origin-stupefàre" lang="it">[[:stupefarai#Italian|stupefarài]]</span>[[Category:Italian links with redundant wikilinks|STUPEFARE]]
+| <span class="Latn form-of lang-it 3|s|fut-form-of origin-stupefàre" lang="it">[[:stupefarà#Italian|stupefarà]]</span>
+| <span class="Latn form-of lang-it 1|p|fut-form-of origin-stupefàre" lang="it">[[:stupefaremo#Italian|stupefarémo]]</span>[[Category:Italian links with redundant wikilinks|STUPEFARE]]
+| <span class="Latn form-of lang-it 2|p|fut-form-of origin-stupefàre" lang="it">[[:stupefarete#Italian|stupefaréte]]</span>[[Category:Italian links with redundant wikilinks|STUPEFARE]]
+| <span class="Latn form-of lang-it 3|p|fut-form-of origin-stupefàre" lang="it">[[:stupefaranno#Italian|stupefarànno]]</span>[[Category:Italian links with redundant wikilinks|STUPEFARE]]
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="condizionale presente">conditional</span>
+| <span class="Latn form-of lang-it 1|s|cond-form-of origin-stupefàre" lang="it">[[:stupefarei#Italian|stupefarèi]]</span>[[Category:Italian links with redundant wikilinks|STUPEFARE]]
+| <span class="Latn form-of lang-it 2|s|cond-form-of origin-stupefàre" lang="it">[[:stupefaresti#Italian|stupefarésti]]</span>[[Category:Italian links with redundant wikilinks|STUPEFARE]]
+| <span class="Latn form-of lang-it 3|s|cond-form-of origin-stupefàre" lang="it">[[:stupefarebbe#Italian|stupefarèbbe]]</span>[[Category:Italian links with redundant wikilinks|STUPEFARE]], <span class="Latn form-of lang-it 3|s|cond-form-of origin-stupefàre" lang="it">[[:stupefarebbe#Italian|stupefarébbe]]</span>[[Category:Italian links with redundant wikilinks|STUPEFARE]]
+| <span class="Latn form-of lang-it 1|p|cond-form-of origin-stupefàre" lang="it">[[:stupefaremmo#Italian|stupefarémmo]]</span>[[Category:Italian links with redundant wikilinks|STUPEFARE]]
+| <span class="Latn form-of lang-it 2|p|cond-form-of origin-stupefàre" lang="it">[[:stupefareste#Italian|stupefaréste]]</span>[[Category:Italian links with redundant wikilinks|STUPEFARE]]
+| <span class="Latn form-of lang-it 3|p|cond-form-of origin-stupefàre" lang="it">[[:stupefarebbero#Italian|stupefarèbbero]]</span>[[Category:Italian links with redundant wikilinks|STUPEFARE]], <span class="Latn form-of lang-it 3|p|cond-form-of origin-stupefàre" lang="it">[[:stupefarebbero#Italian|stupefarébbero]]</span>[[Category:Italian links with redundant wikilinks|STUPEFARE]]
+|-
+! class="roa-subjunctive-left-rail" | <span title="congiuntivo">subjunctive</span>
+! class="roa-subjunctive-left-rail" | che io
+! class="roa-subjunctive-left-rail" | che tu
+! class="roa-subjunctive-left-rail" | che lui/che lei, che esso/che essa
+! class="roa-subjunctive-left-rail" | che noi
+! class="roa-subjunctive-left-rail" | che voi
+! class="roa-subjunctive-left-rail" | che loro, che essi/che esse
+|-
+! class="roa-subjunctive-left-rail" style="height:3em;" | <span title="congiuntivo presente">present</span>
+| <span class="Latn form-of lang-it 1|s|pres|sub-form-of origin-stupefàre" lang="it">[[:stupefaccia#Italian|stupefàccia]]</span>[[Category:Italian links with redundant wikilinks|STUPEFARE]]
+| <span class="Latn form-of lang-it 2|s|pres|sub-form-of origin-stupefàre" lang="it">[[:stupefaccia#Italian|stupefàccia]]</span>[[Category:Italian links with redundant wikilinks|STUPEFARE]]
+| <span class="Latn form-of lang-it 3|s|pres|sub-form-of origin-stupefàre" lang="it">[[:stupefaccia#Italian|stupefàccia]]</span>[[Category:Italian links with redundant wikilinks|STUPEFARE]]
+| <span class="Latn form-of lang-it 1|p|pres|sub-form-of origin-stupefàre" lang="it">[[:stupefacciamo#Italian|stupefacciàmo]]</span>[[Category:Italian links with redundant wikilinks|STUPEFARE]]
+| <span class="Latn form-of lang-it 2|p|pres|sub-form-of origin-stupefàre" lang="it">[[:stupefacciate#Italian|stupefacciàte]]</span>[[Category:Italian links with redundant wikilinks|STUPEFARE]]
+| <span class="Latn form-of lang-it 3|p|pres|sub-form-of origin-stupefàre" lang="it">[[:stupefacciano#Italian|stupefàcciano]]</span>[[Category:Italian links with redundant wikilinks|STUPEFARE]]
+|-
+! class="roa-subjunctive-left-rail" style="height:3em;" | <span title="congiuntivo imperfetto">imperfect</span>
+| <span class="Latn form-of lang-it 1|s|impf|sub-form-of origin-stupefàre" lang="it">[[:stupefacessi#Italian|stupefacéssi]]</span>[[Category:Italian links with redundant wikilinks|STUPEFARE]]
+| <span class="Latn form-of lang-it 2|s|impf|sub-form-of origin-stupefàre" lang="it">[[:stupefacessi#Italian|stupefacéssi]]</span>[[Category:Italian links with redundant wikilinks|STUPEFARE]]
+| <span class="Latn form-of lang-it 3|s|impf|sub-form-of origin-stupefàre" lang="it">[[:stupefacesse#Italian|stupefacésse]]</span>[[Category:Italian links with redundant wikilinks|STUPEFARE]]
+| <span class="Latn form-of lang-it 1|p|impf|sub-form-of origin-stupefàre" lang="it">[[:stupefacessimo#Italian|stupefacéssimo]]</span>[[Category:Italian links with redundant wikilinks|STUPEFARE]]
+| <span class="Latn form-of lang-it 2|p|impf|sub-form-of origin-stupefàre" lang="it">[[:stupefaceste#Italian|stupefacéste]]</span>[[Category:Italian links with redundant wikilinks|STUPEFARE]]
+| <span class="Latn form-of lang-it 3|p|impf|sub-form-of origin-stupefàre" lang="it">[[:stupefacessero#Italian|stupefacéssero]]</span>[[Category:Italian links with redundant wikilinks|STUPEFARE]]
+|-
+! rowspan="2" class="roa-imperative-left-rail" style="height:3em;" | <span title="imperativo">imperative</span>
+! class="roa-imperative-left-rail" | &mdash;
+! class="roa-imperative-left-rail" | tu
+! class="roa-imperative-left-rail" | Lei
+! class="roa-imperative-left-rail" | noi
+! class="roa-imperative-left-rail" | voi
+! class="roa-imperative-left-rail" | Loro
+|-
+|
+| <span class="Latn form-of lang-it 2|s|imp-form-of origin-stupefàre" lang="it">[[:stupefai#Italian|stupefài]]</span>[[Category:Italian links with redundant wikilinks|STUPEFARE]], <span class="Latn form-of lang-it 2|s|imp-form-of origin-stupefàre" lang="it">[[:stupefa'#Italian|stupefà']]</span>[[Category:Italian links with redundant wikilinks|STUPEFARE]]
+| <span class="Latn form-of lang-it 3|s|imp-form-of origin-stupefàre" lang="it">[[:stupefaccia#Italian|stupefàccia]]</span>[[Category:Italian links with redundant wikilinks|STUPEFARE]]
+| <span class="Latn form-of lang-it 1|p|imp-form-of origin-stupefàre" lang="it">[[:stupefacciamo#Italian|stupefacciàmo]]</span>[[Category:Italian links with redundant wikilinks|STUPEFARE]]
+| <span class="Latn form-of lang-it 2|p|imp-form-of origin-stupefàre" lang="it">[[:stupefate#Italian|stupefàte]]</span>[[Category:Italian links with redundant wikilinks|STUPEFARE]]
+| <span class="Latn form-of lang-it 3|p|imp-form-of origin-stupefàre" lang="it">[[:stupefacciano#Italian|stupefàcciano]]</span>[[Category:Italian links with redundant wikilinks|STUPEFARE]]
+|-
+! class="roa-imperative-left-rail" style="height:3em;" | <span title="imperativo negativo">negative imperative</span>
+|
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:stupefare#Italian|stupefàre]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:stupefaccia#Italian|stupefàccia]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:stupefacciamo#Italian|stupefacciàmo]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:stupefate#Italian|stupefàte]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:stupefacciano#Italian|stupefàcciano]]</span>
+|}<div class="roa-footnote-outer-div" style="width:100%;">
+<div class="roa-footnote-inner-div">
+<sup style="color: var(--wikt-palette-red, red)">1</sup>Transitive.<br /><sup style="color: var(--wikt-palette-red, red)">2</sup>Intransitive.<br /><sup style="color: var(--wikt-palette-red, red)">3</sup>With syntactic gemination after the verb.
+</div></div>
+</div></div>[[Category:Italian verbs ending in -ere|STUPEFARE]][[Category:Italian irregular verbs|STUPEFARE]][[Category:Italian verbs with irregular present indicative|STUPEFARE]][[Category:Italian verbs with irregular imperative|STUPEFARE]][[Category:Italian verbs with irregular past historic|STUPEFARE]][[Category:Italian verbs with irregular past participle|STUPEFARE]][[Category:Italian verbs taking avere as auxiliary|STUPEFARE]][[Category:Italian verbs taking essere as auxiliary|STUPEFARE]]

@@ -1,0 +1,30 @@
+==Italian==
+
+===Etymology===
+{{ety|it|:af|a-|passo<t:dried>|-ire}}
+From {{affix|it|a-|passo|-ire||t2=dried}}.
+
+===Pronunciation===
+{{it-pr}}
+
+===Verb===
+{{it-verb|e[intransitive]:a[transitive]/+isc}}
+
+# {{lb|it|intransitive|also|figurative}} to [[wither]], to [[shrivel]] {{+aux|it|essere}}
+#: {{syn|it|passire|q1=rare}}
+# {{lb|it|intransitive|figurative}} to [[fade]] {{+aux|it|essere}}
+# {{lb|it|transitive|uncommon}} to [[cause]] to [[shrivel]]
+# {{lb|it|transitive|winemaking|of grapes}} to [[sun-dry]] {{gloss|to dry bunches of grapes by exposure to the sun prior to winemaking}}
+# {{lb|it|transitive|cooking}} to [[sweat]] {{gloss|to cook slowly at low heat, in shallow oil and without browning, to reduce moisture content}}
+#: {{syn|it|far sudare}}
+
+====Conjugation====
+{{it-conj|e[intransitive]:a[transitive]/+isc}}
+
+====Derived terms====
+* {{l|it|appassirsi}}
+
+===Anagrams===
+* {{anagrams|it|a=aaeipprss|apparisse|appressai}}
+
+{{C|it|Death}}

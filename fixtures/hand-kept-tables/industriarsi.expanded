@@ -1,0 +1,124 @@
+<templatestyles src="Module:roa-verb/style.css"></templatestyles><div class="NavFrame">
+<div class="NavHead">&nbsp; &nbsp; Conjugation of <i class="Latn mention" lang="it">[[:industriare#Italian|industriàr]][[:si#Italian|si]]</i> (-are) (See [[Appendix:Italian verbs]])</div>
+<div class="NavContent">
+{| class="roa-inflection-table" data-toggle-category="inflection"
+|-
+! class="roa-nonfinite-header" | <span title="infinito">infinitive</span>
+| <span class="Latn" lang="it">[[:industriare#Italian|industriàr]][[:si#Italian|si]]</span>
+|-
+! colspan="2" class="roa-nonfinite-header" | <span title="verbo ausiliare">auxiliary verb</span>
+| <span class="Latn" lang="it">[[:essere#Italian|èssere]]</span>[[Category:Italian links with redundant wikilinks|INDUSTRIARSI]]
+! colspan="2" class="roa-nonfinite-header" | <span title="gerundio">gerund</span>
+| colspan="2" | <span class="Latn form-of lang-it ger-form-of origin-industriàrsi" lang="it">[[:industriandosi#Italian|industriàndosi]]</span>[[Category:Italian links with redundant wikilinks|INDUSTRIARSI]]
+|-
+! colspan="2" class="roa-nonfinite-header" |  <span title="participio presente">present participle</span>
+| <span class="Latn form-of lang-it pres|part-form-of origin-industriàrsi" lang="it">[[:industriantesi#Italian|industriàntesi]]</span>[[Category:Italian links with redundant wikilinks|INDUSTRIARSI]]
+! colspan="2" class="roa-nonfinite-header" | <span title="participio passato">past participle</span>
+| colspan="2" | <span class="Latn form-of lang-it past|part-form-of origin-industriàrsi" lang="it">[[:industriatosi#Italian|industriàtosi]]</span>[[Category:Italian links with redundant wikilinks|INDUSTRIARSI]]
+|-
+! rowspan="2" class="roa-person-number-header" | person
+! colspan="3" class="roa-person-number-header" | singular
+! colspan="3" class="roa-person-number-header" | plural
+|-
+! class="roa-person-number-header" style="width:12.5%;" | first
+! class="roa-person-number-header" style="width:12.5%;" | second
+! class="roa-person-number-header" style="width:12.5%;" | third
+! class="roa-person-number-header" style="width:12.5%;" | first
+! class="roa-person-number-header" style="width:12.5%;" | second
+! class="roa-person-number-header" style="width:12.5%;" | third
+|-
+! class="roa-indicative-left-rail" | <span title="indicativo">indicative</span>
+! class="roa-indicative-left-rail" | io
+! class="roa-indicative-left-rail" | tu
+! class="roa-indicative-left-rail" | lui/lei, esso/essa
+! class="roa-indicative-left-rail" | noi
+! class="roa-indicative-left-rail" | voi
+! class="roa-indicative-left-rail" | loro, essi/esse
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="presente">present</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:industrio#Italian|indùstrio]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:industri#Italian|indùstri]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:industria#Italian|indùstria]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:industriamo#Italian|industriàmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:industriate#Italian|industriàte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:industriano#Italian|indùstriano]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="imperfetto">imperfect</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:industriavo#Italian|industriàvo]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:industriavi#Italian|industriàvi]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:industriava#Italian|industriàva]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:industriavamo#Italian|industriavàmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:industriavate#Italian|industriavàte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:industriavano#Italian|industriàvano]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="passato remoto">past historic</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:industriai#Italian|industriài]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:industriasti#Italian|industriàsti]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:industriò#Italian|industriò]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:industriammo#Italian|industriàmmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:industriaste#Italian|industriàste]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:industriarono#Italian|industriàrono]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="futuro semplice">future</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:industrierò#Italian|industrierò]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:industrierai#Italian|industrierài]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:industrierà#Italian|industrierà]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:industrieremo#Italian|industrierémo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:industrierete#Italian|industrieréte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:industrieranno#Italian|industrierànno]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="condizionale presente">conditional</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:industrierei#Italian|industrierèi]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:industrieresti#Italian|industrierésti]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:industrierebbe#Italian|industrierèbbe]]</span>, <span class="Latn" lang="it">[[:si#Italian|si]] [[:industrierebbe#Italian|industrierébbe]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:industrieremmo#Italian|industrierémmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:industriereste#Italian|industrieréste]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:industrierebbero#Italian|industrierèbbero]]</span>, <span class="Latn" lang="it">[[:si#Italian|si]] [[:industrierebbero#Italian|industrierébbero]]</span>
+|-
+! class="roa-subjunctive-left-rail" | <span title="congiuntivo">subjunctive</span>
+! class="roa-subjunctive-left-rail" | che io
+! class="roa-subjunctive-left-rail" | che tu
+! class="roa-subjunctive-left-rail" | che lui/che lei, che esso/che essa
+! class="roa-subjunctive-left-rail" | che noi
+! class="roa-subjunctive-left-rail" | che voi
+! class="roa-subjunctive-left-rail" | che loro, che essi/che esse
+|-
+! class="roa-subjunctive-left-rail" style="height:3em;" | <span title="congiuntivo presente">present</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:industri#Italian|indùstri]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:industri#Italian|indùstri]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:industri#Italian|indùstri]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:industriamo#Italian|industriàmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:industriate#Italian|industriàte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:industrino#Italian|indùstrino]]</span>
+|-
+! class="roa-subjunctive-left-rail" style="height:3em;" | <span title="congiuntivo imperfetto">imperfect</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:industriassi#Italian|industriàssi]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:industriassi#Italian|industriàssi]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:industriasse#Italian|industriàsse]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:industriassimo#Italian|industriàssimo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:industriaste#Italian|industriàste]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:industriassero#Italian|industriàssero]]</span>
+|-
+! rowspan="2" class="roa-imperative-left-rail" style="height:3em;" | <span title="imperativo">imperative</span>
+! class="roa-imperative-left-rail" | &mdash;
+! class="roa-imperative-left-rail" | tu
+! class="roa-imperative-left-rail" | Lei
+! class="roa-imperative-left-rail" | noi
+! class="roa-imperative-left-rail" | voi
+! class="roa-imperative-left-rail" | Loro
+|-
+|
+| <span class="Latn form-of lang-it 2|s|imp-form-of origin-industriàrsi" lang="it">[[:industriati#Italian|indùstriati]]</span>[[Category:Italian links with redundant wikilinks|INDUSTRIARSI]]
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:industri#Italian|indùstri]]</span>
+| <span class="Latn form-of lang-it 1|p|imp-form-of origin-industriàrsi" lang="it">[[:industriamoci#Italian|industriàmoci]]</span>[[Category:Italian links with redundant wikilinks|INDUSTRIARSI]]
+| <span class="Latn form-of lang-it 2|p|imp-form-of origin-industriàrsi" lang="it">[[:industriatevi#Italian|industriàtevi]]</span>[[Category:Italian links with redundant wikilinks|INDUSTRIARSI]]
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:industrino#Italian|indùstrino]]</span>
+|-
+! class="roa-imperative-left-rail" style="height:3em;" | <span title="imperativo negativo">negative imperative</span>
+|
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:industriarti#Italian|industriàrti]]</span>, <span class="Latn" lang="it">[[:non#Italian|non]] [[:ti#Italian|ti]]  [[:industriare#Italian|industriàre]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:si#Italian|si]]  [[:industri#Italian|indùstri]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:industriamoci#Italian|industriàmoci]]</span>, <span class="Latn" lang="it">[[:non#Italian|non]] [[:ci#Italian|ci]]  [[:industriamo#Italian|industriàmo]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:industriatevi#Italian|industriàtevi]]</span>, <span class="Latn" lang="it">[[:non#Italian|non]] [[:vi#Italian|vi]]  [[:industriate#Italian|industriàte]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:si#Italian|si]]  [[:industrino#Italian|indùstrino]]</span>
+|}</div></div>[[Category:Italian verbs ending in -are|INDUSTRIARSI]][[Category:Italian reflexive verbs|INDUSTRIARSI]]

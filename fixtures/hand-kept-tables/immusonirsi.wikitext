@@ -1,0 +1,15 @@
+==Italian==
+
+===Etymology===
+From {{af|it|im-|musone<t:sulky>|-ire|-si}}, from {{m|it|muso||muzzle}}.
+
+===Verb===
+{{it-verb|+isc}}
+
+# {{lb|it|intransitive}} to [[sulk]]
+
+====Conjugation====
+{{it-conj|+isc}}
+
+====Related terms====
+* {{l|it|immusonito}}

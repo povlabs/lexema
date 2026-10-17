@@ -1,0 +1,124 @@
+<templatestyles src="Module:roa-verb/style.css"></templatestyles><div class="NavFrame">
+<div class="NavHead">&nbsp; &nbsp; Conjugation of <i class="Latn mention" lang="it">[[:incacchiare#Italian|incacchiàr]][[:si#Italian|si]]</i> (-are) (See [[Appendix:Italian verbs]])</div>
+<div class="NavContent">
+{| class="roa-inflection-table" data-toggle-category="inflection"
+|-
+! class="roa-nonfinite-header" | <span title="infinito">infinitive</span>
+| <span class="Latn" lang="it">[[:incacchiare#Italian|incacchiàr]][[:si#Italian|si]]</span>
+|-
+! colspan="2" class="roa-nonfinite-header" | <span title="verbo ausiliare">auxiliary verb</span>
+| <span class="Latn" lang="it">[[:essere#Italian|èssere]]</span>[[Category:Italian links with redundant wikilinks|INCACCHIARSI]]
+! colspan="2" class="roa-nonfinite-header" | <span title="gerundio">gerund</span>
+| colspan="2" | <span class="Latn form-of lang-it ger-form-of origin-incacchiàrsi" lang="it">[[:incacchiandosi#Italian|incacchiàndosi]]</span>[[Category:Italian links with redundant wikilinks|INCACCHIARSI]]
+|-
+! colspan="2" class="roa-nonfinite-header" |  <span title="participio presente">present participle</span>
+| <span class="Latn form-of lang-it pres|part-form-of origin-incacchiàrsi" lang="it">[[:incacchiantesi#Italian|incacchiàntesi]]</span>[[Category:Italian links with redundant wikilinks|INCACCHIARSI]]
+! colspan="2" class="roa-nonfinite-header" | <span title="participio passato">past participle</span>
+| colspan="2" | <span class="Latn form-of lang-it past|part-form-of origin-incacchiàrsi" lang="it">[[:incacchiatosi#Italian|incacchiàtosi]]</span>[[Category:Italian links with redundant wikilinks|INCACCHIARSI]]
+|-
+! rowspan="2" class="roa-person-number-header" | person
+! colspan="3" class="roa-person-number-header" | singular
+! colspan="3" class="roa-person-number-header" | plural
+|-
+! class="roa-person-number-header" style="width:12.5%;" | first
+! class="roa-person-number-header" style="width:12.5%;" | second
+! class="roa-person-number-header" style="width:12.5%;" | third
+! class="roa-person-number-header" style="width:12.5%;" | first
+! class="roa-person-number-header" style="width:12.5%;" | second
+! class="roa-person-number-header" style="width:12.5%;" | third
+|-
+! class="roa-indicative-left-rail" | <span title="indicativo">indicative</span>
+! class="roa-indicative-left-rail" | io
+! class="roa-indicative-left-rail" | tu
+! class="roa-indicative-left-rail" | lui/lei, esso/essa
+! class="roa-indicative-left-rail" | noi
+! class="roa-indicative-left-rail" | voi
+! class="roa-indicative-left-rail" | loro, essi/esse
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="presente">present</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:incacchio#Italian|incàcchio]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:incacchi#Italian|incàcchi]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:incacchia#Italian|incàcchia]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:incacchiamo#Italian|incacchiàmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:incacchiate#Italian|incacchiàte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:incacchiano#Italian|incàcchiano]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="imperfetto">imperfect</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:incacchiavo#Italian|incacchiàvo]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:incacchiavi#Italian|incacchiàvi]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:incacchiava#Italian|incacchiàva]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:incacchiavamo#Italian|incacchiavàmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:incacchiavate#Italian|incacchiavàte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:incacchiavano#Italian|incacchiàvano]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="passato remoto">past historic</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:incacchiai#Italian|incacchiài]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:incacchiasti#Italian|incacchiàsti]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:incacchiò#Italian|incacchiò]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:incacchiammo#Italian|incacchiàmmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:incacchiaste#Italian|incacchiàste]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:incacchiarono#Italian|incacchiàrono]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="futuro semplice">future</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:incacchierò#Italian|incacchierò]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:incacchierai#Italian|incacchierài]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:incacchierà#Italian|incacchierà]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:incacchieremo#Italian|incacchierémo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:incacchierete#Italian|incacchieréte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:incacchieranno#Italian|incacchierànno]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="condizionale presente">conditional</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:incacchierei#Italian|incacchierèi]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:incacchieresti#Italian|incacchierésti]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:incacchierebbe#Italian|incacchierèbbe]]</span>, <span class="Latn" lang="it">[[:si#Italian|si]] [[:incacchierebbe#Italian|incacchierébbe]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:incacchieremmo#Italian|incacchierémmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:incacchiereste#Italian|incacchieréste]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:incacchierebbero#Italian|incacchierèbbero]]</span>, <span class="Latn" lang="it">[[:si#Italian|si]] [[:incacchierebbero#Italian|incacchierébbero]]</span>
+|-
+! class="roa-subjunctive-left-rail" | <span title="congiuntivo">subjunctive</span>
+! class="roa-subjunctive-left-rail" | che io
+! class="roa-subjunctive-left-rail" | che tu
+! class="roa-subjunctive-left-rail" | che lui/che lei, che esso/che essa
+! class="roa-subjunctive-left-rail" | che noi
+! class="roa-subjunctive-left-rail" | che voi
+! class="roa-subjunctive-left-rail" | che loro, che essi/che esse
+|-
+! class="roa-subjunctive-left-rail" style="height:3em;" | <span title="congiuntivo presente">present</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:incacchi#Italian|incàcchi]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:incacchi#Italian|incàcchi]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:incacchi#Italian|incàcchi]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:incacchiamo#Italian|incacchiàmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:incacchiate#Italian|incacchiàte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:incacchino#Italian|incàcchino]]</span>
+|-
+! class="roa-subjunctive-left-rail" style="height:3em;" | <span title="congiuntivo imperfetto">imperfect</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:incacchiassi#Italian|incacchiàssi]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:incacchiassi#Italian|incacchiàssi]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:incacchiasse#Italian|incacchiàsse]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:incacchiassimo#Italian|incacchiàssimo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:incacchiaste#Italian|incacchiàste]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:incacchiassero#Italian|incacchiàssero]]</span>
+|-
+! rowspan="2" class="roa-imperative-left-rail" style="height:3em;" | <span title="imperativo">imperative</span>
+! class="roa-imperative-left-rail" | &mdash;
+! class="roa-imperative-left-rail" | tu
+! class="roa-imperative-left-rail" | Lei
+! class="roa-imperative-left-rail" | noi
+! class="roa-imperative-left-rail" | voi
+! class="roa-imperative-left-rail" | Loro
+|-
+|
+| <span class="Latn form-of lang-it 2|s|imp-form-of origin-incacchiàrsi" lang="it">[[:incacchiati#Italian|incàcchiati]]</span>[[Category:Italian links with redundant wikilinks|INCACCHIARSI]]
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:incacchi#Italian|incàcchi]]</span>
+| <span class="Latn form-of lang-it 1|p|imp-form-of origin-incacchiàrsi" lang="it">[[:incacchiamoci#Italian|incacchiàmoci]]</span>[[Category:Italian links with redundant wikilinks|INCACCHIARSI]]
+| <span class="Latn form-of lang-it 2|p|imp-form-of origin-incacchiàrsi" lang="it">[[:incacchiatevi#Italian|incacchiàtevi]]</span>[[Category:Italian links with redundant wikilinks|INCACCHIARSI]]
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:incacchino#Italian|incàcchino]]</span>
+|-
+! class="roa-imperative-left-rail" style="height:3em;" | <span title="imperativo negativo">negative imperative</span>
+|
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:incacchiarti#Italian|incacchiàrti]]</span>, <span class="Latn" lang="it">[[:non#Italian|non]] [[:ti#Italian|ti]]  [[:incacchiare#Italian|incacchiàre]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:si#Italian|si]]  [[:incacchi#Italian|incàcchi]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:incacchiamoci#Italian|incacchiàmoci]]</span>, <span class="Latn" lang="it">[[:non#Italian|non]] [[:ci#Italian|ci]]  [[:incacchiamo#Italian|incacchiàmo]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:incacchiatevi#Italian|incacchiàtevi]]</span>, <span class="Latn" lang="it">[[:non#Italian|non]] [[:vi#Italian|vi]]  [[:incacchiate#Italian|incacchiàte]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:si#Italian|si]]  [[:incacchino#Italian|incàcchino]]</span>
+|}</div></div>[[Category:Italian verbs ending in -are|INCACCHIARSI]][[Category:Italian reflexive verbs|INCACCHIARSI]]

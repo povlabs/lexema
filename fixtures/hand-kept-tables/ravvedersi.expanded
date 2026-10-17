@@ -1,0 +1,124 @@
+<templatestyles src="Module:roa-verb/style.css"></templatestyles><div class="NavFrame">
+<div class="NavHead">&nbsp; &nbsp; Conjugation of <i class="Latn mention" lang="it">[[:ravvedere#Italian|ravvedér]][[:si#Italian|si]]</i> (-ere; irregular) (See [[Appendix:Italian verbs]])</div>
+<div class="NavContent">
+{| class="roa-inflection-table" data-toggle-category="inflection"
+|-
+! class="roa-nonfinite-header" | <span title="infinito">infinitive</span>
+| <span class="Latn" lang="it">[[:ravvedere#Italian|ravvedér]][[:si#Italian|si]]</span>
+|-
+! colspan="2" class="roa-nonfinite-header" | <span title="verbo ausiliare">auxiliary verb</span>
+| <span class="Latn" lang="it">[[:essere#Italian|èssere]]</span>[[Category:Italian links with redundant wikilinks|RAVVEDERSI]]
+! colspan="2" class="roa-nonfinite-header" | <span title="gerundio">gerund</span>
+| colspan="2" | <span class="Latn form-of lang-it ger-form-of origin-ravvedérsi" lang="it">[[:ravvedendosi#Italian|ravvedèndosi]]</span>[[Category:Italian links with redundant wikilinks|RAVVEDERSI]]
+|-
+! colspan="2" class="roa-nonfinite-header" |  <span title="participio presente">present participle</span>
+| <span class="Latn form-of lang-it pres|part-form-of origin-ravvedérsi" lang="it">[[:ravvedentesi#Italian|ravvedèntesi]]</span>[[Category:Italian links with redundant wikilinks|RAVVEDERSI]], <span class="Latn form-of lang-it pres|part-form-of origin-ravvedérsi" lang="it">[[:ravveggentesi#Italian|ravveggèntesi]]</span>[[Category:Italian links with redundant wikilinks|RAVVEDERSI]]
+! colspan="2" class="roa-nonfinite-header" | <span title="participio passato">past participle</span>
+| colspan="2" | <span class="Latn form-of lang-it past|part-form-of origin-ravvedérsi" lang="it">[[:ravvedutosi#Italian|ravvedùtosi]]</span>[[Category:Italian links with redundant wikilinks|RAVVEDERSI]]
+|-
+! rowspan="2" class="roa-person-number-header" | person
+! colspan="3" class="roa-person-number-header" | singular
+! colspan="3" class="roa-person-number-header" | plural
+|-
+! class="roa-person-number-header" style="width:12.5%;" | first
+! class="roa-person-number-header" style="width:12.5%;" | second
+! class="roa-person-number-header" style="width:12.5%;" | third
+! class="roa-person-number-header" style="width:12.5%;" | first
+! class="roa-person-number-header" style="width:12.5%;" | second
+! class="roa-person-number-header" style="width:12.5%;" | third
+|-
+! class="roa-indicative-left-rail" | <span title="indicativo">indicative</span>
+! class="roa-indicative-left-rail" | io
+! class="roa-indicative-left-rail" | tu
+! class="roa-indicative-left-rail" | lui/lei, esso/essa
+! class="roa-indicative-left-rail" | noi
+! class="roa-indicative-left-rail" | voi
+! class="roa-indicative-left-rail" | loro, essi/esse
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="presente">present</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:ravvedo#Italian|ravvédo]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:ravvedi#Italian|ravvédi]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:ravvede#Italian|ravvéde]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:ravvediamo#Italian|ravvediàmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:ravvedete#Italian|ravvedéte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:ravvedono#Italian|ravvédono]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="imperfetto">imperfect</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:ravvedevo#Italian|ravvedévo]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:ravvedevi#Italian|ravvedévi]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:ravvedeva#Italian|ravvedéva]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:ravvedevamo#Italian|ravvedevàmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:ravvedevate#Italian|ravvedevàte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:ravvedevano#Italian|ravvedévano]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="passato remoto">past historic</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:ravvidi#Italian|ravvìdi]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:ravvedesti#Italian|ravvedésti]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:ravvide#Italian|ravvìde]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:ravvedemmo#Italian|ravvedémmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:ravvedeste#Italian|ravvedéste]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:ravvidero#Italian|ravvìdero]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="futuro semplice">future</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:ravvedrò#Italian|ravvedrò]]</span>, <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:ravvederò#Italian|ravvederò]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:ravvedrai#Italian|ravvedrài]]</span>, <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:ravvederai#Italian|ravvederài]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:ravvedrà#Italian|ravvedrà]]</span>, <span class="Latn" lang="it">[[:si#Italian|si]] [[:ravvederà#Italian|ravvederà]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:ravvedremo#Italian|ravvedrémo]]</span>, <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:ravvederemo#Italian|ravvederémo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:ravvedrete#Italian|ravvedréte]]</span>, <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:ravvederete#Italian|ravvederéte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:ravvedranno#Italian|ravvedrànno]]</span>, <span class="Latn" lang="it">[[:si#Italian|si]] [[:ravvederanno#Italian|ravvederànno]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="condizionale presente">conditional</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:ravvedrei#Italian|ravvedrèi]]</span>, <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:ravvederei#Italian|ravvederèi]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:ravvedresti#Italian|ravvedrésti]]</span>, <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:ravvederesti#Italian|ravvederésti]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:ravvedrebbe#Italian|ravvedrèbbe]]</span>, <span class="Latn" lang="it">[[:si#Italian|si]] [[:ravvedrebbe#Italian|ravvedrébbe]]</span>, <span class="Latn" lang="it">[[:si#Italian|si]] [[:ravvederebbe#Italian|ravvederèbbe]]</span>, <span class="Latn" lang="it">[[:si#Italian|si]] [[:ravvederebbe#Italian|ravvederébbe]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:ravvedremmo#Italian|ravvedrémmo]]</span>, <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:ravvederemmo#Italian|ravvederémmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:ravvedreste#Italian|ravvedréste]]</span>, <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:ravvedereste#Italian|ravvederéste]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:ravvedrebbero#Italian|ravvedrèbbero]]</span>, <span class="Latn" lang="it">[[:si#Italian|si]] [[:ravvedrebbero#Italian|ravvedrébbero]]</span>, <span class="Latn" lang="it">[[:si#Italian|si]] [[:ravvederebbero#Italian|ravvederèbbero]]</span>, <span class="Latn" lang="it">[[:si#Italian|si]] [[:ravvederebbero#Italian|ravvederébbero]]</span>
+|-
+! class="roa-subjunctive-left-rail" | <span title="congiuntivo">subjunctive</span>
+! class="roa-subjunctive-left-rail" | che io
+! class="roa-subjunctive-left-rail" | che tu
+! class="roa-subjunctive-left-rail" | che lui/che lei, che esso/che essa
+! class="roa-subjunctive-left-rail" | che noi
+! class="roa-subjunctive-left-rail" | che voi
+! class="roa-subjunctive-left-rail" | che loro, che essi/che esse
+|-
+! class="roa-subjunctive-left-rail" style="height:3em;" | <span title="congiuntivo presente">present</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:ravveda#Italian|ravvéda]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:ravveda#Italian|ravvéda]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:ravveda#Italian|ravvéda]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:ravvediamo#Italian|ravvediàmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:ravvediate#Italian|ravvediàte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:ravvedano#Italian|ravvédano]]</span>
+|-
+! class="roa-subjunctive-left-rail" style="height:3em;" | <span title="congiuntivo imperfetto">imperfect</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:ravvedessi#Italian|ravvedéssi]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:ravvedessi#Italian|ravvedéssi]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:ravvedesse#Italian|ravvedésse]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:ravvedessimo#Italian|ravvedéssimo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:ravvedeste#Italian|ravvedéste]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:ravvedessero#Italian|ravvedéssero]]</span>
+|-
+! rowspan="2" class="roa-imperative-left-rail" style="height:3em;" | <span title="imperativo">imperative</span>
+! class="roa-imperative-left-rail" | &mdash;
+! class="roa-imperative-left-rail" | tu
+! class="roa-imperative-left-rail" | Lei
+! class="roa-imperative-left-rail" | noi
+! class="roa-imperative-left-rail" | voi
+! class="roa-imperative-left-rail" | Loro
+|-
+|
+| <span class="Latn form-of lang-it 2|s|imp-form-of origin-ravvedérsi" lang="it">[[:ravvediti#Italian|ravvéditi]]</span>[[Category:Italian links with redundant wikilinks|RAVVEDERSI]]
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:ravveda#Italian|ravvéda]]</span>
+| <span class="Latn form-of lang-it 1|p|imp-form-of origin-ravvedérsi" lang="it">[[:ravvediamoci#Italian|ravvediàmoci]]</span>[[Category:Italian links with redundant wikilinks|RAVVEDERSI]]
+| <span class="Latn form-of lang-it 2|p|imp-form-of origin-ravvedérsi" lang="it">[[:ravvedetevi#Italian|ravvedétevi]]</span>[[Category:Italian links with redundant wikilinks|RAVVEDERSI]]
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:ravvedano#Italian|ravvédano]]</span>
+|-
+! class="roa-imperative-left-rail" style="height:3em;" | <span title="imperativo negativo">negative imperative</span>
+|
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:ravvederti#Italian|ravvedérti]]</span>, <span class="Latn" lang="it">[[:non#Italian|non]] [[:ti#Italian|ti]]  [[:ravvedere#Italian|ravvedére]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:si#Italian|si]]  [[:ravveda#Italian|ravvéda]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:ravvediamoci#Italian|ravvediàmoci]]</span>, <span class="Latn" lang="it">[[:non#Italian|non]] [[:ci#Italian|ci]]  [[:ravvediamo#Italian|ravvediàmo]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:ravvedetevi#Italian|ravvedétevi]]</span>, <span class="Latn" lang="it">[[:non#Italian|non]] [[:vi#Italian|vi]]  [[:ravvedete#Italian|ravvedéte]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:si#Italian|si]]  [[:ravvedano#Italian|ravvédano]]</span>
+|}</div></div>[[Category:Italian verbs ending in -ere|RAVVEDERSI]][[Category:Italian irregular verbs|RAVVEDERSI]][[Category:Italian verbs with irregular past historic|RAVVEDERSI]][[Category:Italian verbs with irregular future|RAVVEDERSI]][[Category:Italian verbs with irregular present participle|RAVVEDERSI]][[Category:Italian reflexive verbs|RAVVEDERSI]]

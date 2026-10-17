@@ -1,0 +1,21 @@
+==Italian==
+
+===Etymology===
+From {{confix|it|a|valere|si}}.
+
+===Pronunciation===
+{{it-pr|avvalérsi}}
+
+===Verb===
+{{it-verb|/@}}
+
+# {{lb|it|literary}} to [[avail]] oneself {{+obj|it|:di<of>}}
+
+====Conjugation====
+{{it-conj|/@}}
+
+====Derived terms====
+* {{l|it|avvalimento}}
+
+===Anagrams===
+* {{anagrams|it|a=aaeilrsvv|avvisarle}}

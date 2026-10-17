@@ -1,0 +1,124 @@
+<templatestyles src="Module:roa-verb/style.css"></templatestyles><div class="NavFrame">
+<div class="NavHead">&nbsp; &nbsp; Conjugation of <i class="Latn mention" lang="it">[[:rivalere#Italian|rivalér]][[:si#Italian|si]]</i> (-ere; irregular) (See [[Appendix:Italian verbs]])</div>
+<div class="NavContent">
+{| class="roa-inflection-table" data-toggle-category="inflection"
+|-
+! class="roa-nonfinite-header" | <span title="infinito">infinitive</span>
+| <span class="Latn" lang="it">[[:rivalere#Italian|rivalér]][[:si#Italian|si]]</span>
+|-
+! colspan="2" class="roa-nonfinite-header" | <span title="verbo ausiliare">auxiliary verb</span>
+| <span class="Latn" lang="it">[[:essere#Italian|èssere]]</span>[[Category:Italian links with redundant wikilinks|RIVALERSI]]
+! colspan="2" class="roa-nonfinite-header" | <span title="gerundio">gerund</span>
+| colspan="2" | <span class="Latn form-of lang-it ger-form-of origin-rivalérsi" lang="it">[[:rivalendosi#Italian|rivalèndosi]]</span>[[Category:Italian links with redundant wikilinks|RIVALERSI]]
+|-
+! colspan="2" class="roa-nonfinite-header" |  <span title="participio presente">present participle</span>
+| <span class="Latn form-of lang-it pres|part-form-of origin-rivalérsi" lang="it">[[:rivalentesi#Italian|rivalèntesi]]</span>[[Category:Italian links with redundant wikilinks|RIVALERSI]]
+! colspan="2" class="roa-nonfinite-header" | <span title="participio passato">past participle</span>
+| colspan="2" | <span class="Latn form-of lang-it past|part-form-of origin-rivalérsi" lang="it">[[:rivalsosi#Italian|rivàlsosi]]</span>[[Category:Italian links with redundant wikilinks|RIVALERSI]]
+|-
+! rowspan="2" class="roa-person-number-header" | person
+! colspan="3" class="roa-person-number-header" | singular
+! colspan="3" class="roa-person-number-header" | plural
+|-
+! class="roa-person-number-header" style="width:12.5%;" | first
+! class="roa-person-number-header" style="width:12.5%;" | second
+! class="roa-person-number-header" style="width:12.5%;" | third
+! class="roa-person-number-header" style="width:12.5%;" | first
+! class="roa-person-number-header" style="width:12.5%;" | second
+! class="roa-person-number-header" style="width:12.5%;" | third
+|-
+! class="roa-indicative-left-rail" | <span title="indicativo">indicative</span>
+! class="roa-indicative-left-rail" | io
+! class="roa-indicative-left-rail" | tu
+! class="roa-indicative-left-rail" | lui/lei, esso/essa
+! class="roa-indicative-left-rail" | noi
+! class="roa-indicative-left-rail" | voi
+! class="roa-indicative-left-rail" | loro, essi/esse
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="presente">present</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:rivalgo#Italian|rivàlgo]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:rivali#Italian|rivàli]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:rivale#Italian|rivàle]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:rivaliamo#Italian|rivaliàmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:rivalete#Italian|rivaléte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:rivalgono#Italian|rivàlgono]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="imperfetto">imperfect</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:rivalevo#Italian|rivalévo]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:rivalevi#Italian|rivalévi]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:rivaleva#Italian|rivaléva]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:rivalevamo#Italian|rivalevàmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:rivalevate#Italian|rivalevàte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:rivalevano#Italian|rivalévano]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="passato remoto">past historic</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:rivalsi#Italian|rivàlsi]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:rivalesti#Italian|rivalésti]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:rivalse#Italian|rivàlse]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:rivalemmo#Italian|rivalémmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:rivaleste#Italian|rivaléste]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:rivalsero#Italian|rivàlsero]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="futuro semplice">future</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:rivarrò#Italian|rivarrò]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:rivarrai#Italian|rivarrài]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:rivarrà#Italian|rivarrà]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:rivarremo#Italian|rivarrémo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:rivarrete#Italian|rivarréte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:rivarranno#Italian|rivarrànno]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="condizionale presente">conditional</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:rivarrei#Italian|rivarrèi]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:rivarresti#Italian|rivarrésti]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:rivarrebbe#Italian|rivarrèbbe]]</span>, <span class="Latn" lang="it">[[:si#Italian|si]] [[:rivarrebbe#Italian|rivarrébbe]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:rivarremmo#Italian|rivarrémmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:rivarreste#Italian|rivarréste]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:rivarrebbero#Italian|rivarrèbbero]]</span>, <span class="Latn" lang="it">[[:si#Italian|si]] [[:rivarrebbero#Italian|rivarrébbero]]</span>
+|-
+! class="roa-subjunctive-left-rail" | <span title="congiuntivo">subjunctive</span>
+! class="roa-subjunctive-left-rail" | che io
+! class="roa-subjunctive-left-rail" | che tu
+! class="roa-subjunctive-left-rail" | che lui/che lei, che esso/che essa
+! class="roa-subjunctive-left-rail" | che noi
+! class="roa-subjunctive-left-rail" | che voi
+! class="roa-subjunctive-left-rail" | che loro, che essi/che esse
+|-
+! class="roa-subjunctive-left-rail" style="height:3em;" | <span title="congiuntivo presente">present</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:rivalga#Italian|rivàlga]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:rivalga#Italian|rivàlga]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:rivalga#Italian|rivàlga]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:rivaliamo#Italian|rivaliàmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:rivaliate#Italian|rivaliàte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:rivalgano#Italian|rivàlgano]]</span>
+|-
+! class="roa-subjunctive-left-rail" style="height:3em;" | <span title="congiuntivo imperfetto">imperfect</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:rivalessi#Italian|rivaléssi]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:rivalessi#Italian|rivaléssi]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:rivalesse#Italian|rivalésse]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:rivalessimo#Italian|rivaléssimo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:rivaleste#Italian|rivaléste]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:rivalessero#Italian|rivaléssero]]</span>
+|-
+! rowspan="2" class="roa-imperative-left-rail" style="height:3em;" | <span title="imperativo">imperative</span>
+! class="roa-imperative-left-rail" | &mdash;
+! class="roa-imperative-left-rail" | tu
+! class="roa-imperative-left-rail" | Lei
+! class="roa-imperative-left-rail" | noi
+! class="roa-imperative-left-rail" | voi
+! class="roa-imperative-left-rail" | Loro
+|-
+|
+| <span class="Latn form-of lang-it 2|s|imp-form-of origin-rivalérsi" lang="it">[[:rivaliti#Italian|rivàliti]]</span>[[Category:Italian links with redundant wikilinks|RIVALERSI]]
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:rivalga#Italian|rivàlga]]</span>
+| <span class="Latn form-of lang-it 1|p|imp-form-of origin-rivalérsi" lang="it">[[:rivaliamoci#Italian|rivaliàmoci]]</span>[[Category:Italian links with redundant wikilinks|RIVALERSI]]
+| <span class="Latn form-of lang-it 2|p|imp-form-of origin-rivalérsi" lang="it">[[:rivaletevi#Italian|rivalétevi]]</span>[[Category:Italian links with redundant wikilinks|RIVALERSI]]
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:rivalgano#Italian|rivàlgano]]</span>
+|-
+! class="roa-imperative-left-rail" style="height:3em;" | <span title="imperativo negativo">negative imperative</span>
+|
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:rivalerti#Italian|rivalérti]]</span>, <span class="Latn" lang="it">[[:non#Italian|non]] [[:ti#Italian|ti]]  [[:rivalere#Italian|rivalére]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:si#Italian|si]]  [[:rivalga#Italian|rivàlga]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:rivaliamoci#Italian|rivaliàmoci]]</span>, <span class="Latn" lang="it">[[:non#Italian|non]] [[:ci#Italian|ci]]  [[:rivaliamo#Italian|rivaliàmo]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:rivaletevi#Italian|rivalétevi]]</span>, <span class="Latn" lang="it">[[:non#Italian|non]] [[:vi#Italian|vi]]  [[:rivalete#Italian|rivaléte]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:si#Italian|si]]  [[:rivalgano#Italian|rivàlgano]]</span>
+|}</div></div>[[Category:Italian verbs ending in -ere|RIVALERSI]][[Category:Italian irregular verbs|RIVALERSI]][[Category:Italian verbs with irregular past historic|RIVALERSI]][[Category:Italian verbs with irregular future|RIVALERSI]][[Category:Italian verbs with irregular past participle|RIVALERSI]][[Category:Italian reflexive verbs|RIVALERSI]]

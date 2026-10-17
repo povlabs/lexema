@@ -1,0 +1,10 @@
+==Italian==
+
+===Verb===
+{{it-verb|à}}
+
+# {{reflexive of|it|adastiare}}: to [[hate]] [[each other]]
+#: {{syn|it|odiarsi}}
+
+====Conjugation====
+{{it-conj|à}}

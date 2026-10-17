@@ -1,0 +1,27 @@
+==Italian==
+
+===Etymology===
+{{ety|it|:af|impadronire|-si}}
+From {{af|it|impadronire|-si}}.
+
+===Pronunciation===
+{{it-pr|impadronìrsi<r:Olivetti>}}
+
+===Verb===
+{{it-verb|+isc}} {{tlb|it|intransitive}}
+
+# to [[seize]], to [[take possession]] {{+obj|it|:di<something>}}
+#: {{syn|it|impossessarsi<qq:less common>}}
+# {{&lit|it|{{it-compound of}}}}
+
+====Conjugation====
+{{it-conj|+isc}}
+
+====Derived terms====
+* {{l|it|rimpadronirsi}}
+
+===References===
+{{reflist}}
+
+===Further reading===
+* {{R:it:Treccani}}

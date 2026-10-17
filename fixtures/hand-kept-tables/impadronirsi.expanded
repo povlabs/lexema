@@ -1,0 +1,124 @@
+<templatestyles src="Module:roa-verb/style.css"></templatestyles><div class="NavFrame">
+<div class="NavHead">&nbsp; &nbsp; Conjugation of <i class="Latn mention" lang="it">[[:impadronire#Italian|impadronìr]][[:si#Italian|si]]</i> (-ire) (See [[Appendix:Italian verbs]])</div>
+<div class="NavContent">
+{| class="roa-inflection-table" data-toggle-category="inflection"
+|-
+! class="roa-nonfinite-header" | <span title="infinito">infinitive</span>
+| <span class="Latn" lang="it">[[:impadronire#Italian|impadronìr]][[:si#Italian|si]]</span>
+|-
+! colspan="2" class="roa-nonfinite-header" | <span title="verbo ausiliare">auxiliary verb</span>
+| <span class="Latn" lang="it">[[:essere#Italian|èssere]]</span>[[Category:Italian links with redundant wikilinks|IMPADRONIRSI]]
+! colspan="2" class="roa-nonfinite-header" | <span title="gerundio">gerund</span>
+| colspan="2" | <span class="Latn form-of lang-it ger-form-of origin-impadronìrsi" lang="it">[[:impadronendosi#Italian|impadronèndosi]]</span>[[Category:Italian links with redundant wikilinks|IMPADRONIRSI]]
+|-
+! colspan="2" class="roa-nonfinite-header" |  <span title="participio presente">present participle</span>
+| <span class="Latn form-of lang-it pres|part-form-of origin-impadronìrsi" lang="it">[[:impadronentesi#Italian|impadronèntesi]]</span>[[Category:Italian links with redundant wikilinks|IMPADRONIRSI]]
+! colspan="2" class="roa-nonfinite-header" | <span title="participio passato">past participle</span>
+| colspan="2" | <span class="Latn form-of lang-it past|part-form-of origin-impadronìrsi" lang="it">[[:impadronitosi#Italian|impadronìtosi]]</span>[[Category:Italian links with redundant wikilinks|IMPADRONIRSI]]
+|-
+! rowspan="2" class="roa-person-number-header" | person
+! colspan="3" class="roa-person-number-header" | singular
+! colspan="3" class="roa-person-number-header" | plural
+|-
+! class="roa-person-number-header" style="width:12.5%;" | first
+! class="roa-person-number-header" style="width:12.5%;" | second
+! class="roa-person-number-header" style="width:12.5%;" | third
+! class="roa-person-number-header" style="width:12.5%;" | first
+! class="roa-person-number-header" style="width:12.5%;" | second
+! class="roa-person-number-header" style="width:12.5%;" | third
+|-
+! class="roa-indicative-left-rail" | <span title="indicativo">indicative</span>
+! class="roa-indicative-left-rail" | io
+! class="roa-indicative-left-rail" | tu
+! class="roa-indicative-left-rail" | lui/lei, esso/essa
+! class="roa-indicative-left-rail" | noi
+! class="roa-indicative-left-rail" | voi
+! class="roa-indicative-left-rail" | loro, essi/esse
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="presente">present</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:impadronisco#Italian|impadronìsco]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:impadronisci#Italian|impadronìsci]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:impadronisce#Italian|impadronìsce]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:impadroniamo#Italian|impadroniàmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:impadronite#Italian|impadronìte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:impadroniscono#Italian|impadronìscono]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="imperfetto">imperfect</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:impadronivo#Italian|impadronìvo]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:impadronivi#Italian|impadronìvi]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:impadroniva#Italian|impadronìva]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:impadronivamo#Italian|impadronivàmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:impadronivate#Italian|impadronivàte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:impadronivano#Italian|impadronìvano]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="passato remoto">past historic</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:impadronii#Italian|impadronìi]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:impadronisti#Italian|impadronìsti]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:impadronì#Italian|impadronì]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:impadronimmo#Italian|impadronìmmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:impadroniste#Italian|impadronìste]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:impadronirono#Italian|impadronìrono]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="futuro semplice">future</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:impadronirò#Italian|impadronirò]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:impadronirai#Italian|impadronirài]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:impadronirà#Italian|impadronirà]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:impadroniremo#Italian|impadronirémo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:impadronirete#Italian|impadroniréte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:impadroniranno#Italian|impadronirànno]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="condizionale presente">conditional</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:impadronirei#Italian|impadronirèi]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:impadroniresti#Italian|impadronirésti]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:impadronirebbe#Italian|impadronirèbbe]]</span>, <span class="Latn" lang="it">[[:si#Italian|si]] [[:impadronirebbe#Italian|impadronirébbe]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:impadroniremmo#Italian|impadronirémmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:impadronireste#Italian|impadroniréste]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:impadronirebbero#Italian|impadronirèbbero]]</span>, <span class="Latn" lang="it">[[:si#Italian|si]] [[:impadronirebbero#Italian|impadronirébbero]]</span>
+|-
+! class="roa-subjunctive-left-rail" | <span title="congiuntivo">subjunctive</span>
+! class="roa-subjunctive-left-rail" | che io
+! class="roa-subjunctive-left-rail" | che tu
+! class="roa-subjunctive-left-rail" | che lui/che lei, che esso/che essa
+! class="roa-subjunctive-left-rail" | che noi
+! class="roa-subjunctive-left-rail" | che voi
+! class="roa-subjunctive-left-rail" | che loro, che essi/che esse
+|-
+! class="roa-subjunctive-left-rail" style="height:3em;" | <span title="congiuntivo presente">present</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:impadronisca#Italian|impadronìsca]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:impadronisca#Italian|impadronìsca]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:impadronisca#Italian|impadronìsca]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:impadroniamo#Italian|impadroniàmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:impadroniate#Italian|impadroniàte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:impadroniscano#Italian|impadronìscano]]</span>
+|-
+! class="roa-subjunctive-left-rail" style="height:3em;" | <span title="congiuntivo imperfetto">imperfect</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:impadronissi#Italian|impadronìssi]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:impadronissi#Italian|impadronìssi]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:impadronisse#Italian|impadronìsse]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:impadronissimo#Italian|impadronìssimo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:impadroniste#Italian|impadronìste]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:impadronissero#Italian|impadronìssero]]</span>
+|-
+! rowspan="2" class="roa-imperative-left-rail" style="height:3em;" | <span title="imperativo">imperative</span>
+! class="roa-imperative-left-rail" | &mdash;
+! class="roa-imperative-left-rail" | tu
+! class="roa-imperative-left-rail" | Lei
+! class="roa-imperative-left-rail" | noi
+! class="roa-imperative-left-rail" | voi
+! class="roa-imperative-left-rail" | Loro
+|-
+|
+| <span class="Latn form-of lang-it 2|s|imp-form-of origin-impadronìrsi" lang="it">[[:impadronisciti#Italian|impadronìsciti]]</span>[[Category:Italian links with redundant wikilinks|IMPADRONIRSI]]
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:impadronisca#Italian|impadronìsca]]</span>
+| <span class="Latn form-of lang-it 1|p|imp-form-of origin-impadronìrsi" lang="it">[[:impadroniamoci#Italian|impadroniàmoci]]</span>[[Category:Italian links with redundant wikilinks|IMPADRONIRSI]]
+| <span class="Latn form-of lang-it 2|p|imp-form-of origin-impadronìrsi" lang="it">[[:impadronitevi#Italian|impadronìtevi]]</span>[[Category:Italian links with redundant wikilinks|IMPADRONIRSI]]
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:impadroniscano#Italian|impadronìscano]]</span>
+|-
+! class="roa-imperative-left-rail" style="height:3em;" | <span title="imperativo negativo">negative imperative</span>
+|
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:impadronirti#Italian|impadronìrti]]</span>, <span class="Latn" lang="it">[[:non#Italian|non]] [[:ti#Italian|ti]]  [[:impadronire#Italian|impadronìre]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:si#Italian|si]]  [[:impadronisca#Italian|impadronìsca]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:impadroniamoci#Italian|impadroniàmoci]]</span>, <span class="Latn" lang="it">[[:non#Italian|non]] [[:ci#Italian|ci]]  [[:impadroniamo#Italian|impadroniàmo]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:impadronitevi#Italian|impadronìtevi]]</span>, <span class="Latn" lang="it">[[:non#Italian|non]] [[:vi#Italian|vi]]  [[:impadronite#Italian|impadronìte]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:si#Italian|si]]  [[:impadroniscano#Italian|impadronìscano]]</span>
+|}</div></div>[[Category:Italian verbs ending in -ire|IMPADRONIRSI]][[Category:Italian reflexive verbs|IMPADRONIRSI]]

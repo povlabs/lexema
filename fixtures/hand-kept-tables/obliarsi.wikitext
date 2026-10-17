@@ -1,0 +1,18 @@
+==Italian==
+
+===Pronunciation===
+{{it-pr|obli.àrsi<r:DiPI:obliare>}}
+
+===Verb===
+{{it-verb|ì}}
+
+# to [[forget]] oneself
+
+====Conjugation====
+{{it-conj|ì}}
+
+====Related terms====
+* {{l|it|obliare}}
+
+===References===
+{{reflist}}

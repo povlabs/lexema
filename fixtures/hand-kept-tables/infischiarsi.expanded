@@ -1,0 +1,124 @@
+<templatestyles src="Module:roa-verb/style.css"></templatestyles><div class="NavFrame">
+<div class="NavHead">&nbsp; &nbsp; Conjugation of <i class="Latn mention" lang="it">[[:infischiare#Italian|infischiàr]][[:si#Italian|si]]</i> (-are) (See [[Appendix:Italian verbs]])</div>
+<div class="NavContent">
+{| class="roa-inflection-table" data-toggle-category="inflection"
+|-
+! class="roa-nonfinite-header" | <span title="infinito">infinitive</span>
+| <span class="Latn" lang="it">[[:infischiare#Italian|infischiàr]][[:si#Italian|si]]</span>
+|-
+! colspan="2" class="roa-nonfinite-header" | <span title="verbo ausiliare">auxiliary verb</span>
+| <span class="Latn" lang="it">[[:essere#Italian|èssere]]</span>[[Category:Italian links with redundant wikilinks|INFISCHIARSI]]
+! colspan="2" class="roa-nonfinite-header" | <span title="gerundio">gerund</span>
+| colspan="2" | <span class="Latn form-of lang-it ger-form-of origin-infischiàrsi" lang="it">[[:infischiandosi#Italian|infischiàndosi]]</span>[[Category:Italian links with redundant wikilinks|INFISCHIARSI]]
+|-
+! colspan="2" class="roa-nonfinite-header" |  <span title="participio presente">present participle</span>
+| <span class="Latn form-of lang-it pres|part-form-of origin-infischiàrsi" lang="it">[[:infischiantesi#Italian|infischiàntesi]]</span>[[Category:Italian links with redundant wikilinks|INFISCHIARSI]]
+! colspan="2" class="roa-nonfinite-header" | <span title="participio passato">past participle</span>
+| colspan="2" | <span class="Latn form-of lang-it past|part-form-of origin-infischiàrsi" lang="it">[[:infischiatosi#Italian|infischiàtosi]]</span>[[Category:Italian links with redundant wikilinks|INFISCHIARSI]]
+|-
+! rowspan="2" class="roa-person-number-header" | person
+! colspan="3" class="roa-person-number-header" | singular
+! colspan="3" class="roa-person-number-header" | plural
+|-
+! class="roa-person-number-header" style="width:12.5%;" | first
+! class="roa-person-number-header" style="width:12.5%;" | second
+! class="roa-person-number-header" style="width:12.5%;" | third
+! class="roa-person-number-header" style="width:12.5%;" | first
+! class="roa-person-number-header" style="width:12.5%;" | second
+! class="roa-person-number-header" style="width:12.5%;" | third
+|-
+! class="roa-indicative-left-rail" | <span title="indicativo">indicative</span>
+! class="roa-indicative-left-rail" | io
+! class="roa-indicative-left-rail" | tu
+! class="roa-indicative-left-rail" | lui/lei, esso/essa
+! class="roa-indicative-left-rail" | noi
+! class="roa-indicative-left-rail" | voi
+! class="roa-indicative-left-rail" | loro, essi/esse
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="presente">present</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:infischio#Italian|infìschio]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:infischi#Italian|infìschi]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:infischia#Italian|infìschia]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:infischiamo#Italian|infischiàmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:infischiate#Italian|infischiàte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:infischiano#Italian|infìschiano]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="imperfetto">imperfect</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:infischiavo#Italian|infischiàvo]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:infischiavi#Italian|infischiàvi]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:infischiava#Italian|infischiàva]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:infischiavamo#Italian|infischiavàmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:infischiavate#Italian|infischiavàte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:infischiavano#Italian|infischiàvano]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="passato remoto">past historic</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:infischiai#Italian|infischiài]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:infischiasti#Italian|infischiàsti]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:infischiò#Italian|infischiò]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:infischiammo#Italian|infischiàmmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:infischiaste#Italian|infischiàste]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:infischiarono#Italian|infischiàrono]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="futuro semplice">future</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:infischierò#Italian|infischierò]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:infischierai#Italian|infischierài]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:infischierà#Italian|infischierà]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:infischieremo#Italian|infischierémo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:infischierete#Italian|infischieréte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:infischieranno#Italian|infischierànno]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="condizionale presente">conditional</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:infischierei#Italian|infischierèi]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:infischieresti#Italian|infischierésti]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:infischierebbe#Italian|infischierèbbe]]</span>, <span class="Latn" lang="it">[[:si#Italian|si]] [[:infischierebbe#Italian|infischierébbe]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:infischieremmo#Italian|infischierémmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:infischiereste#Italian|infischieréste]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:infischierebbero#Italian|infischierèbbero]]</span>, <span class="Latn" lang="it">[[:si#Italian|si]] [[:infischierebbero#Italian|infischierébbero]]</span>
+|-
+! class="roa-subjunctive-left-rail" | <span title="congiuntivo">subjunctive</span>
+! class="roa-subjunctive-left-rail" | che io
+! class="roa-subjunctive-left-rail" | che tu
+! class="roa-subjunctive-left-rail" | che lui/che lei, che esso/che essa
+! class="roa-subjunctive-left-rail" | che noi
+! class="roa-subjunctive-left-rail" | che voi
+! class="roa-subjunctive-left-rail" | che loro, che essi/che esse
+|-
+! class="roa-subjunctive-left-rail" style="height:3em;" | <span title="congiuntivo presente">present</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:infischi#Italian|infìschi]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:infischi#Italian|infìschi]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:infischi#Italian|infìschi]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:infischiamo#Italian|infischiàmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:infischiate#Italian|infischiàte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:infischino#Italian|infìschino]]</span>
+|-
+! class="roa-subjunctive-left-rail" style="height:3em;" | <span title="congiuntivo imperfetto">imperfect</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:infischiassi#Italian|infischiàssi]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:infischiassi#Italian|infischiàssi]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:infischiasse#Italian|infischiàsse]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:infischiassimo#Italian|infischiàssimo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:infischiaste#Italian|infischiàste]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:infischiassero#Italian|infischiàssero]]</span>
+|-
+! rowspan="2" class="roa-imperative-left-rail" style="height:3em;" | <span title="imperativo">imperative</span>
+! class="roa-imperative-left-rail" | &mdash;
+! class="roa-imperative-left-rail" | tu
+! class="roa-imperative-left-rail" | Lei
+! class="roa-imperative-left-rail" | noi
+! class="roa-imperative-left-rail" | voi
+! class="roa-imperative-left-rail" | Loro
+|-
+|
+| <span class="Latn form-of lang-it 2|s|imp-form-of origin-infischiàrsi" lang="it">[[:infischiati#Italian|infìschiati]]</span>[[Category:Italian links with redundant wikilinks|INFISCHIARSI]]
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:infischi#Italian|infìschi]]</span>
+| <span class="Latn form-of lang-it 1|p|imp-form-of origin-infischiàrsi" lang="it">[[:infischiamoci#Italian|infischiàmoci]]</span>[[Category:Italian links with redundant wikilinks|INFISCHIARSI]]
+| <span class="Latn form-of lang-it 2|p|imp-form-of origin-infischiàrsi" lang="it">[[:infischiatevi#Italian|infischiàtevi]]</span>[[Category:Italian links with redundant wikilinks|INFISCHIARSI]]
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:infischino#Italian|infìschino]]</span>
+|-
+! class="roa-imperative-left-rail" style="height:3em;" | <span title="imperativo negativo">negative imperative</span>
+|
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:infischiarti#Italian|infischiàrti]]</span>, <span class="Latn" lang="it">[[:non#Italian|non]] [[:ti#Italian|ti]]  [[:infischiare#Italian|infischiàre]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:si#Italian|si]]  [[:infischi#Italian|infìschi]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:infischiamoci#Italian|infischiàmoci]]</span>, <span class="Latn" lang="it">[[:non#Italian|non]] [[:ci#Italian|ci]]  [[:infischiamo#Italian|infischiàmo]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:infischiatevi#Italian|infischiàtevi]]</span>, <span class="Latn" lang="it">[[:non#Italian|non]] [[:vi#Italian|vi]]  [[:infischiate#Italian|infischiàte]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:si#Italian|si]]  [[:infischino#Italian|infìschino]]</span>
+|}</div></div>[[Category:Italian verbs ending in -are|INFISCHIARSI]][[Category:Italian reflexive verbs|INFISCHIARSI]]

@@ -1,0 +1,124 @@
+<templatestyles src="Module:roa-verb/style.css"></templatestyles><div class="NavFrame">
+<div class="NavHead">&nbsp; &nbsp; Conjugation of <i class="Latn mention" lang="it">[[:immusonire#Italian|immusonìr]][[:si#Italian|si]]</i> (-ire) (See [[Appendix:Italian verbs]])</div>
+<div class="NavContent">
+{| class="roa-inflection-table" data-toggle-category="inflection"
+|-
+! class="roa-nonfinite-header" | <span title="infinito">infinitive</span>
+| <span class="Latn" lang="it">[[:immusonire#Italian|immusonìr]][[:si#Italian|si]]</span>
+|-
+! colspan="2" class="roa-nonfinite-header" | <span title="verbo ausiliare">auxiliary verb</span>
+| <span class="Latn" lang="it">[[:essere#Italian|èssere]]</span>[[Category:Italian links with redundant wikilinks|IMMUSONIRSI]]
+! colspan="2" class="roa-nonfinite-header" | <span title="gerundio">gerund</span>
+| colspan="2" | <span class="Latn form-of lang-it ger-form-of origin-immusonìrsi" lang="it">[[:immusonendosi#Italian|immusonèndosi]]</span>[[Category:Italian links with redundant wikilinks|IMMUSONIRSI]]
+|-
+! colspan="2" class="roa-nonfinite-header" |  <span title="participio presente">present participle</span>
+| <span class="Latn form-of lang-it pres|part-form-of origin-immusonìrsi" lang="it">[[:immusonentesi#Italian|immusonèntesi]]</span>[[Category:Italian links with redundant wikilinks|IMMUSONIRSI]]
+! colspan="2" class="roa-nonfinite-header" | <span title="participio passato">past participle</span>
+| colspan="2" | <span class="Latn form-of lang-it past|part-form-of origin-immusonìrsi" lang="it">[[:immusonitosi#Italian|immusonìtosi]]</span>[[Category:Italian links with redundant wikilinks|IMMUSONIRSI]]
+|-
+! rowspan="2" class="roa-person-number-header" | person
+! colspan="3" class="roa-person-number-header" | singular
+! colspan="3" class="roa-person-number-header" | plural
+|-
+! class="roa-person-number-header" style="width:12.5%;" | first
+! class="roa-person-number-header" style="width:12.5%;" | second
+! class="roa-person-number-header" style="width:12.5%;" | third
+! class="roa-person-number-header" style="width:12.5%;" | first
+! class="roa-person-number-header" style="width:12.5%;" | second
+! class="roa-person-number-header" style="width:12.5%;" | third
+|-
+! class="roa-indicative-left-rail" | <span title="indicativo">indicative</span>
+! class="roa-indicative-left-rail" | io
+! class="roa-indicative-left-rail" | tu
+! class="roa-indicative-left-rail" | lui/lei, esso/essa
+! class="roa-indicative-left-rail" | noi
+! class="roa-indicative-left-rail" | voi
+! class="roa-indicative-left-rail" | loro, essi/esse
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="presente">present</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:immusonisco#Italian|immusonìsco]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:immusonisci#Italian|immusonìsci]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:immusonisce#Italian|immusonìsce]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:immusoniamo#Italian|immusoniàmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:immusonite#Italian|immusonìte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:immusoniscono#Italian|immusonìscono]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="imperfetto">imperfect</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:immusonivo#Italian|immusonìvo]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:immusonivi#Italian|immusonìvi]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:immusoniva#Italian|immusonìva]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:immusonivamo#Italian|immusonivàmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:immusonivate#Italian|immusonivàte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:immusonivano#Italian|immusonìvano]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="passato remoto">past historic</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:immusonii#Italian|immusonìi]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:immusonisti#Italian|immusonìsti]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:immusonì#Italian|immusonì]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:immusonimmo#Italian|immusonìmmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:immusoniste#Italian|immusonìste]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:immusonirono#Italian|immusonìrono]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="futuro semplice">future</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:immusonirò#Italian|immusonirò]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:immusonirai#Italian|immusonirài]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:immusonirà#Italian|immusonirà]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:immusoniremo#Italian|immusonirémo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:immusonirete#Italian|immusoniréte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:immusoniranno#Italian|immusonirànno]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="condizionale presente">conditional</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:immusonirei#Italian|immusonirèi]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:immusoniresti#Italian|immusonirésti]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:immusonirebbe#Italian|immusonirèbbe]]</span>, <span class="Latn" lang="it">[[:si#Italian|si]] [[:immusonirebbe#Italian|immusonirébbe]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:immusoniremmo#Italian|immusonirémmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:immusonireste#Italian|immusoniréste]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:immusonirebbero#Italian|immusonirèbbero]]</span>, <span class="Latn" lang="it">[[:si#Italian|si]] [[:immusonirebbero#Italian|immusonirébbero]]</span>
+|-
+! class="roa-subjunctive-left-rail" | <span title="congiuntivo">subjunctive</span>
+! class="roa-subjunctive-left-rail" | che io
+! class="roa-subjunctive-left-rail" | che tu
+! class="roa-subjunctive-left-rail" | che lui/che lei, che esso/che essa
+! class="roa-subjunctive-left-rail" | che noi
+! class="roa-subjunctive-left-rail" | che voi
+! class="roa-subjunctive-left-rail" | che loro, che essi/che esse
+|-
+! class="roa-subjunctive-left-rail" style="height:3em;" | <span title="congiuntivo presente">present</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:immusonisca#Italian|immusonìsca]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:immusonisca#Italian|immusonìsca]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:immusonisca#Italian|immusonìsca]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:immusoniamo#Italian|immusoniàmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:immusoniate#Italian|immusoniàte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:immusoniscano#Italian|immusonìscano]]</span>
+|-
+! class="roa-subjunctive-left-rail" style="height:3em;" | <span title="congiuntivo imperfetto">imperfect</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:immusonissi#Italian|immusonìssi]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:immusonissi#Italian|immusonìssi]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:immusonisse#Italian|immusonìsse]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:immusonissimo#Italian|immusonìssimo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:immusoniste#Italian|immusonìste]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:immusonissero#Italian|immusonìssero]]</span>
+|-
+! rowspan="2" class="roa-imperative-left-rail" style="height:3em;" | <span title="imperativo">imperative</span>
+! class="roa-imperative-left-rail" | &mdash;
+! class="roa-imperative-left-rail" | tu
+! class="roa-imperative-left-rail" | Lei
+! class="roa-imperative-left-rail" | noi
+! class="roa-imperative-left-rail" | voi
+! class="roa-imperative-left-rail" | Loro
+|-
+|
+| <span class="Latn form-of lang-it 2|s|imp-form-of origin-immusonìrsi" lang="it">[[:immusonisciti#Italian|immusonìsciti]]</span>[[Category:Italian links with redundant wikilinks|IMMUSONIRSI]]
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:immusonisca#Italian|immusonìsca]]</span>
+| <span class="Latn form-of lang-it 1|p|imp-form-of origin-immusonìrsi" lang="it">[[:immusoniamoci#Italian|immusoniàmoci]]</span>[[Category:Italian links with redundant wikilinks|IMMUSONIRSI]]
+| <span class="Latn form-of lang-it 2|p|imp-form-of origin-immusonìrsi" lang="it">[[:immusonitevi#Italian|immusonìtevi]]</span>[[Category:Italian links with redundant wikilinks|IMMUSONIRSI]]
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:immusoniscano#Italian|immusonìscano]]</span>
+|-
+! class="roa-imperative-left-rail" style="height:3em;" | <span title="imperativo negativo">negative imperative</span>
+|
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:immusonirti#Italian|immusonìrti]]</span>, <span class="Latn" lang="it">[[:non#Italian|non]] [[:ti#Italian|ti]]  [[:immusonire#Italian|immusonìre]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:si#Italian|si]]  [[:immusonisca#Italian|immusonìsca]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:immusoniamoci#Italian|immusoniàmoci]]</span>, <span class="Latn" lang="it">[[:non#Italian|non]] [[:ci#Italian|ci]]  [[:immusoniamo#Italian|immusoniàmo]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:immusonitevi#Italian|immusonìtevi]]</span>, <span class="Latn" lang="it">[[:non#Italian|non]] [[:vi#Italian|vi]]  [[:immusonite#Italian|immusonìte]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:si#Italian|si]]  [[:immusoniscano#Italian|immusonìscano]]</span>
+|}</div></div>[[Category:Italian verbs ending in -ire|IMMUSONIRSI]][[Category:Italian reflexive verbs|IMMUSONIRSI]]

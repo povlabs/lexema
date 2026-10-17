@@ -114,6 +114,7 @@
 import { foldItalianApostrophes, normalizeItalianExact } from "@lexema/italian/normalize.ts";
 import { CONJUGATION_TEMPLATE_CALLS } from "@lexema/italian/conjugationTemplateCalls.ts";
 import { pronominalVerb, type PronominalVerb } from "@lexema/italian/pronominalConjugation.ts";
+import { handKeptCells, handKeptTableOf } from "@lexema/italian/handKeptTables.ts";
 import { regularCells, regularClassOf } from "@lexema/italian/regularConjugation.ts";
 import { VERB_FORM_LINE_RULE, verbFormLine, type SpelledGender } from "@lexema/italian/verbFormLine.ts";
 import { WORD_SHAPE_LINE_RULE, wordShapeLine, type ShapedSpelling } from "@lexema/italian/wordShape.ts";
@@ -295,7 +296,9 @@ function ownFormsOf(reading: Reading, taken: TakenConjugation | undefined): OwnF
  *   from its base verb's table (#837): `trasferirsi` from `trasferire`'s.
  *   Where no base verb record has a table, it builds on the regular cells
  *   `it-regular-conjugation/v1` gives the class the source settles (#838):
- *   `pentirsi` from `{{It-conj|pent|irsi|essere}}`.
+ *   `pentirsi` from `{{It-conj|pent|irsi|essere}}`. Where the source settles
+ *   no class, it builds on the verb's hand-kept table, if the list keeps one
+ *   (#844): `avvedersi` on `avvedere`'s cells.
  * - Else the one its form records declare (#799), built as a declared lemma's
  *   is (#453): `bellare`'s record has no table, and some thirty records say
  *   "… di bellare".
@@ -430,15 +433,18 @@ function takenConjugationOf(
  * The base cells a pronominal verb's table is built on: its base verb
  * record's forms when one has a table (#837), else the regular cells of the
  * class the source settles for it (`it-regular-conjugation/v1`, #838), read
- * off the owner's glosses and the pinned `{{It-conj}}` calls. None when the
- * source settles no class.
+ * off the owner's glosses and the pinned `{{It-conj}}` calls, else the cells
+ * of the verb's hand-kept table (#844). None when the source settles no class
+ * and the list keeps no table.
  */
 function pronominalBaseCells(pronominal: { verb: PronominalVerb; owner: Reading }, bases: readonly Reading[]): readonly BaseCellOf[] | undefined {
   const base = pronominalBaseOf(pronominal.verb, bases);
   if (base !== undefined) return base.forms;
   const glosses = pronominal.owner.senses.flatMap((sense) => sense.glosses.map((gloss) => gloss.text));
   const settled = regularClassOf(pronominal.verb, glosses, CONJUGATION_TEMPLATE_CALLS);
-  return settled.kind === "settled" ? regularCells(settled) : undefined;
+  if (settled.kind === "settled") return regularCells(settled);
+  const kept = handKeptTableOf(pronominal.verb.word);
+  return kept === undefined ? undefined : handKeptCells(kept);
 }
 
 /** What any source reading may show after its own text, in this order on the page. */

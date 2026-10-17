@@ -1,0 +1,25 @@
+==Italian==
+
+===Etymology===
+{{ety|it|:af|ra-|vedere}}
+From {{af|it|ra-|vedere}}.
+
+===Pronunciation===
+{{it-pr|ravvedérsi}}
+
+===Verb===
+{{it-verb|/@}}
+
+# to [[mend one's ways]]
+
+====Usage notes====
+* The conjugation of this verb differs from {{m|it|vedere}} in two ways: (1) The future and conditional have alternative regular forms {{m|it|[[mi]] [[ravvederò]]}} etc. as well as {{m|it|[[mi]] [[ravvedrò]]}}; (2) The form {{m|it|ravveduto}} is the normal past participle, while {{m|it|ravvisto}} is archaic.
+
+====Conjugation====
+{{it-conj|/@}}
+
+====Derived terms====
+* {{l|it|ravvedimento}}
+
+===Further reading===
+* {{R:it:Treccani}}

@@ -1,0 +1,124 @@
+<templatestyles src="Module:roa-verb/style.css"></templatestyles><div class="NavFrame">
+<div class="NavHead">&nbsp; &nbsp; Conjugation of <i class="Latn mention" lang="it">[[:appollaiare#Italian|appollaiàr]][[:si#Italian|si]]</i> (-are) (See [[Appendix:Italian verbs]])</div>
+<div class="NavContent">
+{| class="roa-inflection-table" data-toggle-category="inflection"
+|-
+! class="roa-nonfinite-header" | <span title="infinito">infinitive</span>
+| <span class="Latn" lang="it">[[:appollaiare#Italian|appollaiàr]][[:si#Italian|si]]</span>
+|-
+! colspan="2" class="roa-nonfinite-header" | <span title="verbo ausiliare">auxiliary verb</span>
+| <span class="Latn" lang="it">[[:essere#Italian|èssere]]</span>[[Category:Italian links with redundant wikilinks|APPOLLAIARSI]]
+! colspan="2" class="roa-nonfinite-header" | <span title="gerundio">gerund</span>
+| colspan="2" | <span class="Latn form-of lang-it ger-form-of origin-appollaiàrsi" lang="it">[[:appollaiandosi#Italian|appollaiàndosi]]</span>[[Category:Italian links with redundant wikilinks|APPOLLAIARSI]]
+|-
+! colspan="2" class="roa-nonfinite-header" |  <span title="participio presente">present participle</span>
+| <span class="Latn form-of lang-it pres|part-form-of origin-appollaiàrsi" lang="it">[[:appollaiantesi#Italian|appollaiàntesi]]</span>[[Category:Italian links with redundant wikilinks|APPOLLAIARSI]]
+! colspan="2" class="roa-nonfinite-header" | <span title="participio passato">past participle</span>
+| colspan="2" | <span class="Latn form-of lang-it past|part-form-of origin-appollaiàrsi" lang="it">[[:appollaiatosi#Italian|appollaiàtosi]]</span>[[Category:Italian links with redundant wikilinks|APPOLLAIARSI]]
+|-
+! rowspan="2" class="roa-person-number-header" | person
+! colspan="3" class="roa-person-number-header" | singular
+! colspan="3" class="roa-person-number-header" | plural
+|-
+! class="roa-person-number-header" style="width:12.5%;" | first
+! class="roa-person-number-header" style="width:12.5%;" | second
+! class="roa-person-number-header" style="width:12.5%;" | third
+! class="roa-person-number-header" style="width:12.5%;" | first
+! class="roa-person-number-header" style="width:12.5%;" | second
+! class="roa-person-number-header" style="width:12.5%;" | third
+|-
+! class="roa-indicative-left-rail" | <span title="indicativo">indicative</span>
+! class="roa-indicative-left-rail" | io
+! class="roa-indicative-left-rail" | tu
+! class="roa-indicative-left-rail" | lui/lei, esso/essa
+! class="roa-indicative-left-rail" | noi
+! class="roa-indicative-left-rail" | voi
+! class="roa-indicative-left-rail" | loro, essi/esse
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="presente">present</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:appollaio#Italian|appollàio]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:appollai#Italian|appollài]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:appollaia#Italian|appollàia]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:appollaiamo#Italian|appollaiàmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:appollaiate#Italian|appollaiàte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:appollaiano#Italian|appollàiano]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="imperfetto">imperfect</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:appollaiavo#Italian|appollaiàvo]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:appollaiavi#Italian|appollaiàvi]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:appollaiava#Italian|appollaiàva]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:appollaiavamo#Italian|appollaiavàmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:appollaiavate#Italian|appollaiavàte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:appollaiavano#Italian|appollaiàvano]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="passato remoto">past historic</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:appollaiai#Italian|appollaiài]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:appollaiasti#Italian|appollaiàsti]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:appollaiò#Italian|appollaiò]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:appollaiammo#Italian|appollaiàmmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:appollaiaste#Italian|appollaiàste]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:appollaiarono#Italian|appollaiàrono]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="futuro semplice">future</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:appollaierò#Italian|appollaierò]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:appollaierai#Italian|appollaierài]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:appollaierà#Italian|appollaierà]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:appollaieremo#Italian|appollaierémo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:appollaierete#Italian|appollaieréte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:appollaieranno#Italian|appollaierànno]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="condizionale presente">conditional</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:appollaierei#Italian|appollaierèi]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:appollaieresti#Italian|appollaierésti]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:appollaierebbe#Italian|appollaierèbbe]]</span>, <span class="Latn" lang="it">[[:si#Italian|si]] [[:appollaierebbe#Italian|appollaierébbe]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:appollaieremmo#Italian|appollaierémmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:appollaiereste#Italian|appollaieréste]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:appollaierebbero#Italian|appollaierèbbero]]</span>, <span class="Latn" lang="it">[[:si#Italian|si]] [[:appollaierebbero#Italian|appollaierébbero]]</span>
+|-
+! class="roa-subjunctive-left-rail" | <span title="congiuntivo">subjunctive</span>
+! class="roa-subjunctive-left-rail" | che io
+! class="roa-subjunctive-left-rail" | che tu
+! class="roa-subjunctive-left-rail" | che lui/che lei, che esso/che essa
+! class="roa-subjunctive-left-rail" | che noi
+! class="roa-subjunctive-left-rail" | che voi
+! class="roa-subjunctive-left-rail" | che loro, che essi/che esse
+|-
+! class="roa-subjunctive-left-rail" style="height:3em;" | <span title="congiuntivo presente">present</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:appollai#Italian|appollài]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:appollai#Italian|appollài]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:appollai#Italian|appollài]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:appollaiamo#Italian|appollaiàmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:appollaiate#Italian|appollaiàte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:appollaino#Italian|appollàino]]</span>
+|-
+! class="roa-subjunctive-left-rail" style="height:3em;" | <span title="congiuntivo imperfetto">imperfect</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:appollaiassi#Italian|appollaiàssi]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:appollaiassi#Italian|appollaiàssi]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:appollaiasse#Italian|appollaiàsse]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:appollaiassimo#Italian|appollaiàssimo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:appollaiaste#Italian|appollaiàste]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:appollaiassero#Italian|appollaiàssero]]</span>
+|-
+! rowspan="2" class="roa-imperative-left-rail" style="height:3em;" | <span title="imperativo">imperative</span>
+! class="roa-imperative-left-rail" | &mdash;
+! class="roa-imperative-left-rail" | tu
+! class="roa-imperative-left-rail" | Lei
+! class="roa-imperative-left-rail" | noi
+! class="roa-imperative-left-rail" | voi
+! class="roa-imperative-left-rail" | Loro
+|-
+|
+| <span class="Latn form-of lang-it 2|s|imp-form-of origin-appollaiàrsi" lang="it">[[:appollaiati#Italian|appollàiati]]</span>[[Category:Italian links with redundant wikilinks|APPOLLAIARSI]]
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:appollai#Italian|appollài]]</span>
+| <span class="Latn form-of lang-it 1|p|imp-form-of origin-appollaiàrsi" lang="it">[[:appollaiamoci#Italian|appollaiàmoci]]</span>[[Category:Italian links with redundant wikilinks|APPOLLAIARSI]]
+| <span class="Latn form-of lang-it 2|p|imp-form-of origin-appollaiàrsi" lang="it">[[:appollaiatevi#Italian|appollaiàtevi]]</span>[[Category:Italian links with redundant wikilinks|APPOLLAIARSI]]
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:appollaino#Italian|appollàino]]</span>
+|-
+! class="roa-imperative-left-rail" style="height:3em;" | <span title="imperativo negativo">negative imperative</span>
+|
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:appollaiarti#Italian|appollaiàrti]]</span>, <span class="Latn" lang="it">[[:non#Italian|non]] [[:ti#Italian|ti]]  [[:appollaiare#Italian|appollaiàre]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:si#Italian|si]]  [[:appollai#Italian|appollài]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:appollaiamoci#Italian|appollaiàmoci]]</span>, <span class="Latn" lang="it">[[:non#Italian|non]] [[:ci#Italian|ci]]  [[:appollaiamo#Italian|appollaiàmo]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:appollaiatevi#Italian|appollaiàtevi]]</span>, <span class="Latn" lang="it">[[:non#Italian|non]] [[:vi#Italian|vi]]  [[:appollaiate#Italian|appollaiàte]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:si#Italian|si]]  [[:appollaino#Italian|appollàino]]</span>
+|}</div></div>[[Category:Italian verbs ending in -are|APPOLLAIARSI]][[Category:Italian reflexive verbs|APPOLLAIARSI]]

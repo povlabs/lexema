@@ -1,0 +1,124 @@
+<templatestyles src="Module:roa-verb/style.css"></templatestyles><div class="NavFrame">
+<div class="NavHead">&nbsp; &nbsp; Conjugation of <i class="Latn mention" lang="it">[[:informicolire#Italian|informicolìr]][[:si#Italian|si]]</i> (-ire) (See [[Appendix:Italian verbs]])</div>
+<div class="NavContent">
+{| class="roa-inflection-table" data-toggle-category="inflection"
+|-
+! class="roa-nonfinite-header" | <span title="infinito">infinitive</span>
+| <span class="Latn" lang="it">[[:informicolire#Italian|informicolìr]][[:si#Italian|si]]</span>
+|-
+! colspan="2" class="roa-nonfinite-header" | <span title="verbo ausiliare">auxiliary verb</span>
+| <span class="Latn" lang="it">[[:essere#Italian|èssere]]</span>[[Category:Italian links with redundant wikilinks|INFORMICOLIRSI]]
+! colspan="2" class="roa-nonfinite-header" | <span title="gerundio">gerund</span>
+| colspan="2" | <span class="Latn form-of lang-it ger-form-of origin-informicolìrsi" lang="it">[[:informicolendosi#Italian|informicolèndosi]]</span>[[Category:Italian links with redundant wikilinks|INFORMICOLIRSI]]
+|-
+! colspan="2" class="roa-nonfinite-header" |  <span title="participio presente">present participle</span>
+| <span class="Latn form-of lang-it pres|part-form-of origin-informicolìrsi" lang="it">[[:informicolentesi#Italian|informicolèntesi]]</span>[[Category:Italian links with redundant wikilinks|INFORMICOLIRSI]]
+! colspan="2" class="roa-nonfinite-header" | <span title="participio passato">past participle</span>
+| colspan="2" | <span class="Latn form-of lang-it past|part-form-of origin-informicolìrsi" lang="it">[[:informicolitosi#Italian|informicolìtosi]]</span>[[Category:Italian links with redundant wikilinks|INFORMICOLIRSI]]
+|-
+! rowspan="2" class="roa-person-number-header" | person
+! colspan="3" class="roa-person-number-header" | singular
+! colspan="3" class="roa-person-number-header" | plural
+|-
+! class="roa-person-number-header" style="width:12.5%;" | first
+! class="roa-person-number-header" style="width:12.5%;" | second
+! class="roa-person-number-header" style="width:12.5%;" | third
+! class="roa-person-number-header" style="width:12.5%;" | first
+! class="roa-person-number-header" style="width:12.5%;" | second
+! class="roa-person-number-header" style="width:12.5%;" | third
+|-
+! class="roa-indicative-left-rail" | <span title="indicativo">indicative</span>
+! class="roa-indicative-left-rail" | io
+! class="roa-indicative-left-rail" | tu
+! class="roa-indicative-left-rail" | lui/lei, esso/essa
+! class="roa-indicative-left-rail" | noi
+! class="roa-indicative-left-rail" | voi
+! class="roa-indicative-left-rail" | loro, essi/esse
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="presente">present</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:informicolisco#Italian|informicolìsco]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:informicolisci#Italian|informicolìsci]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:informicolisce#Italian|informicolìsce]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:informicoliamo#Italian|informicoliàmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:informicolite#Italian|informicolìte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:informicoliscono#Italian|informicolìscono]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="imperfetto">imperfect</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:informicolivo#Italian|informicolìvo]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:informicolivi#Italian|informicolìvi]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:informicoliva#Italian|informicolìva]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:informicolivamo#Italian|informicolivàmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:informicolivate#Italian|informicolivàte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:informicolivano#Italian|informicolìvano]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="passato remoto">past historic</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:informicolii#Italian|informicolìi]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:informicolisti#Italian|informicolìsti]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:informicolì#Italian|informicolì]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:informicolimmo#Italian|informicolìmmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:informicoliste#Italian|informicolìste]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:informicolirono#Italian|informicolìrono]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="futuro semplice">future</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:informicolirò#Italian|informicolirò]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:informicolirai#Italian|informicolirài]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:informicolirà#Italian|informicolirà]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:informicoliremo#Italian|informicolirémo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:informicolirete#Italian|informicoliréte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:informicoliranno#Italian|informicolirànno]]</span>
+|-
+! class="roa-indicative-left-rail" style="height:3em;" | <span title="condizionale presente">conditional</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:informicolirei#Italian|informicolirèi]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:informicoliresti#Italian|informicolirésti]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:informicolirebbe#Italian|informicolirèbbe]]</span>, <span class="Latn" lang="it">[[:si#Italian|si]] [[:informicolirebbe#Italian|informicolirébbe]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:informicoliremmo#Italian|informicolirémmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:informicolireste#Italian|informicoliréste]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:informicolirebbero#Italian|informicolirèbbero]]</span>, <span class="Latn" lang="it">[[:si#Italian|si]] [[:informicolirebbero#Italian|informicolirébbero]]</span>
+|-
+! class="roa-subjunctive-left-rail" | <span title="congiuntivo">subjunctive</span>
+! class="roa-subjunctive-left-rail" | che io
+! class="roa-subjunctive-left-rail" | che tu
+! class="roa-subjunctive-left-rail" | che lui/che lei, che esso/che essa
+! class="roa-subjunctive-left-rail" | che noi
+! class="roa-subjunctive-left-rail" | che voi
+! class="roa-subjunctive-left-rail" | che loro, che essi/che esse
+|-
+! class="roa-subjunctive-left-rail" style="height:3em;" | <span title="congiuntivo presente">present</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:informicolisca#Italian|informicolìsca]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:informicolisca#Italian|informicolìsca]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:informicolisca#Italian|informicolìsca]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:informicoliamo#Italian|informicoliàmo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:informicoliate#Italian|informicoliàte]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:informicoliscano#Italian|informicolìscano]]</span>
+|-
+! class="roa-subjunctive-left-rail" style="height:3em;" | <span title="congiuntivo imperfetto">imperfect</span>
+| <span class="Latn" lang="it">[[:mi#Italian|mi]] [[:informicolissi#Italian|informicolìssi]]</span>
+| <span class="Latn" lang="it">[[:ti#Italian|ti]] [[:informicolissi#Italian|informicolìssi]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:informicolisse#Italian|informicolìsse]]</span>
+| <span class="Latn" lang="it">[[:ci#Italian|ci]] [[:informicolissimo#Italian|informicolìssimo]]</span>
+| <span class="Latn" lang="it">[[:vi#Italian|vi]] [[:informicoliste#Italian|informicolìste]]</span>
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:informicolissero#Italian|informicolìssero]]</span>
+|-
+! rowspan="2" class="roa-imperative-left-rail" style="height:3em;" | <span title="imperativo">imperative</span>
+! class="roa-imperative-left-rail" | &mdash;
+! class="roa-imperative-left-rail" | tu
+! class="roa-imperative-left-rail" | Lei
+! class="roa-imperative-left-rail" | noi
+! class="roa-imperative-left-rail" | voi
+! class="roa-imperative-left-rail" | Loro
+|-
+|
+| <span class="Latn form-of lang-it 2|s|imp-form-of origin-informicolìrsi" lang="it">[[:informicolisciti#Italian|informicolìsciti]]</span>[[Category:Italian links with redundant wikilinks|INFORMICOLIRSI]]
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:informicolisca#Italian|informicolìsca]]</span>
+| <span class="Latn form-of lang-it 1|p|imp-form-of origin-informicolìrsi" lang="it">[[:informicoliamoci#Italian|informicoliàmoci]]</span>[[Category:Italian links with redundant wikilinks|INFORMICOLIRSI]]
+| <span class="Latn form-of lang-it 2|p|imp-form-of origin-informicolìrsi" lang="it">[[:informicolitevi#Italian|informicolìtevi]]</span>[[Category:Italian links with redundant wikilinks|INFORMICOLIRSI]]
+| <span class="Latn" lang="it">[[:si#Italian|si]] [[:informicoliscano#Italian|informicolìscano]]</span>
+|-
+! class="roa-imperative-left-rail" style="height:3em;" | <span title="imperativo negativo">negative imperative</span>
+|
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:informicolirti#Italian|informicolìrti]]</span>, <span class="Latn" lang="it">[[:non#Italian|non]] [[:ti#Italian|ti]]  [[:informicolire#Italian|informicolìre]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:si#Italian|si]]  [[:informicolisca#Italian|informicolìsca]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:informicoliamoci#Italian|informicoliàmoci]]</span>, <span class="Latn" lang="it">[[:non#Italian|non]] [[:ci#Italian|ci]]  [[:informicoliamo#Italian|informicoliàmo]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:informicolitevi#Italian|informicolìtevi]]</span>, <span class="Latn" lang="it">[[:non#Italian|non]] [[:vi#Italian|vi]]  [[:informicolite#Italian|informicolìte]]</span>
+| <span class="Latn" lang="it">[[:non#Italian|non]] [[:si#Italian|si]]  [[:informicoliscano#Italian|informicolìscano]]</span>
+|}</div></div>[[Category:Italian verbs ending in -ire|INFORMICOLIRSI]][[Category:Italian reflexive verbs|INFORMICOLIRSI]]

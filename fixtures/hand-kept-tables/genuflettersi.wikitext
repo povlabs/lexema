@@ -1,0 +1,22 @@
+==Italian==
+
+===Etymology===
+{{ety|it|:lbor|la-lat:genuflecto<alt:genūflectere>}}
+{{lbor|it|la-lat|genuflecto|genūflectere}}.
+
+===Pronunciation===
+{{it-pr|genuflèttersi}}
+
+===Verb===
+{{it-verb|\@}}
+
+# to [[genuflect]], to [[kneel]]
+
+====Conjugation====
+{{it-conj|\@}}
+
+====Related terms====
+* {{l|it|genuflessione}}
+
+===Further reading===
+* {{R:it:Treccani}}

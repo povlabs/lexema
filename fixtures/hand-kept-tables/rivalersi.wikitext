@@ -1,0 +1,30 @@
+==Italian==
+
+===Etymology===
+From {{confix|it|ri|valere|t2=to value|si}}.
+
+===Pronunciation===
+{{it-pr|^é}}
+
+===Verb===
+{{it-verb|/@}}
+
+# {{lb|it|intransitive}} to [[make use]] again {{+obj|it|:di<of>}}
+#: {{ux|it|spero di '''rivalermi''' della tua stampante|I hope to '''make use''' of your printer '''again'''}}
+# {{lb|it|intransitive}} to [[make up for]] or [[make good]]
+#: {{syn|it|rifarsi}}
+#: {{ux|it|gli affari gli vanno male, ma spera di '''rivalersi''' giocando in borsa|business is going bad for him, but he hopes to '''make up''' for that by investing in the stock market}}
+# {{lb|it|intransitive}} to [[take it out on|take it out]] (on) or [[get even]] {{+obj|it|:su<with>}}
+#: {{syn|it|rifarsi|rendere la pariglia}}
+#: {{ux|it|è così vigliacco che, appena si arrabia, '''se ne rivale''' sui più deboli|he is so cowardly that, as soon as he gets angry, he '''takes it out''' on the weakest ones}}
+#* {{quote-journal|it|title=McDonald's fa causa al suo ex amministratore delegato: "Ha nascosto le relazioni con le dipendenti"|trans-title=McDonald's sues its former CEO: "He hid relationships with employees"|url=https://www.repubblica.it/esteri/2020/08/10/news/regno_unito_mcdonald_fa_causa_al_suo_ex_ad-264338124|author=Antonello Guerrera|magazine=w:la Repubblica|date=10 August 2020|passage=Per questo ora il colosso dei fast food vuole '''rivalersi''' nei confronti di Easterbrook.|translation=For this reason, the fast food giant now wants to '''get even with''' Easterbrook.|archiveurl=https://web.archive.org/web/20250607031723/https://www.repubblica.it/esteri/2020/08/10/news/regno_unito_mcdonald_fa_causa_al_suo_ex_ad-264338124/|archivedate=7 June 2025}}
+# {{lb|it|archaic}} to get back [[on one's feet]]
+
+====Conjugation====
+{{it-conj|/@}}
+
+====Related terms====
+* {{l|it|rivalsa}}
+
+===Anagrams===
+* {{anagrams|it|a=aeiilrrsv|rilevarsi|rivelarsi}}

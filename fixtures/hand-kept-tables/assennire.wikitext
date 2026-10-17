@@ -1,0 +1,15 @@
+==Italian==
+
+===Verb===
+{{it-verb-rfc|a/+isc}}
+
+# to [[make sense]] (of)
+
+====Conjugation====
+{{it-conj-rfc|a/+isc}}
+
+====Derived terms====
+* {{l|it|assennirsi}}
+
+===Anagrams===
+* {{anagrams|it|a=aeeinnrss|annerisse|riannesse}}

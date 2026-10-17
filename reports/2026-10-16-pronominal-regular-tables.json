@@ -183,11 +183,9 @@
   ],
   "regularRule": "it-regular-conjugation/v1",
   "noneOutcomeCounts": {
-    "listed-for-huey · iare-stress": 6,
-    "listed-for-huey · ire-isc": 7,
-    "listed-for-huey · irregular-family": 4,
-    "listed-for-huey · second-conjugation": 6,
-    "listed-for-huey · template-not-read": 1,
+    "hand-kept": 21,
+    "listed-for-huey · ire-isc": 1,
+    "listed-for-huey · irregular-family": 2,
     "not-a-pronominal-verb": 21,
     "own-table-on-another-record": 1,
     "rule-built · ending": 55,
@@ -366,8 +364,21 @@
     },
     {
       "word": "adastiarsi",
-      "outcome": "listed-for-huey",
-      "reason": "iare-stress"
+      "outcome": "hand-kept",
+      "kept": "class iare on adasti",
+      "base": "adastiare",
+      "evidence": [
+        "https://en.wiktionary.org/w/index.php?title=adastiarsi&oldid=71027279: {{it-conj|à}}"
+      ],
+      "cells": 94,
+      "sample": {
+        "ausiliare": "essere",
+        "gerundio": "adastiandosi",
+        "presente · first singular": "mi adastio",
+        "presente · second singular": "ti adasti",
+        "passato prossimo · first plural": "ci siamo adastiati",
+        "imperativo · second singular": "adastiati, non adastiarti"
+      }
     },
     {
       "word": "adunarsi",
@@ -477,8 +488,21 @@
     },
     {
       "word": "appassirsi",
-      "outcome": "listed-for-huey",
-      "reason": "ire-isc"
+      "outcome": "hand-kept",
+      "kept": "class ire-b on appass",
+      "base": "appassire",
+      "evidence": [
+        "https://en.wiktionary.org/w/index.php?title=appassire&oldid=90569343: {{it-conj|e[intransitive]:a[transitive]/+isc}}"
+      ],
+      "cells": 94,
+      "sample": {
+        "ausiliare": "essere",
+        "gerundio": "appassendosi",
+        "presente · first singular": "mi appassisco",
+        "presente · second singular": "ti appassisci",
+        "passato prossimo · first plural": "ci siamo appassiti",
+        "imperativo · second singular": "appassisciti, non appassirti"
+      }
     },
     {
       "word": "appigliarsi",
@@ -533,8 +557,21 @@
     },
     {
       "word": "appollaiarsi",
-      "outcome": "listed-for-huey",
-      "reason": "iare-stress"
+      "outcome": "hand-kept",
+      "kept": "class iare on appollai",
+      "base": "appollaiare",
+      "evidence": [
+        "https://en.wiktionary.org/w/index.php?title=appollaiarsi&oldid=71105779: {{it-conj|à}}"
+      ],
+      "cells": 94,
+      "sample": {
+        "ausiliare": "essere",
+        "gerundio": "appollaiandosi",
+        "presente · first singular": "mi appollaio",
+        "presente · second singular": "ti appollai",
+        "passato prossimo · first plural": "ci siamo appollaiati",
+        "imperativo · second singular": "appollaiati, non appollaiarti"
+      }
     },
     {
       "word": "appropinquarsi",
@@ -572,8 +609,21 @@
     },
     {
       "word": "assennirsi",
-      "outcome": "listed-for-huey",
-      "reason": "ire-isc"
+      "outcome": "hand-kept",
+      "kept": "class ire-b on assenn",
+      "base": "assennire",
+      "evidence": [
+        "https://en.wiktionary.org/w/index.php?title=assennire&oldid=71366604: {{it-conj-rfc|a/+isc}}"
+      ],
+      "cells": 94,
+      "sample": {
+        "ausiliare": "essere",
+        "gerundio": "assennendosi",
+        "presente · first singular": "mi assennisco",
+        "presente · second singular": "ti assennisci",
+        "passato prossimo · first plural": "ci siamo assenniti",
+        "imperativo · second singular": "assennisciti, non assennirti"
+      }
     },
     {
       "word": "assentarsi",
@@ -594,8 +644,22 @@
     },
     {
       "word": "assuefarsi",
-      "outcome": "listed-for-huey",
-      "reason": "irregular-family"
+      "outcome": "hand-kept",
+      "kept": "cells",
+      "base": "assuefare",
+      "evidence": [
+        "https://en.wiktionary.org/w/index.php?title=assuefarsi&oldid=92141667: {{it-conj|@}}",
+        "https://en.wiktionary.org/w/index.php?title=assuefare&oldid=92141666: {{it-conj|a/@}}"
+      ],
+      "cells": 94,
+      "sample": {
+        "ausiliare": "essere",
+        "gerundio": "assuefacendosi",
+        "presente · first singular": "mi assuefaccio",
+        "presente · second singular": "ti assuefai",
+        "passato prossimo · first plural": "ci siamo assuefatti",
+        "imperativo · second singular": "assuefatti, non assuefarti"
+      }
     },
     {
       "word": "attelarsi",
@@ -706,13 +770,39 @@
     },
     {
       "word": "avvalersi",
-      "outcome": "listed-for-huey",
-      "reason": "second-conjugation"
+      "outcome": "hand-kept",
+      "kept": "cells",
+      "base": "avvalere",
+      "evidence": [
+        "https://en.wiktionary.org/w/index.php?title=avvalersi&oldid=80612794: {{it-conj|/@}}"
+      ],
+      "cells": 94,
+      "sample": {
+        "ausiliare": "essere",
+        "gerundio": "avvalendosi",
+        "presente · first singular": "mi avvalgo",
+        "presente · second singular": "ti avvali",
+        "passato prossimo · first plural": "ci siamo avvalsi",
+        "imperativo · second singular": "avvaliti, non avvalerti"
+      }
     },
     {
       "word": "avvedersi",
-      "outcome": "listed-for-huey",
-      "reason": "second-conjugation"
+      "outcome": "hand-kept",
+      "kept": "cells",
+      "base": "avvedere",
+      "evidence": [
+        "https://en.wiktionary.org/w/index.php?title=avvedersi&oldid=67977311: {{it-conj|/@}}"
+      ],
+      "cells": 94,
+      "sample": {
+        "ausiliare": "essere",
+        "gerundio": "avvedendosi",
+        "presente · first singular": "mi avvedo",
+        "presente · second singular": "ti avvedi",
+        "passato prossimo · first plural": "ci siamo avvisti, avveduti",
+        "imperativo · second singular": "avvediti, non avvederti"
+      }
     },
     {
       "word": "barcamenarsi",
@@ -888,8 +978,21 @@
     },
     {
       "word": "genuflettersi",
-      "outcome": "listed-for-huey",
-      "reason": "second-conjugation"
+      "outcome": "hand-kept",
+      "kept": "cells",
+      "base": "genuflettere",
+      "evidence": [
+        "https://en.wiktionary.org/w/index.php?title=genuflettersi&oldid=93133732: {{it-conj|\\@}}"
+      ],
+      "cells": 94,
+      "sample": {
+        "ausiliare": "essere",
+        "gerundio": "genuflettendosi",
+        "presente · first singular": "mi genufletto",
+        "presente · second singular": "ti genufletti",
+        "passato prossimo · first plural": "ci siamo genuflessi",
+        "imperativo · second singular": "genuflettiti, non genufletterti"
+      }
     },
     {
       "word": "granularsi",
@@ -910,8 +1013,21 @@
     },
     {
       "word": "imbattersi",
-      "outcome": "listed-for-huey",
-      "reason": "second-conjugation"
+      "outcome": "hand-kept",
+      "kept": "cells",
+      "base": "imbattere",
+      "evidence": [
+        "https://en.wiktionary.org/w/index.php?title=imbattersi&oldid=90564438: {{it-conj|\\@}}"
+      ],
+      "cells": 94,
+      "sample": {
+        "ausiliare": "essere",
+        "gerundio": "imbattendosi",
+        "presente · first singular": "mi imbatto",
+        "presente · second singular": "ti imbatti",
+        "passato prossimo · first plural": "ci siamo imbattuti",
+        "imperativo · second singular": "imbattiti, non imbatterti"
+      }
     },
     {
       "word": "imbellettarsi",
@@ -954,13 +1070,39 @@
     },
     {
       "word": "immusonirsi",
-      "outcome": "listed-for-huey",
-      "reason": "ire-isc"
+      "outcome": "hand-kept",
+      "kept": "class ire-b on immuson",
+      "base": "immusonire",
+      "evidence": [
+        "https://en.wiktionary.org/w/index.php?title=immusonirsi&oldid=71366912: {{it-conj|+isc}}"
+      ],
+      "cells": 94,
+      "sample": {
+        "ausiliare": "essere",
+        "gerundio": "immusonendosi",
+        "presente · first singular": "mi immusonisco",
+        "presente · second singular": "ti immusonisci",
+        "passato prossimo · first plural": "ci siamo immusoniti",
+        "imperativo · second singular": "immusonisciti, non immusonirti"
+      }
     },
     {
       "word": "impadronirsi",
-      "outcome": "listed-for-huey",
-      "reason": "ire-isc"
+      "outcome": "hand-kept",
+      "kept": "class ire-b on impadron",
+      "base": "impadronire",
+      "evidence": [
+        "https://en.wiktionary.org/w/index.php?title=impadronirsi&oldid=91778278: {{it-conj|+isc}}"
+      ],
+      "cells": 94,
+      "sample": {
+        "ausiliare": "essere",
+        "gerundio": "impadronendosi",
+        "presente · first singular": "mi impadronisco",
+        "presente · second singular": "ti impadronisci",
+        "passato prossimo · first plural": "ci siamo impadroniti",
+        "imperativo · second singular": "impadronisciti, non impadronirti"
+      }
     },
     {
       "word": "impaperarsi",
@@ -1032,8 +1174,21 @@
     },
     {
       "word": "incacchiarsi",
-      "outcome": "listed-for-huey",
-      "reason": "iare-stress"
+      "outcome": "hand-kept",
+      "kept": "class iare on incacchi",
+      "base": "incacchiare",
+      "evidence": [
+        "https://en.wiktionary.org/w/index.php?title=incacchiarsi&oldid=71106904: {{it-conj|à}}"
+      ],
+      "cells": 94,
+      "sample": {
+        "ausiliare": "essere",
+        "gerundio": "incacchiandosi",
+        "presente · first singular": "mi incacchio",
+        "presente · second singular": "ti incacchi",
+        "passato prossimo · first plural": "ci siamo incacchiati",
+        "imperativo · second singular": "incacchiati, non incacchiarti"
+      }
     },
     {
       "word": "incamminarsi",
@@ -1133,8 +1288,21 @@
     },
     {
       "word": "industriarsi",
-      "outcome": "listed-for-huey",
-      "reason": "iare-stress"
+      "outcome": "hand-kept",
+      "kept": "class iare on industri",
+      "base": "industriare",
+      "evidence": [
+        "https://en.wiktionary.org/w/index.php?title=industriarsi&oldid=92190948: {{it-conj|ù}}"
+      ],
+      "cells": 94,
+      "sample": {
+        "ausiliare": "essere",
+        "gerundio": "industriandosi",
+        "presente · first singular": "mi industrio",
+        "presente · second singular": "ti industri",
+        "passato prossimo · first plural": "ci siamo industriati",
+        "imperativo · second singular": "industriati, non industriarti"
+      }
     },
     {
       "word": "inferocirsi",
@@ -1172,8 +1340,21 @@
     },
     {
       "word": "infischiarsi",
-      "outcome": "listed-for-huey",
-      "reason": "iare-stress"
+      "outcome": "hand-kept",
+      "kept": "class iare on infischi",
+      "base": "infischiare",
+      "evidence": [
+        "https://en.wiktionary.org/w/index.php?title=infischiarsi&oldid=80612746: {{it-conj|ì-}}"
+      ],
+      "cells": 94,
+      "sample": {
+        "ausiliare": "essere",
+        "gerundio": "infischiandosi",
+        "presente · first singular": "mi infischio",
+        "presente · second singular": "ti infischi",
+        "passato prossimo · first plural": "ci siamo infischiati",
+        "imperativo · second singular": "infischiati, non infischiarti"
+      }
     },
     {
       "word": "inforforarsi",
@@ -1194,8 +1375,21 @@
     },
     {
       "word": "informicolirsi",
-      "outcome": "listed-for-huey",
-      "reason": "ire-isc"
+      "outcome": "hand-kept",
+      "kept": "class ire-b on informicol",
+      "base": "informicolire",
+      "evidence": [
+        "https://en.wiktionary.org/w/index.php?title=informicolirsi&oldid=75047050: {{it-conj|+isc}}"
+      ],
+      "cells": 94,
+      "sample": {
+        "ausiliare": "essere",
+        "gerundio": "informicolendosi",
+        "presente · first singular": "mi informicolisco",
+        "presente · second singular": "ti informicolisci",
+        "passato prossimo · first plural": "ci siamo informicoliti",
+        "imperativo · second singular": "informicolisciti, non informicolirti"
+      }
     },
     {
       "word": "inforsi",
@@ -1507,8 +1701,21 @@
     },
     {
       "word": "obliarsi",
-      "outcome": "listed-for-huey",
-      "reason": "iare-stress"
+      "outcome": "hand-kept",
+      "kept": "cells",
+      "base": "obliare",
+      "evidence": [
+        "https://en.wiktionary.org/w/index.php?title=obliarsi&oldid=92175298: {{it-conj|ì}}"
+      ],
+      "cells": 94,
+      "sample": {
+        "ausiliare": "essere",
+        "gerundio": "obliandosi",
+        "presente · first singular": "mi oblio",
+        "presente · second singular": "ti oblii",
+        "passato prossimo · first plural": "ci siamo obliati",
+        "imperativo · second singular": "obliati, non obliarti"
+      }
     },
     {
       "word": "pavoneggiarsi",
@@ -1563,9 +1770,21 @@
     },
     {
       "word": "prefiggersi",
-      "outcome": "listed-for-huey",
-      "reason": "template-not-read",
-      "evidence": "Appendice:Coniugazioni/Italiano/prefiggere@2716078: {{It-conj|prefigg|ere|avere\n|pp=prefisso\n|prem1s=prefissi|prem3s=prefisse|prem3p=prefissero\n}}"
+      "outcome": "hand-kept",
+      "kept": "cells",
+      "base": "prefiggere",
+      "evidence": [
+        "https://en.wiktionary.org/w/index.php?title=prefiggersi&oldid=67588523: {{it-conj|\\@}}"
+      ],
+      "cells": 94,
+      "sample": {
+        "ausiliare": "essere",
+        "gerundio": "prefiggendosi",
+        "presente · first singular": "mi prefiggo",
+        "presente · second singular": "ti prefiggi",
+        "passato prossimo · first plural": "ci siamo prefissi",
+        "imperativo · second singular": "prefiggiti, non prefiggerti"
+      }
     },
     {
       "word": "prostituirsi",
@@ -1661,8 +1880,21 @@
     },
     {
       "word": "ravvedersi",
-      "outcome": "listed-for-huey",
-      "reason": "second-conjugation"
+      "outcome": "hand-kept",
+      "kept": "cells",
+      "base": "ravvedere",
+      "evidence": [
+        "https://en.wiktionary.org/w/index.php?title=ravvedersi&oldid=90577471: {{it-conj|/@}}"
+      ],
+      "cells": 94,
+      "sample": {
+        "ausiliare": "essere",
+        "gerundio": "ravvedendosi",
+        "presente · first singular": "mi ravvedo",
+        "presente · second singular": "ti ravvedi",
+        "passato prossimo · first plural": "ci siamo ravveduti",
+        "imperativo · second singular": "ravvediti, non ravvederti"
+      }
     },
     {
       "word": "reinsorsi",
@@ -1748,8 +1980,21 @@
     },
     {
       "word": "rivalersi",
-      "outcome": "listed-for-huey",
-      "reason": "second-conjugation"
+      "outcome": "hand-kept",
+      "kept": "cells",
+      "base": "rivalere",
+      "evidence": [
+        "https://en.wiktionary.org/w/index.php?title=rivalersi&oldid=93588532: {{it-conj|/@}}"
+      ],
+      "cells": 94,
+      "sample": {
+        "ausiliare": "essere",
+        "gerundio": "rivalendosi",
+        "presente · first singular": "mi rivalgo",
+        "presente · second singular": "ti rivali",
+        "passato prossimo · first plural": "ci siamo rivalsi",
+        "imperativo · second singular": "rivaliti, non rivalerti"
+      }
     },
     {
       "word": "sbarazzarsi",
@@ -2252,8 +2497,22 @@
     },
     {
       "word": "stupefarsi",
-      "outcome": "listed-for-huey",
-      "reason": "irregular-family"
+      "outcome": "hand-kept",
+      "kept": "cells",
+      "base": "stupefare",
+      "evidence": [
+        "https://en.wiktionary.org/w/index.php?title=stupefarsi&oldid=77623586: {{it-conj|@}}",
+        "https://en.wiktionary.org/w/index.php?title=stupefare&oldid=93134607: {{it-conj|a[transitive]:e[intransitive]/@}}"
+      ],
+      "cells": 94,
+      "sample": {
+        "ausiliare": "essere",
+        "gerundio": "stupefacendosi",
+        "presente · first singular": "mi stupefaccio",
+        "presente · second singular": "ti stupefai",
+        "passato prossimo · first plural": "ci siamo stupefatti",
+        "imperativo · second singular": "stupefatti, non stupefarti"
+      }
     },
     {
       "word": "suicidarsi",
@@ -2274,8 +2533,21 @@
     },
     {
       "word": "susseguirsi",
-      "outcome": "listed-for-huey",
-      "reason": "ire-isc"
+      "outcome": "hand-kept",
+      "kept": "class ire on sussegu",
+      "base": "susseguire",
+      "evidence": [
+        "https://en.wiktionary.org/w/index.php?title=susseguirsi&oldid=90583647: {{it-conj|@}}"
+      ],
+      "cells": 94,
+      "sample": {
+        "ausiliare": "essere",
+        "gerundio": "susseguendosi",
+        "presente · first singular": "mi susseguo",
+        "presente · second singular": "ti sussegui",
+        "passato prossimo · first plural": "ci siamo susseguiti",
+        "imperativo · second singular": "susseguiti, non susseguirti"
+      }
     },
     {
       "word": "svaccarsi",

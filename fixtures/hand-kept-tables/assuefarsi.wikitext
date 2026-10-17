@@ -1,0 +1,17 @@
+==Italian==
+
+===Pronunciation===
+{{it-pr|assu.efàrsi,assuefàrsi<r:DiPI:consueto>}}
+
+===Verb===
+{{it-verb|@}} {{tlb|it|transitive}}
+
+# {{reflexive of|it|assuefare}}
+# to [[get]] [[accustomed]], to [[get used]] {{+obj|it|:a<to>}}
+# {{lb|it|medicine}} to [[get]] [[addicted]] {{+obj|it|:a<to a substance>}}
+
+====Conjugation====
+{{it-conj|@}}
+
+===References===
+{{reflist}}

@@ -42,7 +42,7 @@ import { lookup } from "../../src/lookup/lookup.js";
 import { formsOfQueryReadings, isFormOfReading, isSourceRef, type Reading, type SourceRef } from "../../src/lookup/types.js";
 import type { Attempt } from "@/lib/dictionary/attempt.ts";
 import { searchAttempt } from "@/lib/dictionary/searchAttempt.ts";
-import { isRegularCell } from "@/lib/dictionary/conjugation.ts";
+import { isHandKeptCell, isRegularCell } from "@/lib/dictionary/conjugation.ts";
 import { definitionsOf, type DefinitionItem } from "@/lib/dictionary/definitions.ts";
 import { agreementOf, declaredGridOf, NUMBERS } from "@/lib/dictionary/genderGrid.ts";
 import { GridView } from "@/components/dictionary/Forms";
@@ -4114,9 +4114,9 @@ test("pronominal verbs with no base table take the class the source settles: acc
   });
 });
 
-test("a pronominal verb the source does not settle, and a form of another verb, get no table: obliarsi, traversi, riarsi (#838)", async () => {
+test("a form of another verb gets no table: traversi, riarsi (#838)", async () => {
   await withPronominal(async ({ db }) => {
-    for (const word of ["obliarsi", "traversi", "riarsi"]) {
+    for (const word of ["traversi", "riarsi"]) {
       const html = await render(db, word);
       assert.doesNotMatch(html, />Forme</, word);
       assert.doesNotMatch(textOf(html), /mancan|missing|nessuna voce|nessun dato/i, word);
@@ -4164,10 +4164,10 @@ test("a built cell is the rule's in the page model, carrying the base verb's cel
     assert.ok(forms.length > 90);
     for (const form of forms) {
       assert.equal(form.rule, "it-pronominal-conjugation/v1");
-      assert.ok(!isRegularCell(form.from) && isSourceRef(form.from.ref) && form.from.ref.lineNo === pronominalLine("trasferire"), form.surface);
+      assert.ok(!isRegularCell(form.from) && !isHandKeptCell(form.from) && isSourceRef(form.from.ref) && form.from.ref.lineNo === pronominalLine("trasferire"), form.surface);
     }
     const io = forms.find((form) => form.surface === "mi trasferisco");
-    assert.ok(io !== undefined && !isRegularCell(io.from));
+    assert.ok(io !== undefined && !isRegularCell(io.from) && !isHandKeptCell(io.from));
     assert.equal(io.from.surface, "trasferisco");
   });
 });
@@ -4191,6 +4191,76 @@ test("a cell built on a regular table carries the regular cell and the call that
     }
     const pento = forms.find((form) => form.surface === "mi pento");
     assert.ok(pento !== undefined && isRegularCell(pento.from) && pento.from.spelling === "pento");
+  });
+});
+
+// Pronominal verbs the source settles no class for (#844) ------------------------
+//
+// `fixtures/hand-kept-tables/archive-lines.jsonl` holds the 24 records of
+// it-0c432803 that `it-regular-conjugation/v1` declines (#838's report), in
+// archive order (fixtures/hand-kept-tables/PROVENANCE.md). 21 have a hand-kept
+// table (src/italian/handKeptTables.ts); attremirsi, sdarsi and inostrarsi
+// have none.
+
+const HAND_KEPT_LINES = (await readFile(join(REPO, "fixtures/hand-kept-tables/archive-lines.jsonl"), "utf8")).trimEnd().split("\n");
+
+test("a pronominal verb the source settles no class for shows its hand-kept table, as a built one: avvedersi, impadronirsi, assuefarsi (#844)", async () => {
+  await withLines(HAND_KEPT_LINES, async ({ db }) => {
+    const avvedersi = await render(db, "avvedersi");
+    assert.equal(occurrencesOf(avvedersi, ">Forme<"), 1);
+    assert.deepEqual(tenseColumn(avvedersi, "Indicativo", "passato remoto"), [
+      "io mi avvidi",
+      "tu ti avvedesti",
+      "lui, lei si avvide",
+      "noi ci avvedemmo",
+      "voi vi avvedeste",
+      "loro si avvidero",
+    ]);
+    assert.match(tenseColumn(avvedersi, "Indicativo", "passato prossimo")[0], /^io mi sono avvisto\/a.*avveduto/);
+    assert.equal(textOf(nonFinite(avvedersi, "ausiliare") ?? ""), "essere");
+    assert.equal(textOf(nonFinite(avvedersi, "gerundio") ?? ""), "avvedendosi");
+    // A built spelling links to its own search, as every built cell does, and the page says nothing of where it came from.
+    assert.match(avvedersi, builtLink("mi avvidi"));
+    assert.doesNotMatch(textOf(avvedersi), /wiktionary|hand-kept|a mano|mancan/i);
+
+    const impadronirsi = await render(db, "impadronirsi");
+    assert.equal(tenseColumn(impadronirsi, "Indicativo", "presente")[0], "io mi impadronisco");
+    assert.equal(tenseColumn(impadronirsi, "Indicativo", "passato prossimo")[3], "noi ci siamo impadroniti/e");
+    const assuefarsi = await render(db, "assuefarsi");
+    assert.equal(tenseColumn(assuefarsi, "Indicativo", "presente")[2], "lui, lei si assuefà");
+    assert.equal(textOf(firstCell(panel(assuefarsi, "Imperativo"), "tu") ?? ""), "assuefatti, non assuefarti");
+  });
+});
+
+test("a hand-kept table's built cell carries the kept cell and its table, and no source place (#844)", async () => {
+  await withLines(HAND_KEPT_LINES, async ({ db }) => {
+    const answer = await attempt(db, "prefiggersi");
+    assert.ok(answer.outcome === "found" && answer.route.kind !== "phrase");
+    const page = wordPage("prefiggersi", answer.readings, answer.lemmas, answer.route, answer.declared, answer.bases);
+    const [entry] = page.readings;
+    assert.ok(entry.kind === "source");
+    const own = entry.parts.find((part) => part.kind === "own-forms");
+    assert.ok(own?.kind === "own-forms" && own.forms.kind === "pronominal-conjugation");
+    const forms = own.forms.conjugation.moods.flatMap((mood) => [...mood.simple, ...mood.compound].flatMap((tense) => tense.cells.flatMap((cell) => cell.forms)));
+    assert.ok(forms.length > 80);
+    for (const form of forms) {
+      assert.equal(form.rule, "it-pronominal-conjugation/v1");
+      assert.ok(isHandKeptCell(form.from), form.surface);
+      assert.equal(form.from.kept.verb, "prefiggersi");
+      assert.equal(form.from.kept.evidence[0].revisionId, 67588523);
+    }
+    const prefisso = forms.find((form) => form.surface === "mi sono prefisso");
+    assert.ok(prefisso !== undefined && isHandKeptCell(prefisso.from) && prefisso.from.spelling === "ho prefisso");
+  });
+});
+
+test("a pronominal verb listed for Huey gets no table: attremirsi, sdarsi, inostrarsi (#844)", async () => {
+  await withLines(HAND_KEPT_LINES, async ({ db }) => {
+    for (const word of ["attremirsi", "sdarsi", "inostrarsi"]) {
+      const html = await render(db, word);
+      assert.doesNotMatch(html, />Forme</, word);
+      assert.doesNotMatch(textOf(html), /mancan|missing|nessuna voce|nessun dato/i, word);
+    }
   });
 });
 
