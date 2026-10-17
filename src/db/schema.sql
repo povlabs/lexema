@@ -1173,6 +1173,9 @@ CREATE TABLE wikidata_word (
   lemma    TEXT NOT NULL CHECK (trim(lemma) <> ''),
   -- The lexical category, which `POS_TITLE_BY_CATEGORY` (src/wikidataWords/lexicalCategories.ts) maps to a part of speech.
   category TEXT NOT NULL CHECK (category GLOB 'Q[1-9]*' AND category NOT GLOB 'Q*[^0-9]*'),
+  -- The lexeme's grammatical genders (P5185, #849), as `["Q1775415"]`, in Wikidata's order; empty when it states none.
+  -- The default is what `update:upgrade` gives a row written before the column, until `load:wikidata-words` writes it again.
+  genders  TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(genders) AND json_type(genders) = 'array'),
   -- Every form with an Italian spelling, as `[{"form", "spelling", "features"}]`, in Wikidata's order.
   forms    TEXT NOT NULL CHECK (json_valid(forms) AND json_type(forms) = 'array'),
   -- Every sense with an Italian gloss, as `[{"sense", "gloss"}]`, in Wikidata's order; often empty.

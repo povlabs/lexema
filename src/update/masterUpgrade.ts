@@ -20,7 +20,10 @@
 // `corrected_edge` (#755): one from before an edge could be removed has a
 // target on every row, and is rebuilt with its rows so a row may name none.
 // So is `name_entry` (#794): one from before `person` was a category refuses
-// a person's row, and is rebuilt with its rows.
+// a person's row, and is rebuilt with its rows. So are the Wikidata word
+// tables (#849): a `wikidata_word` from before `genders` is rebuilt with its
+// rows and their keys, each row with no gender until `load:wikidata-words`
+// writes it again.
 //
 // The serving views are held to their schema.sql definition too (#525): when
 // one a dictionary stores differs, the upgrade replaces the views
@@ -110,6 +113,7 @@ export const REBUILT_GROUPS = [
   { tables: ["corrected_form"], indexes: ["corrected_form_by_key"] },
   { tables: ["corrected_edge"], indexes: ["corrected_edge_by_target"] },
   { tables: NAME_TABLES, indexes: NAME_INDEXES },
+  { tables: WIKIDATA_WORD_TABLES, indexes: [] },
 ] as const satisfies readonly { tables: readonly string[]; indexes: readonly string[] }[];
 
 /** A table the upgrade may rebuild. */
@@ -118,8 +122,8 @@ export type RebuiltTable = (typeof REBUILT_GROUPS)[number]["tables"][number];
 /**
  * Every table the upgrade may rebuild: the page-entry tables,
  * `corrected_definition`, `recovered_definition`, `recovered_label`,
- * `recovered_example`, `hidden_record`, `corrected_form`, `corrected_edge` and
- * `name_entry`.
+ * `recovered_example`, `hidden_record`, `corrected_form`, `corrected_edge`,
+ * `name_entry`, `wikidata_word` and `wikidata_word_key`.
  */
 export const REBUILT_TABLES: readonly RebuiltTable[] = REBUILT_GROUPS.flatMap((group) => group.tables);
 

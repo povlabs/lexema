@@ -79,6 +79,9 @@ export const PAGE_ENTRY_TABLES = ["recovered_entry", "entry_definition", "entry_
 /** The table of a page-only entry's other fields (ADR 0026, #439). A dictionary may hold the entries without it. */
 export const PAGE_ENTRY_FACT_TABLE = "entry_fact";
 
+/** What `OPTIONAL_TABLES_SQL` names a `wikidata_word` with its `genders` column by. */
+const WIKIDATA_WORD_GENDERS = "wikidata_word.genders";
+
 /**
  * Which of the tables an older master may lack it has: `hide_version` (#408),
  * the page-entry tables (#403), the curated-correction tables (#420,
@@ -86,10 +89,15 @@ export const PAGE_ENTRY_FACT_TABLE = "entry_fact";
  * Wikidata words (#812), and
  * `corrected_form_by_key`, the index a search reads a
  * corrected cell through (#743): it is on `surface_key`, so it stands only
- * where that column does. Presence is read from the schema, never inferred
- * from a failed read, so an error on a table that exists still fails.
+ * where that column does. It also names `wikidata_word.genders` where
+ * `wikidata_word` has that column (#849), read off the table's stored
+ * definition, which names it only from then. Presence is read from the
+ * schema, never inferred from a failed read, so an error on a table that
+ * exists still fails.
  */
-export const OPTIONAL_TABLES_SQL: DictionaryRead = `SELECT name FROM sqlite_schema WHERE (type = 'table' AND name IN (${["hide_version", "corrected_claim", "corrected_form", "corrected_edge", "hidden_recovered_definition", "correction_version", ...PAGE_ENTRY_TABLES, PAGE_ENTRY_FACT_TABLE, "corrected_definition", "hand_kept_definition", "name_entry", "wikidata_word", "wikidata_word_key"].map((name) => `'${name}'`).join(", ")})) OR (type = 'index' AND name = 'corrected_form_by_key')`;
+export const OPTIONAL_TABLES_SQL: DictionaryRead = `SELECT name FROM sqlite_schema WHERE (type = 'table' AND name IN (${["hide_version", "corrected_claim", "corrected_form", "corrected_edge", "hidden_recovered_definition", "correction_version", ...PAGE_ENTRY_TABLES, PAGE_ENTRY_FACT_TABLE, "corrected_definition", "hand_kept_definition", "name_entry", "wikidata_word", "wikidata_word_key"].map((name) => `'${name}'`).join(", ")})) OR (type = 'index' AND name = 'corrected_form_by_key')
+ UNION ALL
+SELECT '${WIKIDATA_WORD_GENDERS}' FROM sqlite_schema WHERE type = 'table' AND name = 'wikidata_word' AND sql LIKE '%genders%'`;
 export const HIDE_VERSION_SQL: DictionaryRead = `SELECT revision FROM hide_version WHERE singleton = 1`;
 export const CORRECTION_VERSION_SQL: DictionaryRead = `SELECT revision FROM correction_version WHERE singleton = 1`;
 
@@ -142,6 +150,12 @@ export interface DictionaryTables {
   names: boolean;
   /** `wikidata_word` with `wikidata_word_key` (ADR 0033); absent on a master seeded before #812 until `update:upgrade` creates them, and read as empty. */
   wikidataWords: boolean;
+  /**
+   * `wikidata_word` with its `genders` column (#849), with the Wikidata word
+   * tables; absent on one from before it until `update:upgrade` rebuilds it:
+   * a lookup then reads every Wikidata word as stating no gender.
+   */
+  wikidataWordGenders: boolean;
 }
 
 /**
@@ -172,6 +186,7 @@ export async function dictionaryTables(db: LookupDatabase): Promise<DictionaryTa
     handKeptReadings: present.has("hand_kept_definition"),
     names: present.has("name_entry"),
     wikidataWords: present.has("wikidata_word") && present.has("wikidata_word_key"),
+    wikidataWordGenders: present.has("wikidata_word") && present.has("wikidata_word_key") && present.has(WIKIDATA_WORD_GENDERS),
   };
 }
 

@@ -1,7 +1,8 @@
 // One Wikidata word (ADR 0033, #812): an Italian lexeme from Wikidata (CC0),
 // as imported. Its lemma, its lexical category (and so its part of speech),
-// its forms with their grammatical features, and the Italian glosses of its
-// senses; glosses in other languages are not kept. `wikidataWord` is the only
+// the grammatical genders the lexeme states (P5185, ADR 0033's 2026-10-17
+// amendment, #849), its forms with their grammatical features, and the
+// Italian glosses of its senses; glosses in other languages are not kept. `wikidataWord` is the only
 // way to make one, so a lexeme with no lemma, of a category the table does not
 // map, or with a form or sense of another lexeme, is not a value the
 // dictionary can hold. `paralimpico` is lexeme L1247138.
@@ -32,6 +33,12 @@ export interface WikidataWordSpec {
   /** The Italian lemma, as Wikidata states it. */
   lemma: string;
   category: LexicalCategory;
+  /**
+   * The lexeme's grammatical genders (P5185), as Wikidata items in its order:
+   * `targhetta` states femminile (Q1775415) once for the whole word, not on
+   * its forms. Empty when it states none, as most verbs and adjectives.
+   */
+  genders: `Q${number}`[];
   /** Every form with an Italian spelling, in Wikidata's order. */
   forms: LexemeForm[];
   /** Every sense with an Italian gloss, in Wikidata's order; empty for most lexemes. */
@@ -61,6 +68,7 @@ export function wikidataWord(spec: WikidataWordSpec): WikidataWord {
   if (!LEXEME.test(spec.lexeme)) refuse("not a lexeme id");
   if (blank(spec.lemma)) refuse("its lemma is empty");
   if (!isLexicalCategory(spec.category)) refuse(`${spec.category} is not a lexical category the table maps`);
+  for (const gender of spec.genders) if (!ITEM.test(gender)) refuse(`its gender ${gender} is not an item`);
   const own = (id: string, kind: "F" | "S"): boolean => new RegExp(`^${spec.lexeme}-${kind}[1-9]\\d*$`).test(id);
   for (const form of spec.forms) {
     if (!own(form.form, "F")) refuse(`${form.form} is not one of its forms`);
@@ -72,6 +80,8 @@ export function wikidataWord(spec: WikidataWordSpec): WikidataWord {
     if (blank(gloss.gloss)) refuse(`sense ${gloss.sense}'s gloss is empty`);
   }
   const twice = (ids: readonly string[]): string | undefined => ids.find((id, index) => ids.indexOf(id) !== index);
+  const gender = twice(spec.genders);
+  if (gender !== undefined) refuse(`gender ${gender} is listed twice`);
   const form = twice(spec.forms.map((one) => one.form));
   if (form !== undefined) refuse(`form ${form} is listed twice`);
   const sense = twice(spec.glosses.map((one) => one.sense));
@@ -80,6 +90,7 @@ export function wikidataWord(spec: WikidataWordSpec): WikidataWord {
     lexeme: spec.lexeme,
     lemma: spec.lemma,
     category: spec.category,
+    genders: [...spec.genders],
     forms: spec.forms.map((one) => Object.freeze({ form: one.form, spelling: one.spelling, features: [...one.features] })),
     glosses: spec.glosses.map((one) => Object.freeze({ sense: one.sense, gloss: one.gloss })),
   }) as WikidataWord;
@@ -112,9 +123,26 @@ interface DumpLexeme {
   id?: unknown;
   language?: unknown;
   lexicalCategory?: unknown;
+  claims?: Record<string, { rank?: unknown; mainsnak?: { snaktype?: unknown; datavalue?: { value?: { id?: unknown } } } }[]>;
   lemmas?: Record<string, { value?: unknown }>;
   forms?: { id?: unknown; representations?: Record<string, { value?: unknown }>; grammaticalFeatures?: unknown }[];
   senses?: { id?: unknown; glosses?: Record<string, { value?: unknown }> }[];
+}
+
+/** Grammatical gender, the property a lexeme states its gender with. */
+export const GRAMMATICAL_GENDER = "P5185";
+
+/**
+ * The items a lexeme's P5185 statements name, in its order, each once. A
+ * deprecated statement, which Wikidata marks as wrong, and one with no value
+ * (`novalue`, `somevalue`) name none.
+ */
+function gendersOfDump(entity: DumpLexeme): `Q${number}`[] {
+  const items = (entity.claims?.[GRAMMATICAL_GENDER] ?? []).flatMap((claim) => {
+    const id = claim.mainsnak?.datavalue?.value?.id;
+    return claim.rank !== "deprecated" && claim.mainsnak?.snaktype === "value" && typeof id === "string" ? [id as `Q${number}`] : [];
+  });
+  return [...new Set(items)];
 }
 
 /** Italian, as Wikidata names the language of a lexeme. */
@@ -124,7 +152,8 @@ export const ITALIAN = "Q652";
  * The Wikidata word a lexeme of the dump is, or undefined when it is not one
  * Lexema keeps: not Italian, with no Italian lemma, or of a category the
  * table does not map. A form with no Italian spelling and a sense with no
- * Italian gloss are left out of it; every other value is kept as stated.
+ * Italian gloss are left out of it; every other value is kept as stated. Of
+ * the lexeme's statements only its grammatical genders (P5185) are read.
  */
 export function wikidataWordOfDump(entity: DumpLexeme): WikidataWord | undefined {
   if (entity.type !== "lexeme" || entity.language !== ITALIAN) return undefined;
@@ -141,5 +170,5 @@ export function wikidataWordOfDump(entity: DumpLexeme): WikidataWord | undefined
     const gloss = sense.glosses?.it?.value;
     return typeof gloss === "string" && !blank(gloss) ? [{ sense: sense.id as LexemeGloss["sense"], gloss }] : [];
   });
-  return wikidataWord({ lexeme: entity.id as LexemeId, lemma, category, forms, glosses });
+  return wikidataWord({ lexeme: entity.id as LexemeId, lemma, category, genders: gendersOfDump(entity), forms, glosses });
 }

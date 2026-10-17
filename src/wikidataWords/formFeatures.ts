@@ -103,3 +103,17 @@ export function formTagsOf(features: readonly string[]): FormTags | undefined {
   if (verb.row === "tagged") return { tags: [...genders, ...numbers, ...persons, ...verb.tags], rawTags: pronoun === undefined ? [] : [pronoun.bare] };
   return { tags: [...genders, ...verb.tags], rawTags: pronoun === undefined ? [] : [verb.row === "che" ? pronoun.che : pronoun.bare] };
 }
+
+/**
+ * The gender tags a record would write for a lexeme's own grammatical genders
+ * (P5185, #849), in its order: `targhetta` states femminile (Q1775415) and
+ * writes `feminine`. An item the table does not map as a gender is left out,
+ * never guessed.
+ */
+export function genderTagsOf(genders: readonly string[]): ("masculine" | "feminine")[] {
+  return genders.flatMap((gender) => {
+    if (!isMappedFeature(gender)) return [];
+    const stated: FeatureTags = TAGS_BY_FEATURE[gender];
+    return stated.kind === "gender" ? [stated.tag] : [];
+  });
+}
