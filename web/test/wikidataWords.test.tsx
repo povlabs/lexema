@@ -197,20 +197,22 @@ test("a form only a Wikidata word answers is marked in its Forme, under the line
   // No line of it-0c432803 spells pentimmo, as a headword or in a table, so in the release too only lexeme L1422655 answers it.
   const html = await render("pentimmo");
   assert.deepEqual(headingsOf(html), ["1·Voce verbale·pentirsi"]);
-  assert.match(textOf(html), /Voce verbale·pentirsiprima persona plurale del passato remoto indicativo di pentirsiForme dipentirsi/);
+  // Its lines, then the lexeme's glosses as its Definizioni, then its table, as a record's form block reads (rule 1).
+  assert.match(textOf(html), /Voce verbale·pentirsiprima persona plurale del passato remoto indicativo di pentirsiDefinizioni1\.provare romorso per un'azione sbagliata commessaForme dipentirsi/);
   assert.deepEqual(searchedOf(html), ["pentimmo"]);
   assert.match(textOf(html), /passato remotofuturo sempliceiopentiipentiròtupentistipentirailui, leipentìpentirànoipentimmo/);
   assert.doesNotMatch(textOf(html), /Wikidata|lessema/i);
 });
 
-test("a Wikidata noun's form reads as a record's: its gender and number in the heading, its line, the lemma's Forme (#851)", async () => {
+test("a Wikidata noun's form reads as a record's: its gender and number in the heading, its line, the lemma's Definizioni and Forme (#851)", async () => {
   // No record of this fixture spells professoresse, so lexeme L1180137 answers it here. In
   // it-0c432803 the record `professoresse` does, and Wiktionary wins there; no served Wikidata
   // noun has a gendered form the release lacks, so the grid is read off this one.
   const html = await render("professoresse");
   assert.deepEqual(headingsOf(html), ["1·Sostantivo, forma flessa·femminile, plurale"]);
-  assert.match(textOf(html), /femminile, pluralefemminile plurale di professoreForme diprofessoresingolareplurale/);
-  assert.doesNotMatch(textOf(html), /Definizioni|Wikidata|lessema/i);
+  assert.match(textOf(html), /femminile, pluralefemminile plurale di professoreDefinizioni1\.persona che insegna in una scuola o in una università/);
+  assert.match(textOf(html), /Forme diprofessoresingolareplurale/);
+  assert.doesNotMatch(textOf(html), /Wikidata|lessema/i);
 });
 
 test("/v1/lookup names a Wikidata word's searched form as it names a record's (#851)", async () => {

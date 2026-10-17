@@ -230,13 +230,22 @@ export interface LemmaDefinitionList {
   lemmaLinks: Reading["lemmaLinks"];
 }
 
-/** A lemma record's definitions as its own page lists them, or none when it has no definition or was not read. */
+/**
+ * A lemma's definitions as its own page lists them, or none when it has no
+ * definition or was not read. A Wikidata word's are its glosses, which its
+ * identity carries, so a form of it lists them as its own page does (#851).
+ */
 function definitionListOf(
   lemma: EntryIdentity & { word: string },
   definitions: (LemmaDefinitions & Pick<Reading, "lemmaLinks">) | undefined,
 ): LemmaDefinitionList | undefined {
   if (definitions === undefined) return undefined;
-  const { items, looseExamples } = definitionsOf({ word: lemma.word, senses: definitions.senses, recovered: definitions.recovered });
+  const { items, looseExamples } = definitionsOf({
+    word: lemma.word,
+    senses: definitions.senses,
+    recovered: definitions.recovered,
+    lexemeGlosses: lemma.lexemeGlosses,
+  });
   const listed = nonEmpty(items);
   return listed === undefined ? undefined : { lemma, items: listed, looseExamples, lemmaLinks: definitions.lemmaLinks };
 }
