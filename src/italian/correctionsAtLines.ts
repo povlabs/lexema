@@ -7,10 +7,10 @@
 
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
-import { isDefinitionCorrection, type CuratedCorrection, type LineCorrection, type RecoveredDefinitionHide, type SenseEdgeCorrection } from "./curatedCorrections.js";
+import { isDefinitionCorrection, type CuratedCorrection, type LineCorrection, type RecoveredDefinitionHide, type SenseEdgeCorrection, type SenseHide } from "./curatedCorrections.js";
 
-/** An entry keyed to one record's line: its gender or number, cells of its table, a sense's edge set or removed, or a recovered definition hidden. */
-export type RecordKeyedCorrection = LineCorrection | SenseEdgeCorrection | RecoveredDefinitionHide;
+/** An entry keyed to one record's line: its gender or number, cells of its table, a sense's edge set or removed, a recovered definition hidden, or a sense hidden. */
+export type RecordKeyedCorrection = LineCorrection | SenseEdgeCorrection | RecoveredDefinitionHide | SenseHide;
 
 /** The list keyed to a fixture: what it holds, and the record entries whose line it does not. */
 export interface KeyedToFixture<Correction extends CuratedCorrection> {

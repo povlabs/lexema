@@ -316,6 +316,8 @@ test("the fifty-word dev seed is one part with the same rows", async () => {
       corrected_edge: 99,
       // The one hide's line, `diplomatizzare`'s (#773), is not in the fixture either.
       hidden_recovered_definition: 0,
+      // The one hidden sense's is, `gaio`'s (#857): its adjective sense 0.
+      hidden_sense: 1,
       // Only the fixture pages on the committed list of it-0c432803's
       // record-less titles are page-only candidates (#499): 20 of them, of
       // which 17 recover (`lungo` as two entries), `grufolare` and `tremare`
@@ -327,7 +329,7 @@ test("the fifty-word dev seed is one part with the same rows", async () => {
       // The committed hand-kept readings, whatever the fixture holds (ADR
       // 0031, #745): si's pronoun's four definitions and come's conjunction's one.
       hand_kept_definition: 5,
-      release_table_rows: 26,
+      release_table_rows: 27,
     });
     // 36 of the fixture's records have a raw page under fixtures/. Three pages
     // state definitions their record does not carry: `casa`'s seven and
@@ -345,12 +347,12 @@ test("the dev seed writes the committed corrections the fixture holds, keyed to 
   try {
     const { held, leftOut } = devCorrections;
     const keyed = held.filter((correction) => correction.record !== undefined);
-    assert.equal(keyed.length, 106);
+    assert.equal(keyed.length, 107);
     // Entries whose archive lines the fixture does not carry, `fissazione`'s and `assorbire`'s among them.
     const leftOutWords = new Set(leftOut.map((correction) => correction.record?.word));
     for (const word of ["fissazione", "assorbire"]) assert.ok(leftOutWords.has(word), word);
     const report = await devSeed(join(dir, "sql"));
-    assert.deepEqual(report.corrections, { keyed: 106, applied: 106, unapplied: [] });
+    assert.deepEqual(report.corrections, { keyed: 107, applied: 107, unapplied: [] });
     const db = openSeed(report.parts, ":memory:");
     try {
       const edges = db.prepare(

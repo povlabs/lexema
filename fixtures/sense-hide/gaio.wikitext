@@ -1,0 +1,44 @@
+<!-- it.wiktionary.org/wiki/gaio revision 4057291 (2026-01-11T01:31:50Z), CC BY-SA 4.0. Saved verbatim. -->
+{{W|dividere le traduzioni in base alla definizione a cui si riferiscono}}
+== {{-it-}} ==
+{{-agg-|it}}
+{{Pn}} ''m''
+{{Tabs|gaio|gai|gaia|gaie}}
+# [[Ultima_Sfaccim]]
+# {{Term|araldica|it}} [[allegro]]
+
+{{-sill-}}
+; gà | io
+
+{{-pron-}}
+{{IPA|/ˈɡajo/}}
+
+{{-etim-}}
+dal [[provenzale]] ''[[gai]]'', a sua volta dal latino ''gaius'' (indicante qualcosa di giocondo e/o ctonio, imparentato con la terra, ''[[gaia]]'')
+
+{{-sin-}}
+*[[allegro]], [[felice]], di buon umore, [[contento]], [[sereno]], [[tranquillo]], [[gioioso]], [[lieto]], [[giocondo]], [[spensierato]], [[vivace]], [[brioso]], [[entusiasta]], [[eccitato]], [[esuberante]], [[spumeggiante]], [[frizzante]], [[effervescente]], [[euforico]], [[festoso]], [[festante]], [[esultante]], [[gioviale]], [[ameno]], [[ridente]], [[gioviale]]
+*[[divertente]],  [[festoso]], [[ridente]], [[ilare]] 
+
+{{-ant-}}
+* [[triste]], [[infelice]], [[squallido]], [[grigio]], [[cupo]], [[lugubre]], [[funereo]], [[tetro]]
+* '' (di persona)'' [[mesto]], [[malinconico]], [[afflitto]], [[depresso]]
+
+{{-trad-}}
+{{Trad1|}}
+:*{{fr}}: [[gai]]
+:*{{en}}: [[cheerful]], [[cheery]], [[merry]], [[jolly]], [[lively]], [[gay]]  
+:*{{es}}: [[alegre]], [[contento]], [[risueño]]   
+:*{{de}}:    
+{{Trad2}}
+
+{{-ref-}}
+* {{Fonte|trec}}
+* {{Fonte|dizit}}
+* {{Fonte|gar}}
+*{{Fonte|sin-co}}
+*AA.VV.,''Dizionario sinonimi e contrari'', Mariotti, 2006, pagina 231
+* {{Term|araldica|it}}  ''Vocabolario Araldico Ufficiale, a cura di Antonio Manno – edito a Roma nel 1907''
+
+== Altri progetti ==
+{{Interprogetto|w=Gaio (araldica)|etichetta=Gaio (araldica)}}

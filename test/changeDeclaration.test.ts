@@ -273,6 +273,11 @@ test("every declaration already in dictionary-changes parses as before, with no 
       );
       continue;
     }
+    // The hidden sense (#857) names the word whose page it changes, with the definition the page then shows first.
+    if (name === "2026-10-17-correct-gaio-hidden-sense.json") {
+      assert.deepEqual(parseDeclaration(path, text).lookups?.map((item) => [item.word, item.gloss]), [["gaio", "allegro"]]);
+      continue;
+    }
     // The hidden recovered line (#773) names the word whose page it changes.
     if (name === "2026-10-09-correct-diplomatizzare-recovered-line.json") {
       assert.deepEqual(parseDeclaration(path, text).lookups?.map((item) => item.word), ["diplomatizzare"]);

@@ -1,4 +1,4 @@
-// Writes the curated corrections (#420, #722, #723, #773) beside the records a seed streams.
+// Writes the curated corrections (#420, #722, #723, #773, #857) beside the records a seed streams.
 //
 // Each entry of the committed list (src/italian/curatedCorrections.ts) keyed
 // to a record names it by release, archive line and line digest. When the seed
@@ -8,7 +8,9 @@
 // naming the entry and the two page revisions it cites, and each hidden
 // recovered definition one `hidden_recovered_definition` row, naming the entry
 // and the page revision it cites, where the record's recovered definition at
-// that line is the one it quotes (`hideMismatch`). A line whose digest
+// that line is the one it quotes (`hideMismatch`), and each hidden sense one
+// `hidden_sense` row, naming the entry and the page revision it cites. A
+// line whose digest
 // differs is another record, and gets none: the list was checked against those
 // bytes and no others. A hidden record gets no edge (ADR 0023), as it gets no
 // `form_of_edge` row. The record's own rows, its line in `source_record_json`
@@ -25,6 +27,8 @@ import {
   recordCorrections,
   recoveredHides,
   senseEdgeCorrections,
+  senseHideMisquote,
+  senseHides,
   type CellCorrection,
   type CuratedCorrection,
   type HideMismatch,
@@ -32,6 +36,7 @@ import {
   type RecoveredDefinitionHide,
   type RecoveredLine,
   type SenseEdgeCorrection,
+  type SenseHide,
 } from "../italian/curatedCorrections.js";
 import type { ImportStatement } from "./importRelease.js";
 
@@ -74,6 +79,10 @@ export function correctedEdgeValues(
 export const hiddenRecoveredValues = (correction: RecoveredDefinitionHide): [pageLine: number, correctionId: string, evidenceUrl: string] =>
   [correction.hides.line, correctionId(correction), evidenceUrl(correction.evidence.page)];
 
+/** One `hidden_sense` row's values after its record id and release, in `COLUMNS` order. */
+export const hiddenSenseValues = (correction: SenseHide): [senseIndex: number, jsonPointer: string, correctionId: string, evidenceUrl: string] =>
+  [correction.hidesSense.index, correction.hidesSense.gloss.pointer, correctionId(correction), evidenceUrl(correction.evidence.page)];
+
 /** Why an entry keyed to the seeded release was not written. */
 export type UnappliedReason = "line-digest-differs" | "line-not-seeded" | "record-hidden" | HideMismatch;
 
@@ -87,22 +96,24 @@ export interface CorrectionSummary {
   unapplied: { id: string; reason: UnappliedReason }[];
 }
 
-/** A record's entries of the list: its facts, its cells, its edges by sense, and its hidden recovered definitions. */
+/** A record's entries of the list: its facts, its cells, its edges by sense, its hidden recovered definitions, and its hidden senses. */
 interface EntriesOfLine {
   facts?: RecordCorrection;
   cells?: CellCorrection;
   edges: SenseEdgeCorrection[];
   hides: RecoveredDefinitionHide[];
+  senseHides: SenseHide[];
 }
 
-type KeyedEntry = RecordCorrection | CellCorrection | SenseEdgeCorrection | RecoveredDefinitionHide;
+type KeyedEntry = RecordCorrection | CellCorrection | SenseEdgeCorrection | RecoveredDefinitionHide | SenseHide;
 
-/** Every entry of a record's line: facts, then cells, then edges, then hides. */
-const allOf = ({ facts, cells, edges, hides }: EntriesOfLine): KeyedEntry[] => [
+/** Every entry of a record's line: facts, then cells, then edges, then hides, then hidden senses. */
+const allOf = ({ facts, cells, edges, hides, senseHides }: EntriesOfLine): KeyedEntry[] => [
   ...(facts === undefined ? [] : [facts]),
   ...(cells === undefined ? [] : [cells]),
   ...edges,
   ...hides,
+  ...senseHides,
 ];
 
 export class CorrectedLayer {
@@ -113,12 +124,12 @@ export class CorrectedLayer {
 
   constructor(
     corrections: readonly CuratedCorrection[],
-    private readonly insert: { claim: ImportStatement; form: ImportStatement; edge: ImportStatement; hide: ImportStatement },
-    private readonly rows: { corrected_claim: number; corrected_form: number; corrected_edge: number; hidden_recovered_definition: number },
+    private readonly insert: { claim: ImportStatement; form: ImportStatement; edge: ImportStatement; hide: ImportStatement; senseHide: ImportStatement },
+    private readonly rows: { corrected_claim: number; corrected_form: number; corrected_edge: number; hidden_recovered_definition: number; hidden_sense: number },
   ) {
     const entriesOf = (correction: KeyedEntry): EntriesOfLine => {
       const key = `${correction.record.releaseId}:${correction.record.lineNo}`;
-      const entries = this.byLine.get(key) ?? { edges: [], hides: [] };
+      const entries = this.byLine.get(key) ?? { edges: [], hides: [], senseHides: [] };
       this.byLine.set(key, entries);
       return entries;
     };
@@ -126,6 +137,7 @@ export class CorrectedLayer {
     for (const correction of cellCorrections(corrections)) entriesOf(correction).cells = correction;
     for (const correction of senseEdgeCorrections(corrections)) entriesOf(correction).edges.push(correction);
     for (const correction of recoveredHides(corrections)) entriesOf(correction).hides.push(correction);
+    for (const correction of senseHides(corrections)) entriesOf(correction).senseHides.push(correction);
   }
 
   /**
@@ -141,7 +153,7 @@ export class CorrectedLayer {
     this.releaseId = record.releaseId;
     const entries = this.byLine.get(`${record.releaseId}:${record.lineNo}`);
     if (entries === undefined) return;
-    const { facts, cells, edges, hides } = entries;
+    const { facts, cells, edges, hides, senseHides: hiddenSenses } = entries;
     for (const correction of allOf(entries)) {
       if (correction.record.lineSha256 !== record.lineSha256) this.unapplied.set(correctionId(correction), "line-digest-differs");
     }
@@ -182,6 +194,15 @@ export class CorrectedLayer {
       this.insert.hide.run(record.recordId, record.releaseId, ...hiddenRecoveredValues(hide));
       this.rows.hidden_recovered_definition += 1;
       this.applied.add(correctionId(hide));
+    }
+    for (const hide of hiddenSenses) {
+      if (hide.record.lineSha256 !== record.lineSha256) continue;
+      const id = correctionId(hide);
+      const misquote = senseHideMisquote(hide, record.line);
+      if (misquote !== undefined) throw new Error(`curated correction ${id} misquotes sense ${hide.hidesSense.index} of its own line: ${misquote}`);
+      this.insert.senseHide.run(record.recordId, record.releaseId, ...hiddenSenseValues(hide));
+      this.rows.hidden_sense += 1;
+      this.applied.add(id);
     }
   }
 

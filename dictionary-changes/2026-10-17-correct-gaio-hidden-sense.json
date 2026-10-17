@@ -1,0 +1,10 @@
+{
+  "command": "correct:records",
+  "inputs": {},
+  "lookups": [{ "word": "gaio", "gloss": "allegro" }],
+  "expected": {
+    "records": { "added": 0, "changed": 1, "removed": 0 },
+    "written": { "hidden_sense": 1, "correction_version": 1 },
+    "deleted": {}
+  }
+}

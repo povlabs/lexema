@@ -864,10 +864,10 @@ function releaseDump(row: {
 }
 
 /** Which curated-correction tables the dictionary has, so a lookup reads none that is absent. */
-type Corrected = Pick<DictionaryTables, "corrections" | "cellCorrections" | "recoveredHides">;
+type Corrected = Pick<DictionaryTables, "corrections" | "cellCorrections" | "recoveredHides" | "senseHides">;
 
-/** Whether the dictionary has `hidden_recovered_definition` (#773), so the recovered read names it only where it is. */
-export type Hides = Pick<DictionaryTables, "recoveredHides">;
+/** Whether the dictionary has `hidden_recovered_definition` (#773) and `hidden_sense` (#857), so each read names one only where it is. */
+export type Hides = Pick<DictionaryTables, "recoveredHides" | "senseHides">;
 
 /** A record's grammar and the forms it lists, which the grammar is keyed into. */
 interface RecordTable {
@@ -949,7 +949,7 @@ function startReadingReads(
 ): ReadingReads {
   return {
     recovered: handled(readRecovered(db, first.record_id, record, corrected)),
-    senseRows: handled(readSenseRows(db, first.record_id)),
+    senseRows: handled(readSenseRows(db, first.record_id, corrected)),
     inflections: handled(readInflections(db, releaseId, first.record_id, first.record_word, corrected, edges)),
     reviews: handled(readReviews(db, first.record_id)),
   };
@@ -1072,7 +1072,7 @@ async function readDefinitions(
   hides: Hides,
 ): Promise<LemmaDefinitions> {
   const record = handled(readRecord(db, recordId));
-  const [senseRows, recovered, line] = await Promise.all([readSenseRows(db, recordId), readRecovered(db, recordId, record, hides), record]);
+  const [senseRows, recovered, line] = await Promise.all([readSenseRows(db, recordId, hides), readRecovered(db, recordId, record, hides), record]);
   return {
     senses: sensesOf(senseRows, word, ref, readSourceRecord(line.rawJson, ref), recovered.underSense),
     recovered: recovered.topLevel,
@@ -1108,28 +1108,47 @@ interface SenseRows {
 }
 
 /**
+ * The condition that keeps a sense no curated correction hides (#857): one
+ * probe of `hidden_sense`'s key. A row hides the sense of the record it was
+ * written for alone, and a record is read by its own id, so a record that
+ * replaced that one shows its own senses (ADR 0027).
+ */
+const notHidden = (hides: boolean): string =>
+  hides ? " AND NOT EXISTS (SELECT 1 FROM hidden_sense hs WHERE hs.record_id = s.record_id AND hs.sense_index = s.sense_index)" : "";
+
+/**
  * A record's glosses. A sense with no gloss still gets a row, because "this
  * sense exists and says nothing" is a fact worth showing rather than a sense
- * to drop.
+ * to drop. A sense a curated correction hides gets none: its page line states
+ * no definition (#857).
  */
-export const SENSE_GLOSS_SQL: KeyedRead = keyedRead(`SELECT s.record_id AS set_key, s.sense_index, s.json_pointer AS sense_pointer, g.text, g.json_pointer
+const senseGlossRead = (hides: boolean): KeyedRead =>
+  keyedRead(`SELECT s.record_id AS set_key, s.sense_index, s.json_pointer AS sense_pointer, g.text, g.json_pointer
        FROM sense s
        LEFT JOIN sense_gloss g ON g.sense_id = s.sense_id
-      WHERE s.record_id IN (SELECT value FROM json_each(?1))
+      WHERE s.record_id IN (SELECT value FROM json_each(?1))${notHidden(hides)}
       ORDER BY s.record_id, s.sense_index, g.gloss_index`);
 
-/** A record's sense labels. */
-export const SENSE_LABEL_SQL: KeyedRead = keyedRead(`SELECT s.record_id AS set_key, s.sense_index, s.json_pointer AS sense_pointer, l.kind, l.label, l.json_pointer
+/** A record's sense labels, but a hidden sense's. */
+const senseLabelRead = (hides: boolean): KeyedRead =>
+  keyedRead(`SELECT s.record_id AS set_key, s.sense_index, s.json_pointer AS sense_pointer, l.kind, l.label, l.json_pointer
        FROM sense s
        JOIN sense_label l ON l.sense_id = s.sense_id
-      WHERE s.record_id IN (SELECT value FROM json_each(?1))
+      WHERE s.record_id IN (SELECT value FROM json_each(?1))${notHidden(hides)}
       ORDER BY s.record_id, s.sense_index, l.kind, l.label_index`);
 
+/** The gloss read of a master without `hidden_sense`, and of one with it. Exported so a test can hold each to its plan. */
+export const SENSE_GLOSS_SQL: KeyedRead = senseGlossRead(false);
+export const HIDING_SENSE_GLOSS_SQL: KeyedRead = senseGlossRead(true);
+/** The label read of a master without `hidden_sense`, and of one with it. */
+export const SENSE_LABEL_SQL: KeyedRead = senseLabelRead(false);
+export const HIDING_SENSE_LABEL_SQL: KeyedRead = senseLabelRead(true);
+
 /** Both reads of a record's senses, sent at once: neither needs the other's rows. */
-async function readSenseRows(db: LookupDatabase, recordId: number): Promise<SenseRows> {
+async function readSenseRows(db: LookupDatabase, recordId: number, hides: Pick<DictionaryTables, "senseHides">): Promise<SenseRows> {
   const [glosses, labels] = await Promise.all([
-    readKeys<SenseRows["glosses"][number]>(db, SENSE_GLOSS_SQL, [recordId]),
-    readKeys<SenseRows["labels"][number]>(db, SENSE_LABEL_SQL, [recordId]),
+    readKeys<SenseRows["glosses"][number]>(db, hides.senseHides ? HIDING_SENSE_GLOSS_SQL : SENSE_GLOSS_SQL, [recordId]),
+    readKeys<SenseRows["labels"][number]>(db, hides.senseHides ? HIDING_SENSE_LABEL_SQL : SENSE_LABEL_SQL, [recordId]),
   ]);
   return { glosses, labels };
 }
