@@ -134,9 +134,10 @@ export async function readEntryFacts(
 /**
  * The word a definition says the entry is a form of, and every headword
  * record or page-only entry that spells it. None is a dangling link, which
- * stays visible as one, as an archive edge's does.
+ * stays visible as one, as an archive edge's does. A hand-kept reading's
+ * other spelling is read the same way (src/lookup/handKept.ts).
  */
-async function lemmaLink(
+export async function lemmaLink(
   db: LookupDatabase,
   releaseId: string,
   targetWord: string,

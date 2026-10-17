@@ -273,6 +273,15 @@ test("every declaration already in dictionary-changes parses as before, with no 
       );
       continue;
     }
+    // The old spellings (#830) name eguale's corrected plural, eguale, and eguaglianza with its hand-kept definition.
+    if (name === "2026-10-17-correct-old-spellings.json") {
+      assert.deepEqual(parseDeclaration(path, text).lookups?.map((item) => [item.word, item.gloss]), [
+        ["eguali", null],
+        ["eguale", null],
+        ["eguaglianza", "variante di uguaglianza"],
+      ]);
+      continue;
+    }
     // The hidden recovered line (#773) names the word whose page it changes.
     if (name === "2026-10-09-correct-diplomatizzare-recovered-line.json") {
       assert.deepEqual(parseDeclaration(path, text).lookups?.map((item) => item.word), ["diplomatizzare"]);

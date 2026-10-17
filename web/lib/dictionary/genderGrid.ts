@@ -10,7 +10,9 @@
 //   gender when the record states exactly one: `bello` the noun is masculine
 //   and lists `belli` tagged plural only. When the record states both (`fine`
 //   lists `fini` tagged plural), the form's gender is not guessed, so it takes
-//   no cell.
+//   no cell, unless a curated correction set it right (#830): its cited page
+//   settles that it agrees in every gender the record states. `eguale` is
+//   `m e f sing`, and its corrected plural `eguali` fills both plural cells.
 // - The headword sits in every number its record states (`khmer` is tagged
 //   singular and plural, so it fills both), and, as the citation form, in the
 //   singolare column when its record states no usable number (`andare` the
@@ -246,7 +248,7 @@ export function agreementOf(reading: Reading): Agreement {
     const degrees = degreesOf(form);
     const target = degrees.length === 0 ? plain : degrees.includes("superlative") ? superlative : undefined;
     const own = gendersOf(form.claims);
-    const genders = own.length > 0 ? own : recordGenders.length === 1 ? recordGenders : [];
+    const genders = own.length > 0 ? own : recordGenders.length === 1 || form.corrected !== undefined ? recordGenders : [];
     const number = numberOf(form.claims);
     if (target === undefined || genders.length === 0 || number === undefined) continue;
     for (const gender of genders) target.put(gender, number, { kind: "form", form }, form.surface);

@@ -4,13 +4,16 @@
 // then its hand-kept pronoun. A reading's definitions are Lexema's approved
 // wording, each pointing at the cited en.wiktionary revision's sense line it
 // paraphrases; the reading points at that revision's section heading. The page
-// shows it like any reading, with no mark (ADR 0016).
+// shows it like any reading, with no mark (ADR 0016). A reading of another
+// spelling leads to its word, as a form record leads to its lemma:
+// `eguaglianza` to uguaglianza (#830).
 
+import { alternativeOf } from "../italian/handKeptReadings.js";
 import { keyedRead, readKeys, type DictionaryRead, type KeyedRead, type LookupDatabase } from "./database.js";
 import { readingPartOfSpeech } from "./articles.js";
-import { NO_ENTRY_FACTS } from "./pageFacts.js";
+import { lemmaLink, NO_ENTRY_FACTS } from "./pageFacts.js";
 import type { DictionaryTables } from "./served.js";
-import type { PageEntryRef, Reading, ReadingPartOfSpeech, RecoveredDefinition } from "./types.js";
+import type { LemmaCandidate, PageEntryRef, Reading, ReadingPartOfSpeech, RecoveredDefinition } from "./types.js";
 
 /** One definition of a hand-kept reading, as `HAND_KEPT_SQL` reads it. */
 export interface HandKeptDefinitionRow {
@@ -84,7 +87,7 @@ const NONE: HandKeptReadings = { readings: async () => [], heads: async () => ne
 export function handKeptReadingsOf(db: LookupDatabase, releaseId: string, tables: Pick<DictionaryTables, "handKeptReadings">): HandKeptReadings {
   if (!tables.handKeptReadings) return NONE;
   return {
-    readings: async (key) => handKeptReadingsFrom(releaseId, await db.all<HandKeptDefinitionRow>(HAND_KEPT_SQL, [key])),
+    readings: async (key) => handKeptReadingsFrom(db, releaseId, await db.all<HandKeptDefinitionRow>(HAND_KEPT_SQL, [key])),
     heads: async (keys) => {
       const byKey = new Map<string, HandKeptHead[]>();
       for (const row of await readKeys<HandKeptHeadRow>(db, HAND_KEPT_HEADS_SQL, keys)) {
@@ -95,12 +98,35 @@ export function handKeptReadingsOf(db: LookupDatabase, releaseId: string, tables
   };
 }
 
-/** The readings of a key's definition rows, as `HAND_KEPT_SQL` orders them: one per reading, its definitions in order. */
-export function handKeptReadingsFrom(releaseId: string, rows: readonly HandKeptDefinitionRow[]): Reading[] {
+/**
+ * The readings of a key's definition rows, as `HAND_KEPT_SQL` orders them: one
+ * per reading, its definitions in order. A definition whose cited sense line
+ * names the reading another spelling of a word (`# {{alt form|it|uguaglianza}}`,
+ * `alternativeOf`) gives the reading a lemma link to that word, at that
+ * definition, read as a page-only form's is (`lemmaLink`): `eguaglianza` leads
+ * to uguaglianza as a form record leads to its lemma (#830). Only such a
+ * reading sends a statement.
+ */
+export async function handKeptReadingsFrom(db: LookupDatabase, releaseId: string, rows: readonly HandKeptDefinitionRow[]): Promise<Reading[]> {
   const byReading = new Map<string, HandKeptDefinitionRow[]>();
   for (const row of rows) byReading.set(row.reading_id, [...(byReading.get(row.reading_id) ?? []), row]);
-  return [...byReading.values()].map((definitions) => readingOf(releaseId, definitions as [HandKeptDefinitionRow, ...HandKeptDefinitionRow[]]));
+  return Promise.all(
+    [...byReading.values()].map(async (definitions) => {
+      const reading = readingOf(releaseId, definitions as [HandKeptDefinitionRow, ...HandKeptDefinitionRow[]]);
+      const lemmaLinks = await Promise.all(
+        definitions.flatMap((row) => {
+          const word = alternativeOf(row);
+          // At the definition's own ref, so the page links the word where its text writes it.
+          return word === undefined ? [] : [lemmaLink(db, releaseId, word, { ...revisionOf(row.evidence_url), line: row.page_line }, NO_PAGE_CANDIDATES)];
+        }),
+      );
+      return lemmaLinks.length === 0 ? reading : { ...reading, lemmaLinks };
+    }),
+  );
 }
+
+/** A hand-kept reading's other spelling is an archive record's word; it names no page-only entry. */
+const NO_PAGE_CANDIDATES = async (): Promise<LemmaCandidate[]> => [];
 
 /** A reading named by its head row, as `HAND_KEPT_HEADS_SQL` reads it or one read as it reads them; `releaseId` is the served release's. */
 export const handKeptHeadOf = (releaseId: string, row: Omit<HandKeptHeadRow, "set_key">): HandKeptHead => ({
