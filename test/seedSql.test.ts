@@ -325,8 +325,9 @@ test("the fifty-word dev seed is one part with the same rows", async () => {
       entry_fact: 367,
       corrected_definition: 2,
       // The committed hand-kept readings, whatever the fixture holds (ADR
-      // 0031, #745): si's pronoun's four definitions and come's conjunction's one.
-      hand_kept_definition: 5,
+      // 0031, #745, #819): si's pronoun's four definitions, and one each for
+      // come's conjunction, Sig. and cosetta.
+      hand_kept_definition: 7,
       release_table_rows: 26,
     });
     // 36 of the fixture's records have a raw page under fixtures/. Three pages
