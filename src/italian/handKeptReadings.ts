@@ -99,6 +99,10 @@ export function alternativeOf(line: Pick<CitedLine, "wikitext">): string | undef
   return ALTERNATIVE_FORM.exec(line.wikitext)?.[1].trim() || undefined;
 }
 
+/** The words `reading` leads to, as another spelling of each: `uguaglianza` for `eguaglianza` (#830). None for a reading that only defines. */
+export const wordsLedTo = (reading: Pick<HandKeptReadingSpec, "definitions">): string[] =>
+  reading.definitions.flatMap(({ paraphrases }) => alternativeOf(paraphrases) ?? []);
+
 const isLetter = (char: string | undefined): boolean => char !== undefined && /\p{L}/u.test(char);
 
 /** Whether `text` writes `word` as a whole word, so a page can link it there. */

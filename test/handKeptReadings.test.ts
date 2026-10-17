@@ -298,7 +298,8 @@ test("correct:records writes the readings into a master seeded before them, once
     ]);
     // A reading keys to no record; its rows are what the counts name.
     assert.deepEqual(plan.counts.toJSON(), { records: { added: 0, changed: 0, removed: 0 }, written: { hand_kept_definition: 6, correction_version: 1 }, deleted: {} });
-    assert.deepEqual(wordsOfCorrections(plan), touchedWords(["come", "eguaglianza", "si"]));
+    // eguaglianza's page shows uguaglianza's definitions and table, so a Preview's slice serves that word too (#830).
+    assert.deepEqual(wordsOfCorrections(plan), touchedWords(["come", "eguaglianza", "si", "uguaglianza"]));
     // The SQL creates nothing (#509): the upgrade gives the master the table, and the plan is the same after it.
     assert.doesNotMatch(plan.sql, /\b(CREATE|DROP|ALTER)\b/);
     assert.deepEqual(missingForCorrections(reader), ["hand_kept_definition", "hand_kept_definition_by_key"]);

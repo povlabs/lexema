@@ -214,6 +214,12 @@ export interface CorrectedCell {
   replaces: string;
   /** The cell as it reads once corrected. */
   surface: string;
+  /**
+   * Set on a verb table's auxiliary cell, `avere` set to `essere` (#839). A
+   * lookup never reaches that cell by its spelling (the auxiliary rule of
+   * `SEARCH_SQL`, src/lookup/lookup.ts), so it names no word (`cellSpellings`).
+   */
+  auxiliary?: true;
 }
 
 /**
@@ -425,6 +431,16 @@ export const recordCorrections = (corrections: readonly CuratedCorrection[]): Re
 export const cellCorrections = (corrections: readonly CuratedCorrection[]): CellCorrection[] =>
   corrections.filter(isCellCorrection);
 
+/**
+ * The spellings whose lookup reads differently once `correction`'s cells are
+ * set: each cell's corrected spelling, which now finds the record, and the
+ * spelling it retires, which no longer does. `eguali` and `equivalenti` for
+ * eguale's plural (#830). An auxiliary cell names neither, since no lookup
+ * reaches it by its spelling.
+ */
+export const cellSpellings = (correction: CellCorrection): string[] =>
+  correction.cells.flatMap((cell) => (cell.auxiliary ? [] : [cell.surface, cell.replaces]));
+
 /** The entries of `corrections` keyed to an archive line as a whole, in list order. */
 export const lineCorrections = (corrections: readonly CuratedCorrection[]): LineCorrection[] =>
   corrections.filter((correction): correction is LineCorrection => correction.facts !== undefined || correction.cells !== undefined);
@@ -628,7 +644,7 @@ function onEssere(table: AvereTable): CellCorrection {
   );
   return {
     record,
-    cells: [{ index: auxiliary, replaces: "avere", surface: "essere" }, ...compound],
+    cells: [{ index: auxiliary, replaces: "avere", surface: "essere", auxiliary: true }, ...compound],
     evidence: [{ wiki: "it.wiktionary.org", title: `Appendice:Coniugazioni/Italiano/${record.word}`, revisionId: page.revisionId, shows: page.call }],
   };
 }

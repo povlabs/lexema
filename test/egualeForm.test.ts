@@ -20,6 +20,9 @@ import { lookupBatch } from "../src/lookup/batch.js";
 import { fromNodeSqlite } from "../src/lookup/database.js";
 import { lookup } from "../src/lookup/lookup.js";
 import type { FoundResult } from "../src/lookup/types.js";
+import { touchedWords, wordsOfCorrections } from "../src/deploy/touchedWords.js";
+import { planCorrections } from "../src/import/correctRecords.js";
+import type { MasterReader } from "../src/update/master.js";
 
 const RELEASE = "it-eguale";
 const LINES = (await readFile(new URL("../fixtures/eguale.jsonl", import.meta.url), "utf8")).trimEnd().split("\n");
@@ -99,6 +102,16 @@ test("eguali finds eguale as its plural through the corrected form, and the reco
     assert.deepEqual(own.readings.map((one) => one.forms.map((form) => form.surface)), [["eguali"]]);
   } finally {
     corrected.close();
+    source.close();
+  }
+});
+
+test("a Preview's slice serves eguali and equivalenti beside eguale, the spellings the corrected form gives and retires (#830)", async () => {
+  const source = await seeded([]);
+  try {
+    const reader: MasterReader = { query: <Row>(sql: string) => source.prepare(sql).all() as Row[] };
+    assert.deepEqual(wordsOfCorrections(planCorrections(reader, KEYED)), touchedWords(["eguale", "eguali", "equivalenti"]));
+  } finally {
     source.close();
   }
 });

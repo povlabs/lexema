@@ -279,7 +279,7 @@ test("the slice's SQL file rebuilds it whole on an empty database, and it counts
     const sql = slice.sql();
     assert.match(sql, /^PRAGMA defer_foreign_keys = true;\n/);
     // The fingerprint row is the last write, so a file that stops part way leaves none.
-    assert.match(sql.trimEnd(), /INSERT INTO preview_slice \(singleton, fingerprint, format\) VALUES\n {2}\(1, 'f{64}', 'preview-slice\/v1'\);$/);
+    assert.match(sql.trimEnd(), /INSERT INTO preview_slice \(singleton, fingerprint, format\) VALUES\n {2}\(1, 'f{64}', 'preview-slice\/v2'\);$/);
     for (const statement of sql.split(";\n")) assert.ok(Buffer.byteLength(statement) < 100_000, statement.slice(0, 80));
     const empty = new DatabaseSync(":memory:");
     try {
