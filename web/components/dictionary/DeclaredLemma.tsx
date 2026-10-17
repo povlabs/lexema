@@ -8,6 +8,7 @@
 // definitions block, no pronunciation, and no note. What it is built from is
 // `declaredLemmaPage.ts`.
 
+import { NOTHING_SEARCHED } from "@lexema/lookup/types.ts";
 import { ConjugationView, GridView } from "./Forms";
 import { Block } from "./Reading";
 import { SourceLine } from "./Word";
@@ -23,9 +24,6 @@ import {
   WORD_HEADING,
 } from "@/components/shared/styles.ts";
 
-/** Nothing on the page is searched but the lemma, which no cell holds. */
-const NOTHING_SEARCHED: ReadonlySet<string> = new Set();
-
 function DeclaredReadingView({ entry }: { entry: DeclaredPageReading }) {
   const { reading, table } = entry;
   const id = `declared-${reading.pos}`;
@@ -36,7 +34,7 @@ function DeclaredReadingView({ entry }: { entry: DeclaredPageReading }) {
       </h2>
       <Block id={`forms-${id}`} label={SECTION_LABEL.forms}>
         {table.shape === "conjugation" ? (
-          <ConjugationView conjugation={table.conjugation} searchedPointers={NOTHING_SEARCHED} word={reading.word} />
+          <ConjugationView conjugation={table.conjugation} searchedSpellings={NOTHING_SEARCHED} word={reading.word} />
         ) : (
           <GridView grid={table.grid} label={formsOf(reading.word)} />
         )}

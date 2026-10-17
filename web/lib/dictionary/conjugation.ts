@@ -33,7 +33,7 @@ import { essereAgreement, type AgreeingSpelling } from "@lexema/italian/essereAg
 import { PRONOMINAL_CONJUGATION_RULE, pronominalSpellings, type PronominalVerb } from "@lexema/italian/pronominalConjugation.ts";
 import type { HandKeptCell } from "@lexema/italian/handKeptTables.ts";
 import type { RegularCell } from "@lexema/italian/regularConjugation.ts";
-import { factRefKey, sourcePointerOf, sourceTagsOf, type DeclaredForm, type DeclaredVerbForm, type SearchedSpellings, type SourceForm } from "@lexema/lookup/types.ts";
+import { factRefKey, isSearchedForm, sourceTagsOf, type DeclaredForm, type DeclaredVerbForm, type SearchedSpellings, type SourceForm } from "@lexema/lookup/types.ts";
 import {
   NON_FINITE_NAMES,
   personOfItalianVerbForm,
@@ -161,8 +161,8 @@ export const isDeclaredForm = (form: TableForm): form is DeclaredForm => !isSour
 export const tableFormKey = (form: TableForm): string =>
   isRuleBuilt(form) ? `${form.rule}\u0000${baseCellKey(form.from)}` : factRefKey(form.ref);
 
-/** The source pointer of a form a search can hit: a record's own entry or a declared form; a built cell has none. */
-export const tableFormPointer = (form: TableForm): string | undefined => (isRuleBuilt(form) ? undefined : sourcePointerOf(form.ref));
+/** Whether the search hit a table's form: a record's own entry, a Wikidata word's form or a declared form; never a built cell, which no search hits. */
+export const isSearchedTableForm = (searched: SearchedSpellings, form: TableForm): boolean => !isRuleBuilt(form) && isSearchedForm(searched, form.ref);
 
 const NONE_AGREE: ReadonlyMap<string, AgreeingSpelling> = new Map();
 
@@ -362,7 +362,7 @@ const placedBy = <F>(forms: readonly F[], place: (form: F) => Place | undefined)
   });
 
 export function conjugationOf(forms: readonly SourceForm[], searched: SearchedSpellings): Conjugation {
-  return layOut(placedBy(forms, placeOf), (form) => searched.formPointers.has(sourcePointerOf(form.ref) ?? ""));
+  return layOut(placedBy(forms, placeOf), (form) => isSearchedForm(searched, form.ref));
 }
 
 /**

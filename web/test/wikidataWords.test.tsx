@@ -26,7 +26,7 @@ import { searchAttempt } from "@/lib/dictionary/searchAttempt.ts";
 import { Outcome, SearchPage } from "@/components/dictionary/SearchPage";
 import { Licence } from "@/components/dictionary/Licence";
 import { SOURCE_LINE } from "@/components/shared/styles.ts";
-import { candidatesOf, entryAttribution, resultJson } from "@/worker/api/lookupAnswer.ts";
+import { candidatesOf, entryAttribution, resultJson, type LemmaReader } from "@/worker/api/lookupAnswer.ts";
 import { UNFILTERED } from "@/worker/api/lookupFilters.ts";
 import type { ServedRelease } from "@lexema/source/servedRelease.ts";
 
@@ -166,7 +166,8 @@ test("a Wikidata word's Forme grid holds the forms its features place, and none 
 
 test("a Wikidata verb's Forme is its conjugation, each form where its features place it (#833)", async () => {
   const text = textOf(await render("pentimmo"));
-  assert.match(text, /Formeinfinitopentire·gerundiopentendo·participio presentepenitente·participiopentito/);
+  // pentimmo is one of its forms, so the conjugation is drawn as a lemma's, under its name (#851).
+  assert.match(text, /Forme dipentirsiinfinitopentire·gerundiopentendo·participio presentepenitente·participiopentito/);
   assert.match(text, /passato remotofuturo sempliceiopentiipentirò/);
   // Congiuntivo and condizionale rows, placed as a record's are, by their pronouns.
   assert.match(text, /presenteimperfettoche iopentapentissi/);
@@ -176,4 +177,58 @@ test("a Wikidata verb's Forme is its conjugation, each form where its features p
 
 test("a Wiktionary word's Forme grid is unchanged beside the Wikidata words", async () => {
   assert.equal(gridOf(await render("casa")), "singolarepluralefemminilecasala casa·una casacasele case·delle case");
+});
+
+/** The spellings a conjugation marks as searched. */
+const searchedOf = (html: string): string[] => [...html.matchAll(/data-searched="">([^<]+)</g)].map((match) => match[1]);
+
+/** How the API says the query reached each candidate, `/v1/lookup`'s `match`, lemmas read as the endpoint reads them. */
+async function matchesOf(query: string): Promise<unknown[]> {
+  const result = await lookup({ db: fromNodeSqlite(db), releaseId: RELEASE, query });
+  assert.ok(result.outcome === "found", query);
+  const readLemma: LemmaReader = async (target) => {
+    const lemma = await lookup({ db: fromNodeSqlite(db), releaseId: RELEASE, query: target.word });
+    return lemma.outcome === "found" ? lemma.readings.find((reading) => reading.recordId === target.recordId) : undefined;
+  };
+  return (await candidatesOf(result, readLemma)).map((candidate) => resultJson(candidate, UNFILTERED).match);
+}
+
+test("a form only a Wikidata word answers is marked in its Forme, under the line a record's form gets (#851)", async () => {
+  // No line of it-0c432803 spells pentimmo, as a headword or in a table, so in the release too only lexeme L1422655 answers it.
+  const html = await render("pentimmo");
+  assert.deepEqual(headingsOf(html), ["1·Voce verbale·pentirsi"]);
+  assert.match(textOf(html), /Voce verbale·pentirsiprima persona plurale del passato remoto indicativo di pentirsiForme dipentirsi/);
+  assert.deepEqual(searchedOf(html), ["pentimmo"]);
+  assert.match(textOf(html), /passato remotofuturo sempliceiopentiipentiròtupentistipentirailui, leipentìpentirànoipentimmo/);
+  assert.doesNotMatch(textOf(html), /Wikidata|lessema/i);
+});
+
+test("a Wikidata noun's form reads as a record's: its gender and number in the heading, its line, the lemma's Forme (#851)", async () => {
+  // No record of this fixture spells professoresse, so lexeme L1180137 answers it here. In
+  // it-0c432803 the record `professoresse` does, and Wiktionary wins there; no served Wikidata
+  // noun has a gendered form the release lacks, so the grid is read off this one.
+  const html = await render("professoresse");
+  assert.deepEqual(headingsOf(html), ["1·Sostantivo, forma flessa·femminile, plurale"]);
+  assert.match(textOf(html), /femminile, pluralefemminile plurale di professoreForme diprofessoresingolareplurale/);
+  assert.doesNotMatch(textOf(html), /Definizioni|Wikidata|lessema/i);
+});
+
+test("/v1/lookup names a Wikidata word's searched form as it names a record's (#851)", async () => {
+  assert.deepEqual(await matchesOf("pentimmo"), [{ surface: "pentimmo", via: "form", grammar: [{ mood: "indicativo", tense: "passato remoto", person: "noi" }] }]);
+  assert.deepEqual(await matchesOf("professoresse"), [{ surface: "professoresse", via: "form", grammar: [{ gender: "femminile", number: "plurale" }] }]);
+  // Its lemma is its headword, which a record's table also lists: the cell it sits in.
+  assert.deepEqual(await matchesOf("professore"), [{ surface: "professore", via: "headword", grammar: [{ gender: "maschile", number: "singolare" }] }]);
+  // A form no cell holds (paparino, a diminutive) is found through the lexeme's forms, and placed nowhere.
+  assert.deepEqual(await matchesOf("paparino"), [{ surface: "paparino", via: "form", grammar: [] }]);
+});
+
+test("a Wiktionary form's searched cell is the one it was before the Wikidata key (#851)", async () => {
+  // As main at 8f82db0 renders and answers costruttrici: costruttore's table, and costruttrice's for the form-of records.
+  const html = await render("costruttrici");
+  assert.deepEqual(headingsOf(html), ["1·Aggettivo·Sostantivo·femminile, singolare"]);
+  const plural = { surface: "costruttrici", via: "form", grammar: [{ gender: "femminile", number: "plurale" }] };
+  const formOf = { surface: "costruttrici", via: "form_of", grammar: [{ gender: "femminile", number: "singolare" }] };
+  assert.deepEqual(await matchesOf("costruttrici"), [plural, plural, formOf, formOf, plural, plural]);
+  // A Wiktionary verb form still marks its own cells, the two main at 8f82db0 marks.
+  assert.deepEqual(searchedOf(await render("andassi")), ["andassi", "andassi"]);
 });

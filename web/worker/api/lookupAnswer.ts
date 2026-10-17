@@ -26,7 +26,7 @@ import { normalizeItalianExact } from "@lexema/italian/normalize.ts";
 import { expressionMeaning } from "@lexema/lookup/expressions.ts";
 import { bareKey, type Nearby } from "@lexema/lookup/nearby.ts";
 import type { PhraseOffer } from "@lexema/lookup/phrase.ts";
-import { entryKey, isFormOfReading, isNameEntry, isVerbReading, isWikidataWord, lemmasOfPartOfSpeech, publicEntryId, searchedSpellings, sourcePointerOf } from "@lexema/lookup/types.ts";
+import { entryKey, isFormOfReading, isNameEntry, isVerbReading, isSearchedForm, isWikidataWord, lemmasOfPartOfSpeech, NOTHING_SEARCHED, publicEntryId, searchedSpellings } from "@lexema/lookup/types.ts";
 import { wikidataItemUrl } from "@lexema/lookup/names.ts";
 import type {
   FoundResult,
@@ -134,7 +134,7 @@ const NON_FINITE_PLACE: Record<string, GrammarPlace> = {
 /** Where each searched form of a verb sits in its conjugation, in source order. */
 function conjugationPlaces(reading: Reading, hit: SearchedSpellings, conjugation: Conjugation): GrammarPlace[] {
   return reading.forms
-    .filter((form) => hit.formPointers.has(sourcePointerOf(form.ref) ?? ""))
+    .filter((form) => isSearchedForm(hit, form.ref))
     .flatMap((form): GrammarPlace[] => {
       const slot = slotOf(form);
       if (slot.kind === "non-finite") return [NON_FINITE_PLACE[slot.role]];
@@ -154,7 +154,7 @@ function gridPlaces(grid: Grid | undefined, hit: SearchedSpellings, degree: Gram
     row.cells.flatMap((cell, n) =>
       cell.spellings.some(
         (spelling) =>
-          (hit.headword && spelling.headword) || spelling.forms.some((form) => hit.formPointers.has(sourcePointerOf(form.ref) ?? "")),
+          (hit.headword && spelling.headword) || spelling.forms.some((form) => isSearchedForm(hit, form.ref)),
       )
         ? [{ gender: GENDER_LABEL[row.gender], number: NUMBER_LABEL[NUMBERS[n]], ...degree }]
         : [],
@@ -386,7 +386,6 @@ function shaped(result: ResultCoreJson & SectionsJson, filters: LookupFilters): 
   return Object.fromEntries(Object.entries(full).filter(([key]) => !dropped.has(key))) as ResultJson;
 }
 
-const NO_HIT: SearchedSpellings = { headword: false, formPointers: new Set<string>() };
 
 /** A reading's forms as the page lays them out: a verb's conjugation, or anything else's grids. */
 type Layout = { conjugation: Conjugation; agreement?: never } | { conjugation?: never; agreement: Agreement };
@@ -408,14 +407,14 @@ function grammarOf(candidate: Candidate, hit: SearchedSpellings, layout: Layout)
 
 /** How the query reached a candidate: the spelling matched, the route, and its places in the forms. */
 export function matchOf(candidate: Candidate): ResultCoreJson["match"] {
-  const hit = candidate.hit ?? NO_HIT;
+  const hit = candidate.hit ?? NOTHING_SEARCHED;
   return { surface: candidate.surface, via: candidate.via, grammar: grammarOf(candidate, hit, layoutOf(candidate.reading, hit)) };
 }
 
 /** One candidate as JSON, shaped by the filters that kept it. */
 export function resultJson(candidate: Candidate, filters: LookupFilters): ResultJson {
   const { reading } = candidate;
-  const hit = candidate.hit ?? NO_HIT;
+  const hit = candidate.hit ?? NOTHING_SEARCHED;
   const layout = layoutOf(reading, hit);
   const { conjugation, agreement } = layout;
   const grammar = grammarOf(candidate, hit, layout);
@@ -595,7 +594,7 @@ export interface InflectionJson {
  * ausiliare is a fact about the verb, not one of its forms, so it is no cell.
  */
 export function inflectionsOf(reading: Reading): InflectionJson[] {
-  const layout = layoutOf(reading, NO_HIT);
+  const layout = layoutOf(reading, NOTHING_SEARCHED);
   if (layout.conjugation === undefined) {
     const { grid, superlative } = layout.agreement;
     return [...gridInflections(grid, {}), ...gridInflections(superlative, { degree: "superlativo" })];

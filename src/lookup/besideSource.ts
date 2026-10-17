@@ -147,7 +147,7 @@ function layered(db: LookupDatabase, releaseId: string, readings: DictionaryRead
         .sort((a, b) => lexemeNumber(a.lexeme) - lexemeNumber(b.lexeme));
       return {
         readings: [...handKeptReadingsFrom(releaseId, kept), ...inShownOrder(names).map((row) => nameReading(releaseId, row))],
-        wikidataWords: words.map((row) => wikidataWordReading(releaseId, row)),
+        wikidataWords: words.map((row) => wikidataWordReading(releaseId, row, key)),
       };
     },
     heads: async (keys) => {
