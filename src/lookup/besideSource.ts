@@ -17,24 +17,24 @@ import type { DictionaryTables } from "./served.js";
 import type { Reading } from "./types.js";
 import { isLexicalCategory } from "../wikidataWords/lexicalCategories.js";
 import { lexemeNumber } from "../wikidataWords/wikidataWord.js";
-import { wikidataWordHeadOf, wikidataWordReading, type WikidataWordHead } from "./wikidataWords.js";
+import { gendersColumn, wikidataWordHeadOf, wikidataWordReading, type WikidataWordHead } from "./wikidataWords.js";
 
 /** The newest row of each lexeme a key spells, as `WIKIDATA_WORD_SQL` reads it. */
 const NEWEST = `k.snapshot = (SELECT MAX(l.snapshot) FROM wikidata_word l WHERE l.lexeme = k.lexeme)`;
 
-/** One arm per layer of the read of one key's readings; every arm names every column, so any one may come first. */
-const READING_ARMS = {
+/** One arm per layer of the read of one key's readings; every arm names every column, so any one may come first. `genders` is what the lexeme arm reads them from (`gendersColumn`). */
+const readingArms = (genders: string) => ({
   kept: `SELECT 'kept' AS layer, reading_id, definition_index, word, pos, pos_title, text, page_line, wikitext,
-       section_line, section_wikitext, evidence_url, revision_timestamp, NULL AS item, NULL AS category, NULL AS snapshot, NULL AS forms
+       section_line, section_wikitext, evidence_url, revision_timestamp, NULL AS item, NULL AS category, NULL AS snapshot, NULL AS genders, NULL AS forms
   FROM hand_kept_definition WHERE word_key = ?1`,
   name: `SELECT 'name' AS layer, NULL AS reading_id, NULL AS definition_index, label AS word, NULL AS pos, NULL AS pos_title, description AS text, NULL AS page_line, NULL AS wikitext,
-       NULL AS section_line, NULL AS section_wikitext, NULL AS evidence_url, NULL AS revision_timestamp, item, category, NULL AS snapshot, NULL AS forms
+       NULL AS section_line, NULL AS section_wikitext, NULL AS evidence_url, NULL AS revision_timestamp, item, category, NULL AS snapshot, NULL AS genders, NULL AS forms
   FROM name_entry WHERE label_key = ?1`,
   lexeme: `SELECT 'lexeme' AS layer, NULL AS reading_id, NULL AS definition_index, w.lemma AS word, NULL AS pos, NULL AS pos_title, w.glosses AS text, NULL AS page_line, NULL AS wikitext,
-       NULL AS section_line, NULL AS section_wikitext, NULL AS evidence_url, NULL AS revision_timestamp, w.lexeme AS item, w.category AS category, w.snapshot AS snapshot, w.forms AS forms
+       NULL AS section_line, NULL AS section_wikitext, NULL AS evidence_url, NULL AS revision_timestamp, w.lexeme AS item, w.category AS category, w.snapshot AS snapshot, ${genders} AS genders, w.forms AS forms
   FROM wikidata_word_key k JOIN wikidata_word w ON w.lexeme = k.lexeme AND w.snapshot = k.snapshot
  WHERE k.word_key = ?1 AND ${NEWEST}`,
-} as const;
+}) as const;
 
 /** One arm per layer of the read of many keys' heads. */
 const HEAD_ARMS = {
@@ -51,14 +51,16 @@ const HEAD_ARMS = {
  WHERE k.word_key IN (SELECT value FROM json_each(?1)) AND ${NEWEST}`,
 } as const;
 
-type Layer = keyof typeof READING_ARMS;
+type Layer = keyof typeof HEAD_ARMS;
 
-const readingsSql = (layers: readonly Layer[]): DictionaryRead =>
-  `${layers.map((layer) => READING_ARMS[layer]).join("\n UNION ALL\n")}\n ORDER BY layer, reading_id, definition_index` as DictionaryRead;
+const readingsSql = (layers: readonly Layer[], tables: Pick<DictionaryTables, "wikidataWordGenders">): DictionaryRead => {
+  const arms = readingArms(gendersColumn(tables));
+  return `${layers.map((layer) => arms[layer]).join("\n UNION ALL\n")}\n ORDER BY layer, reading_id, definition_index` as DictionaryRead;
+};
 const headsSql = (layers: readonly Layer[]): KeyedRead => keyedRead(`${layers.map((layer) => HEAD_ARMS[layer]).join("\n UNION ALL\n")}\n ORDER BY set_key, layer, reading_id`);
 
 /** The read of a key's readings, for a dictionary with all three tables. Exported so a test can assert the plan. */
-export const BESIDE_SOURCE_SQL: DictionaryRead = readingsSql(["kept", "name", "lexeme"]);
+export const BESIDE_SOURCE_SQL: DictionaryRead = readingsSql(["kept", "name", "lexeme"], { wikidataWordGenders: true });
 
 /** The read of many keys' heads, for a dictionary with all three tables. Exported so a test can assert the plan. */
 export const BESIDE_SOURCE_HEADS_SQL: KeyedRead = headsSql(["kept", "name", "lexeme"]);
@@ -83,7 +85,7 @@ SELECT label_key, 'name', NULL, NULL, label, NULL, NULL, NULL, NULL, item, categ
 type BesideRow =
   | ({ layer: "kept" } & HandKeptDefinitionRow)
   | { layer: "name"; word: string; text: string; item: `Q${number}`; category: string }
-  | { layer: "lexeme"; word: string; text: string; item: `L${number}`; category: string; snapshot: string; forms: string };
+  | { layer: "lexeme"; word: string; text: string; item: `L${number}`; category: string; snapshot: string; genders: string; forms: string };
 type BesideHeadRow =
   | ({ layer: "kept" } & HandKeptHeadRow)
   | { layer: "name"; set_key: string; word: string; item: `Q${number}`; category: string }
@@ -119,7 +121,11 @@ const layersOf = (tables: Pick<DictionaryTables, "handKeptReadings" | "names" | 
 const NO_WORDS = { wikidataWords: [] };
 
 /** The hand-kept readings, the name entries and the Wikidata words of a dictionary, in one statement where it has more than one of their tables. */
-export function besideSourceOf(db: LookupDatabase, releaseId: string, tables: Pick<DictionaryTables, "handKeptReadings" | "names" | "wikidataWords">): BesideSource {
+export function besideSourceOf(
+  db: LookupDatabase,
+  releaseId: string,
+  tables: Pick<DictionaryTables, "handKeptReadings" | "names" | "wikidataWords" | "wikidataWordGenders">,
+): BesideSource {
   const layers = layersOf(tables);
   if (!tables.wikidataWords) {
     // As before the Wikidata words (#812): one table's own statement, or both in one.
@@ -132,7 +138,7 @@ export function besideSourceOf(db: LookupDatabase, releaseId: string, tables: Pi
     }
     return layered(db, releaseId, KEPT_AND_NAMES_SQL, KEPT_AND_NAMES_HEADS_SQL);
   }
-  return layered(db, releaseId, readingsSql(layers), headsSql(layers));
+  return layered(db, releaseId, readingsSql(layers, tables), headsSql(layers));
 }
 
 /** The readings and heads of every layer `readings` and `heads` read, in one statement each. */

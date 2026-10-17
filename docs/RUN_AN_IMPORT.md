@@ -505,7 +505,9 @@ unless its size and SHA-256 are the pinned ones. It keeps every Italian lexeme
 of a lexical category the table maps
 ([`src/wikidataWords/lexicalCategories.ts`](../src/wikidataWords/lexicalCategories.ts))
 with a spelling, lemma or form, among the words of `wikidata-words/words.txt`,
-and writes the snapshot in lexeme order. The words are those of the count's
+and writes the snapshot in lexeme order. Of each lexeme it keeps the lemma,
+the category, the grammatical genders the lexeme states (P5185, ADR 0033's
+2026-10-17 amendment), the forms and the Italian glosses. The words are those of the count's
 "in Wikidata's words" group
 ([reports/2026-10-11-missing-common-words.md](../reports/2026-10-11-missing-common-words.md)).
 Reading the dump is a heavy job: run it alone. Commit the snapshot: its diff
@@ -523,8 +525,12 @@ label. A held lexeme the snapshot no longer has is reported and left serving.
 It prints the words written, left out for no gloss, left out as answered, and
 no longer in the snapshot. `--plan-only` prints the
 counts and writes nothing. On a master without `wikidata_word` and
-`wikidata_word_key` it plans but refuses to write, and names `pnpm run
-update:upgrade`. No source row is touched, and no seed writes Wikidata words.
+`wikidata_word_key`, or with a `wikidata_word` from before its `genders`
+column ([#849](https://github.com/povlabs/lexema/issues/849)), it plans but
+refuses to write, and names `pnpm run update:upgrade`. The upgrade rebuilds
+such a table with its rows, each stating no gender, and the next load
+rewrites the rows of the same snapshot whose genders differ in place. No
+source row is touched, and no seed writes Wikidata words.
 
 A lookup shows a Wikidata word only where no Wiktionary reading answers the
 spelling ([src/lookup/wikidataWords.ts](../src/lookup/wikidataWords.ts)), so a

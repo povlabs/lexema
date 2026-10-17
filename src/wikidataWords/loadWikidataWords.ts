@@ -17,7 +17,7 @@
 
 import { literal } from "../import/seedSql.js";
 import { answeredKeys } from "../names/loadNames.js";
-import { readMasterRelease, select, upgradeNeededFor, type MasterReader } from "../update/master.js";
+import { readMasterRelease, select, upgradeNeededFor, wikidataWordBeforeGenders, type MasterReader } from "../update/master.js";
 import { WIKIDATA_WORD_TABLES } from "../update/masterUpgrade.js";
 import { PlanCounts } from "../update/planCounts.js";
 import { PINNED_LEXEME_DUMP } from "./lexemeDump.js";
@@ -30,11 +30,12 @@ interface WordRow {
   snapshot: string;
   lemma: string;
   category: string;
+  genders: string;
   forms: string;
   glosses: string;
 }
 
-const COLUMNS = ["lexeme", "snapshot", "lemma", "category", "forms", "glosses"] as const;
+const COLUMNS = ["lexeme", "snapshot", "lemma", "category", "genders", "forms", "glosses"] as const;
 
 /** The row a word is stored as, under the snapshot it was taken from. */
 export const wordRow = (word: WikidataWord, snapshot: string): WordRow => ({
@@ -42,12 +43,14 @@ export const wordRow = (word: WikidataWord, snapshot: string): WordRow => ({
   snapshot,
   lemma: word.lemma,
   category: word.category,
+  genders: JSON.stringify(word.genders),
   forms: JSON.stringify(word.forms),
   glosses: JSON.stringify(word.glosses),
 });
 
 /** Whether two rows hold the same lexeme content, whatever snapshot each is of. */
-const sameContent = (a: WordRow, b: WordRow): boolean => a.lemma === b.lemma && a.category === b.category && a.forms === b.forms && a.glosses === b.glosses;
+const sameContent = (a: WordRow, b: WordRow): boolean =>
+  a.lemma === b.lemma && a.category === b.category && a.genders === b.genders && a.forms === b.forms && a.glosses === b.glosses;
 
 /** What a run does. */
 export interface WikidataWordPlan {
@@ -77,14 +80,20 @@ const hasTables = (reader: MasterReader): boolean =>
 /** How many rows one read of `wikidata_word` returns. */
 const HELD_PAGE = 2_000;
 
-/** The newest `wikidata_word` row of each lexeme the master holds, by lexeme, a page at a time; none when it has no such table yet. */
+/**
+ * The newest `wikidata_word` row of each lexeme the master holds, by lexeme, a
+ * page at a time; none when it has no such table yet. A row of a table from
+ * before `genders` (#849) reads as stating none, as the upgrade leaves it, so
+ * the plan counts the same before the upgrade as after it.
+ */
 function heldRows(reader: MasterReader): Map<string, WordRow> {
   const held = new Map<string, WordRow>();
   if (!hasTables(reader)) return held;
+  const columns = wikidataWordBeforeGenders(reader) ? COLUMNS.map((column) => (column === "genders" ? "'[]' AS genders" : column)) : COLUMNS;
   for (let after = "";;) {
     const page = select<WordRow>(
       reader,
-      `SELECT ${COLUMNS.join(", ")} FROM wikidata_word w
+      `SELECT ${columns.join(", ")} FROM wikidata_word w
         WHERE w.lexeme > ${literal(after)} AND w.snapshot = (SELECT MAX(l.snapshot) FROM wikidata_word l WHERE l.lexeme = w.lexeme)
         ORDER BY w.lexeme LIMIT ${HELD_PAGE}`,
     );

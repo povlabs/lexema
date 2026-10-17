@@ -245,6 +245,11 @@ test("every declaration already in dictionary-changes parses as before, with no 
       continue;
     }
     // The Wikidata words (#812) name four they add with a gloss, a form among them, a word Wiktionary answers, and a word with no gloss they leave out.
+    // The Wikidata words' genders (#849) name the nouns whose Forme they place.
+    if (name === "2026-10-17-load-wikidata-word-genders.json") {
+      assert.deepEqual(parseDeclaration(path, text).lookups?.map((item) => item.word), ["targhetta", "targhette", "trucco", "flebo", "pento"]);
+      continue;
+    }
     if (name === "2026-10-11-load-wikidata-words.json") {
       assert.deepEqual(parseDraft(path, text).lookups?.map((item) => item.word), ["flebo", "pento", "magazine", "freccette", "papà", "paralimpico"]);
       continue;

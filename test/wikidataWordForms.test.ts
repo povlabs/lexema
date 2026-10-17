@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { isLexemeFormRef, isSearchedForm, searchedFormKey, searchedSpellings, sourceTagsOf, type Reading } from "../src/lookup/types.js";
 import { wikidataWordReading } from "../src/lookup/wikidataWords.js";
-import { formTagsOf, isMappedFeature, TAGS_BY_FEATURE } from "../src/wikidataWords/formFeatures.js";
+import { formTagsOf, genderTagsOf, isMappedFeature, TAGS_BY_FEATURE } from "../src/wikidataWords/formFeatures.js";
 import { wordRow } from "../src/wikidataWords/loadWikidataWords.js";
 import { hasItalianGloss, type WikidataWord } from "../src/wikidataWords/wikidataWord.js";
 import { readWordSnapshot } from "../src/wikidataWords/wordSnapshot.js";
@@ -73,6 +73,22 @@ test("a Wikidata word's reading holds the forms the table maps, and none with a 
   assert.deepEqual(surfaces(readingOf("targhetta")), ["targhetta", "targhette"]);
   // Every one of pentirsi's 51 forms is mapped.
   assert.equal(readingOf("pentirsi").forms.length, 51);
+});
+
+test("a Wikidata word's genders are its record's, pointing at its lexeme, and a lexeme with none states none (#849)", () => {
+  assert.deepEqual(genderTagsOf(["Q1775415"]), ["feminine"]);
+  assert.deepEqual(genderTagsOf(["Q499327", "Q1775415"]), ["masculine", "feminine"]);
+  // An item the table does not map as a gender is left out: neutro, and singolare, a number.
+  assert.deepEqual(genderTagsOf(["Q1775461", "Q110786"]), []);
+
+  const targhetta = readingOf("targhetta");
+  assert.deepEqual(served("targhetta").genders, ["Q1775415"]);
+  assert.deepEqual(targhetta.grammar.record, [
+    { status: "stated", dimension: "gender", value: "feminine", sourceText: "feminine", ref: { releaseId: "it-test", wiki: "www.wikidata.org", lexeme: served("targhetta").lexeme, snapshot: "2026-10-07" } },
+  ]);
+  assert.deepEqual(readingOf("trucco").grammar.record.map((claim) => claim.status === "stated" && claim.value), ["masculine"]);
+  // pentirsi, a verb, states no gender.
+  assert.deepEqual([served("pentirsi").genders, readingOf("pentirsi").grammar.record], [[], []]);
 });
 
 test("each form points at its form of the lexeme, and its tags read back as a record's", () => {

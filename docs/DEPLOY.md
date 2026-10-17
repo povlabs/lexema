@@ -649,13 +649,15 @@ holds needs nothing. Otherwise it starts the `deploy` job, whose steps are
    [schema.sql](../src/db/schema.sql)'s, such as a `hidden_record` from
    before [#389](https://github.com/povlabs/lexema/issues/389), without
    `lemma_line`. Comments and spacing do not count.
-   The rebuilt tables come in six groups (`REBUILT_GROUPS`): the four
+   The rebuilt tables come in seven groups (`REBUILT_GROUPS`): the four
    page-entry tables with `corrected_definition`; `recovered_definition` with
    `recovered_label` and `recovered_example`; `hidden_record`;
    `corrected_form`; `corrected_edge`, whose rows may name no word since
-   [#755](https://github.com/povlabs/lexema/issues/755); and `name_entry`,
+   [#755](https://github.com/povlabs/lexema/issues/755); `name_entry`,
    whose category may be `person` since
-   [#794](https://github.com/povlabs/lexema/issues/794). For a
+   [#794](https://github.com/povlabs/lexema/issues/794); and `wikidata_word`
+   with `wikidata_word_key`, rebuilt for a `wikidata_word` from before
+   `genders` ([#849](https://github.com/povlabs/lexema/issues/849)). For a
    changed definition the upgrade rebuilds that table's group with its rows:
    it copies the rows aside, drops the group's tables, creates them and their
    indexes from schema.sql and copies the rows back by the columns both

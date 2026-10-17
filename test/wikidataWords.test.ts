@@ -28,12 +28,12 @@ import { nameItem } from "../src/names/nameItem.js";
 import { planWrite, readyChange } from "../src/deploy/writePlan.js";
 import { touchedWords, wordsOfWikidataWords } from "../src/deploy/touchedWords.js";
 import { parseDeclaration } from "../src/update/declaration.js";
-import type { MasterReader } from "../src/update/master.js";
+import { planUpgrade, upgradeShortfall, wikidataWordBeforeGenders, type MasterReader } from "../src/update/master.js";
 import { masterUpgradeSql } from "../src/update/masterUpgrade.js";
 import { PlanCounts } from "../src/update/planCounts.js";
 import { POS_TITLE_BY_CATEGORY } from "../src/wikidataWords/lexicalCategories.js";
 import { LexemeDumpRefused, PINNED_LEXEME_DUMP, wikidataWordsOf, type LexemeDump } from "../src/wikidataWords/lexemeDump.js";
-import { missingForWikidataWords, planWikidataWords, unwrittenWikidataWords } from "../src/wikidataWords/loadWikidataWords.js";
+import { missingForWikidataWords, planWikidataWords, unwrittenWikidataWords, wordRow } from "../src/wikidataWords/loadWikidataWords.js";
 import { hasItalianGloss, InvalidWikidataWord, keysOfWord, lexemePageUrl, wikidataWord, wikidataWordOfDump, type WikidataWord, type WikidataWordSpec } from "../src/wikidataWords/wikidataWord.js";
 import { askedKeysOf, ASKED_WORDS_PATH, isAsked, parseSnapshot, readWordSnapshot, snapshotText, WORD_SNAPSHOT_PATH } from "../src/wikidataWords/wordSnapshot.js";
 
@@ -77,6 +77,27 @@ test("a Wikidata word keeps its Italian lemma, forms and glosses, and one with n
   // @ts-expect-error a proverb is not a category the table maps
   refused({ ...spec, category: "Q35102" });
   assert.equal(lexemePageUrl("L1247138"), "https://www.wikidata.org/wiki/Lexeme:L1247138");
+});
+
+test("a Wikidata word keeps the genders its lexeme states (P5185), and one that states none keeps none (#849)", async () => {
+  const lines = (await readFile("fixtures/wikidata-words/dump-lines.json", "utf8")).split("\n").filter((line) => line.startsWith("{")).map((line) => JSON.parse(line.replace(/,$/, "")));
+  const [, paralimpico, orsetto] = lines;
+  // orsetto states maschile once, for the whole lexeme; paralimpico, an adjective, states no gender.
+  assert.deepEqual(wikidataWordOfDump(orsetto)?.genders, ["Q499327"]);
+  assert.deepEqual(wikidataWordOfDump(paralimpico)?.genders, []);
+  // A deprecated statement, which Wikidata marks as wrong, and one with no value name none.
+  const [statement] = orsetto.claims.P5185;
+  const deprecated = { ...statement, rank: "deprecated" };
+  const noValue = { ...statement, mainsnak: { snaktype: "novalue", property: "P5185" } };
+  const feminine = { ...statement, mainsnak: { ...statement.mainsnak, datavalue: { ...statement.mainsnak.datavalue, value: { "entity-type": "item", "numeric-id": 1775415, id: "Q1775415" } } } };
+  assert.deepEqual(wikidataWordOfDump({ ...orsetto, claims: { P5185: [deprecated, noValue] } })?.genders, []);
+  // Both genders, in the lexeme's order, each once.
+  assert.deepEqual(wikidataWordOfDump({ ...orsetto, claims: { P5185: [feminine, statement, feminine] } })?.genders, ["Q1775415", "Q499327"]);
+
+  const spec: WikidataWordSpec = { ...word("pentirsi") };
+  assert.throws(() => wikidataWord({ ...spec, genders: ["Q499327", "Q499327"] }), InvalidWikidataWord);
+  // @ts-expect-error a gender is an item
+  assert.throws(() => wikidataWord({ ...spec, genders: ["P5185"] }), InvalidWikidataWord);
 });
 
 test("the dump is read a lexeme at a time and refused after the last when it is not the pinned file", async () => {
@@ -199,8 +220,61 @@ test("load:wikidata-words writes each glossed lexeme with a spelling the diction
     assert.equal(again.counts, PlanCounts.NONE);
 
     // A lexeme whose every spelling the dictionary answers is left out: `sale` and `sala`, both records here.
-    const sale = wikidataWord({ lexeme: "L9999999", lemma: "sale", category: "Q1084", forms: [{ form: "L9999999-F1", spelling: "sale", features: [] }], glosses: [{ sense: "L9999999-S1", gloss: "condimento" }] });
+    const sale = wikidataWord({ lexeme: "L9999999", lemma: "sale", category: "Q1084", genders: [], forms: [{ form: "L9999999-F1", spelling: "sale", features: [] }], glosses: [{ sense: "L9999999-S1", gloss: "condimento" }] });
     assert.deepEqual((await planWikidataWords(reader, [...WORDS, sale])).answered.map((one) => one.lexeme), ["L9999999"]);
+  } finally {
+    db.close();
+  }
+});
+
+test("a master whose wikidata_word is from before genders is upgraded with its rows, and the load then writes each lexeme's genders, with no re-import (#849)", async () => {
+  const db = await seeded("fixtures/dev-seed.jsonl");
+  try {
+    const reader = readerOf(db);
+    const schema = await readFile(SCHEMA, "utf8");
+    // The Wikidata word tables as #812 created them, before the genders column.
+    const before = schema.replace(/^ {2}-- The lexeme's grammatical genders.*\n {2}-- The default.*\n {2}genders .*\n/m, "");
+    assert.notEqual(before, schema);
+    execute(db, masterUpgradeSql(before));
+    assert.equal(wikidataWordBeforeGenders(reader), true);
+    const old = ["lexeme", "snapshot", "lemma", "category", "forms", "glosses"] as const;
+    for (const one of WORDS.filter(hasItalianGloss)) {
+      const row = wordRow(one, DATE);
+      db.prepare(`INSERT INTO wikidata_word (${old.join(", ")}) VALUES (${old.map(() => "?").join(", ")})`).run(...old.map((column) => row[column]));
+      for (const key of keysOfWord(one)) db.prepare("INSERT INTO wikidata_word_key (word_key, lexeme, snapshot) VALUES (?, ?, ?)").run(key, one.lexeme, DATE);
+    }
+    const rows = (): unknown[] => db.prepare("SELECT lexeme, snapshot FROM wikidata_word ORDER BY lexeme, snapshot").all().map((row) => ({ ...row }));
+    const held = rows();
+    const keys = db.prepare("SELECT count(*) AS n FROM wikidata_word_key").get();
+    // Before the upgrade a lookup reads every Wikidata word as stating no gender, and serves it.
+    assert.deepEqual(await readingsOf(db, "paparino"), ["L1144362 papà Sostantivo: termine affettuoso per riferirsi al genitore di sesso maschile"]);
+
+    // papà states maschile; pentirsi states none, so only papà differs from what the master holds.
+    const words = WORDS.map((one) => (one.lemma === "papà" ? wikidataWord({ ...one, genders: ["Q499327"] }) : wikidataWord({ ...one, genders: [] })));
+    const plan = await planWikidataWords(reader, words);
+    assert.deepEqual(plan.written.map((one) => one.lexeme), ["L1144362"]);
+    assert.deepEqual(missingForWikidataWords(reader), ["wikidata_word"]);
+
+    // The upgrade rebuilds the two tables with every row they hold, and gives each row no gender.
+    const upgrade = planUpgrade(reader, schema);
+    assert.deepEqual(upgrade.changed, ["wikidata_word"]);
+    assert.deepEqual(upgrade.kept.map(({ name, rows: count }) => [name, count]), [["wikidata_word", 2], ["wikidata_word_key", (keys as { n: number }).n]]);
+    execute(db, upgrade.sql);
+    assert.deepEqual(upgradeShortfall(reader, schema, upgrade), []);
+    assert.deepEqual([wikidataWordBeforeGenders(reader), missingForWikidataWords(reader)], [false, []]);
+    assert.deepEqual(rows(), held);
+    assert.deepEqual(db.prepare("SELECT DISTINCT genders FROM wikidata_word").all().map((row) => ({ ...row })), [{ genders: "[]" }]);
+
+    // The plan is the one it was before the upgrade, and replaces papà's row of this snapshot in place.
+    assert.equal((await planWikidataWords(reader, words)).sql, plan.sql);
+    execute(db, plan.sql);
+    assert.deepEqual(unwrittenWikidataWords(reader, plan), []);
+    assert.deepEqual(rows(), held);
+    assert.deepEqual(db.prepare("SELECT lexeme, genders FROM wikidata_word ORDER BY lexeme").all().map((row) => ({ ...row })), [
+      { lexeme: "L1144362", genders: '["Q499327"]' },
+      { lexeme: "L1422655", genders: "[]" },
+    ]);
+    assert.equal((await planWikidataWords(reader, words)).sql, "");
   } finally {
     db.close();
   }

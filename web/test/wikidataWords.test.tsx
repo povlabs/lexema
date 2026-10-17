@@ -83,7 +83,8 @@ const sourceLinks = (html: string): string[] => [...html.matchAll(/<a [^>]*href=
 
 test("a Wikidata word with an Italian gloss shows it as its definition, and its one Fonte opens its lexeme", async () => {
   const html = await render("paparino");
-  assert.deepEqual(headingsOf(html), ["1·Sostantivo"]);
+  // papà states maschile for the whole lexeme, so its heading names it, as a record's does (#849).
+  assert.deepEqual(headingsOf(html), ["1·Sostantivo·maschile"]);
   assert.match(textOf(html), /Definizioni1\.termine affettuoso per riferirsi al genitore di sesso maschile/);
   assert.equal(textOf(footerOf(html)), "Fonte·Segnala un errore");
   assert.deepEqual(sourceLinks(html), ["https://www.wikidata.org/wiki/Lexeme:L1144362"]);
@@ -162,6 +163,13 @@ test("a Wikidata word's Forme grid holds the forms its features place, and none 
   // No mark of where the forms came from (ADR 0016).
   assert.doesNotMatch(textOf(professore), /Wikidata|lessema/i);
   assert.equal(textOf(footerOf(professore)), "Fonte·Segnala un errore");
+});
+
+test("a Wikidata noun whose forms state only their number draws its Forme grid under the gender its lexeme states (#849)", async () => {
+  // targhetta (L709002) states femminile once, for the whole lexeme; its forms state singolare and plurale.
+  assert.equal(gridOf(await render("targhetta")), "singolarepluralefemminiletarghettala targhetta·una targhettatarghettele targhette·delle targhette");
+  // trucco (L580449) states maschile; trucchetto and trucchettino, diminutives, stay off.
+  assert.equal(gridOf(await render("trucco")), "singolarepluralemaschiletruccoil trucco·un truccotrucchii trucchi·dei trucchi");
 });
 
 test("a Wikidata verb's Forme is its conjugation, each form where its features place it (#833)", async () => {

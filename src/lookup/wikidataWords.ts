@@ -7,14 +7,15 @@
 // it (src/lookup/lookup.ts, src/lookup/batch.ts), so Wiktionary wins wherever
 // both have a word. `/exists` reads them on their own (`wikidataWordsOf`).
 // Each is a reading of its own: its lemma, the part of speech its lexical
-// category maps to, its forms the feature table maps (#833,
+// category maps to, the lexeme's grammatical genders as the record's gender
+// (#849), its forms the feature table maps (#833,
 // src/wikidataWords/formFeatures.ts), and the Italian glosses of its senses
 // as its definitions.
 // `flebo` reads lexeme L1261627.
 
 import { isLexicalCategory, partOfSpeechOf, type LexicalCategory } from "../wikidataWords/lexicalCategories.js";
 import { mapRawTag, mapStructuralTag } from "../import/grammarPolicy.js";
-import { formTagsOf } from "../wikidataWords/formFeatures.js";
+import { formTagsOf, genderTagsOf } from "../wikidataWords/formFeatures.js";
 import { normalizeItalianExact } from "../italian/normalize.js";
 import { lexemeNumber, type LexemeForm as SnapshotForm, type LexemeGloss as SnapshotGloss } from "../wikidataWords/wikidataWord.js";
 
@@ -32,6 +33,8 @@ interface WordRow {
   snapshot: string;
   lemma: string;
   category: string;
+  /** JSON: `["Q1775415"]`, the lexeme's grammatical genders; `[]` on a dictionary from before them (#849). */
+  genders: string;
   /** JSON: `[{"form", "spelling", "features"}]`. */
   forms: string;
   /** JSON: `[{"sense", "gloss"}]`. */
@@ -41,11 +44,20 @@ interface WordRow {
 /** The newest row of each lexeme a key spells. */
 const NEWEST = `k.snapshot = (SELECT MAX(l.snapshot) FROM wikidata_word l WHERE l.lexeme = k.lexeme)`;
 
-/** Every Wikidata word a key spells, each lexeme's newest row. Exported so a test can assert the plan. */
-export const WIKIDATA_WORD_SQL: DictionaryRead = `SELECT w.lexeme, w.snapshot, w.lemma, w.category, w.forms, w.glosses
+/** What a read takes a row's `genders` from: the column, or none on a `wikidata_word` from before it (#849). */
+export const gendersColumn = (tables: Pick<DictionaryTables, "wikidataWordGenders">): string => (tables.wikidataWordGenders ? "w.genders" : "'[]'");
+
+const wordSql = (tables: Pick<DictionaryTables, "wikidataWordGenders">): DictionaryRead =>
+  `SELECT w.lexeme, w.snapshot, w.lemma, w.category, ${gendersColumn(tables)} AS genders, w.forms, w.glosses
   FROM wikidata_word_key k
   JOIN wikidata_word w ON w.lexeme = k.lexeme AND w.snapshot = k.snapshot
- WHERE k.word_key = ?1 AND ${NEWEST}`;
+ WHERE k.word_key = ?1 AND ${NEWEST}` as DictionaryRead;
+
+/** Every Wikidata word a key spells, each lexeme's newest row. Exported so a test can assert the plan. */
+export const WIKIDATA_WORD_SQL: DictionaryRead = wordSql({ wikidataWordGenders: true });
+
+/** `WIKIDATA_WORD_SQL` on a `wikidata_word` from before `genders` (#849). */
+const WIKIDATA_WORD_BEFORE_GENDERS_SQL: DictionaryRead = wordSql({ wikidataWordGenders: false });
 
 /** `WIKIDATA_WORD_SQL` for many keys in one read, light: each word named, without its glosses. Exported so a test can assert the plan. */
 export const WIKIDATA_WORD_HEADS_SQL: KeyedRead = keyedRead(`SELECT k.word_key AS set_key, w.lexeme, w.lemma, w.category
@@ -83,10 +95,11 @@ const mapped = <T extends { category: string }>(rows: readonly T[]): (T & { cate
 const inLexemeOrder = <T extends { lexeme: `L${number}` }>(rows: readonly T[]): T[] => [...rows].sort((a, b) => lexemeNumber(a.lexeme) - lexemeNumber(b.lexeme));
 
 /** The dictionary's Wikidata words; none on one seeded before their tables (#812), which is never sent a statement that names them. */
-export function wikidataWordsOf(db: LookupDatabase, releaseId: string, tables: Pick<DictionaryTables, "wikidataWords">): WikidataWords {
+export function wikidataWordsOf(db: LookupDatabase, releaseId: string, tables: Pick<DictionaryTables, "wikidataWords" | "wikidataWordGenders">): WikidataWords {
   if (!tables.wikidataWords) return NONE;
+  const words = tables.wikidataWordGenders ? WIKIDATA_WORD_SQL : WIKIDATA_WORD_BEFORE_GENDERS_SQL;
   return {
-    readings: async (key) => inLexemeOrder(mapped(await db.all<WordRow>(WIKIDATA_WORD_SQL, [key]))).map((row) => wikidataWordReading(releaseId, row, key)),
+    readings: async (key) => inLexemeOrder(mapped(await db.all<WordRow>(words, [key]))).map((row) => wikidataWordReading(releaseId, row, key)),
     heads: async (keys) => {
       const byKey = new Map<string, WikidataWordHead[]>();
       for (const row of mapped(await readKeys<HeadRow>(db, WIKIDATA_WORD_HEADS_SQL, keys))) {
@@ -153,8 +166,17 @@ export function wikidataEvidenceOf(ref: LexemeRef, lemma: string, forms: readonl
 }
 
 /**
+ * The record claims of a Wikidata word (#849): each grammatical gender the
+ * lexeme states (`genderTagsOf`), as a record's head writes it, pointing at
+ * the lexeme. The gender grid then places a form that states only its number
+ * (`targhette`) under it, as it places a record's.
+ */
+export const wikidataRecordClaimsOf = (ref: LexemeRef, genders: readonly string[]): GrammarClaim[] =>
+  genderTagsOf(genders).map((tag): GrammarClaim => ({ ...mapStructuralTag(tag), ref }));
+
+/**
  * One Wikidata word as a reading of `key`: its lemma, its part of speech, its
- * forms and its glosses, and nothing else, since it keys to no record. Its
+ * genders, its forms and its glosses, and nothing else, since it keys to no record. Its
  * evidence is where `key` spells it, so, as a record, it is about the query
  * when the key spells its lemma, and otherwise lists the query in its forms
  * (#851): the page marks the form, and the API names it, as a record's.
@@ -162,7 +184,8 @@ export function wikidataEvidenceOf(ref: LexemeRef, lemma: string, forms: readonl
 export function wikidataWordReading(releaseId: string, row: Omit<WordRow, "category"> & { category: LexicalCategory }, key: string): Reading {
   const ref: LexemeRef = { releaseId, wiki: "www.wikidata.org", lexeme: row.lexeme, snapshot: row.snapshot };
   const { pos, posTitle } = partOfSpeechOf(row.category);
-  const { claims, wordFacts, lemmaLinks } = NO_ENTRY_FACTS;
+  const { wordFacts, lemmaLinks } = NO_ENTRY_FACTS;
+  const claims = wikidataRecordClaimsOf(ref, JSON.parse(row.genders) as string[]);
   const glosses = JSON.parse(row.glosses) as SnapshotGloss[];
   const lexemeForms = JSON.parse(row.forms) as SnapshotForm[];
   const forms = wikidataFormsOf(ref, lexemeForms);
