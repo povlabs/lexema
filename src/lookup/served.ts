@@ -85,7 +85,7 @@ const WIKIDATA_WORD_GENDERS = "wikidata_word.genders";
 /**
  * Which of the tables an older master may lack it has: `hide_version` (#408),
  * the page-entry tables (#403), the curated-correction tables (#420,
- * #450, #723, #773, #857), the hand-kept readings (#745), the name entries (#794) and the
+ * #450, #723, #773, #857, #836), the hand-kept readings (#745), the name entries (#794) and the
  * Wikidata words (#812), and
  * `corrected_form_by_key`, the index a search reads a
  * corrected cell through (#743): it is on `surface_key`, so it stands only
@@ -95,7 +95,7 @@ const WIKIDATA_WORD_GENDERS = "wikidata_word.genders";
  * schema, never inferred from a failed read, so an error on a table that
  * exists still fails.
  */
-export const OPTIONAL_TABLES_SQL: DictionaryRead = `SELECT name FROM sqlite_schema WHERE (type = 'table' AND name IN (${["hide_version", "corrected_claim", "corrected_form", "corrected_edge", "hidden_recovered_definition", "hidden_sense", "correction_version", ...PAGE_ENTRY_TABLES, PAGE_ENTRY_FACT_TABLE, "corrected_definition", "hand_kept_definition", "name_entry", "wikidata_word", "wikidata_word_key"].map((name) => `'${name}'`).join(", ")})) OR (type = 'index' AND name = 'corrected_form_by_key')
+export const OPTIONAL_TABLES_SQL: DictionaryRead = `SELECT name FROM sqlite_schema WHERE (type = 'table' AND name IN (${["hide_version", "corrected_claim", "corrected_form", "corrected_edge", "hidden_recovered_definition", "hidden_sense", "corrected_adjective_form", "correction_version", ...PAGE_ENTRY_TABLES, PAGE_ENTRY_FACT_TABLE, "corrected_definition", "hand_kept_definition", "name_entry", "wikidata_word", "wikidata_word_key"].map((name) => `'${name}'`).join(", ")})) OR (type = 'index' AND name = 'corrected_form_by_key')
  UNION ALL
 SELECT '${WIKIDATA_WORD_GENDERS}' FROM sqlite_schema WHERE type = 'table' AND name = 'wikidata_word' AND sql LIKE '%genders%'`;
 export const HIDE_VERSION_SQL: DictionaryRead = `SELECT revision FROM hide_version WHERE singleton = 1`;
@@ -147,6 +147,13 @@ export interface DictionaryTables {
    * `update:upgrade` creates it, and read as empty: every sense is shown.
    */
   senseHides: boolean;
+  /**
+   * `corrected_adjective_form`, with `corrected_form`, whose read it rides in;
+   * absent on a master seeded before #836 until
+   * `update:upgrade` creates it, and read as empty: every adjective shows the
+   * forms its record lists.
+   */
+  adjectiveFormCorrections: boolean;
   /** `correction_version`; absent on a master seeded before #420 until `update:upgrade` creates it, and read as revision zero. */
   correctionVersion: boolean;
   /** `hand_kept_definition`; absent on a master seeded before #745 until `update:upgrade` creates it, and read as empty. */
@@ -188,6 +195,8 @@ export async function dictionaryTables(db: LookupDatabase): Promise<DictionaryTa
     edgeCorrections: present.has("corrected_edge"),
     recoveredHides: present.has("hidden_recovered_definition"),
     senseHides: present.has("hidden_sense"),
+    // Read in the statement that reads the corrected cells, so only beside them.
+    adjectiveFormCorrections: present.has("corrected_form") && present.has("corrected_adjective_form"),
     correctionVersion: present.has("correction_version"),
     handKeptReadings: present.has("hand_kept_definition"),
     names: present.has("name_entry"),

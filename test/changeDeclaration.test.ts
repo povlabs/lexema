@@ -302,6 +302,11 @@ test("every declaration already in dictionary-changes parses as before, with no 
       assert.deepEqual(parseDeclaration(path, text).lookups?.map((item) => [item.word, item.gloss]), [["gaio", "allegro"]]);
       continue;
     }
+    // The adjective forms (#836) name the two words whose tables they change, and a form quello gains.
+    if (name === "2026-10-17-correct-quello-bello-adjective-forms.json") {
+      assert.deepEqual(parseDeclaration(path, text).lookups?.map((item) => item.word), ["quello", "bello", "quegli"]);
+      continue;
+    }
     // The old spellings (#830) name eguale's corrected plural, eguale, and eguaglianza with its hand-kept definition.
     if (name === "2026-10-17-correct-old-spellings.json") {
       assert.deepEqual(parseDeclaration(path, text).lookups?.map((item) => [item.word, item.gloss]), [

@@ -41,16 +41,23 @@
 //   own).
 // - A form that takes no cell is not shown: the page shows data, never a note
 //   on what it could not place (Huey, 2026-09-27, on #142).
+// - A curated correction of an adjective's table (#836) adds forms, each in
+//   the gender and number its entry gives, and removes forms of the record's
+//   own `forms[]`, which then take no cell: `quello`'s table holds `quel`,
+//   `quell'`, `quei` and `quegli`, and not `quelli`, its pronoun's plural.
 //
 // Each spelling's articles are `it-articles/v3` (src/italian/articles.ts),
 // applied to it with the cell's gender and number, exactly as it stands; a cell
 // with two spellings (`oli`, `olii`) gives each its own line. The headword's
 // spelling also passes the rule the record's own IPA (`hotel` /oˈtɛl/ is
 // `l'hotel`); a form's spelling does not, since the IPA is the headword's. Where the rule refuses (a phrase, a spelling it does not handle) the
-// cell has no article line.
+// cell has no article line. Nor does any cell of a determiner adjective's
+// table, which stands where an article would (`quel libro`), by the closed
+// list of src/italian/determiners.ts (#836); `siffatto` and `mio` keep theirs.
 
 import { asserts, isAdjectiveReading, isNounReading, isSearchedForm, namesOneRecordOf, type SearchedSpellings } from "@lexema/lookup/types.ts";
 import type {
+  AddedTableForm,
   DeclaredPluralForm,
   InflectionOf,
   PluralDeclaration,
@@ -59,6 +66,7 @@ import type {
   SourceForm,
 } from "@lexema/lookup/types.ts";
 import { generateItalianArticles, spokenOpening, type SpokenOpening } from "@lexema/italian/articles.ts";
+import { isArticlelessDeterminer } from "@lexema/italian/determiners.ts";
 
 export const GENDERS = ["masculine", "feminine"] as const;
 export type Gender = (typeof GENDERS)[number];
@@ -85,10 +93,12 @@ export interface Spelling {
   declaredBy: InflectionOf[];
   /** A declared lemma's plural records that spell it (#453): `fratellini` for fratellino. */
   declaredForms: DeclaredPluralForm[];
+  /** The forms a curated correction adds that spell it (#836): `quei` for quello. */
+  added: AddedTableForm[];
 }
 
 export interface GridCell {
-  /** Each spelling with its own `il bello · un bello` line; empty when the rule gives none. */
+  /** Each spelling with its own `il bello · un bello` line; empty when the rule gives none, or the table takes no articles. */
   spellings: (Spelling & { articles: string[] })[];
 }
 
@@ -149,7 +159,8 @@ type Entry =
   | { kind: "headword" }
   | { kind: "form"; form: SourceForm }
   | { kind: "declared-plural"; record: InflectionOf }
-  | { kind: "declared-lemma-plural"; form: DeclaredPluralForm };
+  | { kind: "declared-lemma-plural"; form: DeclaredPluralForm }
+  | { kind: "added"; form: AddedTableForm };
 
 const HEADWORD: Entry = { kind: "headword" };
 
@@ -161,13 +172,14 @@ class GridBuilder {
     const spellings = this.cells.get(key) ?? [];
     let spelling = spellings.find((existing) => existing.surface === surface);
     if (spelling === undefined) {
-      spelling = { surface, headword: false, forms: [], declaredBy: [], declaredForms: [] };
+      spelling = { surface, headword: false, forms: [], declaredBy: [], declaredForms: [], added: [] };
       spellings.push(spelling);
     }
     if (entry.kind === "headword") spelling.headword = true;
     else if (entry.kind === "form") spelling.forms.push(entry.form);
     else if (entry.kind === "declared-plural") spelling.declaredBy.push(entry.record);
-    else spelling.declaredForms.push(entry.form);
+    else if (entry.kind === "declared-lemma-plural") spelling.declaredForms.push(entry.form);
+    else spelling.added.push(entry.form);
     this.cells.set(key, spellings);
   }
 
@@ -175,8 +187,11 @@ class GridBuilder {
     return this.cells.size;
   }
 
-  /** `spoken` is what the record's IPA says about its headword's opening. */
-  build(spoken?: SpokenOpening): Grid | undefined {
+  /**
+   * `spoken` is what the record's IPA says about its headword's opening.
+   * `articles` is `"none"` for a table that takes no article line.
+   */
+  build(spoken?: SpokenOpening, articles: "drawn" | "none" = "drawn"): Grid | undefined {
     const rows = GENDERS.flatMap((gender): GridRow[] => {
       if (!NUMBERS.some((number) => this.cells.has(`${gender} ${number}`))) return [];
       const cell = (number: GrammaticalNumber): GridCell => {
@@ -184,7 +199,7 @@ class GridBuilder {
         return {
           spellings: spellings.map((spelling) => ({
             ...spelling,
-            articles: articleLine(spelling.surface, gender, number, spelling.headword ? spoken : undefined),
+            articles: articles === "none" ? [] : articleLine(spelling.surface, gender, number, spelling.headword ? spoken : undefined),
           })),
         };
       };
@@ -193,6 +208,13 @@ class GridBuilder {
     return rows.length > 0 ? { rows } : undefined;
   }
 }
+
+/**
+ * Whether a reading's grid draws an article line under each spelling: not a
+ * determiner adjective's, which stands where an article would (#836).
+ */
+const articlesOf = (reading: Reading): "drawn" | "none" =>
+  isAdjectiveReading(reading) && isArticlelessDeterminer(reading.word) ? "none" : "drawn";
 
 /** Whether a reading of this part of speech shows its headword in a grid of its own. */
 function inflects(reading: Reading): boolean {
@@ -244,7 +266,9 @@ export function agreementOf(reading: Reading): Agreement {
     for (const gender of recordGenders) plain.put(gender, number, HEADWORD, reading.word);
   }
 
+  const removed = new Set(reading.formCorrection?.removed.map((form) => form.index));
   for (const form of reading.forms) {
+    if (removed.has(form.index)) continue;
     const degrees = degreesOf(form);
     const target = degrees.length === 0 ? plain : degrees.includes("superlative") ? superlative : undefined;
     const own = gendersOf(form.claims);
@@ -253,6 +277,7 @@ export function agreementOf(reading: Reading): Agreement {
     if (target === undefined || genders.length === 0 || number === undefined) continue;
     for (const gender of genders) target.put(gender, number, { kind: "form", form }, form.surface);
   }
+  for (const form of reading.formCorrection?.added ?? []) plain.put(form.gender, form.number, { kind: "added", form }, form.surface);
 
   if (isNounReading(reading) && !givesPlural(reading)) {
     for (const record of reading.inflections) {
@@ -263,7 +288,8 @@ export function agreementOf(reading: Reading): Agreement {
   }
 
   const spoken = spokenOpening(reading.wordFacts.pronunciations.map((sound) => sound.ipa));
-  return { grid: plain.build(spoken), superlative: superlative.build() };
+  const articles = articlesOf(reading);
+  return { grid: plain.build(spoken, articles), superlative: superlative.build(undefined, articles) };
 }
 
 /**

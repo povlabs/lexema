@@ -58,8 +58,8 @@ export const PAGE_ENTRY_CORRECTION_TABLES = ["corrected_definition"] as const;
  */
 export const PAGE_ENTRY_FACT_TABLES = [PAGE_ENTRY_FACT_TABLE] as const;
 
-/** The tables `correct:records` writes a record's curated facts (#420), edges (#722), table cells (#723), hidden recovered definitions (#773) and hidden senses (#857) to, after its cache revision. */
-export const CORRECTION_TABLES = ["correction_version", "corrected_claim", "corrected_edge", "corrected_form", "hidden_recovered_definition", "hidden_sense"] as const;
+/** The tables `correct:records` writes a record's curated facts (#420), edges (#722), table cells (#723), hidden recovered definitions (#773), hidden senses (#857) and adjective forms (#836) to, after its cache revision. */
+export const CORRECTION_TABLES = ["correction_version", "corrected_claim", "corrected_edge", "corrected_form", "hidden_recovered_definition", "hidden_sense", "corrected_adjective_form"] as const;
 
 /** The indexes lookups read a corrected edge through by the word it names (#722), and a corrected cell by its spelling (#743). */
 export const CORRECTION_INDEXES = ["corrected_edge_by_target", "corrected_form_by_key"] as const;

@@ -36,6 +36,7 @@ export const COUNTED_TABLES = [
   "corrected_definition",
   "hidden_recovered_definition",
   "hidden_sense",
+  "corrected_adjective_form",
   "hand_kept_definition",
   "name_entry",
   "wikidata_word",

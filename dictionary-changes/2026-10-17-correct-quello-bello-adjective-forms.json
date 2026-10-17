@@ -1,0 +1,10 @@
+{
+  "command": "correct:records",
+  "inputs": {},
+  "lookups": [{ "word": "quello" }, { "word": "bello" }, { "word": "quegli" }],
+  "expected": {
+    "records": { "added": 0, "changed": 2, "removed": 0 },
+    "written": { "corrected_adjective_form": 11, "correction_version": 1 },
+    "deleted": {}
+  }
+}

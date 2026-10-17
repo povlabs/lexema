@@ -207,7 +207,7 @@ The apply is one SQL file, run once
 
 Nothing else is written. No record is deleted, and no row of `raw_page`,
 `recovered_*`, `claim_review`, `corrected_claim`, `corrected_form`, `corrected_edge`,
-`hidden_recovered_definition` or `hidden_sense` is touched.
+`hidden_recovered_definition`, `hidden_sense` or `corrected_adjective_form` is touched.
 
 ## Rows written by hand follow the record that replaced theirs
 
@@ -258,7 +258,11 @@ names, so the replacing record shows the definition, and the apply names the
 hide the same way. A hidden sense (`hidden_sense`,
 [#857](https://github.com/povlabs/lexema/issues/857)) does not follow it
 either: the replacing record shows its senses as the newer release states
-them, and the apply names the hide the same way.
+them, and the apply names the hide the same way. Nor does an adjective's
+forms correction (`corrected_adjective_form`,
+[#836](https://github.com/povlabs/lexema/issues/836)): the replacing record
+shows its forms as the newer release lists them, and the apply names the
+correction.
 
 ## Serving a master of several releases
 
