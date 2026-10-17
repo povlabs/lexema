@@ -50,8 +50,9 @@ test("a declaration of each command parses to its command, inputs and expected c
   assert.deepEqual(parseDeclaration(FILE, declared({ command: "update:upgrade" })).inputs, {});
   const hide = parseDeclaration(FILE, declared({ command: "hide:records", inputs: { archive: "it-0c432803", rules: [...HIDING_RULES].reverse() } }));
   assert.deepEqual(hide.inputs, { archive: "it-0c432803", rules: HIDING_RULES });
-  const normalize = parseDeclaration(FILE, declared({ command: "normalize:source-text", inputs: { rules: [...SOURCE_TEXT_UPDATE_RULES] } }));
-  assert.deepEqual(normalize.inputs, { rules: SOURCE_TEXT_UPDATE_RULES });
+  const normalize = parseDeclaration(FILE, declared({ command: "normalize:source-text", inputs: { archive: "it-0c432803", rules: [...SOURCE_TEXT_UPDATE_RULES] } }));
+  assert.deepEqual(normalize.inputs, { archive: "it-0c432803", rules: SOURCE_TEXT_UPDATE_RULES });
+  assert.match(refusal(declared({ command: "normalize:source-text", inputs: { rules: [...SOURCE_TEXT_UPDATE_RULES] } })), /inputs\.archive must be a release id/);
 });
 
 test("a correct:records declaration takes no inputs and counts the correction tables", () => {
@@ -254,15 +255,28 @@ test("every declaration already in dictionary-changes parses as before, with no 
       continue;
     }
     // The label punctuation rule (#712) names words whose page text it rewrites.
-    // It deployed before the rule for the labels `{{Fig}}` printed (#800), so it is refused for that alone.
+    // It deployed before the rule for the labels `{{Fig}}` printed (#800), and
+    // before that rule read the master's dump (#814), so it is refused for those alone.
     if (name === "2026-10-09-normalize-label-punctuation.json") {
-      assert.equal(refusal(text, path), "inputs.rules must name every rule the command applies; it lacks rendered-fig-label/v1");
+      assert.equal(
+        refusal(text, path),
+        "inputs.archive must be a release id, it- and eight lowercase hex digits, got undefined\ninputs.rules must name every rule the command applies; it lacks rendered-fig-label/v1",
+      );
       assert.deepEqual((JSON.parse(text) as { lookups: { word: string }[] }).lookups.map((item) => item.word), ["cinquantadue", "ozelot", "travet"]);
       continue;
     }
     // The labels `{{Fig}}` printed (#800) name a word whose recovered definition it relabels.
+    // It deployed before the rule read the master's dump (#814), so it is refused for naming no archive alone.
     if (name === "2026-10-11-normalize-fig-label.json") {
-      assert.deepEqual(parseDeclaration(path, text).lookups?.map((item) => [item.word, item.gloss]), [["casa", "casa costruttrice"]]);
+      assert.equal(refusal(text, path), "inputs.archive must be a release id, it- and eight lowercase hex digits, got undefined");
+      assert.deepEqual((JSON.parse(text) as { lookups: { word: string; gloss: string }[] }).lookups.map((item) => [item.word, item.gloss]), [["casa", "casa costruttrice"]]);
+      continue;
+    }
+    // The `{{Fig}}` label of pantomima's wrapped line, read off the master's dump (#814), names pantomima with that definition.
+    if (name === "2026-10-17-normalize-fig-label-wrapped-it-0c432803.json") {
+      const declaration = parseDeclaration(path, text);
+      assert.deepEqual(declaration.inputs, { archive: "it-0c432803", rules: SOURCE_TEXT_UPDATE_RULES });
+      assert.deepEqual(declaration.lookups?.map((item) => [item.word, item.gloss]), [["pantomima", "Susseguirsi di gesti vivaci e concitati"]]);
       continue;
     }
     // The upgrade that keys corrected cells (#743) names the spellings a search now finds, and the source's it still finds.
