@@ -11,7 +11,7 @@ import { DatabaseSync } from "node:sqlite";
 import test from "node:test";
 import { gzipSync } from "node:zlib";
 import { seedSql } from "../src/import/seedSql.js";
-import { accentlessProbe, accentlessSpelling, openedHeadword } from "../src/italian/finalAccent.js";
+import { accentlessProbe, accentlessSpelling, openedHeadword, variantNamed } from "../src/italian/finalAccent.js";
 import { bareSpelling, bareSpellingOutcome, type BareSpellingAnswer } from "../src/lookup/bareSpelling.js";
 import { lookupBatch, type CandidateRecord } from "../src/lookup/batch.js";
 import type { LookupDatabase } from "../src/lookup/database.js";
@@ -47,12 +47,45 @@ test("an accentless spelling takes off a final accent only: a final apostrophe i
   assert.equal(accentlessProbe("vado via"), undefined, "two words");
 });
 
-test("a query opens the one headword it is the accentless spelling of, and none when two are or none is", () => {
-  assert.equal(openedHeadword("perche", ["perché"]), "perché");
-  assert.equal(openedHeadword("piu", ["più", "piú"]), undefined, "two headwords share it");
-  assert.equal(openedHeadword("perchè", ["perché"]), undefined, "a wrong accent is no accentless spelling");
-  assert.equal(openedHeadword("caffe", ["caffè", "càffe"]), "caffè", "an accent inside the word is not the final accent");
+/** Headword keys with no variant link. */
+const plain = (...keys: string[]) => keys.map((key) => ({ key, variantOf: [] }));
+
+test("a query opens the one headword it is the accentless spelling of, and none when two are with no variant link or none is", () => {
+  assert.equal(openedHeadword("perche", plain("perché")), "perché");
+  assert.equal(openedHeadword("piu", plain("più", "piú")), undefined, "two headwords share it, and neither is the other's variant");
+  assert.equal(openedHeadword("perchè", plain("perché")), undefined, "a wrong accent is no accentless spelling");
+  assert.equal(openedHeadword("caffe", plain("caffè", "càffe")), "caffè", "an accent inside the word is not the final accent");
   assert.equal(openedHeadword("perche", []), undefined);
+});
+
+test("of several headwords a query lacks the final accent of, it opens the main word the others are recorded as variants of (#846)", () => {
+  const piu = [
+    { key: "più", variantOf: [] },
+    { key: "piú", variantOf: ["più"] },
+  ];
+  assert.equal(openedHeadword("piu", piu), "più", "piú is a variant of più");
+  assert.equal(openedHeadword("piu", [...piu].reverse()), "più", "whatever the order");
+  assert.equal(
+    openedHeadword("piu", [
+      { key: "più", variantOf: ["piú"] },
+      { key: "piú", variantOf: ["più"] },
+    ]),
+    undefined,
+    "each recorded as the other's variant settles nothing",
+  );
+  assert.equal(openedHeadword("piu", [...piu, { key: "piû", variantOf: [] }]), undefined, "a third match that is no variant of più settles nothing");
+  assert.equal(openedHeadword("piu", [...piu, { key: "piû", variantOf: ["più"] }]), "più", "every other match a variant of più");
+  assert.equal(openedHeadword("piu", [{ key: "più", variantOf: [] }, { key: "più", variantOf: [] }, { key: "piú", variantOf: ["più"] }]), "più", "two rows of one headword are one match");
+  assert.equal(openedHeadword("piu", [{ key: "più", variantOf: [] }, { key: "piú", variantOf: ["poco"] }]), undefined, "a variant of a word that is no match settles nothing");
+});
+
+test("a gloss records its headword a variant of the word it names after di, when it opens with variante", () => {
+  assert.equal(variantNamed("variante ricercata di più"), "più");
+  assert.equal(variantNamed("Variante grafica di Valigie"), "valigie");
+  assert.equal(variantNamed("variante di uguaglianza"), "uguaglianza");
+  assert.equal(variantNamed("forma tronca di poco"), undefined, "no variant");
+  assert.equal(variantNamed("in maggior quantità"), undefined);
+  assert.equal(variantNamed("variante"), undefined, "names no word");
 });
 
 test("the outcome is opened, found, the best offer, offered later, or not offered", () => {
@@ -204,12 +237,18 @@ test("citta keeps citto's answer where citto's table spells it, and still offers
   }, "fixtures/citto.jsonl");
 });
 
-test("piu opens nothing where two headwords lack it a final accent, più and piú, and offers them instead (#846)", async () => {
+// Huey's tie-break (https://github.com/povlabs/lexema/issues/846#issuecomment-6240679313):
+// piú's only sense (line 125475) reads "variante ricercata di più".
+test("piu opens più where piú, the other headword it lacks a final accent of, is recorded as più's variant (#846)", async () => {
   await withBareSpellings(async (db) => {
-    const answer = await search(db, "piu");
-    assert.ok(!answer.found && answer.nearby.kind === "accent", "piu is not found and offers a spelling with the same letters");
-    assert.deepEqual([answer.nearby.best, ...answer.nearby.others].sort(), ["più", "piú"]);
-    await assertAgree(db, ["piu"]);
+    const piu = await found(db, "piu");
+    assert.deepEqual(piu.route, { kind: "accentless", headword: "più" });
+    assert.deepEqual(piu.readings, (await found(db, "più")).readings, "piu answers with più's own readings");
+    const present = await exists({ db, releaseId: RELEASE, query: "piu" });
+    assert.ok(present.outcome === "present" && present.word === "più", "exists() credits più");
+    assert.equal(bareSpellingOutcome("più", await search(db, "piu")), "opened");
+    assert.equal(bareSpellingOutcome("piú", await search(db, "piu")), "found", "piu opens another word than piú");
+    await assertAgree(db, ["piu", "più", "piú", "perche", "papa", "e"]);
   }, "fixtures/piu-acute.jsonl");
 });
 

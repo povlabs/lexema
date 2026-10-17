@@ -26,9 +26,11 @@ measured on release `it-0c432803`.
 - **When the source does not choose, neither does Lexema.** If a form could
   belong to more than one word, every one of them is shown.
 - **Accents matter.** `citta` is not `città`. A one-word search that lacks
-  only a final accent opens the accented word when nothing else answers it
-  and only one word matches: `perche` opens `perché`. A wrong accent
-  (`perchè`), or a spelling two words match, finds nothing and offers the
+  only a final accent opens the accented word when nothing else answers it:
+  `perche` opens `perché`. When several words match, it opens the main word
+  if the source records the others as its variants: `piu` opens `più`, since
+  `piú` is a variant of `più`. A wrong accent (`perchè`), or a spelling
+  several words match with no such link, finds nothing and offers the
   accented words instead.
 - **Every word links to its source.** The *Fonte* link at the end of a page
   opens that word's page on the Italian Wiktionary. *Segnala un errore*, beside

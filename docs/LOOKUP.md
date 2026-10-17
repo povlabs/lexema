@@ -327,9 +327,10 @@ of its words in the same two waits. Nothing derived is stored.
 
 A reader often types a word without its final accent: `perche` for `perché`,
 `piu` for `più`. When every route above misses, a Wikidata word too, and the
-key is one word, `lookup()` opens the one served headword that writes the key
+key is one word, `lookup()` opens the served headword that writes the key
 with a final accent (#846, Huey's
-[ruling](https://github.com/povlabs/lexema/issues/846#issuecomment-6233340944);
+[ruling](https://github.com/povlabs/lexema/issues/846#issuecomment-6233340944)
+and [tie-break](https://github.com/povlabs/lexema/issues/846#issuecomment-6240679313);
 [`src/italian/finalAccent.ts`](../src/italian/finalAccent.ts), read in
 [`src/lookup/accentless.ts`](../src/lookup/accentless.ts)):
 
@@ -337,14 +338,19 @@ with a final accent (#846, Huey's
    nothing more.
 2. `ACCENTED_HEADWORD_SQL` reads the keys `accent_fold` holds under the key's
    letters, and keeps those some record heads (`lookup_form.origin =
-   'headword'`). It is sent in the call that reads the page-only entries, as
-   soon as the source spells nothing as typed, so it costs one statement and
-   no call.
+   'headword'`), each with the first gloss of every sense of its record but
+   a hidden one (#857). It is sent in the call that reads the page-only
+   entries, as soon as the source spells nothing as typed, so it costs one
+   statement and no call.
 3. A headword counts when taking off its final accent gives the key
    (`accentlessSpelling`): `perché` for `perche`. An accent inside the word
    must match as typed, and a final apostrophe is no accent.
-4. Exactly one headword must count. When two do, the step opens nothing:
-   `piu` opens nothing on release it-0c432803, which has both `più` and `piú`.
+4. One headword counts, and the step opens it. When several count, it opens
+   the main word: the one that is no variant of another, where every other
+   one has a sense whose first gloss opens with "variante" and names it after
+   "di" (`variantNamed`). On release it-0c432803 `piu` opens `più`, since
+   `piú` (line 125475) reads "variante ricercata di più". With no such
+   variant link, the step opens nothing.
 
 The readings are the headword's own, as a search for it answers them;
 `route` is `{ kind: "accentless", headword }`, the headword as its first
@@ -700,11 +706,12 @@ and 3):
 2. **Accent.** The query's key with its accents taken off (`foldKey`: NFD,
    combining marks removed) is probed in `accent_fold`, which holds every
    `surface_key` whose folded spelling differs from it. `cittá` → `città`.
-   Since #846 a word typed without the final accent of one headword opens
+   Since #846 a word typed without the final accent of a headword opens
    that headword instead ([above](#a-word-typed-without-its-final-accent)), so
    this offer remains for the cases that rule leaves out: a wrong accent
    (`perchè` → `perché`), a missing final apostrophe (`dall` → `dall'`), and
-   a key two headwords lack a final accent of (`piu` → `più`, `piú`). An
+   a key several headwords lack a final accent of with no variant link to
+   settle which (`piu` opens `più`, since `piú` is its variant). An
    accent written as an apostrophe (`citta'`) is not found either, and gets
    whatever the later steps offer. An
    accented query also tries its unaccented spelling. A query that does not

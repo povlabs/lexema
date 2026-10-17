@@ -18,8 +18,8 @@
 // pronominal verbs rule `it-pronominal-pair/v2` reads a reflexive pronoun +
 // verb pair as (#810, #834): `mi trasferisco` of trasferirsi, with those words' lemma links
 // after. A word none of these answers may be typed without the final accent
-// of one headword, and is answered as that headword is (#846): `perche` as
-// `perché`. The search and the agreement reading read a curated
+// of a headword, and is answered as that headword is (#846): `perche` as
+// `perché`, `piu` as `più`. The search and the agreement reading read a curated
 // table cell's corrected spelling beside the source's where the master keys
 // it (#748), as `lookup()` does.
 //
@@ -567,11 +567,11 @@ export async function lookupBatch({
   const keys = [...new Set(prepared.flatMap((query) => ("outcome" in query ? [] : [query.key])))];
   const answered = await candidatesByKey(db, releaseId, tables, reads, keys);
 
-  // A word nothing answers may be typed without the final accent of one
+  // A word nothing answers may be typed without the final accent of a
   // headword, and is answered as that headword is (#846), in one statement
   // more and the headwords' own reads; a batch with no such word sends
   // nothing for it.
-  const opened = await openedHeadwords(db, releaseId, keys.filter((key) => (answered.get(key) ?? []).length === 0));
+  const opened = await openedHeadwords(db, releaseId, tables, keys.filter((key) => (answered.get(key) ?? []).length === 0));
   const headwords = opened.size === 0 ? new Map<string, CandidateRecord[]>() : await candidatesByKey(db, releaseId, tables, reads, [...new Set([...opened.values()].map(({ key }) => key))]);
   const finalCandidates = (key: string): CandidateRecord[] => {
     const headword = opened.get(key);

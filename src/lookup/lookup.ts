@@ -228,7 +228,7 @@ export async function exists({ db, releaseId, query }: LookupOptions): Promise<E
   const [lexemeWord] = await unlessDeclaredLemma(db, releaseId, tables, key, heads);
   if (lexemeWord !== undefined) return { ...found, word: lexemeWord.word, lexeme: lexemeWord.lexeme };
   // Nor a Wikidata word: it may open the headword it lacks a final accent of (#846).
-  const opened = (await openedHeadwords(db, releaseId, [key])).get(key);
+  const opened = (await openedHeadwords(db, releaseId, tables, [key])).get(key);
   const headword = opened === undefined ? undefined : await exists({ db, releaseId, query: opened.key });
   if (headword?.outcome === "present") return { ...headword, query: prepared.query };
   return { outcome: "absent", query: prepared.query, release: prepared.release };
@@ -295,7 +295,7 @@ export async function lookup({ db, releaseId, query }: LookupOptions): Promise<L
   const pairs = hits.length === 0 && pairQueryOf(key) !== undefined ? handled(answeringPairs(db, releaseId, tables, [key])) : undefined;
   // So is the headword a query typed without its final accent opens (#846);
   // a query that ends in no plain vowel sends nothing for it.
-  const accentless = hits.length === 0 ? handled(openedHeadwords(db, releaseId, [key])) : undefined;
+  const accentless = hits.length === 0 ? handled(openedHeadwords(db, releaseId, tables, [key])) : undefined;
   const spelled = await spelling;
   if (spelled !== undefined) return spelled;
 
@@ -332,8 +332,9 @@ export async function lookup({ db, releaseId, query }: LookupOptions): Promise<L
   if (word !== undefined) return { outcome: "found", query: queryInfo, release, route: { kind: "surface" }, readings: [word, ...words] };
 
   // Nothing answers it. It may be one word typed without the final accent of
-  // one headword, which it opens with that headword's own readings: `perche`
-  // opens `perché` (#846, Huey's ruling of 2026-10-17).
+  // a headword, which it opens with that headword's own readings: `perche`
+  // opens `perché`, and `piu` opens `più`, whose variant `piú` it also lacks
+  // the final accent of (#846, Huey's rulings of 2026-10-17).
   const opened = (await accentless)?.get(key);
   if (opened !== undefined) {
     const headword = await lookup({ db, releaseId, query: opened.key });
