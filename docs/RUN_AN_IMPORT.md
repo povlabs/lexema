@@ -198,10 +198,17 @@ line each `recovered_definition`, `recovered_example`, `entry_definition` and
 it still holds what the renderer printed before #712; labels and every other
 column stay. The `{{Fig}}` rule renders the line each `recovered_label` and
 `entry_label` row labels again, and rewrites a label only where the line's
-`{{Fig}}` printed it; `{{Term|figurato|it}}` prints `figurato` and stays. A
-`wrapped-prose` definition takes its labels from the `#` line above its stored
-line, and a `numbered-prose` one shares its stored line with the other numbered
-meanings, so the rule leaves a label of theirs and counts it as undecided. It never touches
+`{{Fig}}` printed it; `{{Term|figurato|it}}` and `{{Glossa|figurato}}` print
+`figurato` and stay. A `wrapped-prose` definition takes its labels from the `#`
+line above its stored line (`pantomima`), and a `numbered-prose` one shares its
+stored line with the other numbered meanings. For these the rule reads the page
+from the dump the master's archive was built from (`RAW_PAGES`, default its
+copy in `.data/source/`, fetched from `povlabs/lexema-data` when the cache lacks
+it), held to its size and SHA-1, at the revision the definition was read off
+([#814](https://github.com/povlabs/lexema/issues/814)). It reads the dump only
+when such a definition holds a `figurato` label. A label whose page the dump
+does not hold at that revision, or whose lines do not say which template
+printed it, stays and is counted as undecided. It never touches
 `source_record_json`. It reads the rows back and fails if any still needs a
 rule. It prints one line per rule, led by the rule's name and version:
 `gloss-headword-lead/v1: sense_gloss: <n> row(s) changed`,
@@ -238,7 +245,9 @@ and 0 on every later run. A seed of it and its dump from before #712 holds 7
 `recovered_definition` and 4 `entry_definition` rows the label rule rewrites,
 and none of the two example tables. The shared dictionary held 4
 `recovered_label` and 6 `entry_label` rows the `{{Fig}}` rule rewrites
-([#800](https://github.com/povlabs/lexema/issues/800)). It writes through Wrangler, never through the
+([#800](https://github.com/povlabs/lexema/issues/800)), and then 1, pantomima's,
+once the rule read the dump ([#814](https://github.com/povlabs/lexema/issues/814)).
+It writes through Wrangler, never through the
 Worker's read-only binding.
 
 ## Hide another language's records in a seeded database

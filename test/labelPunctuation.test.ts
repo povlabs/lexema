@@ -21,6 +21,9 @@ import { recoverPageEntry } from "../src/italian/pageEntry.js";
 import { labelPunctuation, readItalianSections, renderInline } from "../src/italian/wikitext.js";
 import { RAW_PAGE_WIKI, rawPageSource, readSavedPage, type RawPage } from "../src/source/rawPage.js";
 
+/** No dump pages: no definition here holds a `figurato` label for rule `rendered-fig-label/v1` to read one for. */
+const NO_PAGES = rawPageSource([]);
+
 const saved = async (path: string, name: string): Promise<RawPage> => readSavedPage(await readFile(resolve(path, name), "utf8"), name);
 const travet = await saved("fixtures/label-punctuation", "travet.wikitext");
 const cinquantadue = await saved("fixtures/unlisted-definitions", "cinquantadue.wikitext");
@@ -149,8 +152,8 @@ test("the seed writes the text without the labels' punctuation, and the update b
 
     // As a seed before #712 wrote them.
     db.exec(`UPDATE recovered_definition SET text = ', ${CINQUANTADUE}'; UPDATE entry_definition SET text = ', ${TRAVET}';`);
-    assert.deepEqual(planSourceText(sql).counts.toJSON().written, { recovered_definition: 1, entry_definition: 1 });
-    assert.equal(planSourceText(sql).counts.records.changed, 1);
+    assert.deepEqual(planSourceText(sql, NO_PAGES).counts.toJSON().written, { recovered_definition: 1, entry_definition: 1 });
+    assert.equal(planSourceText(sql, NO_PAGES).counts.records.changed, 1);
     assert.ok(SOURCE_TEXT_UPDATE_RULES.includes(LABEL_PUNCTUATION_RULE));
 
     const changed = { recovered_definition: 1, recovered_example: 0, entry_definition: 1, entry_example: 0 };

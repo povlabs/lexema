@@ -768,10 +768,13 @@ with no token and no API rate limit, and checks every file's checksum (#527):
 | a dump | `source/<its KNOWN_DUMPS file>`, such as `source/itwiktionary-20260901-pages-articles.xml.bz2` |
 
 A declaration of `update:auto` reads its feed release's archive and the dump
-its `ARCHIVE_FACTS` entry names; `hide:records`, `load:page-entries` and
-`load:recovered-definitions` read the master's archive and its dump.
-`update:upgrade`, `normalize:source-text` and `correct:records` read none:
-`correct:records` writes the committed list of curated corrections.
+its `ARCHIVE_FACTS` entry names; `hide:records`, `normalize:source-text`,
+`load:page-entries` and `load:recovered-definitions` read the master's archive
+and its dump. `normalize:source-text` opens the dump only when rule
+`rendered-fig-label/v1` has a page to read
+([RUN_AN_IMPORT.md](RUN_AN_IMPORT.md#normalize-source-text-in-a-seeded-database), #814).
+`update:upgrade` and `correct:records` read none: `correct:records` writes the
+committed list of curated corrections.
 
 ### Load recovered definitions
 

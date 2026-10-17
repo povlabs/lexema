@@ -155,7 +155,10 @@ test("planWrite carries the touched words: none for update:upgrade, unbounded fo
     const fixture = atFixtureLines(await correctionFixtureLines(), RELEASE).slice(0, 2);
     const plan = (text: string, corrections = fixture) => planWrite(readyChange(parseChange("test", text), null), reader, "2026-10-04T00:00:00Z", { corrections });
     assert.deepEqual((await plan('{"command":"update:upgrade"}')).touched, NO_WORDS);
-    assert.deepEqual((await plan(JSON.stringify({ command: "normalize:source-text", inputs: { rules: SOURCE_TEXT_UPDATE_RULES } }))).touched, unbounded("normalize:source-text"));
+    // normalize:source-text reads the master's archive and dump; no definition here needs a page, so the dump is never opened.
+    const normalize = parseChange("test", JSON.stringify({ command: "normalize:source-text", inputs: { archive: "it-0c432803", rules: SOURCE_TEXT_UPDATE_RULES } }));
+    const normalized = await planWrite(readyChange(normalize, { archive: correctionArchive, dump: join(dir, "never-opened.xml") }), reader, "2026-10-04T00:00:00Z");
+    assert.deepEqual(normalized.touched, unbounded("normalize:source-text"));
     assert.deepEqual((await plan('{"command":"correct:records"}')).touched, touchedWords(fixture.map(({ record }) => record.word)));
   } finally {
     db.close();
@@ -370,7 +373,7 @@ test("a build plans each declaration, and gives no slice for a whole-dictionary 
   try {
     const reader = readerOf(db);
     const fixture = atFixtureLines(await correctionFixtureLines(), RELEASE).slice(0, 2);
-    const draft = (file: string, command: string): DeclarationDraft => parseDraft(file, JSON.stringify(command === "normalize:source-text" ? { command, inputs: { rules: SOURCE_TEXT_UPDATE_RULES } } : { command }));
+    const draft = (file: string, command: string): DeclarationDraft => parseDraft(file, JSON.stringify(command === "normalize:source-text" ? { command, inputs: { archive: "it-0c432803", rules: SOURCE_TEXT_UPDATE_RULES } } : { command }));
     const declared = (...drafts: DeclarationDraft[]) => ({ state: "declared" as const, fingerprint: "f".repeat(64), declarations: drafts });
     const plan = (declaration: DeclarationDraft): Promise<WritePlan> => planWrite(readyChange(declaration, null), reader, "2026-10-04T00:00:00Z", { corrections: fixture });
 
