@@ -520,7 +520,8 @@ counts and writes nothing. On a master without `wikidata_word` and
 column ([#849](https://github.com/povlabs/lexema/issues/849)), it plans but
 refuses to write, and names `pnpm run update:upgrade`. The upgrade rebuilds
 such a table with its rows, each stating no gender, and the next load
-rewrites the rows of the same snapshot whose genders differ in place. No source row is touched, and no seed writes Wikidata words.
+rewrites the rows of the same snapshot whose genders differ in place. No
+source row is touched, and no seed writes Wikidata words.
 
 A lookup shows a Wikidata word only where no Wiktionary reading answers the
 spelling ([src/lookup/wikidataWords.ts](../src/lookup/wikidataWords.ts)), so a
