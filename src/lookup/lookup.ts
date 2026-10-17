@@ -25,6 +25,7 @@ import type { AnsweringSpelling } from "../italian/wordShape.js";
 import { answeringShapes, shapeKeysOf, readShapeRows, type ShapeRow } from "./wordShape.js";
 import { pairQueryOf } from "../italian/pronominalPair.js";
 import { answeringPairs, type AnsweringPair } from "./pronominalPair.js";
+import { openedHeadwords } from "./accentless.js";
 import { prefixUpperBound } from "./keyRange.js";
 import { personOfItalianVerbForm } from "../italian/moods.js";
 import { correctRecordClaims, isNameEntry, pluralDeclaration, sourcePointerOf, sourceTagsOf, type CitedRevision } from "./types.js";
@@ -226,6 +227,10 @@ export async function exists({ db, releaseId, query }: LookupOptions): Promise<E
   const heads = (await wikidataWordsOf(db, releaseId, tables).heads([key])).get(key) ?? [];
   const [lexemeWord] = await unlessDeclaredLemma(db, releaseId, tables, key, heads);
   if (lexemeWord !== undefined) return { ...found, word: lexemeWord.word, lexeme: lexemeWord.lexeme };
+  // Nor a Wikidata word: it may open the headword it lacks a final accent of (#846).
+  const opened = (await openedHeadwords(db, releaseId, tables, [key])).get(key);
+  const headword = opened === undefined ? undefined : await exists({ db, releaseId, query: opened.key });
+  if (headword?.outcome === "present") return { ...headword, query: prepared.query };
   return { outcome: "absent", query: prepared.query, release: prepared.release };
 }
 
@@ -288,6 +293,9 @@ export async function lookup({ db, releaseId, query }: LookupOptions): Promise<L
   // reflexive pronoun + verb pair as (#810, #834); a query that is no pair
   // sends nothing for them.
   const pairs = hits.length === 0 && pairQueryOf(key) !== undefined ? handled(answeringPairs(db, releaseId, tables, [key])) : undefined;
+  // So is the headword a query typed without its final accent opens (#846);
+  // a query that ends in no plain vowel sends nothing for it.
+  const accentless = hits.length === 0 ? handled(openedHeadwords(db, releaseId, tables, [key])) : undefined;
   const spelled = await spelling;
   if (spelled !== undefined) return spelled;
 
@@ -322,6 +330,16 @@ export async function lookup({ db, releaseId, query }: LookupOptions): Promise<L
   // lexeme Wiktionary lacks: `flebo` (ADR 0033, #812).
   const [word, ...words] = await unlessDeclaredLemma(db, releaseId, tables, key, (await beside).wikidataWords);
   if (word !== undefined) return { outcome: "found", query: queryInfo, release, route: { kind: "surface" }, readings: [word, ...words] };
+
+  // Nothing answers it. It may be one word typed without the final accent of
+  // a headword, which it opens with that headword's own readings: `perche`
+  // opens `perché`, and `piu` opens `più`, whose variant `piú` it also lacks
+  // the final accent of (#846, Huey's rulings of 2026-10-17).
+  const opened = (await accentless)?.get(key);
+  if (opened !== undefined) {
+    const headword = await lookup({ db, releaseId, query: opened.key });
+    if (headword.outcome === "found") return { ...headword, query: queryInfo, route: { kind: "accentless", headword: opened.surface } };
+  }
   return { outcome: "not-found", query: queryInfo, release };
 }
 

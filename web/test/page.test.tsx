@@ -226,8 +226,8 @@ async function devSeedWithout(lines: readonly string[]): Promise<string[]> {
 /**
  * `fixtures/citto.jsonl`: citto's one record, as release it-0c432803 has it;
  * its grid is the only one that spells `citta`. It stays out of the dev seed,
- * whose `citta` is the not-found page with an accent offer that other tests
- * read (#478).
+ * whose `citta` opens città, the headword it lacks a final accent of (#478,
+ * #846).
  */
 const CITTO_LINES = (await readFile(join(REPO, "fixtures/citto.jsonl"), "utf8")).trimEnd().split("\n");
 
@@ -2602,9 +2602,10 @@ test("a search that finds nothing offers, in order: an accent, one edit, words t
     const heading = (query: string) => new RegExp(`<h1 class="${esc(NOT_FOUND_HEADING)}" lang="it">Nessuna voce per “${esc(query)}”</h1>`);
     const link = (word: string) => new RegExp(`<a class="${esc(NOT_FOUND_LINK)}" href="/\\?q=${encodeURIComponent(word)}" lang="it">${esc(word)}</a>`);
 
-    // B: the same letters with an accent, before any other step.
-    const citta = await render(db, "citta");
-    assert.match(citta, heading("citta"));
+    // B: the same letters with an accent, before any other step. Not `citta`,
+    // which opens città since #846: `cittá` has a wrong accent.
+    const citta = await render(db, "cittá");
+    assert.match(citta, heading("cittá"));
     assert.match(citta, /Forse cercavi /);
     assert.match(citta, link("città"));
 
@@ -2684,7 +2685,7 @@ test("every not-found page ends with one Segnala una parola mancante, below the 
   await withDevSeed(async ({ db }) => {
     for (const [query, kind] of [
       ["stud", "prefix"],
-      ["citta", "accent"],
+      ["cittá", "accent"],
       ["mangare", "typo"],
       ["vadoo via", "phrase"],
       ["xqzt", "none"],
@@ -4845,6 +4846,21 @@ test("gravida and citta: a form block with a line built by rule, the base word's
     }
     // citta still offers città above the result (#478).
     assert.match(await render(db, "citta"), /Forse cercavi <a [^>]*href="\/\?q=citt%C3%A0"[^>]*>città<\/a>\?/);
+  });
+});
+
+test("perche renders perché's word page and piu più's, with no not-found page and no line about the accent (#846)", async () => {
+  // The real archive lines of fixtures/bare-spellings.jsonl (test/bareSpelling.test.ts names each).
+  const lines = (await readFile(join(REPO, "fixtures/bare-spellings.jsonl"), "utf8")).trim().split("\n");
+  await withLines(lines, async ({ db }) => {
+    const outcome = async (query: string) => renderToStaticMarkup(<Outcome raw={query} attempt={await attempt(db, query)} />);
+    for (const [typed, headword] of [["perche", "perché"], ["piu", "più"], ["citta", "città"]] as const) {
+      const html = await render(db, typed);
+      assert.match(html, new RegExp(`<h1[^>]*>${headword}</h1>`), `${typed}: titled ${headword}`);
+      assert.doesNotMatch(html, /Nessuna voce per|Forse cercavi/, `${typed}: no not-found page and no offer`);
+      assert.doesNotMatch(textOf(html), new RegExp(`(^|[^\\p{L}])(${typed}|accento)([^\\p{L}]|$)`, "iu"), `${typed}: nothing says how it was reached`);
+      assert.equal(await outcome(typed), await outcome(headword), `${typed}: ${headword}'s own page`);
+    }
   });
 });
 

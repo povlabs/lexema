@@ -197,7 +197,7 @@ test("gajo, the old spelling with j, finds gaio the adjective; a word the dictio
 
 test("the batch answers every shaped word with the records /v1/lookup answers it with, and exists() agrees (#809)", async () => {
   const words = [
-    "quei", "quegli", "raccontarvi", "dammi", "dirlo", "fammi", "quell'", "bell'", "m'", "aver", "far", "bravissimo", "piaciute", "qqqqqq", "citta'",
+    "quei", "quegli", "raccontarvi", "dammi", "dirlo", "fammi", "quell'", "bell'", "m'", "aver", "far", "bravissimo", "piaciute", "qqqqqq", "citta'", "citta",
     "tate", "follie", "crucchi", "tipe", "fuggitivi", "artificieri", "poverina", "valige", "fischia", "annette", "marines", "games", "yankees", "studios", "gajo", "jazz",
   ];
   const { answers } = await lookupBatch({ db, releaseId: RELEASE, queries: words });
@@ -210,8 +210,12 @@ test("the batch answers every shaped word with the records /v1/lookup answers it
     assert.equal(present.outcome === "present", single.outcome === "found", word);
   }
   assert.equal(answers[words.indexOf("qqqqqq")].outcome, "not-found");
-  // An accent written as an apostrophe stays the not-found page's accent offer.
+  // An accent written as an apostrophe is no shape and opens no headword: it
+  // stays the not-found page's accent offer. The accent left off opens città,
+  // which this fixture has without citto (#846).
   assert.equal(answers[words.indexOf("citta'")].outcome, "not-found");
+  const citta = await found("citta");
+  assert.deepEqual(citta.route, { kind: "accentless", headword: "città" });
 });
 
 test("a word the dictionary spells keeps its answer, and a query of none of the rule's shapes sends it no read (#809)", async () => {

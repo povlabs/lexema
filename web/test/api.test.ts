@@ -198,7 +198,8 @@ function offeredBy(nearby: Nearby): string[] {
 test("a word not in the release is a 404 offering findNearby's spellings in its order, typo called edit", async () => {
   const { key } = await newKey();
   const cases: [string, string[]][] = [
-    ["citta", ["accent"]],
+    // Not `citta`, which opens città since #846: `cittá` has a wrong accent.
+    [encodeURIComponent("cittá"), ["accent"]],
     ["mangare", ["edit"]],
     // Not `sal`, which is now sale cut short (rule it-word-shape/v1, #809).
     ["stud", ["prefix"]],
@@ -1619,6 +1620,57 @@ test("/v1/lookup leaves out Wikizionario's missing-field placeholders, as the pa
   } finally {
     placeholderSqlite.close();
     await rm(placeholderDir, { recursive: true, force: true });
+  }
+});
+
+test("/v1/lookup, /v1/lookup/batch and /v1/exists answer perche and piu with the readings of perché and più, via headword as any search of them (#846)", async () => {
+  // The real archive lines in fixtures/bare-spellings.jsonl
+  // (test/bareSpelling.test.ts names each), seeded apart as above.
+  const bareDir = await mkdtemp(join(tmpdir(), "lexema-api-bare-spellings-"));
+  const archive = join(bareDir, "bare-spellings.jsonl.gz");
+  await writeFile(archive, gzipSync(await readFile(join(REPO, "fixtures/bare-spellings.jsonl"))));
+  const { parts } = await seedSql({
+    input: archive,
+    outputDir: join(bareDir, "sql"),
+    schema: join(REPO, "src/db/schema.sql"),
+    releaseId: RELEASE,
+    archiveR2Key: `releases/${RELEASE}.jsonl.gz`,
+    license: "CC-BY-SA-4.0",
+    onRejection: (rejection) => {
+      throw new Error(`fixture line rejected: ${JSON.stringify(rejection)}`);
+    },
+  });
+  const bareSqlite = new DatabaseSync(":memory:");
+  try {
+    for (const part of parts) bareSqlite.exec(await readFile(part, "utf8"));
+    const over = readOnlyDictionary(bareSqlite);
+    const { key } = await newKey();
+    const body = async (path: string, status = 200, post?: string): Promise<Json> => {
+      const request = new Request(`https://api.lexema.fyi/v1/${path}`, { method: post === undefined ? "GET" : "POST", body: post, headers: { "x-api-key": key } });
+      const response = await handleApi(request, { db: over, appDb: db, releaseId: RELEASE, now: NOW, metering });
+      assert.equal(response.status, status, path);
+      return response.json();
+    };
+    for (const [typed, headword] of [["perche", "perché"], ["piu", "più"]] as const) {
+      const opened = await body(`lookup?q=${typed}`);
+      const own = await body(`lookup?q=${encodeURIComponent(headword)}`);
+      assert.equal(opened.query, typed);
+      assert.ok(opened.results.length > 0, typed);
+      assert.deepEqual(opened.results, own.results, `${typed} answers with ${headword}'s results`);
+      assert.ok(opened.results.every((result: Json) => result.word === headword && result.match.via === "headword"), typed);
+      assert.equal((await body(`exists?q=${typed}`)).exists, true, typed);
+    }
+    const batch = await body("lookup/batch", 200, JSON.stringify({ q: ["perche", "perché", "piu", "più", "papa", "perchè"] }));
+    const answered = (query: string) => batch.results.filter((result: Json) => result.query === query).map(({ found, lemma, pos }: Json) => [found, lemma ?? null, pos ?? null]);
+    assert.deepEqual(answered("perche"), answered("perché"));
+    assert.deepEqual(answered("piu"), answered("più"));
+    assert.ok(answered("perche").length > 0 && answered("piu").length > 0);
+    assert.deepEqual(answered("papa"), [[true, "papa", "noun"]], "papa stays papa");
+    assert.deepEqual(answered("perchè"), [[false, null, null]], "a wrong accent opens nothing");
+    await body("lookup?q=perch%C3%A8", 404);
+  } finally {
+    bareSqlite.close();
+    await rm(bareDir, { recursive: true, force: true });
   }
 });
 

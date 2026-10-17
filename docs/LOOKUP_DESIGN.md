@@ -178,6 +178,24 @@ U+2018, U+02BC, all to U+0027), but keeps accents:
 `città` and `citta` are different words, and folding them would merge distinct
 entries.
 
+Normalization still keeps accents, and so do the stored keys. One step reads a
+missing accent, and only on the query side, after every other route has
+missed: a one-word query nothing else answers opens the one headword that
+writes it with a final accent. `perche` opens `perché`. The step never runs
+for a query that is a word of its own, so `papa` stays `papa` and never
+`papà`, and `e` stays the conjunction and never `è`. It covers a missing final
+accent only, not a wrong one (`perchè`) or an apostrophe written for one
+(`citta'`), so those cases keep the not-found answer and its offer. When
+several headwords match, the source settles it or nothing does: if the others
+are recorded in the source as variants of one of them, the step opens that
+main word, so `piu` opens `più`, since `piú` reads "variante ricercata di
+più". With no such variant link it opens nothing, and the offer stays. These
+are Huey's rulings of 2026-10-17
+([#846](https://github.com/povlabs/lexema/issues/846#issuecomment-6233340944),
+and the
+[tie-break](https://github.com/povlabs/lexema/issues/846#issuecomment-6240679313));
+the rule is in [LOOKUP.md](LOOKUP.md#a-word-typed-without-its-final-accent).
+
 The 128-character bound is well past the longest headword in this release: the
 longest is 51 characters and none reaches 128, measured over the archive in
 [the lookup measurements](../reports/2026-09-21-lookup-measurements.md#longest-headword).

@@ -64,8 +64,9 @@ with that word's name.
 Two fixtures beside it hold real words the dev seed cannot hold:
 
 - `fixtures/citto.jsonl` holds `citta`'s one such record, `citto`. With it,
-  the fixture would have no word left whose search finds nothing but an
-  accent offer, which the not-found tests read.
+  `citta` would find citto's form, and the fixture would have no word left
+  that opens the headword it lacks a final accent of (#846), which the lookup
+  and page tests read. The not-found tests read `cittá`'s accent offer.
 - `fixtures/no-base-record.jsonl` holds words whose `form_of` edges lead to a
   word with no record in the release: `calabra` names `calabro`, `zurlò`
   names `zurlare`, and `tessere` names `tessera`, which names `tesserare`. The

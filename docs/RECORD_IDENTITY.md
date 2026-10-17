@@ -238,7 +238,7 @@ The clearest `missing` case is now `varicella` (line 1128): a noun with no `tags
 
 ## Still open
 
-- **Normalization.** `it-normalize/v1` does not touch accents. Whether a search for `citta` should also find `città` is undecided. Any accent-folded discovery must use a separately versioned approximate key; the accent-preserving exact key and form-of matching remain unchanged.
+- **Normalization.** `it-normalize/v1` does not touch accents. A one-word query nothing else answers opens the one headword that writes it with a final accent (#846, [LOOKUP.md](LOOKUP.md#a-word-typed-without-its-final-accent)); that step reads the query side only, so the accent-preserving exact key and form-of matching remain unchanged. Any wider accent-folded discovery must use a separately versioned approximate key.
 - **Composite surfaces.** `studente/studentessa` and `avere o essere` are stored whole and will not match a search for their parts. Splitting them needs a rule nobody has validated.
 - **Expected-dimension policy.** Which dimensions get a `missing` row for which part of speech is [#10](https://github.com/povlabs/lexema/issues/10)'s call.
 - **Review workflow.** `claim_review` is a shape with no rows seeded. A reader's report is reviewed beside it, not in it: a person reads the report and records an outcome on the report itself (`pnpm run report`, [#12](https://github.com/povlabs/lexema/issues/12)).

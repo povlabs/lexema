@@ -78,7 +78,8 @@ The API is only on its own host. Its old path, `lexema.fyi/api/v1/…`, answers
 | `?q=sale` | 3 entries: the noun, a form of `sala`, and a verb form |
 | `?q=casa` | 1 entry, *Sostantivo · femminile, singolare* (gender and number from its gloss grammar stamp), showing the definitions recovered from Wiktionary revision 4257826 with no mark for where they came from |
 | `?q=studente` | 4 entries: the noun, a form of `studiare`, and two noun forms |
-| `?q=citta` | the empty state — accents are significant |
+| `?q=cittá` | the empty state, offering `città` — a wrong accent opens nothing |
+| `?q=citta` | the page of `città`, which it lacks only the final accent of (#846) |
 | `?q=` | the opening hint, with words to try |
 
 What these actually rendered, on which release and on which date, is in
@@ -333,7 +334,8 @@ check; *Huey* marks the ones only Huey can run.
 |---|---|---|
 | Health | `curl -s` each `/health` above | 200, `"ok":true`, the live release, every database `ok` |
 | Found | <https://lexema.fyi/?q=andare> | the verb, its forms grouped by tense |
-| Not found | <https://lexema.fyi/?q=citta> | `Nessuna voce per "citta"`, offering `città` |
+| Not found | <https://lexema.fyi/?q=perch%C3%A8> | `Nessuna voce per "perchè"`, offering `perché` |
+| Final accent missing | <https://lexema.fyi/?q=perche> | the page of `perché`, with no line about the accent |
 | Ambiguous | <https://lexema.fyi/?q=sale> | several entries; the link to `sala` searches it and shows both the noun and the verb, without picking one |
 | Missing data | <https://lexema.fyi/?q=casa> | one entry; what the source does not give, such as its forms, is missing, not filled in |
 | Disputed | <https://lexema.fyi/?q=studente> | every reading as the source states it, and no note about a dispute ([WEB.md](WEB.md#why-a-disputed-claim-is-a-row-and-not-a-code-path)) |

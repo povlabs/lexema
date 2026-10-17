@@ -9,6 +9,7 @@
 // pronominal one, its base verb's records (#837), all in one wait. Free of the Workers runtime, so the page test runs the
 // same code over a local database.
 
+import { normalizeItalianExact } from "@lexema/italian/normalize.ts";
 import type { LookupDatabase } from "@lexema/lookup/database.ts";
 import type { Reading } from "@lexema/lookup/types.ts";
 import { declaredLemma, declaredVerbForms } from "@lexema/lookup/declaredLemma.ts";
@@ -22,13 +23,17 @@ import { gridLemmaWords, pronominalBaseWords, wantsDeclaredConjugation } from ".
 export async function searchAttempt(db: LookupDatabase, releaseId: string, query: string): Promise<Attempt> {
   // The tables are read beside the lookup, which reads them too: one statement in its first call.
   const [result, tables] = await Promise.all([lookup({ db, releaseId, query }), dictionaryTables(db)]);
-  const written = () => writtenSpellings({ db, releaseId, query: result.query.raw });
+  // A word typed without its final accent opens the headword's own page
+  // (#846): what that page reads for its word, it reads for the headword, so
+  // it offers no accent the query lacked and says nothing of how it was reached.
+  const word = result.outcome === "found" && result.route.kind === "accentless" ? result.route.headword : result.query.raw;
+  const written = () => writtenSpellings({ db, releaseId, query: word });
   if (result.outcome === "found") {
     const [spellings, lemmas, readings, declared, bases, shapedLemma] = await Promise.all([
       written(),
       lemmaRecords(db, releaseId, result.readings),
       withVerbDefinitions(db, result.readings, tables),
-      wantsDeclaredConjugation(result.readings) ? declaredVerbForms(db, releaseId, result.query.key) : undefined,
+      wantsDeclaredConjugation(result.readings) ? declaredVerbForms(db, releaseId, normalizeItalianExact(word)) : undefined,
       baseRecords(db, releaseId, pronominalBaseWords(result.readings)),
       // A word the page answers as a declared lemma keeps that page: rule
       // `it-word-shape/v1` answers only what nothing else does (#809), so

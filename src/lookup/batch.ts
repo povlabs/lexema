@@ -17,7 +17,9 @@
 // reads them as a shape of (#809): `raccontarvi` of raccontare, and the
 // pronominal verbs rule `it-pronominal-pair/v2` reads a reflexive pronoun +
 // verb pair as (#810, #834): `mi trasferisco` of trasferirsi, with those words' lemma links
-// after. The search and the agreement reading read a curated
+// after. A word none of these answers may be typed without the final accent
+// of a headword, and is answered as that headword is (#846): `perche` as
+// `perché`, `piu` as `più`. The search and the agreement reading read a curated
 // table cell's corrected spelling beside the source's where the master keys
 // it (#748), as `lookup()` does.
 //
@@ -36,6 +38,7 @@ import { answeringPairs } from "./pronominalPair.js";
 import { correctedEdgeServed, sourceEdgeServed } from "./correctedEdge.js";
 import { dictionaryTables, servedBy, type DictionaryTables } from "./served.js";
 import { besideSourceOf } from "./besideSource.js";
+import { openedHeadwords } from "./accentless.js";
 import { unlessDeclaredLemma } from "./wikidataWords.js";
 import { readTranslations } from "./sourceRecord.js";
 import { lemmasOfPartOfSpeech, sourceTagsAt, type CitedRevision, type QueryInfo, type RejectedResult, type ReleaseInfo, type Translation } from "./types.js";
@@ -541,7 +544,9 @@ function shapeCandidates(answered: readonly ShapeRow[], links: ReadonlyMap<numbe
  * of rule `it-word-shape/v1`, the shape read (`readShapeRows`), and for a
  * word that is a reflexive pronoun and a verb form, the two waits of rule
  * `it-pronominal-pair/v2` (`answeringPairs`), then the lemma links of the
- * records they answer with.
+ * records they answer with (`candidatesByKey`). Then, for a word none of these
+ * answers, the headword it lacks a final accent of (`openedHeadwords`, #846),
+ * and those headwords answered the same way.
  */
 export async function lookupBatch({
   db,
@@ -560,7 +565,40 @@ export async function lookupBatch({
     return rejection === undefined ? queryInfoOf(raw, release) : { outcome: "rejected", query: { raw }, rejection };
   });
   const keys = [...new Set(prepared.flatMap((query) => ("outcome" in query ? [] : [query.key])))];
+  const answered = await candidatesByKey(db, releaseId, tables, reads, keys);
 
+  // A word nothing answers may be typed without the final accent of a
+  // headword, and is answered as that headword is (#846), in one statement
+  // more and the headwords' own reads; a batch with no such word sends
+  // nothing for it.
+  const opened = await openedHeadwords(db, releaseId, tables, keys.filter((key) => (answered.get(key) ?? []).length === 0));
+  const headwords = opened.size === 0 ? new Map<string, CandidateRecord[]>() : await candidatesByKey(db, releaseId, tables, reads, [...new Set([...opened.values()].map(({ key }) => key))]);
+  const finalCandidates = (key: string): CandidateRecord[] => {
+    const headword = opened.get(key);
+    return headword === undefined ? (answered.get(key) ?? []) : (headwords.get(headword.key) ?? []);
+  };
+
+  const answers = prepared.map((query): BatchAnswer => {
+    if ("outcome" in query) return query;
+    const [first, ...rest] = finalCandidates(query.key);
+    return first === undefined ? { outcome: "not-found", query } : { outcome: "found", query, candidates: [first, ...rest] };
+  });
+  return { release, answers };
+}
+
+/**
+ * Each of `keys` with the candidates every route but the accentless one
+ * (#846) answers it with, as `lookup()` and `candidatesOf` make them, in a
+ * fixed number of statements however many keys there are. Empty for a key
+ * none answers.
+ */
+async function candidatesByKey(
+  db: LookupDatabase,
+  releaseId: string,
+  tables: DictionaryTables,
+  reads: BatchReads,
+  keys: readonly string[],
+): Promise<Map<string, CandidateRecord[]>> {
   // The hand-kept readings (ADR 0031, #776), the name entries (ADR 0032,
   // #794) and the Wikidata words (ADR 0033, #812) are read beside the search,
   // for the same keys, in one statement (src/lookup/besideSource.ts); a
@@ -641,14 +679,7 @@ export async function lookupBatch({
     [...beside.wikidataWords].filter(([key]) => (answered.get(key) ?? []).every((candidate) => candidate.nameItem !== undefined)),
   );
   const shown = new Map(await Promise.all([...lexemes].map(async ([key, words]) => [key, await unlessDeclaredLemma(db, releaseId, tables, key, words)] as const)));
-  const finalCandidates = (key: string): CandidateRecord[] => [...(answered.get(key) ?? []), ...(shown.get(key) ?? [])];
-
-  const answers = prepared.map((query): BatchAnswer => {
-    if ("outcome" in query) return query;
-    const [first, ...rest] = finalCandidates(query.key);
-    return first === undefined ? { outcome: "not-found", query } : { outcome: "found", query, candidates: [first, ...rest] };
-  });
-  return { release, answers };
+  return new Map(keys.map((key) => [key, [...(answered.get(key) ?? []), ...(shown.get(key) ?? [])]] as const));
 }
 
 /**

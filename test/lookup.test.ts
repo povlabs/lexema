@@ -285,9 +285,14 @@ test("an unknown word is not-found, not an error and not empty-handed", async ()
 
 test("normalizes case, whitespace and apostrophes while keeping accents", async () => {
   await withFixture(async (db) => {
-    // Accents are meaning, not decoration: stripping them would merge distinct words.
+    // Accents are meaning, not decoration: stripping them would merge distinct
+    // words. `citta` keeps its own key, and opens città only because nothing
+    // spells it (#846); a wrong accent opens nothing.
     assert.equal(found(await ask(db, "città")).length, 1);
-    assert.equal((await ask(db, "citta")).outcome, "not-found");
+    const citta = searched(await ask(db, "citta"));
+    assert.equal(citta.query.key, "citta");
+    assert.ok(citta.outcome === "found" && citta.route.kind === "accentless");
+    assert.equal((await ask(db, "cittá")).outcome, "not-found");
 
     // Case and surrounding whitespace do not change which word was asked for.
     for (const variant of ["CITTÀ", "  Città  ", "cIttÀ"]) {
@@ -336,9 +341,11 @@ test("a canonically decomposed query finds the same rows as the composed one", a
     // The typed spelling is still the decomposed one, verbatim.
     assert.equal(searched(viaDecomposed).query.raw, decomposed);
 
-    // Normalizing is not stripping: the unaccented spelling is a different word
-    // and stays a miss.
-    assert.equal((await ask(db, "citta")).outcome, "not-found");
+    // Normalizing is not stripping: the unaccented spelling is a different key,
+    // which nothing spells. It reaches città only by the accentless route (#846).
+    const citta = searched(await ask(db, "citta"));
+    assert.equal(citta.query.key, "citta");
+    assert.ok(citta.outcome === "found" && citta.route.kind === "accentless");
   });
 });
 

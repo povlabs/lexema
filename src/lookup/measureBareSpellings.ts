@@ -1,8 +1,8 @@
 // `pnpm run measure:bare-spellings` — for every served one-word headword that
 // ends in an accented vowel or an apostrophe, search its spelling without that
-// last mark and sort what the search answers (#468): found as a word of its
-// own, the headword offered first, offered later, or not offered
-// (src/lookup/bareSpelling.ts). The search is the page's: `lookup()`, then
+// last mark and sort what the search answers (#468): the headword opened
+// (#846), found as a word of its own, the headword offered first, offered
+// later, or not offered (src/lookup/bareSpelling.ts). The search is the page's: `lookup()`, then
 // `findNearby()` when it finds nothing.
 //
 // Reads the local D1 a full seed leaves (docs/RUN_AN_IMPORT.md):
@@ -17,7 +17,7 @@
 import { resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { isMain } from "../commandLine.js";
-import { bareSpelling,bareSpellingOutcome, type BareSpellingOutcome } from "./bareSpelling.js";
+import { bareSpelling, bareSpellingOutcome, type BareSpellingAnswer, type BareSpellingOutcome } from "./bareSpelling.js";
 import { fromNodeSqlite } from "./database.js";
 import { dictionaryFile, masterOf } from "./localDictionary.js";
 import { lookup } from "./lookup.js";
@@ -27,6 +27,7 @@ import { findNearby, type Nearby } from "./nearby.js";
 const EXAMPLES = 40;
 
 const OUTCOMES: readonly { outcome: BareSpellingOutcome; heading: string }[] = [
+  { outcome: "opened", heading: "Opened: the bare spelling opens the headword" },
   { outcome: "found", heading: "Found: the bare spelling is a word of its own (ambiguous)" },
   { outcome: "best", heading: "Not found, and the headword is the best offer" },
   { outcome: "offered", heading: "Not found, and the headword is offered but not first" },
@@ -75,13 +76,18 @@ async function measure(file: string, named: string | undefined, log: (line: stri
   log(`${measured.length} of ${headwords.length} headword keys end in an accented vowel or an apostrophe`);
 
   // Several headwords can share a bare spelling (`più`, `piú`): search each once.
-  const answers = new Map<string, { found: true } | { found: false; nearby: Nearby }>();
+  const answers = new Map<string, BareSpellingAnswer>();
   const rows: Row[] = [];
   for (const { key, surface, bare } of measured) {
     let answer = answers.get(bare);
     if (answer === undefined) {
       const result = await lookup({ db, releaseId, query: bare });
-      answer = result.outcome === "not-found" ? { found: false, nearby: await findNearby({ db, releaseId, query: bare }) } : { found: true };
+      answer =
+        result.outcome === "not-found"
+          ? { found: false, nearby: await findNearby({ db, releaseId, query: bare }) }
+          : result.outcome === "found" && result.route.kind === "accentless"
+            ? { found: true, opened: result.route.headword }
+            : { found: true };
       answers.set(bare, answer);
       if (answers.size % 2000 === 0) log(`${answers.size} spellings searched`);
     }

@@ -31,6 +31,7 @@ import { seedSql } from "../../src/import/seedSql.js";
 import { rawPageSource, readSavedPage } from "../../src/source/rawPage.js";
 import { fromD1, fromNodeSqlite, type D1Like, type D1StatementLike, type SqlValue } from "../../src/lookup/database.js";
 import { shapeKeysOf } from "../../src/lookup/wordShape.js";
+import { accentlessProbe } from "../../src/italian/finalAccent.js";
 import { lookup, withVerbDefinitions } from "../../src/lookup/lookup.js";
 import { dictionaryTables, servedVersion } from "../../src/lookup/served.js";
 import { searchAttempt } from "@/lib/dictionary/searchAttempt.ts";
@@ -205,6 +206,14 @@ const HAND_KEPT_STATEMENTS = 1;
 const WORD_SHAPE_STATEMENTS = (word: string): number => (shapeKeysOf(word).length > 0 ? 1 : 0);
 
 /**
+ * The statement a lookup the source spells nothing for sends for the headword
+ * the query may lack a final accent of (`ACCENTED_HEADWORD_SQL`, #846), when
+ * it is one word ending in a plain vowel (`mangare`; `zzzz` is not). It goes
+ * in the call that reads the page-only entries, so it adds no call.
+ */
+const ACCENTLESS_STATEMENTS = (word: string): number => (accentlessProbe(word) !== undefined ? 1 : 0);
+
+/**
  * What #705 cut: the lemmas' own expressions, which no page shows since #700.
  * Every lookup no longer sends the lines of the lemmas its readings' links
  * name (`LEMMA_LINE_SQL`), which went beside the links, so no call is saved.
@@ -361,20 +370,25 @@ test("a verb's recovered definitions reach its block: fiaccando's fiaccare carri
  * statements than it did at f6731dd, before the "Did you mean" reads were sent
  * in fewer waits, and makes at most the calls below. `mangare` gets a typo
  * match, which never uses the words that begin with it, so it pays for no
- * prefix read and keeps f6731dd's 8 calls. `citta` may make 7 calls, one more
- * than at e380d77, so that a typo page reads no prefix list (Huey's ruling,
- * https://github.com/povlabs/lexema/issues/665#issuecomment-6012462663).
+ * prefix read and keeps f6731dd's 8 calls. An accent offer may make 7 calls,
+ * one more than at e380d77, so that a typo page reads no prefix list (Huey's
+ * ruling, https://github.com/povlabs/lexema/issues/665#issuecomment-6012462663).
+ * That page was `citta`'s, which opens città since #846; `cittá`, with a wrong
+ * accent, is now the accent offer, and reads what `citta` read.
  */
 const NOT_FOUND: Record<string, { kind: string; statements: number; calls: number }> = {
   zzzz: { kind: "none", statements: 16, calls: 7 },
-  citta: { kind: "accent", statements: 15, calls: 7 },
+  cittá: { kind: "accent", statements: 15, calls: 7 },
   xqzt: { kind: "none", statements: 16, calls: 7 },
   qwrtz: { kind: "none", statements: 16, calls: 7 },
   mangare: { kind: "typo", statements: 14, calls: 8 },
 };
 
 for (const [word, then] of Object.entries(NOT_FOUND)) {
-  const ceiling = { ...then, statements: then.statements + CELL_SEARCH_STATEMENTS + HAND_KEPT_STATEMENTS + WORD_SHAPE_STATEMENTS(word) };
+  const ceiling = {
+    ...then,
+    statements: then.statements + CELL_SEARCH_STATEMENTS + HAND_KEPT_STATEMENTS + WORD_SHAPE_STATEMENTS(word) + ACCENTLESS_STATEMENTS(word),
+  };
   test(`the not-found page for '${word}' sends at most ${ceiling.statements} statements in at most ${ceiling.calls} calls, and reads the page SQLite reads`, async () => {
     const sent = nothingSent();
     const db = fromD1(countingD1(sqlite, sent));
