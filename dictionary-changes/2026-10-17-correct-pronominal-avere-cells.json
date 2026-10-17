@@ -1,0 +1,21 @@
+{
+  "command": "correct:records",
+  "inputs": {},
+  "lookups": [
+    { "word": "abbagliarsi" },
+    { "word": "abbracciarsi" },
+    { "word": "dominarsi" },
+    { "word": "incontrarsi" },
+    { "word": "mangiarsi" },
+    { "word": "rimediarsi" },
+    { "word": "rovesciarsi" },
+    { "word": "sottomettersi" },
+    { "word": "staccarsi" },
+    { "word": "suddividersi" }
+  ],
+  "expected": {
+    "records": { "added": 0, "changed": 11, "removed": 0 },
+    "written": { "corrected_form": 473, "correction_version": 1 },
+    "deleted": {}
+  }
+}

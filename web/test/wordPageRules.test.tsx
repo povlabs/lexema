@@ -22,7 +22,9 @@
 // sfocato's from `fixtures/sfocato.jsonl`, which pageStatements.test.ts adds;
 // and the words of `fixtures/no-base-record.jsonl`, such as calabra and zurlò,
 // one of whose form_of edges names a word with no record, since the dev seed
-// holds no edge without a target. The raw pages are the ones committed under
+// holds no edge without a target; and the ten pronominal verbs of
+// `fixtures/pronominal-avere-tables.jsonl`, whose table cells the committed
+// list sets on essere (#839). The raw pages are the ones committed under
 // `fixtures/`, as the dev seed reads them when no dump is cached.
 
 import assert from "node:assert/strict";
@@ -73,7 +75,7 @@ const RELEASE = "it-word-page-rules";
 const linesOf = async (file: string): Promise<string[]> => (await readFile(join(REPO, file), "utf8")).trimEnd().split("\n");
 
 /**
- * The dev seed and the five companion fixtures, with the committed raw pages,
+ * The dev seed and the six companion fixtures, with the committed raw pages,
  * seeded once for this file: with the committed list's table cells (#723) and
  * edges (ADR 0030, #722) on these lines, as the seed of it-0c432803 writes
  * them and the page serves them, or, for the #707 census, with the edges as
@@ -88,6 +90,7 @@ async function dictionary(edges: "corrected" | "as-censused" = "corrected"): Pro
       ...(await linesOf("fixtures/essere-compound-cells.jsonl")),
       ...(await linesOf("fixtures/sfocato.jsonl")),
       ...(await linesOf("fixtures/no-base-record.jsonl")),
+      ...(await linesOf("fixtures/pronominal-avere-tables.jsonl")),
     ];
     await mkdir(outputDir, { recursive: true });
     const archive = join(outputDir, "fixture.jsonl.gz");
