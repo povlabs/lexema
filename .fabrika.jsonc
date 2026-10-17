@@ -35,13 +35,20 @@
       "name": "web",
       // Covers fonts as well as app code. web/test/fixture.ts raises the UI
       // class; only test filenames are excluded. Route pixel-neutral edits
-      // with review-ui route instead of capturing them. seed:dev fills both
-      // local D1s in $state, the dictionary (DB) and the app database
-      // (APP_DB, ADR 0018), and wrangler dev serves both from it.
+      // with review-ui route instead of capturing them. Both local D1s, the
+      // dictionary (DB) and the app database (APP_DB, ADR 0018), are seeded
+      // once and reused: seed:state copies a kept seeded state into this
+      // run's own temp $state, so two renders never share one, and wrangler
+      // dev serves both from that copy. A state is kept per digest of the
+      // seed's inputs (src/, fixtures/, web/wrangler.jsonc, package.json,
+      // pnpm-lock.yaml, the cached dump and the SEED_* settings), in the main
+      // checkout's .data/seeded-states/. When any of them changes, the next
+      // render runs seed:dev again and keeps that state
+      // (src/import/seededStates.ts, #843).
       "prefix": "web/",
       "mount": "/",
       "readyPath": "/",
-      "command": "state=$(mktemp -d \"${TMPDIR:-/tmp}/lexema-ui.XXXXXX\") && trap 'rm -rf \"$state\"' EXIT && SEED_SQL=\"$state/dev.sql\" SEED_STATE=\"$state/state\" pnpm run seed:dev && pnpm --filter @lexema/web build && cd web && pnpm exec wrangler dev --config dist/server/wrangler.json --persist-to \"$state/state\" --port {{port}} --var LEXEMA_RELEASE:it-dev"
+      "command": "state=$(mktemp -d \"${TMPDIR:-/tmp}/lexema-ui.XXXXXX\") && trap 'rm -rf \"$state\"' EXIT && pnpm run seed:state \"$state/state\" && pnpm --filter @lexema/web build && cd web && pnpm exec wrangler dev --config dist/server/wrangler.json --persist-to \"$state/state\" --port {{port}} --var LEXEMA_RELEASE:it-dev"
     }
   ],
   // What the lane runs to install dependencies and check a merged tree
