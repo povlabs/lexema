@@ -115,7 +115,7 @@ import { foldItalianApostrophes, normalizeItalianExact } from "@lexema/italian/n
 import { CONJUGATION_TEMPLATE_CALLS } from "@lexema/italian/conjugationTemplateCalls.ts";
 import { pronominalVerb, type PronominalVerb } from "@lexema/italian/pronominalConjugation.ts";
 import { handKeptCells, handKeptTableOf } from "@lexema/italian/handKeptTables.ts";
-import { regularCells, regularClassOf } from "@lexema/italian/regularConjugation.ts";
+import { ownClassOf, regularCells, regularClassOf, type RegularCell } from "@lexema/italian/regularConjugation.ts";
 import { VERB_FORM_LINE_RULE, verbFormLine, type SpelledGender } from "@lexema/italian/verbFormLine.ts";
 import { WORD_SHAPE_LINE_RULE, wordShapeLine, type ShapedSpelling } from "@lexema/italian/wordShape.ts";
 import { mergeExpressions } from "@lexema/lookup/expressions.ts";
@@ -147,9 +147,11 @@ import {
   declaredConjugationOf,
   placesAny,
   pronominalConjugationOf,
+  regularConjugationOf,
   type BaseCellOf,
   type Conjugation,
   type PronominalForm,
+  type RegularForm,
 } from "./conjugation.ts";
 import { agreementOf, placesOf, type Agreement, type GridPlace, type Spelling } from "./genderGrid.ts";
 import { GRID_FORM_LINE_RULE, gridFormLine } from "./gridFormLine.ts";
@@ -299,19 +301,33 @@ function ownFormsOf(reading: Reading, taken: TakenConjugation | undefined): OwnF
  *   `pentirsi` from `{{It-conj|pent|irsi|essere}}`. Where the source settles
  *   no class, it builds on the verb's hand-kept table, if the list keeps one
  *   (#844): `avvedersi` on `avvedere`'s cells.
+ * - For any other verb, the regular one `it-regular-conjugation/v1` builds
+ *   for the class its own page's `{{It-conj}}` call settles (#841):
+ *   `verificare` from `{{It-conj|verific|care|avere}}`.
  * - Else the one its form records declare (#799), built as a declared lemma's
  *   is (#453): `bellare`'s record has no table, and some thirty records say
  *   "… di bellare".
  */
 export type TakenConjugation =
   | { kind: "declared-conjugation"; conjugation: Conjugation<DeclaredVerbForm> }
-  | PronominalConjugation;
+  | PronominalConjugation
+  | RegularConjugation;
 
 /**
  * A pronominal verb's conjugation, built from its base verb's (#837) or from a
  * regular one (#838), and the one reading that draws it (`pronominalOf`).
  */
 export type PronominalConjugation = { kind: "pronominal-conjugation"; conjugation: Conjugation<PronominalForm>; owner: Reading };
+
+/**
+ * A regular conjugation built for a verb that is not pronominal (#841), and
+ * the one reading that draws it (`regularOf`).
+ */
+export type RegularConjugation = { kind: "regular-conjugation"; conjugation: Conjugation<RegularForm>; owner: Reading };
+
+/** Whether a reading's *Forms* are a table built by rule for it, rather than its own or declared by the query's form records. */
+export const isBuiltConjugation = (forms: OwnForms): forms is PronominalConjugation | RegularConjugation =>
+  forms.kind === "pronominal-conjugation" || forms.kind === "regular-conjugation";
 
 /** The page's taken conjugation, when `reading` is one that may draw it. */
 function takenBy(reading: Reading, taken: TakenConjugation | undefined): TakenConjugation | undefined {
@@ -346,36 +362,56 @@ const namesVerb = (reading: Reading): boolean =>
   reading.lemmaLinks.some((link) => link.kind === "candidates" && link.candidates.some((candidate) => candidate.pos === "verb"));
 
 /**
- * Whether a reading may draw a conjugation built from its base verb's
- * (`it-pronominal-conjugation/v1`, #837): an archive record about the query, a
- * verb whose word is pronominal (`trasferirsi`, `andarsene`), whose own forms
- * fill no cell, and which is no verb's form. A record whose `form_of` edges
- * name only gloss words (`andarsene`'s name `senza mezzi termini`) still takes
- * it; one that is another verb's form (`porsi`, of porgere; `corsi`, of
- * correre) never does. A recovered or hand-kept reading never takes it, as
- * with a declared conjugation.
+ * Whether a reading may draw a conjugation built by rule: an archive record
+ * about the query, a verb whose own forms fill no cell, and which is no verb's
+ * form. A record whose `form_of` edges name only gloss words (`andarsene`'s
+ * name `senza mezzi termini`) still takes one; one that is another verb's
+ * form (`porsi`, of porgere; `corsi`, of correre) never does. A recovered or
+ * hand-kept reading never takes one, as with a declared conjugation.
  */
-const takesPronominalConjugation = (reading: Reading): boolean =>
-  reading.isAboutQuery &&
-  isVerbReading(reading) &&
-  reading.recordId !== undefined &&
-  pronominalVerb(reading.word) !== undefined &&
-  !namesVerb(reading) &&
-  !conjugates(reading.forms);
+const takesBuiltConjugation = (reading: Reading): boolean =>
+  reading.isAboutQuery && isVerbReading(reading) && reading.recordId !== undefined && !namesVerb(reading) && !conjugates(reading.forms);
 
 /**
- * The pronominal verb a page may build a conjugation for, and the reading that
- * draws it, when no verb record about the query draws a table of its own: the
- * first reading that may take one and has text of its own, else the first
- * that may take one. `figurarsi` has a record with no definition and one
- * with; the table goes under the second, beside its meanings.
+ * The reading that draws a table built by rule, among those `which` keeps,
+ * when no verb record about the query draws a table of its own: the first
+ * that may take one and has text of its own, else the first that may take
+ * one. `figurarsi` has a record with no definition and one with; the table
+ * goes under the second, beside its meanings.
+ */
+function builtTableOwner(readings: readonly Reading[], which: (reading: Reading) => boolean): Reading | undefined {
+  if (readings.some((reading) => reading.isAboutQuery && isVerbReading(reading) && conjugates(reading.forms))) return undefined;
+  const taking = readings.filter((reading) => takesBuiltConjugation(reading) && which(reading));
+  return taking.find((reading) => ownTextOf(reading) !== undefined) ?? taking[0];
+}
+
+/**
+ * The pronominal verb a page may build a conjugation for
+ * (`it-pronominal-conjugation/v1`, #837), and the reading that draws it: a
+ * verb whose word is pronominal (`trasferirsi`, `andarsene`).
  */
 function pronominalOf(readings: readonly Reading[]): { verb: PronominalVerb; owner: Reading } | undefined {
-  if (readings.some((reading) => reading.isAboutQuery && isVerbReading(reading) && conjugates(reading.forms))) return undefined;
-  const taking = readings.filter(takesPronominalConjugation);
-  const owner = taking.find((reading) => ownTextOf(reading) !== undefined) ?? taking[0];
+  const owner = builtTableOwner(readings, (reading) => pronominalVerb(reading.word) !== undefined);
   const verb = owner === undefined ? undefined : pronominalVerb(owner.word);
   return owner === undefined || verb === undefined ? undefined : { verb, owner };
+}
+
+/** The glosses of a reading's senses, as the source writes them. */
+const glossesOf = (reading: Reading): string[] => reading.senses.flatMap((sense) => sense.glosses.map((gloss) => gloss.text));
+
+/**
+ * The regular cells a page may draw for a verb that is not pronominal
+ * (`it-regular-conjugation/v1`, #841), and the reading that draws them: the
+ * class the call pinned for the verb's own Appendice page settles
+ * (`ownClassOf`). None when no call is pinned for it or the call settles no
+ * class: `prefiggere`'s overrides its participle, `rivendere`'s names the
+ * second conjugation, `affaticare`'s names essere.
+ */
+function regularOf(readings: readonly Reading[]): { cells: RegularCell[]; owner: Reading } | undefined {
+  const owner = builtTableOwner(readings, (reading) => pronominalVerb(reading.word) === undefined);
+  if (owner === undefined) return undefined;
+  const settled = ownClassOf(owner.word, glossesOf(owner), CONJUGATION_TEMPLATE_CALLS);
+  return settled.kind === "settled" ? { cells: regularCells(settled), owner } : undefined;
 }
 
 /**
@@ -405,13 +441,14 @@ function pronominalBaseOf(verb: PronominalVerb, bases: readonly Reading[]): Read
 }
 
 /**
- * The page's taken conjugation: a pronominal verb's built one, else the
- * declared one when it places a form (#799). The built one is built on its
- * base verb's table when a base verb record has one (#837), else on the
- * regular cells of the class the source settles (#838). It goes before the
- * declared one because the form records a pronominal verb has name only a few
- * of its cells: `laurearsi`'s declared table is one imperative, `laureati`,
- * and `pentirsi`'s is one imperative too, `pentiti`.
+ * The page's taken conjugation: a pronominal verb's built one, else another
+ * verb's regular one (#841), else the declared one when it places a form
+ * (#799). The pronominal one is built on its base verb's table when a base
+ * verb record has one (#837), else on the regular cells of the class the
+ * source settles (#838). A built one goes before the declared one because the
+ * form records a verb has name only a few of its cells: `laurearsi`'s
+ * declared table is one imperative, `laureati`, and `pentirsi`'s is one
+ * imperative too, `pentiti`.
  */
 function takenConjugationOf(
   readings: readonly Reading[],
@@ -423,6 +460,11 @@ function takenConjugationOf(
   if (pronominal !== undefined && baseCells !== undefined) {
     const conjugation = pronominalConjugationOf(pronominal.verb, baseCells);
     if (placesAny(conjugation)) return { kind: "pronominal-conjugation", conjugation, owner: pronominal.owner };
+  }
+  const regular = regularOf(readings);
+  if (regular !== undefined) {
+    const conjugation = regularConjugationOf(regular.cells);
+    if (placesAny(conjugation)) return { kind: "regular-conjugation", conjugation, owner: regular.owner };
   }
   if (!wantsDeclaredConjugation(readings)) return undefined;
   const conjugation = declaredConjugationOf(declared);
@@ -440,8 +482,7 @@ function takenConjugationOf(
 function pronominalBaseCells(pronominal: { verb: PronominalVerb; owner: Reading }, bases: readonly Reading[]): readonly BaseCellOf[] | undefined {
   const base = pronominalBaseOf(pronominal.verb, bases);
   if (base !== undefined) return base.forms;
-  const glosses = pronominal.owner.senses.flatMap((sense) => sense.glosses.map((gloss) => gloss.text));
-  const settled = regularClassOf(pronominal.verb, glosses, CONJUGATION_TEMPLATE_CALLS);
+  const settled = regularClassOf(pronominal.verb, glossesOf(pronominal.owner), CONJUGATION_TEMPLATE_CALLS);
   if (settled.kind === "settled") return regularCells(settled);
   const kept = handKeptTableOf(pronominal.verb.word);
   return kept === undefined ? undefined : handKeptCells(kept);
@@ -533,8 +574,8 @@ export type FormOfPart =
   | { kind: "form-lines"; lead: ShapeFormLine[]; records: NonEmpty<RecordLines> }
   /** On a shape's page, what the query is of a form whose records have no line of their own (#802). */
   | { kind: "shape-lines"; lines: NonEmpty<ShapeFormLine> }
-  /** A pronominal verb's built table, the one *Forme* of its own a form-of reading may draw (#837). */
-  | { kind: "own-forms"; forms: PronominalConjugation }
+  /** A verb's table built by rule, the one *Forme* of its own a form-of reading may draw (#837, #841). */
+  | { kind: "own-forms"; forms: PronominalConjugation | RegularConjugation }
   | { kind: "lemma-definitions"; definitions: BlockDefinitions }
   | SharedPart;
 
@@ -1265,7 +1306,7 @@ function drawnKey(table: LemmaTable | { kind: "own"; reading: Reading; forms: Ow
   if (table.kind === "grid") return `lemma-grid\u0000${table.lemma.word}`;
   const { reading, forms } = table;
   // The taken conjugation is the query's one table, whichever of its verb records draws it.
-  if (forms.kind === "declared-conjugation" || forms.kind === "pronominal-conjugation") return `${forms.kind}\u0000${reading.word}`;
+  if (forms.kind === "declared-conjugation" || isBuiltConjugation(forms)) return `${forms.kind}\u0000${reading.word}`;
   return forms.kind === "grid"
     ? `grid\u0000${reading.word}\u0000${gridKey(forms.agreement)}`
     : `conjugation\u0000${reading.word}\u0000${tableKey(reading)}`;
@@ -1961,11 +2002,11 @@ function shownReading(
   if (formLines !== undefined) parts.push({ kind: "form-lines", lead: shapeLines ?? [], records: formLines });
   else if (shapeLines !== undefined) parts.push({ kind: "shape-lines", lines: shapeLines });
   parts.push(...lines);
-  // A pronominal verb whose `form_of` edges name no verb (`andarsene`) still
-  // shows the table built from its base verb's (#837): the table is the
-  // verb's own, and no base word's table stands beside it.
+  // A verb whose `form_of` edges name no verb (`andarsene`) still shows the
+  // table built for it (#837, #841): the table is the verb's own, and no base
+  // word's table stands beside it.
   const built = takenBy(reading, taken);
-  if (built?.kind === "pronominal-conjugation" && drawn.first(drawnKey({ kind: "own", reading, forms: built }))) {
+  if (built !== undefined && isBuiltConjugation(built) && drawn.first(drawnKey({ kind: "own", reading, forms: built }))) {
     parts.push({ kind: "own-forms", forms: built });
   }
   if (definitions !== undefined) parts.push({ kind: "lemma-definitions", definitions });
