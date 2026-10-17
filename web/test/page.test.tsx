@@ -30,6 +30,7 @@ import { seedSql } from "../../src/import/seedSql.js";
 import { PageOnlyCandidates, readUnrecordedPageTitles, UNRECORDED_PAGE_TITLES_FILE } from "../../src/import/pageOnlyCandidates.js";
 import { FixtureLines } from "../../src/italian/correctionsAtLines.js";
 import { CURATED_CORRECTIONS, cellCorrections, definitionCorrections, type CuratedCorrection } from "../../src/italian/curatedCorrections.js";
+import { HAND_KEPT_READINGS } from "../../src/italian/handKeptReadings.js";
 import { atFixtureLines, correctionFixtureLines } from "../../test/correctionFixture.js";
 import { DECLARED_CORRECTION_LINES, declaredCorrections } from "../../test/declaredCorrectionFixture.js";
 import { seededDictionary } from "../../test/seededDictionary.js";
@@ -1220,6 +1221,8 @@ test("the Constitution's old spellings read: eguale's grid shows eguali, eguagli
     assert.match(eguaglianza, /variante di <a [^>]*href="\/\?q=uguaglianza">uguaglianza<\/a>/);
     assert.deepEqual(lemmaFormsOf(eguaglianza), ["Forme diuguaglianza"]);
     assert.deepEqual(lemmaDefinitions(eguaglianza).map(({ lemma }) => lemma), ["uguaglianza"]);
+    // it.wiktionary has no page eguaglianza: its one Fonte opens the en.wiktionary revision the reading cites (#856).
+    assert.deepEqual(fonteLinks(eguaglianza), ["https://en.wiktionary.org/w/index.php?title=eguaglianza&oldid=71378670"]);
 
     // gajo is the old spelling of gaio: gaio's block, led by the shape's line.
     assertShapePage(await render(db, "gajo"), "gajo", {
@@ -1230,6 +1233,32 @@ test("the Constitution's old spellings read: eguale's grid shows eguali, eguagli
       fonte: "gaio",
     });
   }, undefined, undefined, corrections);
+});
+
+/** Every *Fonte* on a page, footer included: where each links, as a browser reads the address. */
+const fonteLinks = (html: string): string[] =>
+  [...html.matchAll(/<a [^>]*href="([^"]+)"[^>]*>Fonte</g)].map((match) => match[1].replaceAll("&amp;", "&"));
+
+/** The source records of `fixtures/hand-kept-readings/`: si, come and uguaglianza, Cosetta and Dr. */
+const HAND_KEPT_SOURCE_LINES = (
+  await Promise.all(["archive-lines.jsonl", "lookup-lines.jsonl"].map((file) => readFile(join(REPO, "fixtures/hand-kept-readings", file), "utf8")))
+).flatMap((text) => text.trimEnd().split("\n"));
+
+test("a page a hand-kept reading heads opens the en.wiktionary revision it cites; one a source record heads keeps its Wiktionary page (#856)", async () => {
+  await withLines([...(await devSeedLines()), ...HAND_KEPT_SOURCE_LINES], async ({ db }) => {
+    const pages: Record<string, string[]> = {};
+    for (const query of [...HAND_KEPT_READINGS.map((reading) => reading.word), "cosette"]) pages[query] = fonteLinks(await render(db, query));
+    assert.deepEqual(pages, {
+      // si's noun, come's adverb and the proper name Cosetta are records read from their own it.wiktionary pages, and head theirs.
+      si: ["https://it.wiktionary.org/wiki/si"],
+      come: ["https://it.wiktionary.org/wiki/come"],
+      cosetta: ["https://it.wiktionary.org/wiki/Cosetta"],
+      // it.wiktionary has no page Sig., cosetta or eguaglianza; cosette is cosetta's plural, which no record heads.
+      "Sig.": ["https://en.wiktionary.org/w/index.php?title=Sig.&oldid=89865273"],
+      cosette: ["https://en.wiktionary.org/w/index.php?title=cosetta&oldid=63388291"],
+      eguaglianza: ["https://en.wiktionary.org/w/index.php?title=eguaglianza&oldid=71378670"],
+    });
+  });
 });
 
 /**

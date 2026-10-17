@@ -1406,14 +1406,14 @@ export function wordPage(
     // title is the form), and every fact its records hold is a base word's:
     // its pronunciation, etymology, word lists and expressions show nowhere
     // (rule 3, P5, P6). The searched spelling has no Wiktionary page, so the
-    // one *Fonte* opens the base word's (`shapeSourceWord`).
+    // one *Fonte* opens the base word's (`shapeSourceReading`).
     return {
       headword: shape.key,
       readings: shown,
       wordFacts: NO_WORD_FACTS,
       wordLists: { synonyms: [], antonyms: [], derived: [] },
       expressions: undefined,
-      source: footerSourceOf(readings, shown, shapeSourceWord(kept, shape, readings)),
+      source: footerSourceOf(readings, shown, shapeSourceReading(kept, shape, readings)),
     };
   }
   const headword = about[0]?.word ?? query;
@@ -1428,21 +1428,27 @@ export function wordPage(
       derived: relatedItems(placed.rest.derived),
     },
     expressions: expressions === undefined ? undefined : { expressions },
-    source: footerSourceOf(readings, shown, headword),
+    source: footerSourceOf(readings, shown, about[0] ?? headword),
   };
 }
 
 /**
  * What the footer's one *Fonte* credits; no reading credits its own (#827).
- * The Wiktionary page of `headword` (the title, the spelling the page is
- * about, or on a shape's page its base word, `shapeSourceWord`) whenever
- * the lookup found a Wiktionary reading, shown or not, since its word facts
- * may show: that page holds every entry for the spelling, so one link covers
- * every reading (ADR 0009, amended on #281). A page of Wikidata entries alone
- * credits the Wikidata page of the first it shows: a name entry's item (ADR
- * 0032, #827), or a Wikidata word's lexeme (ADR 0033, #812).
+ * `title` is the reading the title is from (the first about the spelling
+ * the page is about, or on a shape's page its base word's, `shapeSourceReading`),
+ * or the bare spelling where none is. A hand-kept reading there credits the
+ * en.wiktionary revision it cites, since it.wiktionary has no page it was read
+ * from (ADR 0031; Huey's ruling of 2026-10-17 on #856). Otherwise the
+ * Wiktionary page of the title's word whenever the lookup found a Wiktionary
+ * reading, shown or not, since its word facts may show: that page holds every
+ * entry for the spelling, so one link covers every reading (ADR 0009, amended
+ * on #281). A page of Wikidata entries alone credits the Wikidata page of the
+ * first it shows: a name entry's item (ADR 0032, #827), or a Wikidata word's
+ * lexeme (ADR 0033, #812).
  */
-function footerSourceOf(found: readonly [Reading, ...Reading[]], shown: WordReadings, headword: string): FooterSource {
+function footerSourceOf(found: readonly [Reading, ...Reading[]], shown: WordReadings, title: Reading | string): FooterSource {
+  if (typeof title !== "string" && title.handKeptId !== undefined) return { kind: "cited-revision", cites: title.cites, word: title.word };
+  const headword = typeof title === "string" ? title : title.word;
   if (!found.every(isFromWikidata)) return wiktionarySource(headword);
   const shownWikidata = shown.flatMap((entry) =>
     entry.kind !== "verb-form" && entry.kind !== "grid-form" && entry.kind !== "shape-form" && isFromWikidata(entry.reading) ? [entry.reading] : [],
@@ -1507,14 +1513,16 @@ function shapeBasesOf(readings: readonly Reading[]): Reading[] {
 }
 
 /**
- * The word whose Wiktionary page a shape's *Fonte* opens: the base word whose
+ * The reading whose source a shape's *Fonte* opens: the base word's whose
  * record the page shows, the first record about the query in page order, as
- * the title was before the shape got a page of its own (`quei` opens quello's,
- * `raccontarvi` raccontare's; Huey's ruling of 2026-10-15 on #802). A word
- * shape is a spelling the source lists nowhere, so its own page does not exist.
+ * the title was before the shape got a page of its own (`quei` opens quello's
+ * Wiktionary page, `raccontarvi` raccontare's; Huey's ruling of 2026-10-15 on
+ * #802). A word shape is a spelling the source lists nowhere, so its own page
+ * does not exist. A hand-kept base opens the revision it cites (`cosette`,
+ * cosetta's; #856).
  */
-function shapeSourceWord(kept: readonly Reading[], shape: ShapePage, found: readonly [Reading, ...Reading[]]): string {
-  return (pageOrder(kept).find((reading) => reading.isAboutQuery) ?? shape.bases[0] ?? found[0]).word;
+function shapeSourceReading(kept: readonly Reading[], shape: ShapePage, found: readonly [Reading, ...Reading[]]): Reading {
+  return pageOrder(kept).find((reading) => reading.isAboutQuery) ?? shape.bases[0] ?? found[0];
 }
 
 /** The keys a record was found by: its headword's, and those of the forms the search hit in its table. */

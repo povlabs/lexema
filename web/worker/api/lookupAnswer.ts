@@ -29,6 +29,7 @@ import type { PhraseOffer } from "@lexema/lookup/phrase.ts";
 import { entryKey, isFormOfReading, isNameEntry, isVerbReading, isSearchedForm, isWikidataWord, lemmasOfPartOfSpeech, NOTHING_SEARCHED, publicEntryId, searchedSpellings } from "@lexema/lookup/types.ts";
 import { wikidataItemUrl } from "@lexema/lookup/names.ts";
 import type {
+  CitedRevision,
   FoundResult,
   LemmaTarget,
   NotFoundResult,
@@ -50,7 +51,7 @@ import {
   numbersOf,
   type Grid,
 } from "@/lib/dictionary/genderGrid.ts";
-import { lexemePageUrl, sourcePageUrl } from "@/lib/dictionary/sourcePage.ts";
+import { citedRevisionUrl, lexemePageUrl, sourcePageUrl } from "@/lib/dictionary/sourcePage.ts";
 import {
   admits,
   fits,
@@ -260,14 +261,21 @@ function definitionJson(item: DefinitionItem): DefinitionJson {
 
 /**
  * The credit every result carries, so a client can pass it on (ADR 0009): the
- * Wiktionary page of the word, or, for a name entry, its Wikidata item, which
- * is CC0 (ADR 0032).
+ * Wiktionary page of the word; for a hand-kept reading, the en.wiktionary
+ * revision it cites, under the same licence (ADR 0031, #856); or, for a name
+ * entry, its Wikidata item, which is CC0 (ADR 0032).
  */
 export type AttributionJson =
   | {
       licence: "CC BY-SA 4.0";
       licence_url: "https://creativecommons.org/licenses/by-sa/4.0/";
       source: "Wikizionario";
+      source_url: string;
+    }
+  | {
+      licence: "CC BY-SA 4.0";
+      licence_url: "https://creativecommons.org/licenses/by-sa/4.0/";
+      source: "Wiktionary";
       source_url: string;
     }
   | {
@@ -286,14 +294,26 @@ export const attributionOf = (word: string): AttributionJson => ({
 });
 
 /**
- * The credit of one entry: its Wikidata item for a name entry, its lexeme for
- * a Wikidata word (ADR 0033), both under CC0, else its word's Wiktionary page.
+ * The credit of one entry: the en.wiktionary revision a hand-kept reading
+ * cites (#856), its Wikidata item for a name entry, its lexeme for a Wikidata
+ * word (ADR 0033), both under CC0, else its word's Wiktionary page. A lookup,
+ * a batch lookup and `/exists` each hand it the entry they found, so the three
+ * credit one entry alike.
  */
-export const entryAttribution = (entry: { word: string; nameItem?: `Q${number}`; lexeme?: `L${number}` }): AttributionJson => {
+export const entryAttribution = (entry: { word: string; cites?: CitedRevision; nameItem?: `Q${number}`; lexeme?: `L${number}` }): AttributionJson => {
+  if (entry.cites !== undefined) return citedRevisionAttribution(entry.cites);
   if (entry.nameItem !== undefined) return wikidataAttribution(wikidataItemUrl(entry.nameItem));
   if (entry.lexeme !== undefined) return wikidataAttribution(lexemePageUrl(entry.lexeme));
   return attributionOf(entry.word);
 };
+
+/** The credit of the en.wiktionary revision a hand-kept reading cites: where its text came from, under CC BY-SA 4.0 as Wikizionario's is. */
+const citedRevisionAttribution = (cites: CitedRevision): AttributionJson => ({
+  licence: "CC BY-SA 4.0",
+  licence_url: "https://creativecommons.org/licenses/by-sa/4.0/",
+  source: "Wiktionary",
+  source_url: citedRevisionUrl(cites),
+});
 
 /** The credit of a Wikidata page, which Lexema passes on under CC0 as it received it. */
 const wikidataAttribution = (sourceUrl: string): AttributionJson => ({

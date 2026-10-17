@@ -27,7 +27,7 @@ import { pairQueryOf } from "../italian/pronominalPair.js";
 import { answeringPairs, type AnsweringPair } from "./pronominalPair.js";
 import { prefixUpperBound } from "./keyRange.js";
 import { personOfItalianVerbForm } from "../italian/moods.js";
-import { correctRecordClaims, isNameEntry, pluralDeclaration, sourcePointerOf, sourceTagsOf } from "./types.js";
+import { correctRecordClaims, isNameEntry, pluralDeclaration, sourcePointerOf, sourceTagsOf, type CitedRevision } from "./types.js";
 import type {
   ArchiveClaim,
   Evidence,
@@ -195,11 +195,13 @@ const keyOf = (query: string): string => normalizeItalianExact(query.trim());
 export type ExistsResult =
   | RejectedResult
   | { outcome: "absent"; query: QueryInfo; release: ReleaseInfo }
-  | { outcome: "present"; query: QueryInfo; release: ReleaseInfo; word: string; nameItem?: never; lexeme?: never }
+  | { outcome: "present"; query: QueryInfo; release: ReleaseInfo; word: string; nameItem?: never; lexeme?: never; cites?: never }
+  /** Found first as a hand-kept reading (ADR 0031): its credit is the en.wiktionary revision it cites, not a Wiktionary page (#856). */
+  | { outcome: "present"; query: QueryInfo; release: ReleaseInfo; word: string; cites: CitedRevision; nameItem?: never; lexeme?: never }
   /** Found only as a name entry (ADR 0032): its credit is its Wikidata item, not a Wiktionary page. */
-  | { outcome: "present"; query: QueryInfo; release: ReleaseInfo; word: string; nameItem: `Q${number}`; lexeme?: never }
+  | { outcome: "present"; query: QueryInfo; release: ReleaseInfo; word: string; nameItem: `Q${number}`; lexeme?: never; cites?: never }
   /** Found only as a Wikidata word (ADR 0033): its credit is its lexeme, not a Wiktionary page. */
-  | { outcome: "present"; query: QueryInfo; release: ReleaseInfo; word: string; lexeme: `L${number}`; nameItem?: never };
+  | { outcome: "present"; query: QueryInfo; release: ReleaseInfo; word: string; lexeme: `L${number}`; nameItem?: never; cites?: never };
 
 export async function exists({ db, releaseId, query }: LookupOptions): Promise<ExistsResult> {
   const [prepared, pages, tables] = await probeWithPages(db, releaseId, query, (key) => queryAll<HitRow>(db, `${SEARCH_SQL}\n      LIMIT 1`, releaseId, key));
@@ -207,13 +209,11 @@ export async function exists({ db, releaseId, query }: LookupOptions): Promise<E
   const [first] = prepared.probed;
   const { key } = prepared.query;
   const found = { outcome: "present", query: prepared.query, release: prepared.release } as const;
-  const word =
-    first?.record_word ??
-    (await correctedCellHits(db, releaseId, key, tables))[0]?.record_word ??
-    (await pages.candidates(key))[0]?.word ??
-    // A hand-kept reading of a word no record spells, `Sig.` (#819).
-    ((await handKeptReadingsOf(db, releaseId, tables).heads([key])).get(key) ?? [])[0]?.word;
+  const word = first?.record_word ?? (await correctedCellHits(db, releaseId, key, tables))[0]?.record_word ?? (await pages.candidates(key))[0]?.word;
   if (word !== undefined) return { ...found, word };
+  // A hand-kept reading of a word no record spells, `Sig.` (#819), credited to the revision it cites (#856).
+  const [kept] = (await handKeptReadingsOf(db, releaseId, tables).heads([key])).get(key) ?? [];
+  if (kept !== undefined) return { ...found, word: kept.word, cites: kept.cites };
   const [name] = (await nameEntriesOf(db, releaseId, tables).heads([key])).get(key) ?? [];
   if (name !== undefined) return { ...found, word: name.word, nameItem: name.nameItem };
   const reached =
