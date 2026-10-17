@@ -142,6 +142,26 @@
 // does not get it: the seed and the run report it instead (ADR 0025). Like
 // every correction, it is not carried onto a record that replaces its record:
 // the replacing record shows the definition, and the update reports the hide.
+//
+// A fifth kind hides one sense of a record (#857). `gaio`'s adjective record
+// has as its sense 0 the gloss `Ultima_Sfaccim`: its it.wiktionary page, at
+// revision 4057291, has `# [[Ultima_Sfaccim]]` at line 6, a stray link where
+// a definition should be, so the word page showed it as gaio's first meaning.
+// Huey ruled on 2026-10-17
+// (https://github.com/povlabs/lexema/issues/857#issuecomment-6237103400; ADR
+// 0030's amendment of that day) to hide it with a cited correction. Such an
+// entry names the record as the other kinds do, and the sense by its place in
+// `senses` with its one gloss verbatim; it cites the page line the sense was
+// read from, at that revision, and the ruling. Only a sense that declares no
+// `form_of` edge may be hidden, so no edge points at a sense no page shows
+// (`senseHideMisquote`). The seed writes it as a `hidden_sense` row beside
+// the record (src/import/correctedLayer.ts), `pnpm run correct:records`
+// writes it into a master seeded before it, and a lookup reads the record as
+// having no such sense (`readSenseRows` picks `HIDING_SENSE_GLOSS_SQL` in
+// src/lookup/lookup.ts). The `sense` row and its gloss stay as imported.
+// The digest pins the line, so a record a later release changes does not
+// get it: the seed reports it, and the update reports it for the record
+// that replaced its record (ADR 0025, ADR 0027).
 
 import { FORM_OF_GLOSS_EDGE_EVIDENCE } from "./formOfGlossEdgeEvidence.js";
 import { formOfGlossEdgeCorrections } from "./formOfGlossEdge.js";
@@ -204,6 +224,7 @@ export interface RecordCorrection {
   edge?: never;
   cells?: never;
   hides?: never;
+  hidesSense?: never;
 }
 
 /** One cell of a verb's table, set right: the `forms[]` entry at `index`, whose `form` the line spells `replaces`. */
@@ -238,6 +259,7 @@ export interface CellCorrection {
   entry?: never;
   edge?: never;
   hides?: never;
+  hidesSense?: never;
 }
 
 /** An it.wiktionary page at one revision, and what it shows that settles the fact. */
@@ -292,6 +314,7 @@ export interface EdgeCorrection {
   entry?: never;
   cells?: never;
   hides?: never;
+  hidesSense?: never;
 }
 
 /** The `form_of` edge a correction removes from one sense, whose gloss states a meaning, not a form (ADR 0030's 2026-10-09 amendment, #755). */
@@ -326,6 +349,7 @@ export interface EdgeRemoval {
   entry?: never;
   cells?: never;
   hides?: never;
+  hidesSense?: never;
 }
 
 /** A correction of one sense's `form_of` edge: one that sets it, or one that removes it. Each is one `corrected_edge` row. */
@@ -363,6 +387,7 @@ export interface DefinitionCorrection {
   edge?: never;
   cells?: never;
   hides?: never;
+  hidesSense?: never;
 }
 
 /** A ruling comment on a Lexema issue, by its permanent link. */
@@ -401,10 +426,42 @@ export interface RecoveredDefinitionHide {
   entry?: never;
   edge?: never;
   cells?: never;
+  hidesSense?: never;
 }
 
-/** One entry of the curated list: a record's gender or number, cells of its table of forms, a sense's `form_of` edge set or removed, a page-only entry's definition, or a recovered definition hidden. */
-export type CuratedCorrection = RecordCorrection | CellCorrection | EdgeCorrection | EdgeRemoval | DefinitionCorrection | RecoveredDefinitionHide;
+/** The sense a sense hide names: its place in the record's `senses`, its one gloss, and the page line it was read from. */
+export interface HiddenSense {
+  /** Its place in the record's `senses`: the sense at `/senses/<index>`. */
+  index: number;
+  /** Its gloss as the record's line holds it, verbatim: `/senses/0/glosses/0`, "Ultima_Sfaccim". The sense has no other gloss. */
+  gloss: OverriddenText;
+  /** The 1-based line of the record's own page the sense was read from, and that line's wikitext, verbatim. */
+  line: number;
+  wikitext: string;
+}
+
+/**
+ * One sense of a record, hidden: its line on the page states no definition,
+ * only a stray link (#857, ADR 0030's amendment of 2026-10-17). It names the
+ * record, and the sense by its place in the record's `senses` with its one
+ * gloss verbatim; it cites the page line the sense was read from, at the
+ * revision in the dump the archive was extracted from, and the ruling. A
+ * lookup reads the record as having no such sense; the `sense` row and its
+ * gloss stay.
+ */
+export interface SenseHide {
+  record: CorrectedRecord;
+  hidesSense: HiddenSense;
+  evidence: HideEvidence;
+  facts?: never;
+  entry?: never;
+  edge?: never;
+  cells?: never;
+  hides?: never;
+}
+
+/** One entry of the curated list: a record's gender or number, cells of its table of forms, a sense's `form_of` edge set or removed, a page-only entry's definition, a recovered definition hidden, or a sense hidden. */
+export type CuratedCorrection = RecordCorrection | CellCorrection | EdgeCorrection | EdgeRemoval | DefinitionCorrection | RecoveredDefinitionHide | SenseHide;
 
 /** An entry keyed to one archive line as a whole: a record's gender or number, or cells of its table. */
 export type LineCorrection = RecordCorrection | CellCorrection;
@@ -422,6 +479,8 @@ export const isEdgeRemoval = (correction: CuratedCorrection): correction is Edge
 const isSenseEdgeCorrection = (correction: CuratedCorrection): correction is SenseEdgeCorrection => correction.edge !== undefined;
 
 export const isRecoveredHide = (correction: CuratedCorrection): correction is RecoveredDefinitionHide => correction.hides !== undefined;
+
+export const isSenseHide = (correction: CuratedCorrection): correction is SenseHide => correction.hidesSense !== undefined;
 
 /** The entries of `corrections` that correct a record's gender or number. */
 export const recordCorrections = (corrections: readonly CuratedCorrection[]): RecordCorrection[] =>
@@ -460,6 +519,35 @@ export const definitionCorrections = (corrections: readonly CuratedCorrection[])
 
 /** The entries of `corrections` that hide a recovered definition (#773). */
 export const recoveredHides = (corrections: readonly CuratedCorrection[]): RecoveredDefinitionHide[] => corrections.filter(isRecoveredHide);
+
+/** The entries of `corrections` that hide a sense of a record (#857). */
+export const senseHides = (corrections: readonly CuratedCorrection[]): SenseHide[] => corrections.filter(isSenseHide);
+
+/** Why a sense hide does not match the record's line it names. */
+export type SenseHideMisquote =
+  /** The line holds no sense at the hide's place. */
+  | "no-sense"
+  /** The sense's glosses are not the one gloss the hide quotes, at its pointer. */
+  | "gloss-differs"
+  /** The sense declares a `form_of` edge: hiding it would leave an edge to a sense no page shows. */
+  | "sense-has-edge";
+
+/**
+ * Whether `hide` quotes `line`, the record's archive line it names: a sense
+ * at its place whose only gloss is the one it quotes, at the pointer it
+ * names, and which declares no `form_of` edge. The digest already pins the
+ * line, so any answer but `undefined` is an entry that misquotes its own
+ * record, and nothing writes it.
+ */
+export function senseHideMisquote(hide: SenseHide, line: string): SenseHideMisquote | undefined {
+  const { index, gloss } = hide.hidesSense;
+  const sense = ((JSON.parse(line) as { senses?: { glosses?: unknown[]; form_of?: unknown[] }[] }).senses ?? [])[index];
+  if (sense === undefined) return "no-sense";
+  const glosses = sense.glosses ?? [];
+  if (gloss.pointer !== `/senses/${index}/glosses/0` || glosses.length !== 1 || glosses[0] !== gloss.text) return "gloss-differs";
+  if ((sense.form_of ?? []).length > 0) return "sense-has-edge";
+  return undefined;
+}
 
 /** One recovered definition of a record as a dictionary holds it: the page revision it was read from, its line, and that line's wikitext and text. */
 export interface RecoveredLine extends HiddenRecoveredLine {
@@ -522,8 +610,10 @@ export function definitionMismatch(correction: DefinitionCorrection, entry: Page
  * table, `it-0c432803:113784:cells`, so one record may carry both kinds; for
  * an edge set or removed, also its sense, `it-0c432803:77162/senses/1`;
  * for a recovered definition hidden, also its page line,
- * `it-0c432803:573791/page-line/3`; or a definition's page revision and
- * place, `page:3906191:0`.
+ * `it-0c432803:573791/page-line/3`; for a sense hidden, its sense and
+ * `/hidden`, `it-0c432803:96753/senses/0/hidden`, so it never reads as an
+ * edge of that sense; or a definition's page revision and place,
+ * `page:3906191:0`.
  */
 export const correctionId = (correction: CuratedCorrection): string =>
   isDefinitionCorrection(correction)
@@ -532,7 +622,9 @@ export const correctionId = (correction: CuratedCorrection): string =>
       ? `${correction.record.releaseId}:${correction.record.lineNo}/senses/${correction.edge.sense}`
       : isRecoveredHide(correction)
         ? `${correction.record.releaseId}:${correction.record.lineNo}/page-line/${correction.hides.line}`
-        : `${correction.record.releaseId}:${correction.record.lineNo}${isCellCorrection(correction) ? ":cells" : ""}`;
+        : isSenseHide(correction)
+          ? `${correction.record.releaseId}:${correction.record.lineNo}/senses/${correction.hidesSense.index}/hidden`
+          : `${correction.record.releaseId}:${correction.record.lineNo}${isCellCorrection(correction) ? ":cells" : ""}`;
 
 /** A permanent link to the revision, which stays as it was whatever the page says later. */
 export const evidenceUrl = (evidence: Omit<Evidence, "shows">): string =>
@@ -1000,6 +1092,17 @@ export const HAND_CORRECTIONS: readonly CuratedCorrection[] = [
       { wiki: "en.wiktionary.org", title: "eguali", revisionId: 68995164, shows: "===Adjective=== {{head|it|adjective form}} # {{plural of|it|eguale}}" },
     ],
     ruling: "https://github.com/povlabs/lexema/issues/830#issuecomment-6233334459",
+  },
+  // Huey's ruling on #857, 2026-10-17: hide gaio's adjective sense 0, a stray
+  // link where a definition should be. It is the only sense of that shape on
+  // it-0c432803 (ADR 0030's amendment of that day).
+  {
+    record: { releaseId: IT, lineNo: 96753, lineSha256: "876c64ad8a6a60f9f04e07e3d88464a9ee5f783a7d17d5aaf1c0dbd670b77d66", word: "gaio", pos: "adj" },
+    hidesSense: { index: 0, gloss: { pointer: "/senses/0/glosses/0", text: "Ultima_Sfaccim" }, line: 6, wikitext: "# [[Ultima_Sfaccim]]" },
+    evidence: {
+      page: { wiki: "it.wiktionary.org", title: "gaio", revisionId: 4057291 },
+      ruling: "https://github.com/povlabs/lexema/issues/857#issuecomment-6237103400",
+    },
   },
 ];
 

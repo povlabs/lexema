@@ -297,6 +297,11 @@ test("every declaration already in dictionary-changes parses as before, with no 
       );
       continue;
     }
+    // The hidden sense (#857) names the word whose page it changes, with the definition the page then shows first.
+    if (name === "2026-10-17-correct-gaio-hidden-sense.json") {
+      assert.deepEqual(parseDeclaration(path, text).lookups?.map((item) => [item.word, item.gloss]), [["gaio", "allegro"]]);
+      continue;
+    }
     // The old spellings (#830) name eguale's corrected plural, eguale, and eguaglianza with its hand-kept definition.
     if (name === "2026-10-17-correct-old-spellings.json") {
       assert.deepEqual(parseDeclaration(path, text).lookups?.map((item) => [item.word, item.gloss]), [

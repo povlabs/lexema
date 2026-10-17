@@ -536,7 +536,7 @@ test("the upgrade brings a master seeded before #18 up to the schema and is safe
   assert.deepEqual(missingUpgrade(readerOf(old)), [...UPGRADE_NAMES]);
   assert.deepEqual(
     UPGRADE_NAMES.filter((name) => [...CORRECTION_TABLES, ...HIDE_TABLES].includes(name as never)),
-    ["correction_version", "corrected_claim", "corrected_edge", "corrected_form", "hidden_recovered_definition", "hide_version", "hidden_record"],
+    ["correction_version", "corrected_claim", "corrected_edge", "corrected_form", "hidden_recovered_definition", "hidden_sense", "hide_version", "hidden_record"],
   );
   const upgrade = masterUpgradeSql(await readFile(SCHEMA, "utf8"));
   const asFresh = (db: DatabaseSync) => schemaOf(db).replaceAll("CREATE TABLE IF NOT EXISTS", "CREATE TABLE").replaceAll("CREATE INDEX IF NOT EXISTS", "CREATE INDEX");
@@ -1037,5 +1037,39 @@ test("a hidden recovered definition is not hidden for the record that replaced i
     const again = planCorrections(readerOf(db), [casa]);
     assert.equal(again.sql, "");
     assert.deepEqual(again.hides.map((entry) => entry.state), ["retired"]);
+  });
+});
+
+test("a hidden sense is not hidden on the record a newer release's change put in its record's place, and the apply reports the hide (#857, ADR 0025, ADR 0027)", async () => {
+  await withDesk(async ({ db, later }) => {
+    const [{ record_id: casaId }] = db.prepare(`SELECT record_id FROM source_record WHERE release_id = '${MASTER}' AND line_no = 1`).all() as { record_id: number }[];
+    // A synthetic entry on the master's `casa` sense 0, to test the mechanism; no ruling hides it.
+    const casa: CuratedCorrection = {
+      record: { releaseId: MASTER, lineNo: 1, lineSha256: createHash("sha256").update(CASA_JULY, "utf8").digest("hex"), word: "casa", pos: "noun" },
+      hidesSense: { index: 0, gloss: { pointer: "/senses/0/glosses/0", text: "casa ( approfondimento) f sing" }, line: 4, wikitext: "# casa ( approfondimento) f sing" },
+      evidence: {
+        page: { wiki: "it.wiktionary.org", title: "casa", revisionId: 123 },
+        ruling: "https://github.com/povlabs/lexema/issues/857#issuecomment-1",
+      },
+    };
+    execute(db, planCorrections(readerOf(db), [casa]).sql);
+    const held = () => db.prepare("SELECT record_id, sense_index, json_pointer, correction_id, evidence_url FROM hidden_sense").all().map((row) => ({ ...row }));
+    const before = held();
+    assert.deepEqual(before.map((row) => row.record_id), [casaId]);
+    const shown = async (): Promise<string[]> => readings(await ask(db, "casa")).flatMap(glosses);
+    assert.deepEqual(await shown(), []);
+
+    // The later release changed casa's line: its senses are the newer source's, which the entry was never checked against.
+    const plan = await applied(db, later, [["changed", "casa"]]);
+    const [change] = plan.changes;
+    assert.deepEqual(plan.retiredCorrections, [{ correctionId: correctionId(casa), recordId: casaId, replacedBy: change.recordId, changeId: change.change.id }]);
+    assert.doesNotMatch(plan.sql, /hidden_sense/);
+    // The row and its evidence stay beside the retired record, and the replacing record shows every sense it has.
+    assert.deepEqual(held(), before);
+    assert.deepEqual(await shown(), ["edificio adibito ad abitazione", "famiglia"]);
+    // A later run reports the entry instead of writing it.
+    const again = planCorrections(readerOf(db), [casa]);
+    assert.equal(again.sql, "");
+    assert.deepEqual(again.senseHides.map((entry) => entry.state), ["retired"]);
   });
 });

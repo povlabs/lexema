@@ -35,6 +35,7 @@ export const COUNTED_TABLES = [
   "corrected_edge",
   "corrected_definition",
   "hidden_recovered_definition",
+  "hidden_sense",
   "hand_kept_definition",
   "name_entry",
   "wikidata_word",

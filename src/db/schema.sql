@@ -833,6 +833,35 @@ CREATE TABLE hidden_recovered_definition (
     REFERENCES source_record(record_id, release_id) ON DELETE CASCADE
 ) STRICT;
 
+-- One sense of a record hidden beside it (#857, ADR 0030): a sense whose page
+-- line states no definition, only a stray link (`gaio`'s adjective sense 0,
+-- `Ultima_Sfaccim`, from `# [[Ultima_Sfaccim]]`). The committed list names the
+-- record as for corrected_claim, and the sense by its place with its one gloss
+-- verbatim; the seed and `correct:records` write the row only where the
+-- record's line holds that gloss there, and the sense declares no edge.
+-- sense, sense_gloss, sense_label and source_record_json stay as imported; a
+-- lookup reads the record as having no sense at `sense_index`. A row stays on
+-- the record it was written for: a record that replaced that one shows its
+-- own senses, and the update reports the hide (ADR 0027, src/update/apply.ts).
+-- Absent on a master seeded before it until `update:upgrade` creates it; a
+-- lookup reads an absent one as empty.
+CREATE TABLE hidden_sense (
+  record_id     INTEGER NOT NULL REFERENCES source_record(record_id) ON DELETE CASCADE,
+  release_id    TEXT    NOT NULL,
+  sense_index   INTEGER NOT NULL CHECK (sense_index >= 0),
+  json_pointer  TEXT    NOT NULL,  -- the gloss the entry quotes: '/senses/0/glosses/0'
+  -- The list entry it was written from: release, archive line and sense, `it-0c432803:96753/senses/0/hidden`.
+  correction_id TEXT    NOT NULL,
+  -- The record's own page at the revision in the dump the archive was
+  -- extracted from, as a permanent link. Split as corrected_claim's is, for
+  -- D1's 50-byte pattern limit (#489).
+  evidence_url  TEXT    NOT NULL CHECK (evidence_url GLOB 'https://*'
+                                        AND evidence_url GLOB '*.wiktionary.org/w/index.php?title=*&oldid=*'),
+  PRIMARY KEY (record_id, sense_index),
+  FOREIGN KEY (record_id, release_id)
+    REFERENCES source_record(record_id, release_id) ON DELETE CASCADE
+) STRICT;
+
 -- Live-correction cache revision, like hide_version: a nonempty
 -- `correct:records` transaction increments it, so card and suggestion
 -- addresses move with the corrected facts. Older masters acquire this table

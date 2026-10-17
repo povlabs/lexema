@@ -345,7 +345,15 @@ its place on the record's own page, with its wikitext and text, and cites that
 page's revision and Huey's ruling. The seed writes it as a
 `hidden_recovered_definition` row only where the record's recovered definition
 at that line, from that revision, is the one it quotes, and reports it
-otherwise; a lookup then reads the record as having no such definition. A
+otherwise; a lookup then reads the record as having no such definition.
+An entry may also hide one sense of a record whose page line states no
+definition, `gaio`'s adjective sense `Ultima_Sfaccim`, from the stray link
+`# [[Ultima_Sfaccim]]` ([#857](https://github.com/povlabs/lexema/issues/857)):
+it names the sense by its place in the record's `senses`, with its one gloss,
+and cites the page line it was read from, that page's revision and Huey's
+ruling. The seed writes it as a `hidden_sense` row; the digest pins the line,
+and an entry that misquotes its line, or names a sense that declares an edge,
+is refused. A lookup then reads the record as having no such sense. A
 database seeded
 before an entry gets it by a one-off update, with no reseed and no archive:
 
@@ -358,10 +366,11 @@ It picks its database the way the seed does: the local D1 under `SEED_STATE`
 one SQL file under `.data/updates/` and runs it as one transaction: it writes
 each entry's rows, and increments the correction revision, so card and
 suggestion addresses move ([cache identity](DEPLOY.md#card-and-suggestion-cache-identity)).
-`source_record_json`, `grammar_claim`, `lookup_form`, `form_of_edge` and the
-`recovered_*` rows are not touched. The file holds no DDL: on a master without
-`corrected_claim`, `corrected_form`, `corrected_edge`,
-`hidden_recovered_definition`, `correction_version`, `corrected_definition` or
+`source_record_json`, `grammar_claim`, `lookup_form`, `form_of_edge`, the
+`sense*` rows and the `recovered_*` rows are not touched. The file holds no
+DDL: on a master without `corrected_claim`, `corrected_form`,
+`corrected_edge`, `hidden_recovered_definition`, `hidden_sense`,
+`correction_version`, `corrected_definition` or
 `hand_kept_definition`, or with a `corrected_form` from before its
 `surface_key`, the command refuses to write and names
 `pnpm run update:upgrade`, which creates them and keys the cells. It then reads the rows
