@@ -243,6 +243,21 @@ test("on a slice with the pull request's changes, a word it adds or recovers is 
     for (const word of ["dismago", "Dipendo ", "raccontare"]) assert.equal(await dictionaryFor(word, shared, sliced), sliced, word);
     for (const word of ["cane", "bello", ""]) assert.equal(await dictionaryFor(word, shared, sliced), shared, word);
     assert.equal(await dictionaryFor("dismago", shared, undefined), shared);
+    // A word that reaches a slice word only as its shape (rule it-word-shape/v1)
+    // reads the slice, so the Preview finds it as the merge will (#863):
+    // `raccontarvi` of `raccontare`, which only the change recovers.
+    for (const word of ["raccontarvi", "Fornirvi"]) assert.equal(await dictionaryFor(word, shared, sliced), sliced, word);
+    assert.equal(await outcomeOf(shared, "raccontarvi"), "not-found");
+    const shaped = await lookup({ db: sliced, releaseId: RELEASE, query: "raccontarvi" });
+    assert.ok(shaped.outcome === "found" && shaped.route.kind === "shape", JSON.stringify(shaped).slice(0, 300));
+    assert.deepEqual(shaped.readings.map((reading) => reading.word), ["raccontare"]);
+    // A word whose shapes reach no slice word reads the shared dictionary,
+    // and so does one a source record spells, though a shape of it is a slice
+    // word: `case` is a form of `casa`, which the lookup reads as typed.
+    for (const word of ["cani", "belli", "quei"]) assert.equal(await dictionaryFor(word, shared, sliced), shared, word);
+    assert.equal(await outcomeOf(shared, "case"), "found");
+    assert.equal(await dictionaryFor("casa", shared, sliced), sliced);
+    assert.equal(await dictionaryFor("case", shared, sliced), shared);
   } finally {
     slice.close();
     db.close();

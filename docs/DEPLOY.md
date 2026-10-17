@@ -898,7 +898,14 @@ running.
 
 1. It reads the declarations the pull request adds, in path order, the order
    the deploy takes them from the one commit a pull request lands as. A
-   declaration may leave `expected` out until this check gives it.
+   declaration may leave `expected` out until this check gives it. It also
+   reads each declaration the pull request edits that `production` does not
+   hold yet, and puts these first, in path order (#825). Such a file was
+   merged past `production` and not applied, as after a red deploy, so the
+   next deploy plans it as the pull request leaves it. It fetches
+   `production` to tell, and is red when it cannot. An edited declaration that
+   `production` holds is applied already, and it is not planned: editing it
+   changes nothing the deploy does.
 2. It plans the first one with the pull request's own code against
    `lexema-dictionary`, and holds the counts to `expected` and to the hard
    limits, as the deploy will. This includes `update:auto`, `hide:records`,

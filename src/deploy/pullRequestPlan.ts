@@ -1,5 +1,5 @@
 // The pull request plan check (#494): for each change declaration a pull
-// request adds, plan it with the pull request's own code against the live
+// request adds, or edits while the deploy has yet to apply it (#825), plan it with the pull request's own code against the live
 // dictionary and hold its counts to `expected`, so one pull request carries a
 // change and its counts. `.github/workflows/dictionary-plan.yml` runs it with a
 // D1 read-only token; it writes nothing. The deploy still holds every
@@ -30,19 +30,46 @@ import type { PlanCounts } from "../update/planCounts.js";
 import type { PlanOnlyAnswer } from "./dictionaryDeploy.js";
 import type { Git } from "./pending.js";
 
-/**
- * The declarations `head` adds past `base`, each parsed as a draft. They come
- * in path order, the order the deploy reads them from the one commit a pull
- * request lands as. A file that is not a declaration is refused, naming it.
- */
-export function addedDeclarations(git: Git, base: string, head: string): DeclarationDraft[] {
-  return addedDeclarationFiles(git, base, head).map(({ file, text }) => parseDraft(file, text));
+/** A declaration file as `head` holds it. */
+export interface DeclarationFile {
+  readonly file: string;
+  readonly text: string;
 }
 
-/** The declaration files `head` adds past `base`, in path order, each with its text as `head` holds it. */
-export function addedDeclarationFiles(git: Git, base: string, head: string): { readonly file: string; readonly text: string }[] {
+/**
+ * The declarations the deploy will plan from `head` that a pull request from
+ * `base` sets: first each one it edits that `production` does not hold yet
+ * (pendingEditedFiles), then each one it adds. Each group is in path order. An
+ * edited one is older than any added one, and the deploy applies the older
+ * first. A file that is not a declaration is refused, naming it.
+ */
+export function pullRequestDeclarations(git: Git, base: string, head: string, production: string): DeclarationDraft[] {
+  return [...pendingEditedFiles(git, base, head, production), ...addedDeclarationFiles(git, base, head)].map(({ file, text }) => parseDraft(file, text));
+}
+
+/**
+ * The declaration files `head` adds past `base`, in path order, each with its
+ * text as `head` holds it. Path order is the order the deploy reads them from
+ * the one commit a pull request lands as.
+ */
+export function addedDeclarationFiles(git: Git, base: string, head: string): DeclarationFile[] {
+  return changedDeclarationFiles(git, "A", base, head);
+}
+
+/**
+ * The declaration files `head` edits past `base` that `production` does not
+ * hold, in path order, each with its text as `head` holds it. Such a file was
+ * added past `production`, so the deploy has not applied it and will plan it
+ * as `head` holds it (deployRange, pending.ts). A file `production` holds is
+ * applied already: editing it changes nothing the deploy does.
+ */
+export function pendingEditedFiles(git: Git, base: string, head: string, production: string): DeclarationFile[] {
+  return changedDeclarationFiles(git, "M", base, head).filter(({ file }) => !git.test(["cat-file", "-e", `${production}:${file}`]));
+}
+
+function changedDeclarationFiles(git: Git, filter: "A" | "M", base: string, head: string): DeclarationFile[] {
   return git
-    .run(["diff", "--name-only", "--diff-filter=A", base, head, "--", DECLARATIONS_DIR])
+    .run(["diff", "--name-only", `--diff-filter=${filter}`, base, head, "--", DECLARATIONS_DIR])
     .split("\n")
     .filter(isDeclarationPath)
     .map((file) => ({ file, text: git.run(["show", `${head}:${file}`]) }));
@@ -158,7 +185,7 @@ export function pullRequestPlanReport(outcomes: readonly DeclarationOutcome[], d
   const green = outcomes.every(outcomePasses);
   const lines =
     outcomes.length === 0
-      ? ["This pull request adds no change declaration, so there is nothing to plan."]
-      : [`Each declaration this pull request adds, planned with its own code against \`${dictionary}\`. Nothing was written.`, ...outcomes.flatMap((outcome) => ["", ...outcomeLines(outcome), ...lookupLines(outcome.declaration)])];
+      ? ["This pull request adds no change declaration and edits none the deploy has yet to apply, so there is nothing to plan."]
+      : [`Each declaration this pull request adds, or edits before the deploy has applied it, planned with its own code against \`${dictionary}\`. Nothing was written.`, ...outcomes.flatMap((outcome) => ["", ...outcomeLines(outcome), ...lookupLines(outcome.declaration)])];
   return { markdown: [`## Dictionary plan check: ${green ? "green" : "red"}`, "", ...lines, ""].join("\n"), green };
 }

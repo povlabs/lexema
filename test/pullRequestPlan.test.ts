@@ -10,10 +10,11 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
-import { gitIn } from "../src/deploy/pending.js";
+import { pathToFileURL } from "node:url";
+import { fetchProduction, gitIn, PRODUCTION_BRANCH } from "../src/deploy/pending.js";
 import type { PlanOnlyAnswer } from "../src/deploy/dictionaryDeploy.js";
 import { main as deployMain } from "../src/deploy/deployCli.js";
-import { addedDeclarations, declarationWith, planPullRequest, type PullRequestPlanner, pullRequestPlanReport } from "../src/deploy/pullRequestPlan.js";
+import { declarationWith, planPullRequest, type PullRequestPlanner, pullRequestDeclarations, pullRequestPlanReport } from "../src/deploy/pullRequestPlan.js";
 import { type DeclarationDraft, type DeclaredChange, DeclarationRefused, HIDING_RULES, parseDeclaration, parseDraft } from "../src/update/declaration.js";
 import { PlanCounts } from "../src/update/planCounts.js";
 import { PAGE_ENTRY_RULES } from "../src/import/loadPageEntries.js";
@@ -76,14 +77,71 @@ test("the declarations a pull request adds are its new top-level .json files und
       "dictionary-changes/d.txt": "not a declaration",
       "src/other.json": correction(COUNTS),
     });
-    const added = addedDeclarations(gitIn(dir), base, head);
+    // `production` is at the base, so the edited deployed.json is applied already.
+    const added = pullRequestDeclarations(gitIn(dir), base, head, base);
     assert.deepEqual(added.map(({ file }) => file), ["dictionary-changes/a-first.json", "dictionary-changes/b-second.json"]);
     assert.deepEqual(added[0].expected?.toJSON(), COUNTS);
     assert.equal(added[1].expected, null);
-    assert.deepEqual(addedDeclarations(gitIn(dir), head, head), []);
+    assert.deepEqual(pullRequestDeclarations(gitIn(dir), head, head, head), []);
 
     const broken = await commit(dir, { "dictionary-changes/broken.json": "{ command: " });
-    assert.throws(() => addedDeclarations(gitIn(dir), head, broken), (error: unknown) => error instanceof DeclarationRefused && error.file === "dictionary-changes/broken.json");
+    assert.throws(() => pullRequestDeclarations(gitIn(dir), head, broken, head), (error: unknown) => error instanceof DeclarationRefused && error.file === "dictionary-changes/broken.json");
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("an edited declaration production does not hold yet is planned as the pull request holds it, before the ones it adds; one production holds is not (#825)", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "lexema-pr-plan-"));
+  try {
+    git(dir, "init", "--initial-branch=main");
+    const fixed = { ...COUNTS, records: { added: 1, changed: 0, removed: 0 } };
+    const production = await commit(dir, { "dictionary-changes/README.md": "# Change declarations\n", "dictionary-changes/deployed.json": correction(COUNTS) });
+    // Merged past `production`, and its deploy went red, so it is still to apply.
+    const base = await commit(dir, { "dictionary-changes/z-pending.json": correction(COUNTS), "dictionary-changes/y-untouched.json": correction(COUNTS) });
+    const head = await commit(dir, {
+      "dictionary-changes/z-pending.json": correction(fixed),
+      "dictionary-changes/deployed.json": correction(fixed),
+      "dictionary-changes/a-added.json": correction(),
+    });
+    const declarations = pullRequestDeclarations(gitIn(dir), base, head, production);
+    assert.deepEqual(declarations.map(({ file }) => file), ["dictionary-changes/z-pending.json", "dictionary-changes/a-added.json"]);
+    assert.deepEqual(declarations[0].expected?.toJSON(), fixed);
+
+    // Once a deploy applies it, `production` holds it, and an edit plans nothing.
+    assert.deepEqual(pullRequestDeclarations(gitIn(dir), base, head, base).map(({ file }) => file), ["dictionary-changes/a-added.json"]);
+
+    // An edit alone is planned and named in the report.
+    const edited = await commit(dir, { "dictionary-changes/z-pending.json": correction(COUNTS) });
+    const only = pullRequestDeclarations(gitIn(dir), head, edited, production);
+    assert.deepEqual(only.map(({ file }) => file), ["dictionary-changes/z-pending.json"]);
+    const report = pullRequestPlanReport(await planPullRequest(only, planner()), "lexema-dictionary");
+    assert.equal(report.green, true, report.markdown);
+    assert.match(report.markdown, /### `dictionary-changes\/z-pending\.json` \(`correct:records`\)\n\nThe plan's counts match `expected`\./);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("production is fetched whole into a full checkout and as one commit into a shallow one (#825)", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "lexema-pr-plan-"));
+  try {
+    const origin = join(dir, "origin");
+    await mkdir(origin);
+    git(origin, "init", "--initial-branch=main");
+    const production = await commit(origin, { "dictionary-changes/a.json": correction(COUNTS) });
+    git(origin, "branch", PRODUCTION_BRANCH);
+    await commit(origin, { "dictionary-changes/b.json": correction(COUNTS) });
+    await commit(origin, { "dictionary-changes/c.json": correction(COUNTS) });
+    const url = pathToFileURL(origin).href;
+
+    git(dir, "clone", "--quiet", "--depth=1", url, "shallow");
+    assert.equal(fetchProduction(gitIn(join(dir, "shallow"))), production);
+    assert.equal(git(join(dir, "shallow"), "rev-list", "--count", "--all"), "2", "the tip and production, nothing between");
+
+    git(dir, "clone", "--quiet", "--single-branch", url, "full");
+    assert.equal(fetchProduction(gitIn(join(dir, "full"))), production);
+    assert.equal(git(join(dir, "full"), "rev-parse", "--is-shallow-repository"), "false");
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
@@ -284,5 +342,5 @@ test("a draft's lookups are kept in the declaration it prints and listed in the 
 test("a pull request that adds no declaration passes with nothing to plan", async () => {
   const report = pullRequestPlanReport(await planPullRequest([], planner()), "lexema-dictionary");
   assert.equal(report.green, true);
-  assert.match(report.markdown, /adds no change declaration, so there is nothing to plan/);
+  assert.match(report.markdown, /adds no change declaration and edits none the deploy has yet to apply, so there is nothing to plan/);
 });

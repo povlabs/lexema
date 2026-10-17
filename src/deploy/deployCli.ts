@@ -11,7 +11,8 @@
 //
 // `--added-since` is the pull request plan check (#494,
 // `.github/workflows/dictionary-plan.yml`): it plans the declarations the
-// checked-out commit adds past the base and holds them to `expected`
+// checked-out commit adds past the base, or edits while `production` does not
+// hold them yet (#825), and holds them to `expected`
 // (pullRequestPlan.ts). It writes nothing, like every plan-only run.
 //
 // `--release` plans against a kaikki release the repository does not record
@@ -35,8 +36,8 @@ import { DeclarationRefused, parseChange } from "../update/declaration.js";
 import { masterReaderOf } from "../update/updateCli.js";
 import { type DataFetcher, lexemaDataFetcher } from "./dataFiles.js";
 import { type DeployDeps, deployDictionary, deploySummary, planOnly, restoreCommand } from "./dictionaryDeploy.js";
-import { type Git, gitIn } from "./pending.js";
-import { addedDeclarations, planPullRequest, pullRequestPlanReport } from "./pullRequestPlan.js";
+import { fetchProduction, type Git, gitIn, RangeRefused } from "./pending.js";
+import { planPullRequest, pullRequestDeclarations, pullRequestPlanReport } from "./pullRequestPlan.js";
 
 const USAGE = `usage:
   pnpm run deploy:dictionary
@@ -67,16 +68,18 @@ export function deployLog(write: (line: string) => void, dictionary: string): Pi
 
 /**
  * `--plan-only --added-since <base>`: the pull request plan check (#494).
- * Plans the declaration the checked-out commit adds past `base` and holds it
- * to `expected` (pullRequestPlan.ts). Red when a count differs, `expected` is
- * missing, a hard limit is crossed, or a later declaration cannot be counted.
+ * Plans the declaration the checked-out commit adds past `base`, or edits
+ * while `production` does not hold it yet (#825), and holds it to `expected`
+ * (pullRequestPlan.ts). Red when a count differs, `expected` is missing, a
+ * hard limit is crossed, a later declaration cannot be counted, or
+ * `production` cannot be fetched.
  */
 async function pullRequestPlanCommand(base: string, env: NodeJS.ProcessEnv, wrangler: Wrangler, git: Git): Promise<CommandResult> {
   let declarations;
   try {
-    declarations = addedDeclarations(git, base, "HEAD");
+    declarations = pullRequestDeclarations(git, base, "HEAD", fetchProduction(git));
   } catch (error: unknown) {
-    if (error instanceof DeclarationRefused) return { out: error.message, status: 1 };
+    if (error instanceof DeclarationRefused || error instanceof RangeRefused) return { out: error.message, status: 1 };
     throw error;
   }
   const target = seedTargetFrom(env, wrangler, resolve(".data/seed-state"));
