@@ -159,6 +159,13 @@ function classOfCall(verb: PronominalVerb, page: PinnedTemplateCall): ClassAnswe
 /** Whether a gloss says what it is a form of: "seconda persona singolare dell'indicativo presente di traversare". */
 const isFormGloss = (gloss: string): boolean => glossBase(gloss.replace(/,/g, ""))?.formOpening === true;
 
+/**
+ * Whether a record's every gloss says it is a form of another word: `traversi`
+ * ("seconda persona singolare dell'indicativo presente di traversare"), or
+ * `sporsi`, a form of `sporgere` and no pronominal verb. False for no gloss.
+ */
+export const namesOnlyAnotherWord = (glosses: readonly string[]): boolean => glosses.length > 0 && glosses.every(isFormGloss);
+
 /** The verbs that do not follow their conjugation, and the prefixes their compounds take that a regular verb's ending can share. */
 function irregularFamily(base: string): boolean {
   if (base.endsWith("trare")) return true; // attrarre, distrarre: `-trarsi` may be either
@@ -198,7 +205,7 @@ function classOfEnding(base: string): ClassAnswer {
  * settles it.
  */
 export function regularClassOf(verb: PronominalVerb, glosses: readonly string[], calls: TemplateCalls): ClassAnswer {
-  if (glosses.length > 0 && glosses.every(isFormGloss)) return { kind: "declined", reason: "form-of-another-word" };
+  if (namesOnlyAnotherWord(glosses)) return { kind: "declined", reason: "form-of-another-word" };
   for (const title of [verb.word, ...verb.bases].map(conjugationPageOf)) {
     const page = calls[title];
     if (page !== undefined) return classOfCall(verb, page);

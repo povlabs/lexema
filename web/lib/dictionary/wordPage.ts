@@ -112,10 +112,8 @@
 // none of the base words' facts, its pronunciation included.
 
 import { foldItalianApostrophes, normalizeItalianExact } from "@lexema/italian/normalize.ts";
-import { CONJUGATION_TEMPLATE_CALLS } from "@lexema/italian/conjugationTemplateCalls.ts";
+import { builtBaseOf } from "@lexema/italian/builtBase.ts";
 import { pronominalVerb, type PronominalVerb } from "@lexema/italian/pronominalConjugation.ts";
-import { handKeptCells, handKeptTableOf } from "@lexema/italian/handKeptTables.ts";
-import { regularCells, regularClassOf } from "@lexema/italian/regularConjugation.ts";
 import { VERB_FORM_LINE_RULE, verbFormLine, type SpelledGender } from "@lexema/italian/verbFormLine.ts";
 import { WORD_SHAPE_LINE_RULE, wordShapeLine, type ShapedSpelling } from "@lexema/italian/wordShape.ts";
 import { mergeExpressions } from "@lexema/lookup/expressions.ts";
@@ -434,17 +432,15 @@ function takenConjugationOf(
  * record's forms when one has a table (#837), else the regular cells of the
  * class the source settles for it (`it-regular-conjugation/v1`, #838), read
  * off the owner's glosses and the pinned `{{It-conj}}` calls, else the cells
- * of the verb's hand-kept table (#844). None when the source settles no class
- * and the list keeps no table.
+ * of the verb's hand-kept table (#844), as `builtBaseOf`
+ * (src/italian/builtBase.ts) gives them to the lookup too. None when the
+ * source settles no class and the list keeps no table.
  */
 function pronominalBaseCells(pronominal: { verb: PronominalVerb; owner: Reading }, bases: readonly Reading[]): readonly BaseCellOf[] | undefined {
   const base = pronominalBaseOf(pronominal.verb, bases);
   if (base !== undefined) return base.forms;
   const glosses = pronominal.owner.senses.flatMap((sense) => sense.glosses.map((gloss) => gloss.text));
-  const settled = regularClassOf(pronominal.verb, glosses, CONJUGATION_TEMPLATE_CALLS);
-  if (settled.kind === "settled") return regularCells(settled);
-  const kept = handKeptTableOf(pronominal.verb.word);
-  return kept === undefined ? undefined : handKeptCells(kept);
+  return builtBaseOf(pronominal.verb, glosses)?.cells;
 }
 
 /** What any source reading may show after its own text, in this order on the page. */

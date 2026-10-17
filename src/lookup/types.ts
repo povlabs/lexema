@@ -1287,9 +1287,10 @@ export interface PhraseForm {
  * shape of words the dictionary has (`raccontarvi` of `raccontare`,
  * `quei` of `quello`, #809); `spellings` are the spellings that answered, and the
  * readings are their records. `pronominal`: it is none of these, and rule
- * `it-pronominal-pair/v1` reads it, `si` and a verb form, as a pronominal
- * verb the dictionary has (`si trasferiscono` of `trasferirsi`, #810);
- * `pairs` are the pairs that answered, and the readings are those verbs.
+ * `it-pronominal-pair/v2` reads it, a reflexive pronoun and a verb form, as a
+ * pronominal verb the dictionary has (`mi trasferisco` of `trasferirsi`,
+ * #810, #834); `pairs` are the pairs that answered, and the readings are
+ * those verbs.
  */
 export type FoundRoute =
   | { kind: "surface" }

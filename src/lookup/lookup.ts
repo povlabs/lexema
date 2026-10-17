@@ -282,8 +282,9 @@ export async function lookup({ db, releaseId, query }: LookupOptions): Promise<L
   // query nothing answers pays one statement for them and no call (#809).
   const shapeKeys = hits.length === 0 ? shapeKeysOf(key) : [];
   const shapeRows = shapeKeys.length > 0 ? handled(readShapeRows(db, releaseId, tables, shapeKeys)) : undefined;
-  // So are the pronominal verbs rule `it-pronominal-pair/v1` reads a `si` +
-  // verb pair as (#810); a query that is no pair sends nothing for them.
+  // So are the pronominal verbs rule `it-pronominal-pair/v2` reads a
+  // reflexive pronoun + verb pair as (#810, #834); a query that is no pair
+  // sends nothing for them.
   const pairs = hits.length === 0 && pairQueryOf(key) !== undefined ? handled(answeringPairs(db, releaseId, tables, [key])) : undefined;
   const spelled = await spelling;
   if (spelled !== undefined) return spelled;
@@ -309,9 +310,9 @@ export async function lookup({ db, releaseId, query }: LookupOptions): Promise<L
   const shaped = shapeRows === undefined ? undefined : await shapeResult(asTyped, answeringShapes(key, await shapeRows));
   if (shaped !== undefined) return shaped;
 
-  // Nor a shape. It may be `si` and a verb form, said for a pronominal verb
-  // the dictionary has: `si trasferiscono` of `trasferirsi` (rule
-  // `it-pronominal-pair/v1`, #810).
+  // Nor a shape. It may be a reflexive pronoun and a verb form, said for a
+  // pronominal verb the dictionary has: `mi trasferisco` of `trasferirsi`
+  // (rule `it-pronominal-pair/v2`, #810, #834).
   const paired = pairs === undefined ? undefined : await pairResult(asTyped, (await pairs).get(key) ?? []);
   if (paired !== undefined) return paired;
 
@@ -361,8 +362,8 @@ async function shapeResult(spelled: Spelled, answering: readonly AnsweringSpelli
 }
 
 /**
- * The query's readings as `si` and a verb form of pronominal verbs the
- * dictionary has (rule `it-pronominal-pair/v1`, #810), made from their rows
+ * The query's readings as a reflexive pronoun and a verb form of pronominal
+ * verbs the dictionary has (rule `it-pronominal-pair/v2`, #810, #834), made from their rows
  * as a shape's are. `answering` are the pairs that answer
  * (`answeringPairs`). Undefined when none does.
  */

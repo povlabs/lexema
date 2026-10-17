@@ -15,8 +15,8 @@
 // `it-essere-agreement/v2`, #676, #756): `sono andata` as the feminine of
 // andare's `sono andato`, and beside it the words rule `it-word-shape/v1`
 // reads them as a shape of (#809): `raccontarvi` of raccontare, and the
-// pronominal verbs rule `it-pronominal-pair/v1` reads a `si` + verb pair as
-// (#810): `si trasferiscono` of trasferirsi, with those words' lemma links
+// pronominal verbs rule `it-pronominal-pair/v2` reads a reflexive pronoun +
+// verb pair as (#810, #834): `mi trasferisco` of trasferirsi, with those words' lemma links
 // after. The search and the agreement reading read a curated
 // table cell's corrected spelling beside the source's where the master keys
 // it (#748), as `lookup()` does.
@@ -506,8 +506,8 @@ function candidatesOfReadings(readings: readonly Match[], links: ReadonlyMap<num
 
 /**
  * The candidates of a word rule `it-word-shape/v1` reads as a shape of
- * words the dictionary has (#809), or rule `it-pronominal-pair/v1` as a
- * pronominal verb (#810), as `lookup()` and `candidatesOf` make them from the
+ * words the dictionary has (#809), or rule `it-pronominal-pair/v2` as a
+ * pronominal verb (#810, #834), as `lookup()` and `candidatesOf` make them from the
  * same rows (`readShapeRows`): the source's records and page-only entries the
  * rows reach, as `readingsOf` orders and folds them, then the hand-kept
  * readings.
@@ -539,8 +539,8 @@ function shapeCandidates(answered: readonly ShapeRow[], links: ReadonlyMap<numbe
  * no phrase either and has the shape of rule `it-essere-agreement/v2`, the
  * agreement read, and beside it, for a word that is no phrase and has a shape
  * of rule `it-word-shape/v1`, the shape read (`readShapeRows`), and for a
- * word that is `si` and a verb form, the two reads of rule
- * `it-pronominal-pair/v1` (`answeringPairs`), then the lemma links of the
+ * word that is a reflexive pronoun and a verb form, the two waits of rule
+ * `it-pronominal-pair/v2` (`answeringPairs`), then the lemma links of the
  * records they answer with.
  */
 export async function lookupBatch({
@@ -580,8 +580,9 @@ export async function lookupBatch({
   // Nor a compound form: it may be a shape of a word the dictionary has (rule
   // `it-word-shape/v1`, #809). Its spellings are read beside the agreement
   // read, for every word that is no phrase, with `lookup()`'s own statements.
-  // Nor a shape: it may be `si` and a verb form, said for a pronominal verb
-  // the dictionary has (rule `it-pronominal-pair/v1`, #810), read beside them;
+  // Nor a shape: it may be a reflexive pronoun and a verb form, said for a
+  // pronominal verb the dictionary has (rule `it-pronominal-pair/v2`, #810,
+  // #834), read beside them;
   // a batch with no such word sends nothing for it.
   const shapeKeys = [...new Set(unphrased.flatMap(shapeKeysOf))];
   const [headwords, agreements, shapeRows, pairs] = await Promise.all([
