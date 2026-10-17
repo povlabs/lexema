@@ -46,11 +46,11 @@
 // other `j`: `jazz` and `junior` keep theirs, and a word the dictionary
 // spells with a `j` (`troja`, `mojito`, `navajo`) answers as typed. Checked
 // against real words for #830 (Huey's ruling,
-// https://github.com/povlabs/lexema/issues/830#issuecomment-6233334459): of
-// the Italian records of release it-0c432803 spelled with a `j` between
-// vowels, read with `i` only `troja`, the forms of `abbujare` and the name
-// `Aja` spell another record, and the first two are old spellings of it
-// (`troia`, `abbuiare`). Each answers as typed all the same; the rest are
+// https://github.com/povlabs/lexema/issues/830#issuecomment-6233334459).
+// Release it-0c432803 has Italian records with a `j` between vowels. Read
+// with `i`, only three of them spell another record: `troja` (`troia`), the
+// forms of `abbujare` (`abbuiare`) and the name `Aja` (`aia`). The first two
+// are old spellings of that record. Each answers as typed all the same; the rest are
 // loanwords (`mojito`, `emoji`) whose `i` spelling the dictionary lacks.
 //
 // A truncated spelling is read in tiers, the first the dictionary has
@@ -525,7 +525,7 @@ const INFLECTED_GRAMMAR: ReadonlyMap<number, string> = new Map([
  *   superlative      bravissimo    "superlativo assoluto di bravo"
  *   participle       piaciute      "femminile plurale di piaciuto"
  *   j-spelling       gajo          "grafia antica di gaio"
- *   inflected       tate          "plurale di tata", poverina "femminile singolare di poverino"
+ *   inflected        tate          "plurale di tata", poverina "femminile singolare di poverino"
  *   conjugated       fischia       "voce del verbo fischiare"
  *   plural-spelling  valige        "variante grafica di valigie"
  *   english-plural   marines       "plurale di marine"
