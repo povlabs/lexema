@@ -5,7 +5,8 @@
 // Wiktionary has keeps its page; the Licence page has one Wikidata credit; and
 // the API names and credits a Wikidata word by its lexeme.
 // Seeded from the development fixture, then `load:wikidata-words` over the
-// lexemes of fixtures/wikidata-words/lexemes.jsonl.
+// lexemes of fixtures/wikidata-words/lexemes.jsonl and three lexemes of the
+// committed snapshot, `trucco`, `targhetta` and `professore` (#833).
 
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
@@ -20,7 +21,7 @@ import { seedSql } from "../../src/import/seedSql.js";
 import { fromNodeSqlite } from "../../src/lookup/database.js";
 import { lookup } from "../../src/lookup/lookup.js";
 import { planWikidataWords } from "../../src/wikidataWords/loadWikidataWords.js";
-import { parseSnapshot } from "../../src/wikidataWords/wordSnapshot.js";
+import { parseSnapshot, readWordSnapshot } from "../../src/wikidataWords/wordSnapshot.js";
 import { searchAttempt } from "@/lib/dictionary/searchAttempt.ts";
 import { Outcome, SearchPage } from "@/components/dictionary/SearchPage";
 import { Licence } from "@/components/dictionary/Licence";
@@ -52,7 +53,8 @@ before(async () => {
   });
   db = new DatabaseSync(":memory:");
   for (const part of parts) db.exec(await readFile(part, "utf8"));
-  const words = parseSnapshot(await readFile(join(REPO, "fixtures/wikidata-words/lexemes.jsonl"), "utf8"));
+  const served = (await readWordSnapshot(REPO)).filter((word) => ["trucco", "targhetta", "professore"].includes(word.lemma));
+  const words = [...parseSnapshot(await readFile(join(REPO, "fixtures/wikidata-words/lexemes.jsonl"), "utf8")), ...served];
   db.exec((await planWikidataWords({ query: <Row,>(sql: string) => db.prepare(sql).all() as Row[] }, words)).sql);
 });
 
@@ -138,4 +140,40 @@ test("the API returns a Wikidata word like any entry, named and credited by its 
     ],
   );
   assert.deepEqual(entryAttribution({ word: "paralimpico", lexeme: "L1247138" }).source_url, "https://www.wikidata.org/wiki/Lexeme:L1247138");
+});
+
+/** The text of the page's first gender and number grid, or none. */
+const gridOf = (html: string): string | undefined => {
+  const start = html.indexOf('data-grid=""');
+  if (start < 0) return undefined;
+  return textOf(html.slice(html.indexOf(">", start) + 1, html.indexOf("</section>", start)));
+};
+
+test("a Wikidata word's Forme grid holds the forms its features place, and none with a feature the table does not map (#833)", async () => {
+  const professore = await render("professore");
+  // prof., prof, prof.ssa, prof.i, prof.sse (abbreviazione) and professor (apocope) are not drawn.
+  assert.equal(
+    gridOf(professore),
+    "singolarepluralemaschileprofessoreil professore·un professoreprofessorii professori·dei professorifemminileprofessoressala professoressa·una professoressaprofessoressele professoresse·delle professoresse",
+  );
+  assert.doesNotMatch(professore, />(prof|prof\.|prof\.ssa|prof\.i|prof\.sse|professor)</);
+  // trucchetto and trucchettino are diminutives.
+  assert.doesNotMatch(await render("trucco"), /trucchett/);
+  // No mark of where the forms came from (ADR 0016).
+  assert.doesNotMatch(textOf(professore), /Wikidata|lessema/i);
+  assert.equal(textOf(footerOf(professore)), "Fonte·Segnala un errore");
+});
+
+test("a Wikidata verb's Forme is its conjugation, each form where its features place it (#833)", async () => {
+  const text = textOf(await render("pentimmo"));
+  assert.match(text, /Formeinfinitopentire·gerundiopentendo·participio presentepenitente·participiopentito/);
+  assert.match(text, /passato remotofuturo sempliceiopentiipentirò/);
+  // Congiuntivo and condizionale rows, placed as a record's are, by their pronouns.
+  assert.match(text, /presenteimperfettoche iopentapentissi/);
+  assert.match(text, /presenteiopentireitupentiresti/);
+  assert.doesNotMatch(text, /Wikidata|lessema/i);
+});
+
+test("a Wiktionary word's Forme grid is unchanged beside the Wikidata words", async () => {
+  assert.equal(gridOf(await render("casa")), "singolarepluralefemminilecasala casa·una casacasele case·delle case");
 });
