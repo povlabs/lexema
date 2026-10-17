@@ -5,7 +5,7 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { isLexemeFormRef, sourceTagsOf, type Reading } from "../src/lookup/types.js";
+import { isLexemeFormRef, isSearchedForm, searchedFormKey, searchedSpellings, sourceTagsOf, type Reading } from "../src/lookup/types.js";
 import { wikidataWordReading } from "../src/lookup/wikidataWords.js";
 import { formTagsOf, isMappedFeature, TAGS_BY_FEATURE } from "../src/wikidataWords/formFeatures.js";
 import { wordRow } from "../src/wikidataWords/loadWikidataWords.js";
@@ -18,7 +18,7 @@ const served = (lemma: string): WikidataWord => {
   assert.ok(found !== undefined, lemma);
   return found;
 };
-const readingOf = (lemma: string): Reading => wikidataWordReading("it-test", wordRow(served(lemma), "2026-10-07") as Parameters<typeof wikidataWordReading>[1]);
+const readingOf = (lemma: string, key = lemma): Reading => wikidataWordReading("it-test", wordRow(served(lemma), "2026-10-07") as Parameters<typeof wikidataWordReading>[1], key);
 
 test("the table maps every number, gender, mood, tense and person feature the served words state, and nothing else", () => {
   const used = new Set(SERVED.flatMap((word) => word.forms.flatMap((form) => form.features)));
@@ -88,4 +88,24 @@ test("each form points at its form of the lexeme, and its tags read back as a re
   const penta = readingOf("pentirsi").forms.find((form) => isLexemeFormRef(form.ref) && form.ref.form === "L1422655-F31");
   assert.ok(penta !== undefined);
   assert.deepEqual(sourceTagsOf(penta), { tags: ["present"], rawTags: ["che io"] });
+});
+
+test("a Wikidata word found through a form carries that form as its evidence, and the search names it by its id (#851)", () => {
+  const ref = { releaseId: "it-test", wiki: "www.wikidata.org", lexeme: "L1180137", snapshot: "2026-10-07" } as const;
+  const viaForm = readingOf("professore", "professoresse");
+  assert.deepEqual(viaForm.evidence, [{ origin: "embedded-form", surface: "professoresse", ref: { ...ref, form: "L1180137-F8" }, formSource: null }]);
+  assert.equal(viaForm.isAboutQuery, false);
+  const searched = searchedSpellings(viaForm);
+  assert.deepEqual([searched.headword, [...searched.forms]], [false, ["L1180137-F8"]]);
+  assert.deepEqual(viaForm.forms.filter((form) => isSearchedForm(searched, form.ref)).map((form) => form.surface), ["professoresse"]);
+
+  // Its lemma is its headword, and the form that spells it too.
+  const viaLemma = readingOf("professore");
+  assert.deepEqual(viaLemma.evidence.map((occurrence) => [occurrence.origin, occurrence.ref]), [["headword", ref], ["embedded-form", { ...ref, form: "L1180137-F1" }]]);
+  assert.equal(viaLemma.isAboutQuery, true);
+
+  // A record's form keys by its pointer, a lexeme's by its form id: one set cannot confuse them.
+  assert.equal(searchedFormKey({ releaseId: "it-test", lineNo: 1, jsonPointer: "/forms/3/form", lineSha256: "0" }), "/forms/3/form");
+  assert.equal(searchedFormKey({ releaseId: "it-test", lineNo: 1, jsonPointer: "", lineSha256: "0" }), undefined);
+  assert.equal(searchedFormKey({ ...ref, form: "L1180137-F8" }), "L1180137-F8");
 });

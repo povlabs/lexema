@@ -128,16 +128,18 @@ import {
   isFromWikidata,
   isNameEntry,
   isNounReading,
-  isSourceRef,
   isVerbReading,
   isWikidataWord,
   lemmasOfPartOfSpeech,
   otherFormsOfQueryLemmas,
+  isSearchedForm,
+  NOTHING_SEARCHED,
+  searchedFormRef,
   searchedSpellings,
   sourceTagsOf,
   type FoundRoute,
+  type SearchableFormRef,
   type SearchedSpellings,
-  type SourceRef,
 } from "@lexema/lookup/types.ts";
 import { definitionTextKey, definitionsOf, placeOf, readAt, type DefinitionItem } from "./definitions.ts";
 import { wiktionarySource, type FooterSource } from "./footerSource.ts";
@@ -207,7 +209,7 @@ export type GridTable = Extract<LemmaTable, { kind: "grid" }>;
 
 /** The cells a conjugation marks: those its listing says the query hit, and none in a table that does not list it. */
 export const searchedIn = ({ listing }: ConjugationTable): SearchedSpellings =>
-  "evidence" in listing ? searchedSpellings(listing) : { headword: false, formPointers: new Set() };
+  "evidence" in listing ? searchedSpellings(listing) : NOTHING_SEARCHED;
 
 /**
  * A form's lemma's definitions, the *Definitions* of the form's block (#686;
@@ -228,13 +230,22 @@ export interface LemmaDefinitionList {
   lemmaLinks: Reading["lemmaLinks"];
 }
 
-/** A lemma record's definitions as its own page lists them, or none when it has no definition or was not read. */
+/**
+ * A lemma's definitions as its own page lists them, or none when it has no
+ * definition or was not read. A Wikidata word's are its glosses, which its
+ * identity carries, so a form of it lists them as its own page does (#851).
+ */
 function definitionListOf(
   lemma: EntryIdentity & { word: string },
   definitions: (LemmaDefinitions & Pick<Reading, "lemmaLinks">) | undefined,
 ): LemmaDefinitionList | undefined {
   if (definitions === undefined) return undefined;
-  const { items, looseExamples } = definitionsOf({ word: lemma.word, senses: definitions.senses, recovered: definitions.recovered });
+  const { items, looseExamples } = definitionsOf({
+    word: lemma.word,
+    senses: definitions.senses,
+    recovered: definitions.recovered,
+    lexemeGlosses: lemma.lexemeGlosses,
+  });
   const listed = nonEmpty(items);
   return listed === undefined ? undefined : { lemma, items: listed, looseExamples, lemmaLinks: definitions.lemmaLinks };
 }
@@ -273,7 +284,7 @@ function ownTextOf(reading: Reading): OwnText | undefined {
  * conjugation instead (`TakenConjugation`), when it may take it.
  */
 export type OwnForms =
-  | { kind: "conjugation"; conjugation: Conjugation; searchedPointers: ReadonlySet<string> }
+  | { kind: "conjugation"; conjugation: Conjugation; searched: SearchedSpellings }
   | TakenConjugation
   | { kind: "grid"; agreement: Agreement };
 
@@ -281,7 +292,7 @@ function ownFormsOf(reading: Reading, taken: TakenConjugation | undefined): OwnF
   if (isVerbReading(reading)) {
     const searched = searchedSpellings(reading);
     const conjugation = conjugationOf(reading.forms, searched);
-    if (placesAny(conjugation)) return { kind: "conjugation", conjugation, searchedPointers: searched.formPointers };
+    if (placesAny(conjugation)) return { kind: "conjugation", conjugation, searched };
     return takenBy(reading, taken);
   }
   const agreement = agreementOf(reading);
@@ -636,8 +647,8 @@ export interface VerbFormLine {
   lemma: string;
   sourceType: "lexema-deterministic";
   rule: typeof VERB_FORM_LINE_RULE;
-  /** The verb's `forms[]` entry the line was built from: the pointer the query's evidence carries. */
-  ref: SourceRef;
+  /** The verb's form the line was built from: the `forms[]` entry, or the Wikidata form, the query's evidence names. */
+  ref: SearchableFormRef;
 }
 
 /** How a lookup reached a word page's readings: every route but a phrase's, which has a page of its own. */
@@ -727,8 +738,8 @@ export interface GridFormLine {
   lemma: string;
   sourceType: "lexema-deterministic";
   rule: typeof GRID_FORM_LINE_RULE;
-  /** The first of the record's `forms[]` entries the query hit, which a cell spells. */
-  ref: SourceRef;
+  /** The first of the record's forms the query hit, which a cell spells: a `forms[]` entry, or a Wikidata form. */
+  ref: SearchableFormRef;
 }
 
 /**
@@ -1468,7 +1479,7 @@ function shapeSourceWord(kept: readonly Reading[], shape: ShapePage, found: read
 /** The keys a record was found by: its headword's, and those of the forms the search hit in its table. */
 function foundKeys(record: Reading): string[] {
   const hit = searchedSpellings(record);
-  const cells = record.forms.filter((form) => isSourceRef(form.ref) && hit.formPointers.has(form.ref.jsonPointer));
+  const cells = record.forms.filter((form) => isSearchedForm(hit, form.ref));
   return [...(hit.headword ? [normalizeItalianExact(record.word)] : []), ...cells.map((form) => normalizeItalianExact(form.surface))];
 }
 
@@ -1760,8 +1771,8 @@ function addFormRecord(block: BlockDraft, reading: Reading): void {
  */
 function gridLinesOf(record: Reading): NonEmpty<GridFormLine> | undefined {
   if (record.isAboutQuery || record.lemmaLinks.length > 0 || !takesGrid(record)) return undefined;
-  const hit = searchedSpellings(record).formPointers;
-  const ref = record.forms.map((form) => form.ref).find((one): one is SourceRef => isSourceRef(one) && hit.has(one.jsonPointer));
+  const hit = searchedSpellings(record);
+  const [ref] = record.forms.flatMap((form) => searchedFormRef(hit, form.ref) ?? []);
   if (ref === undefined) return undefined;
   return nonEmpty(
     placesOf(agreementOf(record).grid, hit).map(
@@ -1788,7 +1799,7 @@ function gridFormBlock(slot: GridSlot, drawn: Drawn): Unnumbered<GridFormBlock> 
   // A grid slot is made with the lines of its first record, never none.
   if (first === undefined) throw new Error(`no line for ${base.word}`);
   const table = gridOf(base);
-  const places = nonEmpty(slot.records.flatMap((record) => placesOf(agreementOf(record).grid, searchedSpellings(record).formPointers)));
+  const places = nonEmpty(slot.records.flatMap((record) => placesOf(agreementOf(record).grid, searchedSpellings(record))));
   // Each line was built from a cell, so there is one.
   if (places === undefined) throw new Error(`no cell for ${base.word}`);
   return {
@@ -1845,13 +1856,14 @@ const formOfReadingAbout = (verb: Reading, about: readonly Reading[]): boolean =
  */
 function ruleLinesOf(verb: Reading, about: readonly Reading[], gender: SpelledGender): VerbFormLine[] {
   if (!isVerbReading(verb) || verb.isAboutQuery || formOfReadingAbout(verb, about)) return [];
-  const hit = searchedSpellings(verb).formPointers;
+  const hit = searchedSpellings(verb);
   const lines = new Map<string, VerbFormLine>();
   for (const form of verb.forms) {
-    if (!isSourceRef(form.ref) || !hit.has(form.ref.jsonPointer)) continue;
+    const ref = searchedFormRef(hit, form.ref);
+    if (ref === undefined) continue;
     const text = verbFormLine(verb.word, sourceTagsOf(form), gender);
     if (text === undefined || lines.has(text)) continue;
-    lines.set(text, { kind: "rule", text, lemma: verb.word, sourceType: "lexema-deterministic", rule: VERB_FORM_LINE_RULE, ref: form.ref });
+    lines.set(text, { kind: "rule", text, lemma: verb.word, sourceType: "lexema-deterministic", rule: VERB_FORM_LINE_RULE, ref });
   }
   return [...lines.values()];
 }

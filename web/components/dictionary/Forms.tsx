@@ -9,12 +9,13 @@
 
 import type { ReactNode } from "react";
 import { bothGenders, type AgreeingSpelling } from "@lexema/italian/essereAgreement.ts";
+import type { SearchedSpellings } from "@lexema/lookup/types.ts";
 import {
   isDeclaredForm,
+  isSearchedTableForm,
   isSourceForm,
   splitsByAuxiliary,
   tableFormKey,
-  tableFormPointer,
   type Conjugation,
   type MoodTable,
   type NonFinite,
@@ -389,14 +390,14 @@ function MoodPanelView({ table, searched }: { table: MoodTable<TableForm>; searc
 
 export function ConjugationView({
   conjugation,
-  searchedPointers,
+  searchedSpellings,
   word,
 }: {
   conjugation: Conjugation<TableForm>;
-  searchedPointers: ReadonlySet<string>;
+  searchedSpellings: SearchedSpellings;
   word: string;
 }): ReactNode {
-  const searched = (form: TableForm) => searchedPointers.has(tableFormPointer(form) ?? "");
+  const searched = (form: TableForm) => isSearchedTableForm(searchedSpellings, form);
   return (
     <>
       <NonFiniteLine items={conjugation.nonFinite} searched={searched} />

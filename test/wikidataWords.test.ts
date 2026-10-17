@@ -248,8 +248,12 @@ test("Wiktionary wins: a word both have shows only the Wiktionary entry, and a s
     assert.ok(isWikidataWord(papa));
     assert.deepEqual(
       [papa.word, papa.pos, papa.posTitle, papa.ref, papa.isAboutQuery, papa.senses, papa.recovered, papa.lexemeGlosses.map(({ text }) => text)],
-      ["papà", "noun", "Sostantivo", { releaseId: RELEASE, wiki: "www.wikidata.org", lexeme: "L1144362", snapshot: DATE }, true, [], [], ["termine affettuoso per riferirsi al genitore di sesso maschile"]],
+      // Paparino spells one of its forms, not its lemma, so it is not about the query, as a record listing it would not be (#851).
+      ["papà", "noun", "Sostantivo", { releaseId: RELEASE, wiki: "www.wikidata.org", lexeme: "L1144362", snapshot: DATE }, false, [], [], ["termine affettuoso per riferirsi al genitore di sesso maschile"]],
     );
+    assert.deepEqual(papa.evidence, [
+      { origin: "embedded-form", surface: "paparino", ref: { releaseId: RELEASE, wiki: "www.wikidata.org", lexeme: "L1144362", snapshot: DATE, form: "L1144362-F4" }, formSource: null },
+    ]);
     assert.equal(entryKey(papa), "lexeme-L1144362");
     assert.equal(publicEntryId({ releaseId: RELEASE, lexeme: papa.lexeme }), `${RELEASE}:wikidata:L1144362`);
 

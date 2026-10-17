@@ -11,7 +11,7 @@
 // article worked out by rule. Every Italian string carries `lang="it"`.
 
 import { Fragment, type ReactNode } from "react";
-import { entryKey, factRefKey } from "@lexema/lookup/types.ts";
+import { entryKey, factRefKey, NOTHING_SEARCHED } from "@lexema/lookup/types.ts";
 import type { RecoveredDefinition, Reading } from "@lexema/lookup/types.ts";
 import { conjugationOf } from "@/lib/dictionary/conjugation.ts";
 import { definitionsOf, shownSenseLabels, type DefinitionItem } from "@/lib/dictionary/definitions.ts";
@@ -379,17 +379,14 @@ function LemmaLineList({ words }: { words: readonly string[] }) {
   );
 }
 
-/** Nothing in a declared or built conjugation is searched but the verb itself, which no cell holds (#799, #837). */
-const NOTHING_SEARCHED: ReadonlySet<string> = new Set();
-
-/** A reading's own *Forms*, in the shape they have. */
+/** A reading's own *Forms*, in the shape they have. Nothing in a declared or built conjugation is searched but the verb itself, which no cell holds (#799, #837). */
 function OwnFormsView({ owner, forms }: { owner: Reading; forms: OwnForms }) {
   return (
     <Block id={`forms-${entryKey(owner)}`} label={SECTION_LABEL.forms}>
       {forms.kind === "conjugation" ? (
-        <ConjugationView conjugation={forms.conjugation} searchedPointers={forms.searchedPointers} word={owner.word} />
+        <ConjugationView conjugation={forms.conjugation} searchedSpellings={forms.searched} word={owner.word} />
       ) : forms.kind === "declared-conjugation" || forms.kind === "pronominal-conjugation" ? (
-        <ConjugationView conjugation={forms.conjugation} searchedPointers={NOTHING_SEARCHED} word={owner.word} />
+        <ConjugationView conjugation={forms.conjugation} searchedSpellings={NOTHING_SEARCHED} word={owner.word} />
       ) : (
         <>
           {forms.agreement.grid !== undefined && <GridView grid={forms.agreement.grid} label={formsOf(owner.word)} />}
@@ -402,7 +399,7 @@ function OwnFormsView({ owner, forms }: { owner: Reading; forms: OwnForms }) {
 
 function LemmaConjugation({ table }: { table: ConjugationTable }) {
   const searched = searchedIn(table);
-  return <ConjugationView conjugation={conjugationOf(table.listing.forms, searched)} searchedPointers={searched.formPointers} word={table.lemma.word} />;
+  return <ConjugationView conjugation={conjugationOf(table.listing.forms, searched)} searchedSpellings={searched} word={table.lemma.word} />;
 }
 
 /**

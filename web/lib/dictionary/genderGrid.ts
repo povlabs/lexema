@@ -47,7 +47,7 @@
 // `l'hotel`); a form's spelling does not, since the IPA is the headword's. Where the rule refuses (a phrase, a spelling it does not handle) the
 // cell has no article line.
 
-import { asserts, isAdjectiveReading, isNounReading, namesOneRecordOf, sourcePointerOf } from "@lexema/lookup/types.ts";
+import { asserts, isAdjectiveReading, isNounReading, isSearchedForm, namesOneRecordOf, type SearchedSpellings } from "@lexema/lookup/types.ts";
 import type {
   DeclaredPluralForm,
   InflectionOf,
@@ -338,14 +338,14 @@ export interface GridPlace {
 }
 
 /**
- * The cells of `grid` that spell one of `pointers`, the `forms[]` entries a
- * search hit, in row then column order. Only the plain grid: a superlative is
- * a comparison, not an agreement cell.
+ * The cells of `grid` that spell one of the forms `searched` hit, in row then
+ * column order. Only the plain grid: a superlative is a comparison, not an
+ * agreement cell.
  */
-export function placesOf(grid: Grid | undefined, pointers: ReadonlySet<string>): GridPlace[] {
+export function placesOf(grid: Grid | undefined, searched: SearchedSpellings): GridPlace[] {
   return (grid?.rows ?? []).flatMap((row) =>
     row.cells.flatMap((cell, i): GridPlace[] =>
-      cell.spellings.some((spelling) => spelling.forms.some((form) => pointers.has(sourcePointerOf(form.ref) ?? "")))
+      cell.spellings.some((spelling) => spelling.forms.some((form) => isSearchedForm(searched, form.ref)))
         ? [{ gender: row.gender, number: NUMBERS[i] }]
         : [],
     ),
