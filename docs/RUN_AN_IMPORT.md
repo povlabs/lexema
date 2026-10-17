@@ -310,7 +310,9 @@ its release as `corrected_claim` rows beside the record. An entry may instead
 set cells of a verb's conjugation table, each named by its place in `forms[]`
 and the text the line holds there
 ([ADR 0030](../.decisions/0030-corrections-may-fix-edges-and-cells.md),
-[#723](https://github.com/povlabs/lexema/issues/723)); the seed writes those
+[#723](https://github.com/povlabs/lexema/issues/723)), or a noun's or
+adjective's listed form the same way (`eguale`'s plural,
+[#830](https://github.com/povlabs/lexema/issues/830)); the seed writes those
 as `corrected_form` rows, one per cell, and refuses an entry that misquotes its
 line. Each row carries its spelling's search key, so a search finds the corrected
 spelling, `siamo assorbiti`, beside the source's, which `lookup_form` keeps
@@ -386,7 +388,8 @@ from another revision, or the definition differs. The plan's counts name its
 `corrected_definition` rows; a definition entry changes no record.
 
 The same run also writes the hand-kept readings: whole readings the source
-lacks, `si` as a pronoun and `come` as a conjunction, each citing the
+lacks, `si` as a pronoun, `come` as a conjunction and `eguaglianza`, another
+spelling of `uguaglianza` ([#830](https://github.com/povlabs/lexema/issues/830)), each citing the
 en.wiktionary revision that shows it
 ([ADR 0031](../.decisions/0031-hand-kept-readings-fill-source-gaps.md),
 [#745](https://github.com/povlabs/lexema/issues/745)). The committed list is

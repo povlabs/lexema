@@ -152,7 +152,7 @@ function layered(db: LookupDatabase, releaseId: string, readings: DictionaryRead
         .flatMap((row) => (row.layer === "lexeme" && isLexicalCategory(row.category) ? [{ ...row, category: row.category, lexeme: row.item, lemma: row.word, glosses: row.text }] : []))
         .sort((a, b) => lexemeNumber(a.lexeme) - lexemeNumber(b.lexeme));
       return {
-        readings: [...handKeptReadingsFrom(releaseId, kept), ...inShownOrder(names).map((row) => nameReading(releaseId, row))],
+        readings: [...(await handKeptReadingsFrom(db, releaseId, kept)), ...inShownOrder(names).map((row) => nameReading(releaseId, row))],
         wikidataWords: words.map((row) => wikidataWordReading(releaseId, row, key)),
       };
     },

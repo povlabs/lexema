@@ -115,6 +115,15 @@
 // for `assorbire`. Each cell reads what rule `it-pronominal-conjugation/v1`
 // builds for its place from the base verb's table (test/pronominalAvereCells.test.ts).
 //
+// The same kind sets a noun's or adjective's listed form (#830). `eguale`'s
+// page writes `{{Pn}} ''m'' e ''f sing'' {{Linkp|equivalenti}}`: its plural
+// is `eguali`, and `equivalenti` is another word. Huey ruled on 2026-10-17
+// (https://github.com/povlabs/lexema/issues/830#issuecomment-6233334459; ADR
+// 0027's amendment of that day) to set the form right, citing that page and
+// en.wiktionary's `eguali`. The cell is stored and read as a table cell's,
+// and the gender grid places it in every gender the record states, as the
+// cited `m e f` says (web/lib/dictionary/genderGrid.ts).
+//
 // A fourth kind hides one recovered definition that states no dictionary word
 // (#773). Rule `recovered-prose-line/v1` reads `diplomatizzare`'s Verbo line 3,
 // `{{Transitivo|it}}hhhhhhhh`, as a definition by layout alone (ADR 0029), so
@@ -205,15 +214,26 @@ export interface CorrectedCell {
   replaces: string;
   /** The cell as it reads once corrected. */
   surface: string;
+  /**
+   * Set on a verb table's auxiliary cell, `avere` set to `essere` (#839). A
+   * lookup never reaches that cell by its spelling (the auxiliary rule of
+   * `SEARCH_SQL`, src/lookup/lookup.ts), so it names no word (`cellSpellings`).
+   */
+  auxiliary?: true;
 }
 
-/** Cells of a record's conjugation table, set right (ADR 0030, #723). */
+/**
+ * Cells of a record's table of forms, set right: a verb's conjugation (ADR
+ * 0030, #723), or a noun's or adjective's listed forms (#830).
+ */
 export interface CellCorrection {
   record: CorrectedRecord;
   /** At least one cell, each at its own place. */
   cells: readonly [CorrectedCell, ...CorrectedCell[]];
   /** At least one revision; a correction without evidence is not a correction. */
   evidence: readonly [Evidence, ...Evidence[]];
+  /** The ruling that added it, where the entry names it as data (#830 on); the earlier entries cite theirs beside them. */
+  ruling?: RulingUrl;
   facts?: never;
   entry?: never;
   edge?: never;
@@ -383,7 +403,7 @@ export interface RecoveredDefinitionHide {
   cells?: never;
 }
 
-/** One entry of the curated list: a record's gender or number, cells of its table, a sense's `form_of` edge set or removed, a page-only entry's definition, or a recovered definition hidden. */
+/** One entry of the curated list: a record's gender or number, cells of its table of forms, a sense's `form_of` edge set or removed, a page-only entry's definition, or a recovered definition hidden. */
 export type CuratedCorrection = RecordCorrection | CellCorrection | EdgeCorrection | EdgeRemoval | DefinitionCorrection | RecoveredDefinitionHide;
 
 /** An entry keyed to one archive line as a whole: a record's gender or number, or cells of its table. */
@@ -410,6 +430,16 @@ export const recordCorrections = (corrections: readonly CuratedCorrection[]): Re
 /** The entries of `corrections` that correct cells of a record's table. */
 export const cellCorrections = (corrections: readonly CuratedCorrection[]): CellCorrection[] =>
   corrections.filter(isCellCorrection);
+
+/**
+ * The spellings whose lookup reads differently once `correction`'s cells are
+ * set: each cell's corrected spelling, which now finds the record, and the
+ * spelling it retires, which no longer does. `eguali` and `equivalenti` for
+ * eguale's plural (#830). An auxiliary cell names neither, since no lookup
+ * reaches it by its spelling.
+ */
+export const cellSpellings = (correction: CellCorrection): string[] =>
+  correction.cells.flatMap((cell) => (cell.auxiliary ? [] : [cell.surface, cell.replaces]));
 
 /** The entries of `corrections` keyed to an archive line as a whole, in list order. */
 export const lineCorrections = (corrections: readonly CuratedCorrection[]): LineCorrection[] =>
@@ -614,7 +644,7 @@ function onEssere(table: AvereTable): CellCorrection {
   );
   return {
     record,
-    cells: [{ index: auxiliary, replaces: "avere", surface: "essere" }, ...compound],
+    cells: [{ index: auxiliary, replaces: "avere", surface: "essere", auxiliary: true }, ...compound],
     evidence: [{ wiki: "it.wiktionary.org", title: `Appendice:Coniugazioni/Italiano/${record.word}`, revisionId: page.revisionId, shows: page.call }],
   };
 }
@@ -958,6 +988,19 @@ export const HAND_CORRECTIONS: readonly CuratedCorrection[] = [
     firstCompound: 29,
     participle: "staccato",
   }),
+  // Huey's ruling on #830, 2026-10-17: eguale's plural is eguali, not equivalenti.
+  {
+    record: { releaseId: IT, lineNo: 486085, lineSha256: "f33cc0ccd484485a3a595751d91f148189125e908ca8b38fb2ba2a47c959c8d0", word: "eguale", pos: "adj" },
+    cells: [{ index: 0, replaces: "equivalenti", surface: "eguali" }],
+    evidence: [
+      // The page the source read the form from, at its revision in dump
+      // `itwiktionary-20260701`: it names equivalenti the plural of a word
+      // both masculine and feminine.
+      { wiki: "it.wiktionary.org", title: "eguale", revisionId: 3907185, shows: "{{Pn}} ''m'' e ''f sing'' {{Linkp|equivalenti}}" },
+      { wiki: "en.wiktionary.org", title: "eguali", revisionId: 68995164, shows: "===Adjective=== {{head|it|adjective form}} # {{plural of|it|eguale}}" },
+    ],
+    ruling: "https://github.com/povlabs/lexema/issues/830#issuecomment-6233334459",
+  },
 ];
 
 /**

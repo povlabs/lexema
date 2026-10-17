@@ -1,0 +1,9 @@
+==Italian==
+
+===Pronunciation===
+{{it-pr}}
+
+===Noun===
+{{it-noun|f}}
+
+# {{alt form|it|uguaglianza}}

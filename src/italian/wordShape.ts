@@ -16,9 +16,10 @@
 //                  bei, begli    bello
 //   superlative    bravissimo    bravo          an absolute superlative in -issimo
 //   participle     piaciuta      piaciuto       a past participle agreeing with its noun
+//   j-spelling     gajo, noja    gaio, noia     the old spelling of an i between vowels as j
 //
 // Four more read the regular forms of a word whose record lists none, and
-// answer only when none of the six above does:
+// answer only when none of the seven above does:
 //
 //   inflected        tate, crucchi  tata, crucco   a noun's or adjective's regular plural or feminine
 //   conjugated       fischia        fischiare      a regular form of a verb with no table
@@ -37,6 +38,20 @@
 // An inflected or conjugated form is a record's that lists no forms: a record
 // with a table lists its own, and the rule never adds to one. A plural
 // spelling is a plural's, and an English plural a noun's, whatever its table.
+// A j-spelling is any word's but those, plurals included: it changes only how
+// the word is written, never what form it is (`gioje` is `gioie`).
+//
+// Older Italian wrote an `i` between two vowels as `j`: `gajo`, `noja`,
+// `librajo`, `abbujare`. A j-spelling reads every such `j` as `i`, and no
+// other `j`: `jazz` and `junior` keep theirs, and a word the dictionary
+// spells with a `j` (`troja`, `mojito`, `navajo`) answers as typed. Checked
+// against real words for #830 (Huey's ruling,
+// https://github.com/povlabs/lexema/issues/830#issuecomment-6233334459).
+// Release it-0c432803 has Italian records with a `j` between vowels. Read
+// with `i`, only three of them spell another record: `troja` (`troia`), the
+// forms of `abbujare` (`abbuiare`) and the name `Aja` (`aia`). The first two
+// are old spellings of that record. Each answers as typed all the same; the rest are
+// loanwords (`mojito`, `emoji`) whose `i` spelling the dictionary lacks.
 //
 // A truncated spelling is read in tiers, the first the dictionary has
 // winning: `-e` (`aver`, `color`), then `-o` (`son`, `ciel`), with `-no`
@@ -58,6 +73,7 @@ export type Shape =
   | "demonstrative"
   | "superlative"
   | "participle"
+  | "j-spelling"
   | "inflected"
   | "conjugated"
   | "plural-spelling"
@@ -109,6 +125,7 @@ const INFLECTED_FEMININE_PLURAL = 2;
  */
 export function shapeAdmits(shape: Shape, { pos, plural, pastParticiple, listsForms }: ShapedRecord, tier = 0): boolean {
   if (NEVER.has(pos)) return false;
+  if (shape === "j-spelling") return true;
   if (shape === "plural-spelling") return plural && isNominal(pos);
   if (plural && pos !== "verb") return false;
   switch (shape) {
@@ -240,6 +257,7 @@ export function shapedSpellings(key: string): ShapedSpelling[] {
     ...demonstrative(key),
     ...superlative(key),
     ...participle(key),
+    ...jSpelling(key),
     ...inflected(key),
     ...conjugated(key),
     ...pluralSpelling(key),
@@ -353,6 +371,16 @@ function superlative(key: string): ShapedSpelling[] {
 function participle(key: string): ShapedSpelling[] {
   if (!WORD.test(key) || !/^\p{L}{2,}[aie]$/u.test(key)) return [];
   return [spelling("participle", `${key.slice(0, -1)}o`)];
+}
+
+/** A `j` between two vowels: where older Italian wrote an `i`. */
+const J_BETWEEN_VOWELS = /(?<=[aeiouàèéìòù])j(?=[aeiouàèéìòù])/gu;
+
+/** A word in the old spelling that writes an `i` between vowels as `j`: `gajo` of `gaio`, `noje` of `noie`, `abbujare` of `abbuiare`. Every such `j` reads `i`. */
+function jSpelling(key: string): ShapedSpelling[] {
+  if (!WORD.test(key)) return [];
+  const modern = key.replace(J_BETWEEN_VOWELS, "i");
+  return modern === key ? [] : [spelling("j-spelling", modern)];
 }
 
 /** A stem that keeps the hard sound of its `c` or `g` with an `h`: `crucch-i`, `bianch-e`. */
@@ -496,6 +524,7 @@ const INFLECTED_GRAMMAR: ReadonlyMap<number, string> = new Map([
  *   demonstrative    quei          "maschile plurale di quello"
  *   superlative      bravissimo    "superlativo assoluto di bravo"
  *   participle       piaciute      "femminile plurale di piaciuto"
+ *   j-spelling       gajo          "grafia antica di gaio"
  *   inflected        tate          "plurale di tata", poverina "femminile singolare di poverino"
  *   conjugated       fischia       "voce del verbo fischiare"
  *   plural-spelling  valige        "variante grafica di valigie"
@@ -518,6 +547,8 @@ export function wordShapeLine(key: string, answering: ShapedSpelling): string {
       return `superlativo assoluto di ${word}`;
     case "participle":
       return `${PARTICIPLE_AGREEMENT.get(key.at(-1) ?? "") ?? "participio"} di ${word}`;
+    case "j-spelling":
+      return `grafia antica di ${word}`;
     case "inflected":
       return `${INFLECTED_GRAMMAR.get(answering.tier) ?? "plurale"} di ${word}`;
     case "conjugated":

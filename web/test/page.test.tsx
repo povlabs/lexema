@@ -1177,6 +1177,61 @@ test("a form rule it-word-shape/v1 reads is its base word's form block, titled a
   });
 });
 
+// Old spellings (#830) ----------------------------------------------------------
+
+/** `fixtures/eguale.jsonl`: equivalenti and eguale, as release it-0c432803 has them (lines 457791 and 486085). */
+const EGUALE_LINES = (await readFile(join(REPO, "fixtures/eguale.jsonl"), "utf8")).trimEnd().split("\n");
+/** uguaglianza's one record, release line 55329, as `fixtures/hand-kept-readings/archive-lines.jsonl` holds it. */
+const UGUAGLIANZA_LINES = (await readFile(join(REPO, "fixtures/hand-kept-readings/archive-lines.jsonl"), "utf8"))
+  .trimEnd()
+  .split("\n")
+  .filter((line) => (JSON.parse(line) as { word: string }).word === "uguaglianza");
+
+test("the Constitution's old spellings read: eguale's grid shows eguali, eguaglianza leads to uguaglianza, gajo is gaio (#830)", async () => {
+  const lines = [...(await devSeedLines()), ...EGUALE_LINES, ...UGUAGLIANZA_LINES];
+  const corrections = FixtureLines.of(lines, RELEASE).key(cellCorrections(CURATED_CORRECTIONS)).held;
+  const egualeGrid = [
+    HEAD,
+    ["maschile", "egualel'eguale·un eguale", "egualigli eguali·degli eguali"],
+    ["femminile", "egualel'eguale·un'eguale", "egualile eguali·delle eguali"],
+  ];
+  await withLines(lines, async ({ db }) => {
+    // eguale's page names equivalenti its plural; the corrected form fills both plural cells, as its page's `m e f` says.
+    const eguale = await render(db, "eguale");
+    assert.deepEqual(headingsOf(eguale), ["1·Aggettivo·maschile e femminile, singolare"]);
+    assert.deepEqual(gridRows(eguale), egualeGrid);
+    assert.doesNotMatch(textOf(eguale), /equivalenti/);
+    // eguali is its form: eguale's block, under a line built from each cell.
+    const eguali = await render(db, "eguali");
+    assert.deepEqual(headingsOf(eguali), ["1·Aggettivo, forma flessa·maschile e femminile, plurale"]);
+    assert.deepEqual(formLines(eguali), ["maschile plurale di eguale", "femminile plurale di eguale"]);
+    assert.deepEqual(lemmaFormsOf(eguali), ["Forme dieguale"]);
+    assert.deepEqual(gridRows(eguali), egualeGrid);
+    // equivalenti keeps its own reading, and shows no eguale.
+    const equivalenti = await render(db, "equivalenti");
+    assert.deepEqual(headingsOf(equivalenti), ["1·Aggettivo, forma flessa·maschile e femminile, plurale"]);
+    assert.deepEqual(formLines(equivalenti), ["plurale di equivalente"]);
+    assert.doesNotMatch(textOf(equivalenti), /eguale/);
+
+    // eguaglianza's hand-kept reading links uguaglianza and draws its Definitions and grid, as a form record's page does.
+    const eguaglianza = await render(db, "eguaglianza");
+    assert.deepEqual(headingsOf(eguaglianza), ["1·Sostantivo"]);
+    assert.deepEqual(formLines(eguaglianza), ["variante di uguaglianza"]);
+    assert.match(eguaglianza, /variante di <a [^>]*href="\/\?q=uguaglianza">uguaglianza<\/a>/);
+    assert.deepEqual(lemmaFormsOf(eguaglianza), ["Forme diuguaglianza"]);
+    assert.deepEqual(lemmaDefinitions(eguaglianza).map(({ lemma }) => lemma), ["uguaglianza"]);
+
+    // gajo is the old spelling of gaio: gaio's block, led by the shape's line.
+    assertShapePage(await render(db, "gajo"), "gajo", {
+      headings: ["1·Aggettivo·gaio"],
+      lines: ["grafia antica di gaio"],
+      links: ["gaio"],
+      forms: ["gaio"],
+      fonte: "gaio",
+    });
+  }, undefined, undefined, corrections);
+});
+
 /**
  * `fixtures/essere-compound-cells.jsonl`: arrendersi, accorgersi, assorbire and
  * perdersi, as release it-0c432803 has them (lines 624, 770, 113784, 137480).
