@@ -2,7 +2,7 @@
 // fixture instead of the release by `FixtureLines`
 // (src/italian/correctionsAtLines.ts), the keying the dev seed uses too.
 //
-// fixtures/curated-corrections.jsonl is 50 whole lines of it-0c432803, byte
+// fixtures/curated-corrections.jsonl is 56 whole lines of it-0c432803, byte
 // for byte. Its first 42 are in archive order: 2029 `congiuntivo`, 17564
 // `fiaschetteria`, 34427 and 34428 `curdo`, 41342 `mossa`, 51562 `maniaco`,
 // 53929 `scolara`, 53931 `scolare`, 90585 `ricoverato`, 90588 `ricoverati`,
@@ -19,7 +19,10 @@
 // (#483) after them so no earlier line moves, are in archive order too: 10075
 // `curve` and 56896 `competitive` (adj), 89313 `guerriglieri`, 140218
 // `guerrigliero`, 175500 `mimo`, 175503 `mima`, 447644 `agostiniano` and
-// 447650 `agostiniani` (noun).
+// 447650 `agostiniani` (noun). The last 6, added for the adjective forms and
+// the determiners' articles (#836), are in archive order too: 33211 `quello`
+// (adj) and 33212 `quello` (pron), 33645 `bello`, 39248 `questo`, 40604 `mio`
+// and 598669 `siffatto` (adj).
 
 import { readFile } from "node:fs/promises";
 import { FixtureLines, type RecordKeyedCorrection } from "../src/italian/correctionsAtLines.js";

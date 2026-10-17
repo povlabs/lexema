@@ -46,6 +46,7 @@ export async function main(
     ...plan.edges.map(describeEntry),
     ...plan.hides.map(describeHide),
     ...plan.senseHides.map(describeEntry),
+    ...plan.adjectiveForms.map(describeEntry),
     ...plan.definitions.map(describeDefinition),
     ...plan.readings.map(describeReading),
   ];
@@ -55,7 +56,7 @@ export async function main(
       entries: lines.map((line) => line.trim()),
     });
   }
-  const writes = [...plan.entries, ...plan.edges, ...plan.hides, ...plan.senseHides, ...plan.definitions, ...plan.readings].filter((entry) => entry.state === "write").length;
+  const writes = [...plan.entries, ...plan.edges, ...plan.hides, ...plan.senseHides, ...plan.adjectiveForms, ...plan.definitions, ...plan.readings].filter((entry) => entry.state === "write").length;
   if (plan.sql === "") return { out: [`nothing to write in ${target.dictionary}`, ...lines].join("\n"), status: 0 };
   const needed = missingForCorrections(reader);
   if (needed.length > 0) return { out: upgradeFirst(target.dictionary, needed), status: 1 };

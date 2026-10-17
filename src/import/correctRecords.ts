@@ -1,10 +1,11 @@
 // The one-off update that writes the curated corrections (#420, #450, #722,
-// #723, #773, #857) into a master seeded before them, or before an entry was
-// added: each record entry keyed to the master's release gets the
+// #723, #773, #857, #836) into a master seeded before them, or before an entry
+// was added: each record entry keyed to the master's release gets the
 // `corrected_claim` or `corrected_form` rows a seed now writes for it
 // (src/import/correctedLayer.ts), each edge entry its `corrected_edge` row,
 // each hide its `hidden_recovered_definition` row, each hidden sense its
-// `hidden_sense` row, and each definition entry
+// `hidden_sense` row, each adjective's forms their `corrected_adjective_form`
+// rows, and each definition entry
 // the `corrected_definition` row
 // (src/import/correctedDefinitions.ts). Nothing else is touched, the record's
 // line in `source_record_json`, its own `grammar_claim`, `lookup_form` and
@@ -27,13 +28,16 @@
 // the revision it cites, and a hide whose record a later release replaced, as
 // for a record entry: the replacing record does not take it (ADR 0027). A
 // hidden sense is a record entry in that: the digest pins the line it quotes,
-// and a record a later release replaced is reported, never given the hide.
+// and a record a later release replaced is reported, never given the hide. So
+// is an adjective's forms entry.
 //
 // It also writes the hand-kept readings (src/italian/handKeptReadings.ts, ADR
 // 0031, #745), which key to no record: each reading the master does not hold
 // exactly gets its `hand_kept_definition` rows, replaced whole.
 
 import {
+  adjectiveFormsCorrections,
+  adjectiveFormsMisquote,
   correctionId,
   definitionCorrections,
   definitionMismatch,
@@ -44,6 +48,7 @@ import {
   recoveredHides,
   senseHideMisquote,
   senseHides,
+  type AdjectiveFormsCorrection,
   type CellCorrection,
   type CuratedCorrection,
   type DefinitionCorrection,
@@ -63,7 +68,7 @@ import { CORRECTION_TABLES, HAND_KEPT_INDEXES, HAND_KEPT_TABLES, keyedColumnOf, 
 import { lacksKeyedColumn, readMasterRelease, select, upgradeNeededFor, type MasterReader } from "../update/master.js";
 import { PlanCounts } from "../update/planCounts.js";
 import { correctedDefinitionValues } from "./correctedDefinitions.js";
-import { correctedClaimValues, correctedEdgeValues, correctedFormValues, hiddenRecoveredValues, hiddenSenseValues } from "./correctedLayer.js";
+import { correctedAdjectiveFormValues, correctedClaimValues, correctedEdgeValues, correctedFormValues, hiddenRecoveredValues, hiddenSenseValues } from "./correctedLayer.js";
 import { handKeptRows } from "./handKeptRows.js";
 import { COLUMNS, literal, tupleOf } from "./seedSql.js";
 
@@ -122,6 +127,17 @@ export type PlannedSenseHide =
   /** Keyed to a release this master was not seeded from. */
   | { state: "other-release"; correction: SenseHide };
 
+/** What a run does with one adjective's forms added and removed (#836). */
+export type PlannedAdjectiveForms =
+  | { state: "write"; correction: AdjectiveFormsCorrection; recordId: number }
+  | { state: "already"; correction: AdjectiveFormsCorrection; recordId: number }
+  /** A later release's change replaced the record: reported, never carried over. */
+  | { state: "retired"; correction: AdjectiveFormsCorrection; recordId: number; replacedBy: { recordId: number; changeId: string } }
+  /** The master holds no record at its line, or another line there: reported, never applied. */
+  | { state: "not-in-master"; correction: AdjectiveFormsCorrection; why: "no-record-at-line" | "line-digest-differs" }
+  /** Keyed to a release this master was not seeded from. */
+  | { state: "other-release"; correction: AdjectiveFormsCorrection };
+
 /** What a run does with one hand-kept reading: write its rows in place of the `held` ones, or leave the ones the master holds exactly. */
 export type PlannedHandKeptReading =
   | { state: "write"; reading: HandKeptReading; held: number }
@@ -137,6 +153,8 @@ export interface CorrectionPlan {
   hides: PlannedHide[];
   /** Every hidden sense, in list order. */
   senseHides: PlannedSenseHide[];
+  /** Every adjective's forms entry, in list order. */
+  adjectiveForms: PlannedAdjectiveForms[];
   /** Every definition entry of the list, in list order. */
   definitions: PlannedDefinitionCorrection[];
   /** Every hand-kept reading given, in list order. */
@@ -184,21 +202,23 @@ export const missingForCorrections = (reader: MasterReader): string[] => upgrade
  */
 export function planCorrections(reader: MasterReader, corrections: readonly CuratedCorrection[], readings: readonly HandKeptReading[] = []): CorrectionPlan {
   const master = readMasterRelease(reader);
-  const tables = tablesIn(reader, ["corrected_claim", "corrected_form", "corrected_edge", "corrected_definition", "hand_kept_definition", "hidden_record", "hidden_recovered_definition", "hidden_sense", ...PAGE_ENTRY_TABLES]);
+  const tables = tablesIn(reader, ["corrected_claim", "corrected_form", "corrected_edge", "corrected_definition", "hand_kept_definition", "hidden_record", "hidden_recovered_definition", "hidden_sense", "corrected_adjective_form", ...PAGE_ENTRY_TABLES]);
   const records = lineCorrections(corrections);
   const edgeEntries = senseEdgeCorrections(corrections);
   const hideEntries = recoveredHides(corrections);
   const senseHideEntries = senseHides(corrections);
+  const adjectiveEntries = adjectiveFormsCorrections(corrections);
   const keyed = recordsAt(
     reader,
     master,
-    [...records, ...edgeEntries, ...hideEntries, ...senseHideEntries].filter((correction) => correction.record.releaseId === master.releaseId).map((correction) => correction.record.lineNo),
+    [...records, ...edgeEntries, ...hideEntries, ...senseHideEntries, ...adjectiveEntries].filter((correction) => correction.record.releaseId === master.releaseId).map((correction) => correction.record.lineNo),
     tables,
   );
   const entries = planRecords(reader, master.releaseId, keyed, records, tables);
   const edges = planEdges(reader, master.releaseId, keyed, edgeEntries, tables);
   const hides = planHides(reader, master.releaseId, keyed, hideEntries, tables);
   const hiddenSenses = planSenseHides(reader, master.releaseId, keyed, senseHideEntries, tables);
+  const adjectiveForms = planAdjectiveForms(reader, master.releaseId, keyed, adjectiveEntries, tables);
   const definitions = planDefinitions(reader, master.releaseId, definitionCorrections(corrections), tables);
   const kept = planReadings(reader, readings, tables);
 
@@ -208,13 +228,14 @@ export function planCorrections(reader: MasterReader, corrections: readonly Cura
   const edgeWrites = edges.flatMap((entry) => (entry.state === "write" ? [entry] : []));
   const hideWrites = hides.flatMap((entry) => (entry.state === "write" ? [entry] : []));
   const senseHideWrites = hiddenSenses.flatMap((entry) => (entry.state === "write" ? [entry] : []));
+  const adjectiveWrites = adjectiveForms.flatMap((entry) => (entry.state === "write" ? [entry] : []));
   const definitionWrites = definitions.flatMap((entry) => (entry.state === "write" ? [entry] : []));
   const readingWrites = kept.flatMap((entry) => (entry.state === "write" ? [entry] : []));
-  if (writes.length + edgeWrites.length + hideWrites.length + senseHideWrites.length + definitionWrites.length + readingWrites.length === 0) {
-    return { masterReleaseId: master.releaseId, entries, edges, hides, senseHides: hiddenSenses, definitions, readings: kept, sql: "", counts: PlanCounts.NONE };
+  if (writes.length + edgeWrites.length + hideWrites.length + senseHideWrites.length + adjectiveWrites.length + definitionWrites.length + readingWrites.length === 0) {
+    return { masterReleaseId: master.releaseId, entries, edges, hides, senseHides: hiddenSenses, adjectiveForms, definitions, readings: kept, sql: "", counts: PlanCounts.NONE };
   }
   const written = [
-    ...[...writes, ...edgeWrites, ...hideWrites, ...senseHideWrites, ...definitionWrites].map((entry) => correctionId(entry.correction)),
+    ...[...writes, ...edgeWrites, ...hideWrites, ...senseHideWrites, ...adjectiveWrites, ...definitionWrites].map((entry) => correctionId(entry.correction)),
     ...readingWrites.map((entry) => `kept:${handKeptId(entry.reading)}`),
   ];
   const sql = [
@@ -263,6 +284,16 @@ export function planCorrections(reader: MasterReader, corrections: readonly Cura
       `INSERT INTO hidden_sense (${COLUMNS.hidden_sense}) VALUES\n  ${senseHideTuples.join(",\n  ")};`,
     );
   }
+  const adjectiveTuples = adjectiveWrites.flatMap((entry) =>
+    correctedAdjectiveFormValues(entry.correction).map((values) => tupleOf("corrected_adjective_form", [entry.recordId, master.releaseId, ...values])),
+  );
+  if (adjectiveWrites.length > 0) {
+    sql.push(
+      // An entry's rows are replaced whole, so a form the list no longer adds or removes goes with the rest.
+      `DELETE FROM corrected_adjective_form WHERE record_id IN (SELECT value FROM json_each(${json(adjectiveWrites.map((entry) => entry.recordId))}));`,
+      `INSERT INTO corrected_adjective_form (${COLUMNS.corrected_adjective_form}) VALUES\n  ${adjectiveTuples.join(",\n  ")};`,
+    );
+  }
   if (definitionWrites.length > 0) {
     sql.push(
       ...definitionWrites.map((entry) => `DELETE FROM corrected_definition WHERE entry_id = ${entry.entryId} AND definition_index = ${entry.correction.replaces.index};`),
@@ -277,25 +308,27 @@ export function planCorrections(reader: MasterReader, corrections: readonly Cura
     );
   }
   // Each written record changes in place: its rows already held go with the DELETE, and the INSERT writes them anew.
-  // A record that more than one kind writes (facts, cells, edges, hides, hidden senses) changes once.
+  // A record that more than one kind writes (facts, cells, edges, hides, hidden senses, adjective forms) changes once.
   // A definition entry changes no record, so it counts in rows only: the row it replaces, if held, and the row it writes.
   // So does a hand-kept reading, which keys to no record.
   const held = heldRows(reader, tables, writes.map((entry) => entry.recordId));
   const heldEdgeRows = tables.has("corrected_edge") && edgeWrites.length > 0 ? heldEdges(reader, edgeWrites.map((entry) => entry.recordId)) : new Map<string, string>();
   const heldHideRows = tables.has("hidden_recovered_definition") && hideWrites.length > 0 ? heldHides(reader, hideWrites.map((entry) => entry.recordId)) : new Map<string, string>();
   const heldSenseHideRows = tables.has("hidden_sense") && senseHideWrites.length > 0 ? heldSenseHides(reader, senseHideWrites.map((entry) => entry.recordId)) : new Map<string, string>();
+  const heldAdjectiveRows = tables.has("corrected_adjective_form") && adjectiveWrites.length > 0 ? heldAdjectiveForms(reader, adjectiveWrites.map((entry) => entry.recordId)) : new Map<number, string[]>();
   const heldDefinitionRows = tables.has("corrected_definition") && definitionWrites.length > 0
     ? heldDefinitions(reader, definitionWrites.map((entry) => entry.entryId))
     : new Map<string, string>();
   const heldCount = (tableWrites: readonly Write[]): number => tableWrites.reduce((rows, entry) => rows + heldOf(held, entry.correction, entry.recordId).length, 0);
   const counts = new PlanCounts(
-    { added: 0, changed: new Set([...writes, ...edgeWrites, ...hideWrites, ...senseHideWrites].map((entry) => entry.recordId)).size, removed: 0 },
+    { added: 0, changed: new Set([...writes, ...edgeWrites, ...hideWrites, ...senseHideWrites, ...adjectiveWrites].map((entry) => entry.recordId)).size, removed: 0 },
     {
       corrected_claim: claimTuples.length,
       corrected_form: formTuples.length,
       corrected_edge: edgeTuples.length,
       hidden_recovered_definition: hideTuples.length,
       hidden_sense: senseHideTuples.length,
+      corrected_adjective_form: adjectiveTuples.length,
       corrected_definition: definitionTuples.length,
       hand_kept_definition: readingWrites.reduce((rows, entry) => rows + entry.reading.definitions.length, 0),
       correction_version: 1,
@@ -306,11 +339,12 @@ export function planCorrections(reader: MasterReader, corrections: readonly Cura
       corrected_edge: edgeWrites.filter((entry) => heldEdgeRows.has(`${entry.recordId}:${entry.correction.edge.sense}`)).length,
       hidden_recovered_definition: hideWrites.filter((entry) => heldHideRows.has(`${entry.recordId}:${entry.correction.hides.line}`)).length,
       hidden_sense: senseHideWrites.filter((entry) => heldSenseHideRows.has(`${entry.recordId}:${entry.correction.hidesSense.index}`)).length,
+      corrected_adjective_form: adjectiveWrites.reduce((rows, entry) => rows + (heldAdjectiveRows.get(entry.recordId)?.length ?? 0), 0),
       corrected_definition: definitionWrites.filter((entry) => heldDefinitionRows.has(`${entry.entryId}:${entry.correction.replaces.index}`)).length,
       hand_kept_definition: readingWrites.reduce((rows, entry) => rows + entry.held, 0),
     },
   );
-  return { masterReleaseId: master.releaseId, entries, edges, hides, senseHides: hiddenSenses, definitions, readings: kept, sql: `${sql.join("\n")}\n`, counts };
+  return { masterReleaseId: master.releaseId, entries, edges, hides, senseHides: hiddenSenses, adjectiveForms, definitions, readings: kept, sql: `${sql.join("\n")}\n`, counts };
 }
 
 /** What the master holds at the archive lines the list keys to its release. */
@@ -352,7 +386,7 @@ function recordsAt(reader: MasterReader, master: ReturnType<typeof readMasterRel
 
 /** Where `correction`'s record stands in the master, before what it holds of the correction is read. */
 function standing(
-  correction: LineCorrection | SenseEdgeCorrection | RecoveredDefinitionHide | SenseHide,
+  correction: LineCorrection | SenseEdgeCorrection | RecoveredDefinitionHide | SenseHide | AdjectiveFormsCorrection,
   releaseId: string,
   keyed: KeyedRecords,
 ):
@@ -547,6 +581,58 @@ function planSenseHides(
   });
 }
 
+/** The `corrected_adjective_form` rows the master holds on `ids`, by record, each as a comparable string, in row order. */
+function heldAdjectiveForms(reader: MasterReader, ids: readonly number[]): Map<number, string[]> {
+  const held = new Map<number, string[]>();
+  for (const row of select<{
+    record_id: number;
+    row_index: number;
+    form_index: number | null;
+    surface: string;
+    gender: string | null;
+    number: string | null;
+    correction_id: string;
+    evidence_url: string;
+  }>(
+    reader,
+    `SELECT record_id, row_index, form_index, surface, gender, number, correction_id, evidence_url FROM corrected_adjective_form
+      WHERE record_id IN (SELECT value FROM json_each(${json([...new Set(ids)])})) ORDER BY record_id, row_index`,
+  )) {
+    const values = [row.row_index, row.form_index, row.surface, row.gender, row.number, row.correction_id, row.evidence_url];
+    held.set(row.record_id, [...(held.get(row.record_id) ?? []), JSON.stringify(values)]);
+  }
+  return held;
+}
+
+/** Whether `held` is exactly the rows `correction` writes on its record. */
+const holdsForms = (held: readonly string[] | undefined, correction: AdjectiveFormsCorrection): boolean =>
+  JSON.stringify(held ?? []) === JSON.stringify(correctedAdjectiveFormValues(correction).map((values) => JSON.stringify(values)));
+
+/**
+ * Plan each adjective's forms entry. The digest pins the line, so a served
+ * record's line is the one the entry was checked against, and one it
+ * misquotes is a fault of the list: the plan throws rather than write it.
+ */
+function planAdjectiveForms(
+  reader: MasterReader,
+  releaseId: string,
+  keyed: KeyedRecords,
+  corrections: readonly AdjectiveFormsCorrection[],
+  tables: ReadonlySet<string>,
+): PlannedAdjectiveForms[] {
+  const planned = corrections.map((correction) => ({ correction, stands: standing(correction, releaseId, keyed) }));
+  const served = planned.flatMap(({ stands }) => (stands.state === "served" ? [stands.recordId] : []));
+  const held = tables.has("corrected_adjective_form") && served.length > 0 ? heldAdjectiveForms(reader, served) : new Map<number, string[]>();
+  const lines = served.length > 0 ? linesOf(reader, served) : new Map<number, string>();
+  return planned.map(({ correction, stands }): PlannedAdjectiveForms => {
+    if (stands.state !== "served") return { ...stands, correction };
+    const { recordId } = stands;
+    const misquote = adjectiveFormsMisquote(correction, lines.get(recordId) ?? "{}");
+    if (misquote !== undefined) throw new Error(`curated correction ${correctionId(correction)} misquotes the forms of its own line: ${misquote}`);
+    return { state: holdsForms(held.get(recordId), correction) ? "already" : "write", correction, recordId };
+  });
+}
+
 interface HeldEntry {
   entryId: number;
   revisionId: number;
@@ -650,6 +736,8 @@ export function unwritten(reader: MasterReader, plan: CorrectionPlan): string[] 
   const held = heldRows(reader, new Set<string>(["corrected_claim", "corrected_form"]), writes.map((entry) => entry.recordId));
   const heldHide = hideWrites.length === 0 ? new Map<string, string>() : heldHides(reader, hideWrites.map((entry) => entry.recordId));
   const heldSenseHide = senseHideWrites.length === 0 ? new Map<string, string>() : heldSenseHides(reader, senseHideWrites.map((entry) => entry.recordId));
+  const adjectiveWrites = plan.adjectiveForms.flatMap((entry) => (entry.state === "write" ? [entry] : []));
+  const heldAdjective = adjectiveWrites.length === 0 ? new Map<number, string[]>() : heldAdjectiveForms(reader, adjectiveWrites.map((entry) => entry.recordId));
   const heldEdge = edgeWrites.length === 0 ? new Map<string, string>() : heldEdges(reader, edgeWrites.map((entry) => entry.recordId));
   const heldDefinition = definitionWrites.length === 0 ? new Map<string, string>() : heldDefinitions(reader, definitionWrites.map((entry) => entry.entryId));
   const readingWrites = plan.readings.flatMap((entry) => (entry.state === "write" ? [entry] : []));
@@ -667,6 +755,7 @@ export function unwritten(reader: MasterReader, plan: CorrectionPlan): string[] 
     ...senseHideWrites
       .filter((entry) => heldSenseHide.get(`${entry.recordId}:${entry.correction.hidesSense.index}`) !== JSON.stringify(hiddenSenseValues(entry.correction)))
       .map((entry) => correctionId(entry.correction)),
+    ...adjectiveWrites.filter((entry) => !holdsForms(heldAdjective.get(entry.recordId), entry.correction)).map((entry) => correctionId(entry.correction)),
     ...definitionWrites
       .filter((entry) => heldDefinition.get(`${entry.entryId}:${entry.correction.replaces.index}`) !== JSON.stringify(correctedDefinitionValues(entry.correction)))
       .map((entry) => correctionId(entry.correction)),
@@ -674,8 +763,8 @@ export function unwritten(reader: MasterReader, plan: CorrectionPlan): string[] 
   ];
 }
 
-/** One line per record, edge or hidden-sense entry, for the run's report. */
-export function describeEntry(entry: PlannedCorrection | PlannedEdgeCorrection | PlannedSenseHide): string {
+/** One line per record, edge, hidden-sense or adjective-forms entry, for the run's report. */
+export function describeEntry(entry: PlannedCorrection | PlannedEdgeCorrection | PlannedSenseHide | PlannedAdjectiveForms): string {
   const { word, lineNo, releaseId } = entry.correction.record;
   const head = `  ${correctionId(entry.correction)} ${word}`;
   switch (entry.state) {

@@ -185,6 +185,31 @@ export interface SourceForm {
   claims: GrammarClaim[];
 }
 
+/** A form an adjective's table lacks, added by a curated correction (#836): its spelling, the gender and number it agrees in, and the correction. */
+export interface AddedTableForm {
+  surface: string;
+  gender: "masculine" | "feminine";
+  number: "singular" | "plural";
+  correction: CorrectionRef;
+}
+
+/** A `forms[]` entry of the record that a curated correction takes off its table (#836): its place, its spelling as the source writes it, and the correction. */
+export interface RemovedTableForm {
+  index: number;
+  surface: string;
+  correction: CorrectionRef;
+}
+
+/**
+ * A curated correction of an adjective's table (#836): the forms it adds and
+ * the record's forms it removes. The record's `forms` stay as the source
+ * lists them; the table a page draws reads this beside them.
+ */
+export interface FormCorrection {
+  added: AddedTableForm[];
+  removed: RemovedTableForm[];
+}
+
 /**
  * A form's own tags and raw tags, recovered from its claims by pointer. A
  * Wikidata word's form states only tags the closed vocabulary maps, so on it
@@ -921,6 +946,8 @@ type ReadingFacts = EntryIdentity & {
    * source listed none — which is a fact about the source, not a gap to fill.
    */
   forms: SourceForm[];
+  /** A curated correction's forms added to and removed from this record's table (#836); absent where none sets it right. */
+  formCorrection?: FormCorrection;
   grammar: Grammar;
   /**
    * The lemma this record declares it is a form of, one link per `form_of`

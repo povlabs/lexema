@@ -353,7 +353,14 @@ it names the sense by its place in the record's `senses`, with its one gloss,
 and cites the page line it was read from, that page's revision and Huey's
 ruling. The seed writes it as a `hidden_sense` row; the digest pins the line,
 and an entry that misquotes its line, or names a sense that declares an edge,
-is refused. A lookup then reads the record as having no such sense. A
+is refused. A lookup then reads the record as having no such sense.
+An entry may also add forms to an adjective's table and remove forms from it,
+`quello`'s `quel`, `quell'`, `quei` and `quegli` in, `quelli` out
+([#836](https://github.com/povlabs/lexema/issues/836)): it names each added
+form by its spelling, gender and number and each removed one by its place in
+`forms[]` with its text, and cites en.wiktionary and Huey's ruling. The seed
+writes one `corrected_adjective_form` row per form; an entry that misquotes
+its line is refused. A lookup then reads the forms beside the record's own. A
 database seeded
 before an entry gets it by a one-off update, with no reseed and no archive:
 
@@ -370,7 +377,7 @@ suggestion addresses move ([cache identity](DEPLOY.md#card-and-suggestion-cache-
 `sense*` rows and the `recovered_*` rows are not touched. The file holds no
 DDL: on a master without `corrected_claim`, `corrected_form`,
 `corrected_edge`, `hidden_recovered_definition`, `hidden_sense`,
-`correction_version`, `corrected_definition` or
+`corrected_adjective_form`, `correction_version`, `corrected_definition` or
 `hand_kept_definition`, or with a `corrected_form` from before its
 `surface_key`, the command refuses to write and names
 `pnpm run update:upgrade`, which creates them and keys the cells. It then reads the rows

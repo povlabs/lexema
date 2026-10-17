@@ -862,6 +862,45 @@ CREATE TABLE hidden_sense (
     REFERENCES source_record(record_id, release_id) ON DELETE CASCADE
 ) STRICT;
 
+-- One form of an adjective's table set right beside the record (#836, ADR
+-- 0027): a form the table lacks, added with its gender and number (`quello`'s
+-- adjective gains `quel`, `quell'`, `quei` and `quegli`), or a `forms[]`
+-- entry that is no form of the adjective, removed (`quelli`, its pronoun's
+-- plural). The committed list names the record as for corrected_claim, and a
+-- removed form by its place in `forms[]` with the text the line holds there;
+-- the seed and `correct:records` write the rows only where the record's line
+-- quotes them. lookup_form, grammar_claim and source_record_json stay as
+-- imported; a lookup reads the rows beside the record's own forms, and the
+-- word page's table shows an added form and no removed one. A row stays on
+-- the record it was written for: a record that replaced that one shows its
+-- own forms, and the update reports the correction (ADR 0027,
+-- src/update/apply.ts). Absent on a master seeded before it until
+-- `update:upgrade` creates it; a lookup reads an absent one as empty.
+CREATE TABLE corrected_adjective_form (
+  record_id     INTEGER NOT NULL REFERENCES source_record(record_id) ON DELETE CASCADE,
+  release_id    TEXT    NOT NULL,
+  -- The row's place in its entry: the added forms in list order, then the removed ones.
+  row_index     INTEGER NOT NULL CHECK (row_index >= 0),
+  -- A removed form's place in the record's `forms[]`; NULL on an added form.
+  form_index    INTEGER CHECK (form_index >= 0),
+  -- An added form's spelling, or the removed form's text at `/forms/<form_index>/form`, verbatim.
+  surface       TEXT    NOT NULL CHECK (surface <> ''),
+  -- An added form's gender and number; NULL on a removed one.
+  gender        TEXT    CHECK (gender IN ('masculine', 'feminine')),
+  number        TEXT    CHECK (number IN ('singular', 'plural')),
+  -- The list entry it was written from: release, archive line and `forms`, `it-0c432803:33211:forms`.
+  correction_id TEXT    NOT NULL,
+  -- The first revision the entry cites, as a permanent link. Split as
+  -- corrected_claim's is, for D1's 50-byte pattern limit (#489).
+  evidence_url  TEXT    NOT NULL CHECK (evidence_url GLOB 'https://*'
+                                        AND evidence_url GLOB '*.wiktionary.org/w/index.php?title=*&oldid=*'),
+  -- A row adds a form, with its gender and number and no place, or removes one, with its place and neither.
+  CHECK ((form_index IS NULL) = (gender IS NOT NULL) AND (gender IS NULL) = (number IS NULL)),
+  PRIMARY KEY (record_id, row_index),
+  FOREIGN KEY (record_id, release_id)
+    REFERENCES source_record(record_id, release_id) ON DELETE CASCADE
+) STRICT;
+
 -- Live-correction cache revision, like hide_version: a nonempty
 -- `correct:records` transaction increments it, so card and suggestion
 -- addresses move with the corrected facts. Older masters acquire this table

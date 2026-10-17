@@ -56,6 +56,7 @@ import type {
   Review,
   Sense,
   SourceForm,
+  FormCorrection,
   CorrectedSurface,
   SourceRef,
   SourceText,
@@ -884,15 +885,16 @@ function releaseDump(row: {
 }
 
 /** Which curated-correction tables the dictionary has, so a lookup reads none that is absent. */
-type Corrected = Pick<DictionaryTables, "corrections" | "cellCorrections" | "recoveredHides" | "senseHides">;
+type Corrected = Pick<DictionaryTables, "corrections" | "cellCorrections" | "recoveredHides" | "senseHides" | "adjectiveFormCorrections">;
 
 /** Whether the dictionary has `hidden_recovered_definition` (#773) and `hidden_sense` (#857), so each read names one only where it is. */
 export type Hides = Pick<DictionaryTables, "recoveredHides" | "senseHides">;
 
-/** A record's grammar and the forms it lists, which the grammar is keyed into. */
+/** A record's grammar and the forms it lists, which the grammar is keyed into, and a curated correction of its table, where one sets it right (#836). */
 interface RecordTable {
   grammar: Grammar;
   forms: SourceForm[];
+  formCorrection?: FormCorrection;
 }
 
 /** A `form_of` edge as the record declares it, before this lookup's listings are attached. */
@@ -941,8 +943,13 @@ async function readTable(
   // A form's claims are the ones the grammar groups by index, so the grammar is
   // one read joined to the forms here, not read again per form. Neither read
   // needs the other's rows, so both are sent at once.
-  const [grammar, forms] = await Promise.all([readGrammar(db, recordId, ref, corrected), readFormRows(db, recordId, corrected)]);
-  return { grammar, forms: formsOf(forms, ref, grammar) };
+  const [grammar, rows] = await Promise.all([readGrammar(db, recordId, ref, corrected), readFormRows(db, recordId, corrected)]);
+  const formCorrection = formCorrectionOf(recordId, rows.filter(isAdjectiveFormRow));
+  return {
+    grammar,
+    forms: formsOf(rows.filter((row) => !isAdjectiveFormRow(row)), ref, grammar),
+    ...(formCorrection === undefined ? {} : { formCorrection }),
+  };
 }
 
 /** A promise, marked handled: it is awaited later, and a lookup that fails before then must not also leave it unhandled. */
@@ -995,7 +1002,7 @@ async function buildReading(
   // Each read waits only on the ones it needs, and the rest go to the database
   // together: on D1 every wait is a network round trip (#385).
   const source = inputs.record.then((record) => readSourceRecord(record.rawJson, ref));
-  const [{ grammar, forms }, lemmaLinks, record, fields, expressions, recovered, senseRows, inflections, reviews] =
+  const [{ grammar, forms, formCorrection }, lemmaLinks, record, fields, expressions, recovered, senseRows, inflections, reviews] =
     await Promise.all([
       inputs.table,
       inputs.lemmaLinks,
@@ -1019,6 +1026,7 @@ async function buildReading(
     evidence: evidenceOf(group),
     senses: sensesOf(senseRows, first.record_word, ref, fields, recovered.underSense),
     forms,
+    ...(formCorrection === undefined ? {} : { formCorrection }),
     grammar,
     lemmaLinks,
     inflections,
@@ -1242,7 +1250,54 @@ export const CORRECTED_RECORD_FORM_SQL: KeyedRead = keyedRead(`SELECT f.record_i
        LEFT JOIN corrected_form c ON c.record_id = f.record_id AND c.form_index = f.form_index
       WHERE f.record_id IN (SELECT value FROM json_each(?1)) AND f.origin = 'embedded-form'`);
 
-/** One of the record's own `forms[]` entries, as `RECORD_FORM_SQL` or `CORRECTED_RECORD_FORM_SQL` returns it. */
+/**
+ * `CORRECTED_RECORD_FORM_SQL`, and in the same statement the record's
+ * adjective forms a curated correction adds and removes (#836): each a
+ * `corrected_adjective_form` row, named by its `row_index`, which no
+ * `lookup_form` row has. Like the cells, read for the record's own id alone,
+ * so never for a record that replaced it. Read only where the dictionary has
+ * both tables. Exported so a test can assert the plan.
+ */
+export const ADJECTIVE_RECORD_FORM_SQL: KeyedRead = keyedRead(`SELECT f.record_id AS set_key, f.form_index, f.surface, f.json_pointer, f.form_source,
+            c.surface AS corrected_surface, c.correction_id, c.evidence_url,
+            NULL AS row_index, NULL AS gender, NULL AS number
+       FROM lookup_form f
+       LEFT JOIN corrected_form c ON c.record_id = f.record_id AND c.form_index = f.form_index
+      WHERE f.record_id IN (SELECT value FROM json_each(?1)) AND f.origin = 'embedded-form'
+     UNION ALL
+     SELECT a.record_id AS set_key, a.form_index, a.surface, NULL, NULL,
+            NULL, a.correction_id, a.evidence_url,
+            a.row_index, a.gender, a.number
+       FROM corrected_adjective_form a
+      WHERE a.record_id IN (SELECT value FROM json_each(?1))`);
+
+/** A `corrected_adjective_form` row as `ADJECTIVE_RECORD_FORM_SQL` returns it: an added form, with its gender and number, or a removed one, with its place. */
+interface AdjectiveFormRow {
+  row_index: number;
+  form_index: number | null;
+  surface: string;
+  gender: "masculine" | "feminine" | null;
+  number: "singular" | "plural" | null;
+  correction_id: string;
+  evidence_url: string;
+}
+
+const isAdjectiveFormRow = (row: FormRow | AdjectiveFormRow): row is AdjectiveFormRow => row.row_index != null;
+
+/** The forms a curated correction adds to and removes from the record's table, in row order, or undefined where none does. */
+function formCorrectionOf(recordId: number, rows: readonly AdjectiveFormRow[]): FormCorrection | undefined {
+  if (rows.length === 0) return undefined;
+  const formCorrection: FormCorrection = { added: [], removed: [] };
+  for (const row of [...rows].sort((a, b) => a.row_index - b.row_index)) {
+    const correction = { id: row.correction_id, evidenceUrl: row.evidence_url };
+    if (row.form_index !== null) formCorrection.removed.push({ index: row.form_index, surface: row.surface, correction });
+    else if (row.gender !== null && row.number !== null) formCorrection.added.push({ surface: row.surface, gender: row.gender, number: row.number, correction });
+    else throw new Error(`corrected_adjective_form row ${row.row_index} of record ${recordId} names no place and no gender and number`);
+  }
+  return formCorrection;
+}
+
+/** One of the record's own `forms[]` entries, as `RECORD_FORM_SQL`, `CORRECTED_RECORD_FORM_SQL` or `ADJECTIVE_RECORD_FORM_SQL` returns it. */
 interface FormRow {
   form_index: number;
   surface: string;
@@ -1252,10 +1307,15 @@ interface FormRow {
   corrected_surface?: string | null;
   correction_id?: string | null;
   evidence_url?: string | null;
+  /** Null on every row of the record's own forms; only an adjective form's row has one. */
+  row_index?: null;
 }
 
-const readFormRows = (db: LookupDatabase, recordId: number, corrected: Corrected): Promise<FormRow[]> =>
-  readKeys<FormRow>(db, corrected.cellCorrections ? CORRECTED_RECORD_FORM_SQL : RECORD_FORM_SQL, [recordId]);
+const recordFormRead = (corrected: Corrected): KeyedRead =>
+  corrected.adjectiveFormCorrections ? ADJECTIVE_RECORD_FORM_SQL : corrected.cellCorrections ? CORRECTED_RECORD_FORM_SQL : RECORD_FORM_SQL;
+
+const readFormRows = (db: LookupDatabase, recordId: number, corrected: Corrected): Promise<(FormRow | AdjectiveFormRow)[]> =>
+  readKeys<FormRow | AdjectiveFormRow>(db, recordFormRead(corrected), [recordId]);
 
 /** The spelling a curated correction sets a row's cell to, and the correction, when one does. */
 function correctedCellOf(row: FormRow): { surface: string; corrected: CorrectedSurface } | undefined {

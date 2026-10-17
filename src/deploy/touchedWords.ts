@@ -12,7 +12,7 @@ import type { CorrectionPlan } from "../import/correctRecords.js";
 import type { HidePlan } from "../import/hideRecords.js";
 import type { PageEntryPlan } from "../import/loadPageEntries.js";
 import type { RecoveredDefinitionPlan } from "../import/loadRecoveredDefinitions.js";
-import { cellSpellings, isCellCorrection } from "../italian/curatedCorrections.js";
+import { adjectiveFormRows, cellSpellings, isCellCorrection } from "../italian/curatedCorrections.js";
 import { wordsLedTo } from "../italian/handKeptReadings.js";
 import { normalizeItalianExact } from "../italian/normalize.js";
 import type { NamePlan } from "../names/loadNames.js";
@@ -61,7 +61,9 @@ export const wordsOfHide = (plan: HidePlan): TouchedWords => touchedWords(plan.h
  * names, whose page lists the record's word among its forms, the word each
  * edge it replaces or removes named, whose page no longer does (#755), the
  * word of each record a recovered definition of which it hides (#773), the
- * word of each record a sense of which it hides (#857), and the word of each
+ * word of each record a sense of which it hides (#857), the word of each
+ * record whose adjective forms it adds or removes and each of those forms,
+ * whose page shows that record's table (#836), and the word of each
  * hand-kept reading it writes (#745) and of each word that reading leads to,
  * whose definitions and table its page shows (#830).
  */
@@ -75,6 +77,9 @@ export const wordsOfCorrections = (plan: CorrectionPlan): TouchedWords =>
     ),
     ...plan.hides.flatMap((hide) => (hide.state === "write" ? [hide.correction.record.word] : [])),
     ...plan.senseHides.flatMap((hide) => (hide.state === "write" ? [hide.correction.record.word] : [])),
+    ...plan.adjectiveForms.flatMap(({ state, correction }) =>
+      state !== "write" ? [] : [correction.record.word, ...adjectiveFormRows(correction).map((row) => (row.added !== undefined ? row.added.surface : row.removed.removes))],
+    ),
     ...plan.definitions.flatMap((definition) => (definition.state === "write" ? [definition.correction.entry.title] : [])),
     ...plan.readings.flatMap((planned) => (planned.state === "write" ? [planned.reading.word, ...wordsLedTo(planned.reading)] : [])),
   ]);

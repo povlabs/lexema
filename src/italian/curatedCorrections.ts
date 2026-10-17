@@ -162,6 +162,24 @@
 // The digest pins the line, so a record a later release changes does not
 // get it: the seed reports it, and the update reports it for the record
 // that replaced its record (ADR 0025, ADR 0027).
+//
+// A sixth kind sets an adjective's table of forms right by adding forms and
+// removing them (#836). `quello`'s adjective record lists `quelli`, the
+// pronoun's plural, and none of `quel`, `quell'`, `quei` and `quegli`, the
+// forms the adjective takes before a noun; `bello`'s lists none of `bel`,
+// `bell'`, `bei` and `begli`. Huey ruled on 2026-10-17
+// (https://github.com/povlabs/lexema/issues/836#issuecomment-6237109728; ADR
+// 0027's amendment of that day) to add them, citing en.wiktionary, and to
+// remove `quelli` from quello's adjective table; its pronoun keeps it. Such
+// an entry names the record as the other kinds do, each added form by its
+// spelling, gender and number, and each removed form by its place in
+// `forms[]` with the text the line holds there; it cites the pages and the
+// ruling. The seed writes one `corrected_adjective_form` row per form
+// (src/import/correctedLayer.ts), `pnpm run correct:records` writes them into
+// a master seeded before it, and a lookup reads them beside the record's own
+// forms (`Reading.formCorrection`), which the gender grid places
+// (web/lib/dictionary/genderGrid.ts). `lookup_form` stays as imported, so a
+// search still reaches the record by a removed form's spelling.
 
 import { FORM_OF_GLOSS_EDGE_EVIDENCE } from "./formOfGlossEdgeEvidence.js";
 import { formOfGlossEdgeCorrections } from "./formOfGlossEdge.js";
@@ -225,6 +243,7 @@ export interface RecordCorrection {
   cells?: never;
   hides?: never;
   hidesSense?: never;
+  adjectiveForms?: never;
 }
 
 /** One cell of a verb's table, set right: the `forms[]` entry at `index`, whose `form` the line spells `replaces`. */
@@ -260,6 +279,7 @@ export interface CellCorrection {
   edge?: never;
   hides?: never;
   hidesSense?: never;
+  adjectiveForms?: never;
 }
 
 /** An it.wiktionary page at one revision, and what it shows that settles the fact. */
@@ -315,6 +335,7 @@ export interface EdgeCorrection {
   cells?: never;
   hides?: never;
   hidesSense?: never;
+  adjectiveForms?: never;
 }
 
 /** The `form_of` edge a correction removes from one sense, whose gloss states a meaning, not a form (ADR 0030's 2026-10-09 amendment, #755). */
@@ -350,6 +371,7 @@ export interface EdgeRemoval {
   cells?: never;
   hides?: never;
   hidesSense?: never;
+  adjectiveForms?: never;
 }
 
 /** A correction of one sense's `form_of` edge: one that sets it, or one that removes it. Each is one `corrected_edge` row. */
@@ -388,6 +410,7 @@ export interface DefinitionCorrection {
   cells?: never;
   hides?: never;
   hidesSense?: never;
+  adjectiveForms?: never;
 }
 
 /** A ruling comment on a Lexema issue, by its permanent link. */
@@ -427,6 +450,7 @@ export interface RecoveredDefinitionHide {
   edge?: never;
   cells?: never;
   hidesSense?: never;
+  adjectiveForms?: never;
 }
 
 /** The sense a sense hide names: its place in the record's `senses`, its one gloss, and the page line it was read from. */
@@ -458,10 +482,61 @@ export interface SenseHide {
   edge?: never;
   cells?: never;
   hides?: never;
+  adjectiveForms?: never;
 }
 
-/** One entry of the curated list: a record's gender or number, cells of its table of forms, a sense's `form_of` edge set or removed, a page-only entry's definition, a recovered definition hidden, or a sense hidden. */
-export type CuratedCorrection = RecordCorrection | CellCorrection | EdgeCorrection | EdgeRemoval | DefinitionCorrection | RecoveredDefinitionHide | SenseHide;
+/** A form an adjective's table lacks, added (#836): its spelling, and the gender and number it agrees in. */
+export interface AddedForm {
+  surface: string;
+  gender: CorrectableValues["gender"];
+  number: CorrectableValues["number"];
+}
+
+/** A `forms[]` entry of the record that is no form of the adjective, removed (#836). */
+export interface RemovedForm {
+  /** Its place in the record's `forms[]`: the entry at `/forms/<index>`. */
+  index: number;
+  /** What the record's line holds at `/forms/<index>/form`, verbatim: `quelli`, the pronoun's plural. */
+  removes: string;
+}
+
+/** What an adjective-forms correction does to the table: it adds forms, removes forms, or both; never neither. */
+export type AdjectiveFormChanges =
+  | { adds: readonly [AddedForm, ...AddedForm[]]; removes?: readonly [RemovedForm, ...RemovedForm[]] }
+  | { adds?: readonly [AddedForm, ...AddedForm[]]; removes: readonly [RemovedForm, ...RemovedForm[]] };
+
+/**
+ * An adjective's table of forms, set right by adding the forms it lacks and
+ * removing the ones that are not its own (#836, ADR 0027's amendment of
+ * 2026-10-17). `quello`'s adjective record gains `quel`, `quell'`, `quei`
+ * and `quegli` and loses `quelli`, its pronoun's plural. It cites the pages
+ * that list the forms, and the ruling. A lookup reads the record's own forms
+ * beside it; `lookup_form` and `source_record_json` stay as imported.
+ */
+export interface AdjectiveFormsCorrection {
+  record: CorrectedRecord & { pos: "adj" };
+  adjectiveForms: AdjectiveFormChanges;
+  /** At least one revision; a correction without evidence is not a correction. */
+  evidence: readonly [Evidence, ...Evidence[]];
+  ruling: RulingUrl;
+  facts?: never;
+  entry?: never;
+  edge?: never;
+  cells?: never;
+  hides?: never;
+  hidesSense?: never;
+}
+
+/** One entry of the curated list: a record's gender or number, cells of its table of forms, a sense's `form_of` edge set or removed, a page-only entry's definition, a recovered definition hidden, a sense hidden, or an adjective's forms added and removed. */
+export type CuratedCorrection =
+  | RecordCorrection
+  | CellCorrection
+  | EdgeCorrection
+  | EdgeRemoval
+  | DefinitionCorrection
+  | RecoveredDefinitionHide
+  | SenseHide
+  | AdjectiveFormsCorrection;
 
 /** An entry keyed to one archive line as a whole: a record's gender or number, or cells of its table. */
 export type LineCorrection = RecordCorrection | CellCorrection;
@@ -481,6 +556,8 @@ const isSenseEdgeCorrection = (correction: CuratedCorrection): correction is Sen
 export const isRecoveredHide = (correction: CuratedCorrection): correction is RecoveredDefinitionHide => correction.hides !== undefined;
 
 export const isSenseHide = (correction: CuratedCorrection): correction is SenseHide => correction.hidesSense !== undefined;
+
+export const isAdjectiveFormsCorrection = (correction: CuratedCorrection): correction is AdjectiveFormsCorrection => correction.adjectiveForms !== undefined;
 
 /** The entries of `corrections` that correct a record's gender or number. */
 export const recordCorrections = (corrections: readonly CuratedCorrection[]): RecordCorrection[] =>
@@ -522,6 +599,51 @@ export const recoveredHides = (corrections: readonly CuratedCorrection[]): Recov
 
 /** The entries of `corrections` that hide a sense of a record (#857). */
 export const senseHides = (corrections: readonly CuratedCorrection[]): SenseHide[] => corrections.filter(isSenseHide);
+
+/** The entries of `corrections` that add and remove an adjective's forms (#836). */
+export const adjectiveFormsCorrections = (corrections: readonly CuratedCorrection[]): AdjectiveFormsCorrection[] =>
+  corrections.filter(isAdjectiveFormsCorrection);
+
+/** One form an adjective-forms correction writes: an added form, or a removed one. Each is one `corrected_adjective_form` row. */
+export type AdjectiveFormRow = { added: AddedForm; removed?: never } | { removed: RemovedForm; added?: never };
+
+/** The forms `correction` writes, in row order: the added forms in list order, then the removed ones. */
+export const adjectiveFormRows = (correction: AdjectiveFormsCorrection): AdjectiveFormRow[] => [
+  ...(correction.adjectiveForms.adds ?? []).map((added) => ({ added })),
+  ...(correction.adjectiveForms.removes ?? []).map((removed) => ({ removed })),
+];
+
+/** Why an adjective-forms correction does not match the record's line it names. */
+export type AdjectiveFormsMisquote =
+  /** The line is not an adjective's record. */
+  | "not-an-adjective"
+  /** A removed form's place in `forms[]` does not hold the text the entry quotes. */
+  | "removed-form-differs"
+  /** An added form is already on the line, at the same spelling, gender and number: nothing to add. */
+  | "form-already-listed"
+  /** The entry adds one form twice. */
+  | "form-added-twice";
+
+/**
+ * Whether `correction` quotes `line`, the record's archive line it names: an
+ * adjective's record, each removed form at its place with the text it
+ * quotes, and each added form one the line does not list already. The digest
+ * already pins the line, so any answer but `undefined` is an entry that
+ * misquotes its own record, and nothing writes it.
+ */
+export function adjectiveFormsMisquote(correction: AdjectiveFormsCorrection, line: string): AdjectiveFormsMisquote | undefined {
+  const record = JSON.parse(line) as { pos?: unknown; forms?: { form?: unknown; tags?: unknown[] }[] };
+  if (record.pos !== "adj") return "not-an-adjective";
+  const forms = record.forms ?? [];
+  const { adds = [], removes = [] } = correction.adjectiveForms;
+  if (removes.some((removed) => forms[removed.index]?.form !== removed.removes)) return "removed-form-differs";
+  const listed = (added: AddedForm): boolean =>
+    forms.some((form) => form.form === added.surface && (form.tags ?? []).includes(added.gender) && (form.tags ?? []).includes(added.number));
+  if (adds.some(listed)) return "form-already-listed";
+  const keys = adds.map((added) => `${added.surface} ${added.gender} ${added.number}`);
+  if (new Set(keys).size !== keys.length) return "form-added-twice";
+  return undefined;
+}
 
 /** Why a sense hide does not match the record's line it names. */
 export type SenseHideMisquote =
@@ -612,19 +734,19 @@ export function definitionMismatch(correction: DefinitionCorrection, entry: Page
  * for a recovered definition hidden, also its page line,
  * `it-0c432803:573791/page-line/3`; for a sense hidden, its sense and
  * `/hidden`, `it-0c432803:96753/senses/0/hidden`, so it never reads as an
- * edge of that sense; or a definition's page revision and place,
+ * edge of that sense; for an adjective's forms added and removed, `:forms`,
+ * `it-0c432803:33211:forms`; or a definition's page revision and place,
  * `page:3906191:0`.
  */
-export const correctionId = (correction: CuratedCorrection): string =>
-  isDefinitionCorrection(correction)
-    ? `page:${correction.entry.revisionId}:${correction.replaces.index}`
-    : isSenseEdgeCorrection(correction)
-      ? `${correction.record.releaseId}:${correction.record.lineNo}/senses/${correction.edge.sense}`
-      : isRecoveredHide(correction)
-        ? `${correction.record.releaseId}:${correction.record.lineNo}/page-line/${correction.hides.line}`
-        : isSenseHide(correction)
-          ? `${correction.record.releaseId}:${correction.record.lineNo}/senses/${correction.hidesSense.index}/hidden`
-          : `${correction.record.releaseId}:${correction.record.lineNo}${isCellCorrection(correction) ? ":cells" : ""}`;
+export function correctionId(correction: CuratedCorrection): string {
+  if (isDefinitionCorrection(correction)) return `page:${correction.entry.revisionId}:${correction.replaces.index}`;
+  const line = `${correction.record.releaseId}:${correction.record.lineNo}`;
+  if (isSenseEdgeCorrection(correction)) return `${line}/senses/${correction.edge.sense}`;
+  if (isRecoveredHide(correction)) return `${line}/page-line/${correction.hides.line}`;
+  if (isSenseHide(correction)) return `${line}/senses/${correction.hidesSense.index}/hidden`;
+  if (isAdjectiveFormsCorrection(correction)) return `${line}:forms`;
+  return `${line}${isCellCorrection(correction) ? ":cells" : ""}`;
+}
 
 /** A permanent link to the revision, which stays as it was whatever the page says later. */
 export const evidenceUrl = (evidence: Omit<Evidence, "shows">): string =>
@@ -1103,6 +1225,60 @@ export const HAND_CORRECTIONS: readonly CuratedCorrection[] = [
       page: { wiki: "it.wiktionary.org", title: "gaio", revisionId: 4057291 },
       ruling: "https://github.com/povlabs/lexema/issues/857#issuecomment-6237103400",
     },
+  },
+  // Huey's ruling on #836, 2026-10-17: quello's and bello's adjective tables
+  // gain the forms they take before a noun, citing en.wiktionary, and
+  // quello's loses `quelli`, its pronoun's plural. bello keeps `belli`
+  // ("sono belli"). `quell'` and `bell'` stand before a vowel of either
+  // gender, so each is added masculine and feminine singular, as the cited
+  // pages give them.
+  {
+    record: { releaseId: IT, lineNo: 33211, lineSha256: "d496c574b2efa879af4bf9d1dd9f1994e42b0ba2c320c853d621dd77dedf02e2", word: "quello", pos: "adj" },
+    adjectiveForms: {
+      adds: [
+        { surface: "quel", gender: "masculine", number: "singular" },
+        { surface: "quell'", gender: "masculine", number: "singular" },
+        { surface: "quell'", gender: "feminine", number: "singular" },
+        { surface: "quei", gender: "masculine", number: "plural" },
+        { surface: "quegli", gender: "masculine", number: "plural" },
+      ],
+      removes: [{ index: 0, removes: "quelli" }],
+    },
+    evidence: [
+      {
+        wiki: "en.wiktionary.org",
+        title: "quello",
+        revisionId: 90494248,
+        shows:
+          "===Determiner=== … * Adjectival forms: ** {{l|it|quel}}: masculine singular before a consonant (except [[impure s]], gn, pn, ps, x, z) ** {{l|it|quello}}: masculine singular before [[impure s]], gn, pn, ps, x, z ** {{l|it|quell'}}: masculine/feminine singular before a vowel or h ** {{l|it|quella}}: feminine singular before a consonant ** {{l|it|quei}}: masculine plural before a consonant (except [[impure s]], gn, pn, ps, x, z) ** {{l|it|quegli}}: masculine plural before a vowel, [[impure s]], gn, pn, ps, x, z ** {{l|it|quelle}}: feminine plural",
+      },
+      // The page the source read the table from, at its revision in dump
+      // `itwiktionary-20260701`: it gives the adjective the pronoun's table.
+      { wiki: "it.wiktionary.org", title: "quello", revisionId: 4042892, shows: "{{-agg dim-|it}} {{Pn}} ''m sing'' {{Tabs|quello|quelli|quella|quelle}}" },
+    ],
+    ruling: "https://github.com/povlabs/lexema/issues/836#issuecomment-6237109728",
+  },
+  {
+    record: { releaseId: IT, lineNo: 33645, lineSha256: "3d945653779dd001abb341b95a8e7bb41b93b17a2d626c1f78cdaef63fa0d119", word: "bello", pos: "adj" },
+    adjectiveForms: {
+      adds: [
+        { surface: "bel", gender: "masculine", number: "singular" },
+        { surface: "bell'", gender: "masculine", number: "singular" },
+        { surface: "bell'", gender: "feminine", number: "singular" },
+        { surface: "bei", gender: "masculine", number: "plural" },
+        { surface: "begli", gender: "masculine", number: "plural" },
+      ],
+    },
+    evidence: [
+      {
+        wiki: "en.wiktionary.org",
+        title: "bello",
+        revisionId: 91582021,
+        shows:
+          "====Inflection==== … ! <small>Masculine<br>singular</small> | '''bello''' | '''{{l|it|bel}}''' | '''bello''' | align=\"center\" rowspan=2 |'''{{l|it|bell'|bell’}} ''' |- ! <small>Feminine<br>singular</small> | colspan=3 |'''{{l|it|bella}}''' |- ! <small>Masculine<br>plural</small> | '''{{l|it|belli}}''' | '''{{l|it|bei}}''' | colspan=2 |'''{{l|it|begli}}'''",
+      },
+    ],
+    ruling: "https://github.com/povlabs/lexema/issues/836#issuecomment-6237109728",
   },
 ];
 
