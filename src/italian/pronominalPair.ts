@@ -50,10 +50,11 @@
 // query at lookup time.
 
 import { builtBaseOf } from "./builtBase.js";
+import { glossBase } from "./formOfGlossEdge.js";
 import { HAND_KEPT_TABLES, handKeptCells } from "./handKeptTables.js";
 import { personOfItalianVerbForm, placeItalianVerbForm, TENSE_NAMES, type FinitePerson, type VerbFormTags } from "./moods.js";
 import { pronominalVerb } from "./pronominalConjugation.js";
-import { classParadigm, infinitiveOf, namesOnlyAnotherWord, paradigmCells, type ConjugationClass, type Paradigm } from "./regularConjugation.js";
+import { classParadigm, infinitiveOf, paradigmCells, type ConjugationClass, type Paradigm } from "./regularConjugation.js";
 import { readVerbFormGloss } from "./verbFormGloss.js";
 import { shapeAdmits } from "./wordShape.js";
 
@@ -352,6 +353,14 @@ export interface PronominalHead {
   headword: boolean;
   glosses: readonly string[];
 }
+
+/**
+ * Whether a record's every gloss says it is a form of another word. False for
+ * no gloss. The same reading `regularClassOf` declines on
+ * (`form-of-another-word`, src/italian/regularConjugation.ts).
+ */
+const namesOnlyAnotherWord = (glosses: readonly string[]): boolean =>
+  glosses.length > 0 && glosses.every((gloss) => glossBase(gloss.replace(/,/g, ""))?.formOpening === true);
 
 /**
  * Whether a row the pronominal infinitive reaches is that verb: a verb's

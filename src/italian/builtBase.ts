@@ -5,9 +5,9 @@
 // (`it-pronominal-conjugation/v1`). When no base verb record has a table,
 // those cells come, in this order, from the regular class the source settles
 // (`it-regular-conjugation/v1`), else from the verb's hand-kept table. The word
-// page draws that table (web/lib/dictionary/wordPage.ts), and rule
-// `it-pronominal-pair/v2` reads the same cells to find `si pente` (#834), so
-// the page and the lookup never read two different tables for one verb.
+// page draws that table in the same order (`pronominalBaseCells` in
+// web/lib/dictionary/wordPage.ts), and rule `it-pronominal-pair/v2` reads the
+// same cells here to find `si pente` (#834).
 
 import { CONJUGATION_TEMPLATE_CALLS } from "./conjugationTemplateCalls.js";
 import { handKeptCells, handKeptTableOf, type HandKeptCell, type HandKeptTable } from "./handKeptTables.js";
