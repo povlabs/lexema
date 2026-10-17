@@ -399,11 +399,60 @@ export interface FigLabels {
  */
 export function figLabels(body: string, headword: string): FigLabels | undefined {
   const expanded = expandLine(body, headword, {});
-  if (!expanded.rendered) return undefined;
-  return {
-    labels: expanded.labels.map(({ label }) => label),
-    kept: expanded.labels.map(({ template, label }) => (template === "fig" ? FIG_LABEL_BEFORE_800 : label)),
-  };
+  return expanded.rendered ? asFigLabels(expanded.labels) : undefined;
+}
+
+/** Printed labels as `FigLabels`: as printed now, and as rows stored before #800 hold them. */
+const asFigLabels = (labels: readonly PrintedLabel[]): FigLabels => ({
+  labels: labels.map(({ label }) => label),
+  kept: labels.map(({ template, label }) => (template === "fig" ? FIG_LABEL_BEFORE_800 : label)),
+});
+
+/** Two lines' labels in page order: the first's, then the second's. */
+const joined = (first: FigLabels, second: FigLabels): FigLabels => ({
+  labels: [...first.labels, ...second.labels],
+  kept: [...first.kept, ...second.kept],
+});
+
+/**
+ * The labels a page control's `#` line gives the definition the page wrapped
+ * onto the next physical line: every label template on it, whatever else the
+ * line holds.
+ */
+function controlLabels(body: string, headword: string): PrintedLabel[] {
+  return expandTemplates(body, headword, () => " ").labels;
+}
+
+/**
+ * The labels of a definition whose stored line does not print them all, read
+ * off the page it came from, beside the labels it gave before #800 (#814):
+ * - `wrapped-prose`: the `#` line above `line` prints its labels, then `line`
+ *   its own, as `SectionReader.wrapped` reads them (`pantomima`: `#{{Fig}} `,
+ *   then the definition);
+ * - `numbered-prose`: the lead-in of `line` gives every meaning its labels,
+ *   and each meaning prints its own, as `readRuledVerbSections` reads them.
+ *   The line numbers several meanings, so this gives one reading per meaning.
+ *
+ * `line` is the 1-based page line the definition was read off, and `wikitext`
+ * that line as stored. Empty when the page does not hold that line there, or
+ * holds it in a layout that does not give the route's definition.
+ */
+export function pageFigLabels(page: RawPage, route: "wrapped-prose" | "numbered-prose", line: number, wikitext: string): FigLabels[] {
+  const lines = page.wikitext.split("\n");
+  if (line < 1 || line > lines.length || lines[line - 1] !== wikitext) return [];
+  if (route === "numbered-prose") {
+    const { labels, bodies } = numberedMeanings(wikitext);
+    const lead: FigLabels = { labels, kept: labels };
+    return bodies.flatMap((body) => {
+      const own = figLabels(body, page.title);
+      return own === undefined ? [] : [joined(lead, own)];
+    });
+  }
+  const item = line < 2 ? null : LIST_LINE.exec(lines[line - 2].replace(/\s+$/, ""));
+  if (item === null || !isSenseMarker(item[1]) || hasPlainProse(item[2]) || NO_DEFINITION.test(item[2])) return [];
+  if (!continuesItem(wikitext.replace(/\s+$/, ""))) return [];
+  const own = figLabels(wikitext, page.title);
+  return own === undefined ? [] : [joined(asFigLabels(controlLabels(item[2], page.title)), own)];
 }
 
 /** Every template on a line expanded, labels still marked; or the first template that stops it. */
@@ -771,9 +820,8 @@ class SectionReader {
   wrapped(node: ListLine): PageDefinition[] {
     if (node.wrapped === null) return [];
     const { line, wikitext } = node.wrapped;
-    const { labels } = expandTemplates(node.body, this.page.title, () => " ");
     const prose: ListLine = { line, marker: "", body: wikitext, wikitext, wrapped: null, children: [] };
-    return this.definition(prose, { route: "wrapped-prose" }, null, labels.map(({ label }) => label));
+    return this.definition(prose, { route: "wrapped-prose" }, null, controlLabels(node.body, this.page.title).map(({ label }) => label));
   }
 }
 
@@ -924,6 +972,19 @@ export function readItalianSections(page: RawPage): PageSection[] {
 }
 
 /**
+ * The meanings a handwritten verb section's prose line numbers, and the usage
+ * labels its lead-in gives every one of them. Bold ordinal markers delimit
+ * meanings; the bracketed etymology after one is not part of it.
+ */
+function numberedMeanings(wikitext: string): { labels: string[]; bodies: string[] } {
+  const numbered = [...wikitext.matchAll(/'''\d+\.'''\s*([\s\S]*?)(?='''\d+\.'''|$)/g)];
+  return {
+    labels: numbered.length > 0 ? leadInLabels(wikitext.slice(0, numbered[0].index)) : [],
+    bodies: numbered.map((match) => match[1].replace(/\s*\[[^\]]*\]\.?\s*$/, "").trim()),
+  };
+}
+
+/**
  * The usage labels in the lead-in before a numbered meaning, written the way a
  * printed dictionary writes them: `v. tr. (dismago, dismaghi, ecc.), arc.`.
  * The first comma-separated part is the grammar and the bracket holds forms;
@@ -1029,11 +1090,8 @@ export function readRuledVerbSections(page: RawPage): { ref: RawPageRef; wikitex
     }
     const definitions = listDefinitions(reader, section.list);
     for (const prose of section.prose) {
-      // Bold ordinal markers delimit meanings; the bracketed etymology is not a definition.
-      const numbered = [...prose.wikitext.matchAll(/'''\d+\.'''\s*([\s\S]*?)(?='''\d+\.'''|$)/g)];
-      const labels = numbered.length > 0 ? leadInLabels(prose.wikitext.slice(0, numbered[0].index)) : [];
-      for (const match of numbered) {
-        const body = match[1].replace(/\s*\[[^\]]*\]\.?\s*$/, "").trim();
+      const { labels, bodies } = numberedMeanings(prose.wikitext);
+      for (const body of bodies) {
         definitions.push(...reader.definition({ ...prose, marker: "", body, wrapped: null, children: [] }, { route: "numbered-prose" }, null, labels));
       }
     }

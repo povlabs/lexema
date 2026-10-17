@@ -1,0 +1,16 @@
+{
+  "command": "correct:records",
+  "inputs": {},
+  "lookups": [
+    { "word": "sig.", "gloss": "abbreviazione di signore" },
+    { "word": "Sig.", "gloss": "abbreviazione di signore" },
+    { "word": "cosette", "gloss": "cosa piccola o di poco conto" },
+    { "word": "cosetta", "gloss": "nome proprio di persona femminile" },
+    { "word": "dr.", "gloss": "variante di Dott." }
+  ],
+  "expected": {
+    "records": { "added": 0, "changed": 0, "removed": 0 },
+    "written": { "hand_kept_definition": 2, "correction_version": 1 },
+    "deleted": {}
+  }
+}

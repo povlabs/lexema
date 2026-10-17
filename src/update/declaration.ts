@@ -53,7 +53,8 @@ export type DeclaredChange =
   | Declared<"update:auto", { readonly feedRelease: ReleaseId }>
   /** The release the master was seeded from, whose archive the rules read, and the rules. */
   | Declared<"hide:records", { readonly archive: ReleaseId; readonly rules: typeof HIDING_RULES }>
-  | Declared<"normalize:source-text", { readonly rules: typeof SOURCE_TEXT_UPDATE_RULES }>
+  /** The release the master was seeded from, whose dump rule `rendered-fig-label/v1` reads pages from (#814), and the rules. */
+  | Declared<"normalize:source-text", { readonly archive: ReleaseId; readonly rules: typeof SOURCE_TEXT_UPDATE_RULES }>
   /**
    * No inputs: it writes the committed list (src/italian/curatedCorrections.ts)
    * as it stands at the deploy's commit, and the expected counts pin what that
@@ -288,9 +289,10 @@ function changeOf(file: string, value: Record<string, unknown>, reasons: string[
       return archive === undefined || rules === undefined ? undefined : { file, command, inputs: { archive, rules } };
     }
     case "normalize:source-text": {
-      reasons.push(...unknownKeys(inputs, ["rules"], "inputs of normalize:source-text"));
+      reasons.push(...unknownKeys(inputs, ["archive", "rules"], "inputs of normalize:source-text"));
+      const archive = releaseId(inputs.archive, "inputs.archive", reasons);
       const rules = ruleSet(inputs.rules, SOURCE_TEXT_UPDATE_RULES, "inputs.rules", reasons);
-      return rules === undefined ? undefined : { file, command, inputs: { rules } };
+      return archive === undefined || rules === undefined ? undefined : { file, command, inputs: { archive, rules } };
     }
     case "correct:records": {
       reasons.push(...unknownKeys(inputs, [], "inputs of correct:records"));

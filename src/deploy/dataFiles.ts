@@ -64,17 +64,21 @@ export const archivePath = (releaseId: ReleaseId, sha256: string): string =>
 export const dumpPath = (file: string): string => `source/${file}`;
 
 /** A change that reads an archive and a dump from the data repository. */
-export type DataReadingChange = Extract<DeclaredChange, { command: "update:auto" | "hide:records" | "load:page-entries" | "load:recovered-definitions" }>;
+export type DataReadingChange = Extract<DeclaredChange, { command: "update:auto" | "hide:records" | "normalize:source-text" | "load:page-entries" | "load:recovered-definitions" }>;
 
 /** Whether `change` reads an archive and a dump, the ones `filesFor` names. */
 export const readsDataFiles = (change: DeclaredChange): change is DataReadingChange =>
-  change.command === "update:auto" || change.command === "hide:records" || change.command === "load:page-entries" || change.command === "load:recovered-definitions";
+  change.command === "update:auto" ||
+  change.command === "hide:records" ||
+  change.command === "normalize:source-text" ||
+  change.command === "load:page-entries" ||
+  change.command === "load:recovered-definitions";
 
 /**
  * The archive and dump `change` reads, from the catalogs: `update:auto` reads
- * its feed release; `hide:records`, `load:page-entries` and
- * `load:recovered-definitions` the master's archive, each with the dump it was
- * built from. `update:upgrade`, `normalize:source-text`, `correct:records`,
+ * its feed release; `hide:records`, `normalize:source-text`,
+ * `load:page-entries` and `load:recovered-definitions` the master's archive,
+ * each with the dump it was built from. `update:upgrade`, `correct:records`,
  * `load:names` and `load:wikidata-words` read none.
  */
 export function filesFor(
@@ -84,7 +88,6 @@ export function filesFor(
 ): ChangeFiles | null {
   switch (change.command) {
     case "update:upgrade":
-    case "normalize:source-text":
     case "correct:records":
     case "load:names":
     case "load:wikidata-words":
@@ -92,6 +95,7 @@ export function filesFor(
     case "update:auto":
       return releaseFiles(change.inputs.feedRelease, catalog, dumps);
     case "hide:records":
+    case "normalize:source-text":
     case "load:page-entries":
     case "load:recovered-definitions":
       return releaseFiles(change.inputs.archive, catalog, dumps);

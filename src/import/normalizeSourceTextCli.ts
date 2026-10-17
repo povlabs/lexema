@@ -8,21 +8,36 @@
 // into one SQL file and run in one step (normalizeSourceText.ts, #455), so a run that
 // stops leaves the dictionary as it was. It picks its database the way the
 // seed does: the local D1 under `SEED_STATE` (default `.data/seed-state`), or
-// the remote D1 `SEED_REMOTE` names. `--plan-only` prints the plan's counts as
-// JSON and writes nothing to the database (src/update/planOnly.ts). See
-// docs/RUN_AN_IMPORT.md.
+// the remote D1 `SEED_REMOTE` names. Rule `rendered-fig-label/v1` reads the
+// pages of a `wrapped-prose` or `numbered-prose` definition from the dump the
+// master's archive was built from (`RAW_PAGES`, default its copy in
+// `.data/source/`, fetched from `povlabs/lexema-data` when the cache lacks
+// it), held to its size and SHA-1 (#814); with no such definition to decide,
+// no dump is read. `--plan-only` prints the plan's counts as JSON and writes
+// nothing to the database (src/update/planOnly.ts). See docs/RUN_AN_IMPORT.md.
 
 import { mkdir, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { finish, flags, isMain, usageError, type CommandResult } from "../commandLine.js";
+import { archiveFactsFor } from "../source/archiveFacts.js";
+import { releaseIdOf } from "../source/servedRelease.js";
+import { SourceCache } from "../source/sourceCache.js";
+import { KNOWN_DUMPS, VerifiedDump } from "../source/wiktionaryDump.js";
+import { readMasterRelease } from "../update/master.js";
 import { masterReaderOf } from "../update/updateCli.js";
 import { planOnlyAnswer, planOnlyFlag, planOnlyRun } from "../update/planOnly.js";
+import { readFigLabelPages } from "./figLabelUpdate.js";
 import { normalizeSourceText, planSourceText } from "./normalizeSourceText.js";
 import { seedTargetFrom, webWrangler, type Wrangler } from "./seedTarget.js";
 
 const USAGE = "usage: pnpm run normalize:source-text [--out <dir>] [--plan-only]";
 
-export async function main(env: NodeJS.ProcessEnv = process.env, args: readonly string[] = [], wrangler: Wrangler = webWrangler): Promise<CommandResult> {
+export async function main(
+  env: NodeJS.ProcessEnv = process.env,
+  args: readonly string[] = [],
+  wrangler: Wrangler = webWrangler,
+  source: SourceCache = new SourceCache(),
+): Promise<CommandResult> {
   const { planOnly, rest } = planOnlyFlag(args);
   const options = flags(rest, ["out"]);
   if (typeof options === "string") return usageError(options, USAGE);
@@ -33,14 +48,24 @@ export async function main(env: NodeJS.ProcessEnv = process.env, args: readonly 
     : `remote D1 ${target.dictionary}`;
   const out = resolve(options.get("out") ?? ".data/updates");
 
+  const pages = await readFigLabelPages(reader, async () => {
+    const master = readMasterRelease(reader);
+    const dumpId = archiveFactsFor(master.archiveSha256)?.dump.id;
+    const identity = dumpId === undefined || !Object.hasOwn(KNOWN_DUMPS, dumpId) ? undefined : KNOWN_DUMPS[dumpId];
+    if (identity === undefined) throw new Error(`no dump is known for the master ${master.releaseId}, whose pages rule rendered-fig-label/v1 reads. Nothing was written.`);
+    const path = env.RAW_PAGES === undefined ? await source.dump(releaseIdOf(master.archiveSha256)) : resolve(env.RAW_PAGES);
+    process.stderr.write(`reading ${path} for the pages of the master ${master.releaseId}'s definitions that rule rendered-fig-label/v1 reads\n`);
+    return VerifiedDump.open(path, identity);
+  });
+
   if (planOnly) {
-    const plan = planSourceText(reader);
+    const plan = planSourceText(reader, pages);
     return planOnlyAnswer(planOnlyRun("normalize:source-text", plan.counts, reader), plan.sql, out, "normalize", { reports: plan.reports });
   }
 
   process.stderr.write(`normalizing source text in ${where}\n`);
   let file: string | undefined;
-  const plan = await normalizeSourceText(reader, async (sql) => {
+  const plan = await normalizeSourceText(reader, pages, async (sql) => {
     await mkdir(out, { recursive: true });
     file = join(out, `normalize-${Date.now()}.sql`);
     await writeFile(file, sql);
