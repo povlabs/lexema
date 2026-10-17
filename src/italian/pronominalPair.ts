@@ -285,11 +285,10 @@ export interface VerbHead {
  * The forms of `candidates` the dictionary confirms, with `headsOf` giving
  * the verb records a key heads, in source order. A `conjugated` reading counts
  * where the verb has a record that lists no forms, as the `conjugated` shape
- * admits it. A built table counts where the page
- * builds it: no record of the pronominal verb or of a base verb lists forms
- * (the page would build on those, and their cells are read as cells), and the
- * table `builtBaseOf` gives for the first record's glosses spells the form in
- * a row the pronoun takes.
+ * admits it. A built table counts where the page builds it: no record of the
+ * pronominal verb or of a base verb lists forms (the page would build on
+ * those, and their cells are read as cells), and the table `builtBaseOf` gives
+ * for the first record's glosses spells the form in a row the pronoun takes.
  */
 export function confirmedForms(query: PairQuery, candidates: readonly PairCandidate[], headsOf: (key: string) => readonly VerbHead[]): KnownForm[] {
   return candidates.flatMap((candidate): KnownForm[] => {
