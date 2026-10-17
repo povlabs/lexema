@@ -170,8 +170,19 @@ export interface SourceForm {
   claims: GrammarClaim[];
 }
 
-/** A form's own tags and raw tags, recovered from its claims by pointer. */
+/**
+ * A form's own tags and raw tags, recovered from its claims by pointer. A
+ * Wikidata word's form states only tags the closed vocabulary maps, so on it
+ * an unclassified claim is a raw tag: the pronoun its row writes (#833).
+ */
 export function sourceTagsOf(form: SourceForm): { tags: string[]; rawTags: string[] } {
+  if (isLexemeFormRef(form.ref)) {
+    const said = form.claims.flatMap((claim) => (claim.status === "missing" ? [] : [claim]));
+    return {
+      tags: said.flatMap((claim) => (claim.status === "stated" ? [claim.sourceText] : [])),
+      rawTags: said.flatMap((claim) => (claim.status === "unclassified" ? [claim.sourceText] : [])),
+    };
+  }
   return sourceTagsAt(
     form.claims.flatMap((claim) => (claim.status === "missing" ? [] : [{ pointer: sourcePointerOf(claim.ref), text: claim.sourceText }])),
   );
@@ -347,11 +358,12 @@ export interface RecoveredRef {
 }
 
 /**
- * Where a fact a page shows was read: a field of an archive line, or a line of
- * a raw page for a page-only entry (ADR 0026). The two are told apart by
- * shape, never by a flag that could disagree with it.
+ * Where a fact a page shows was read: a field of an archive line, a line of a
+ * raw page for a page-only entry (ADR 0026), or a form of a Wikidata word's
+ * lexeme (ADR 0033, #833). The three are told apart by shape, never by a flag
+ * that could disagree with it.
  */
-export type FactRef = SourceRef | RecoveredRef;
+export type FactRef = SourceRef | RecoveredRef | LexemeFormRef;
 
 /** Whether a fact was read from the archive rather than from a raw page, or from a name entry's Wikidata item or a Wikidata word's lexeme. */
 export const isSourceRef = (ref: FactRef | NameRef | LexemeRef): ref is SourceRef => "jsonPointer" in ref;
@@ -363,7 +375,9 @@ export const sourcePointerOf = (ref: FactRef): string | undefined => (isSourceRe
 export const factRefKey = (ref: FactRef): string =>
   isSourceRef(ref)
     ? `${ref.releaseId}\u0000${ref.lineNo}\u0000${ref.jsonPointer}`
-    : `${ref.wiki}\u0000${ref.title}\u0000${ref.revisionId}\u0000${ref.line}`;
+    : isLexemeFormRef(ref)
+      ? `${ref.wiki}\u0000${ref.snapshot}\u0000${ref.form}`
+      : `${ref.wiki}\u0000${ref.title}\u0000${ref.revisionId}\u0000${ref.line}`;
 
 /** The permanent URL of the page revision a recovered ref names. */
 export function recoveredRevisionUrl(ref: RecoveredRef): string {
@@ -533,6 +547,19 @@ export interface LexemeRef {
   lineSha256?: never;
   jsonPointer?: never;
 }
+
+/**
+ * Where a fact of one form of a Wikidata word was read (#833): its lexeme, as
+ * `LexemeRef` names it, and the form's own id there. A form's tags are read
+ * off its grammatical features (src/wikidataWords/formFeatures.ts), so each
+ * points at the form that states them.
+ */
+export interface LexemeFormRef extends LexemeRef {
+  form: `L${number}-F${number}`;
+}
+
+/** Whether a fact was read off a Wikidata word's form. */
+export const isLexemeFormRef = (ref: FactRef): ref is LexemeFormRef => "form" in ref;
 
 /** Whether an entry is a Wikidata word rather than a reading of Wiktionary's or Lexema's, or a name entry. */
 export const isWikidataWord = (entry: EntryIdentity): entry is LexemeIdentity => entry.lexeme !== undefined;

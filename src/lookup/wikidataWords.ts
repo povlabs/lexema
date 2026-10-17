@@ -7,11 +7,15 @@
 // it (src/lookup/lookup.ts, src/lookup/batch.ts), so Wiktionary wins wherever
 // both have a word. `/exists` reads them on their own (`wikidataWordsOf`).
 // Each is a reading of its own: its lemma, the part of speech its lexical
-// category maps to, and the Italian glosses of its senses as its definitions.
+// category maps to, its forms the feature table maps (#833,
+// src/wikidataWords/formFeatures.ts), and the Italian glosses of its senses
+// as its definitions.
 // `flebo` reads lexeme L1261627.
 
 import { isLexicalCategory, partOfSpeechOf, type LexicalCategory } from "../wikidataWords/lexicalCategories.js";
-import { lexemeNumber, type LexemeGloss as SnapshotGloss } from "../wikidataWords/wikidataWord.js";
+import { mapRawTag, mapStructuralTag } from "../import/grammarPolicy.js";
+import { formTagsOf } from "../wikidataWords/formFeatures.js";
+import { lexemeNumber, type LexemeForm as SnapshotForm, type LexemeGloss as SnapshotGloss } from "../wikidataWords/wikidataWord.js";
 
 export { lexemePageUrl } from "../wikidataWords/wikidataWord.js";
 import { readingPartOfSpeech } from "./articles.js";
@@ -19,7 +23,7 @@ import { keyedRead, readKeys, type DictionaryRead, type KeyedRead, type LookupDa
 import { isDeclaredLemma } from "./declaredLemma.js";
 import { NO_ENTRY_FACTS } from "./pageFacts.js";
 import type { DictionaryTables } from "./served.js";
-import type { LexemeRef, Reading } from "./types.js";
+import type { GrammarClaim, LexemeFormRef, LexemeRef, Reading, SourceForm } from "./types.js";
 
 /** One Wikidata word, as `WIKIDATA_WORD_SQL` reads it. */
 interface WordRow {
@@ -27,6 +31,8 @@ interface WordRow {
   snapshot: string;
   lemma: string;
   category: string;
+  /** JSON: `[{"form", "spelling", "features"}]`. */
+  forms: string;
   /** JSON: `[{"sense", "gloss"}]`. */
   glosses: string;
 }
@@ -35,7 +41,7 @@ interface WordRow {
 const NEWEST = `k.snapshot = (SELECT MAX(l.snapshot) FROM wikidata_word l WHERE l.lexeme = k.lexeme)`;
 
 /** Every Wikidata word a key spells, each lexeme's newest row. Exported so a test can assert the plan. */
-export const WIKIDATA_WORD_SQL: DictionaryRead = `SELECT w.lexeme, w.snapshot, w.lemma, w.category, w.glosses
+export const WIKIDATA_WORD_SQL: DictionaryRead = `SELECT w.lexeme, w.snapshot, w.lemma, w.category, w.forms, w.glosses
   FROM wikidata_word_key k
   JOIN wikidata_word w ON w.lexeme = k.lexeme AND w.snapshot = k.snapshot
  WHERE k.word_key = ?1 AND ${NEWEST}`;
@@ -114,21 +120,39 @@ export const wikidataWordHeadOf = (releaseId: string, row: Pick<WordRow, "lexeme
 };
 
 /**
- * One Wikidata word as a reading: its lemma, its part of speech and its
- * glosses, and nothing else, since it keys to no record. It is about the
- * query, as a name entry is: the page and the API show it as the word the
+ * A Wikidata word's forms as a record's `forms[]` entries (#833): each form
+ * whose every feature the table maps (`formTagsOf`), its tags read off them
+ * and pointing at the form, at its index in the lexeme's forms. A form with a
+ * feature the table does not map (`trucchetto`, a diminutive; `prof.`, an
+ * abbreviation) is left off, never guessed.
+ */
+export function wikidataFormsOf(ref: LexemeRef, forms: readonly SnapshotForm[]): SourceForm[] {
+  return forms.flatMap((form, index): SourceForm[] => {
+    const tags = formTagsOf(form.features);
+    if (tags === undefined) return [];
+    const at: LexemeFormRef = { ...ref, form: form.form };
+    const claims = [...tags.tags.map(mapStructuralTag), ...tags.rawTags.map(mapRawTag)].map((claim): GrammarClaim => ({ ...claim, ref: at }));
+    return [{ index, surface: form.spelling, ref: at, formSource: null, claims }];
+  });
+}
+
+/**
+ * One Wikidata word as a reading: its lemma, its part of speech, its forms
+ * and its glosses, and nothing else, since it keys to no record. It is about
+ * the query, as a name entry is: the page and the API show it as the word the
  * query found.
  */
 export function wikidataWordReading(releaseId: string, row: Omit<WordRow, "category"> & { category: LexicalCategory }): Reading {
   const ref: LexemeRef = { releaseId, wiki: "www.wikidata.org", lexeme: row.lexeme, snapshot: row.snapshot };
   const { pos, posTitle } = partOfSpeechOf(row.category);
-  const { claims, forms, wordFacts, lemmaLinks } = NO_ENTRY_FACTS;
+  const { claims, wordFacts, lemmaLinks } = NO_ENTRY_FACTS;
   const glosses = JSON.parse(row.glosses) as SnapshotGloss[];
+  const forms = wikidataFormsOf(ref, JSON.parse(row.forms) as SnapshotForm[]);
   return {
     lexeme: row.lexeme, lexemeGlosses: glosses.map(({ sense, gloss }) => ({ sense, text: gloss })), ref, word: row.lemma,
     ...readingPartOfSpeech(pos, row.lemma, claims), posTitle,
     isAboutQuery: true, evidence: [], senses: [], recovered: [], forms, wordFacts, translations: [],
-    grammar: { record: claims, byForm: new Map(), bySense: new Map() },
+    grammar: { record: claims, byForm: new Map(forms.map((form) => [form.index, form.claims])), bySense: new Map() },
     lemmaLinks, inflections: [], reviews: [],
   };
 }
