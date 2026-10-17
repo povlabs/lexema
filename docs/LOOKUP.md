@@ -292,8 +292,10 @@ read in [`src/lookup/pronominalPair.ts`](../src/lookup/pronominalPair.ts)):
    cell of the table the word page builds for a pronominal verb whose base
    verb has no record with a table, the regular one of
    `it-regular-conjugation/v1` (`si pente`, pentirsi) or the hand-kept one
-   (`si susseguono`, susseguirsi), as `builtBaseOf` gives it to both
-   ([`src/italian/builtBase.ts`](../src/italian/builtBase.ts)).
+   (`si susseguono`, susseguirsi). The lookup reads those cells through
+   `builtBaseOf` ([`src/italian/builtBase.ts`](../src/italian/builtBase.ts)),
+   in the same order the page builds the table (`pronominalBaseCells` in
+   [`web/lib/dictionary/wordPage.ts`](../web/lib/dictionary/wordPage.ts)).
 4. Each such verb names its pronominal infinitive: `-e` turns to `si`
    (`trasferire`, `trasferirsi`), and `-rre` drops `re` for `si` (`porre`,
    `porsi`). The second wait reads those keys with the shape read
