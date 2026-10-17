@@ -210,7 +210,9 @@ export async function exists({ db, releaseId, query }: LookupOptions): Promise<E
   const word =
     first?.record_word ??
     (await correctedCellHits(db, releaseId, key, tables))[0]?.record_word ??
-    (await pages.candidates(key))[0]?.word;
+    (await pages.candidates(key))[0]?.word ??
+    // A hand-kept reading of a word no record spells, `Sig.` (#819).
+    ((await handKeptReadingsOf(db, releaseId, tables).heads([key])).get(key) ?? [])[0]?.word;
   if (word !== undefined) return { ...found, word };
   const [name] = (await nameEntriesOf(db, releaseId, tables).heads([key])).get(key) ?? [];
   if (name !== undefined) return { ...found, word: name.word, nameItem: name.nameItem };

@@ -1,0 +1,2139 @@
+{
+  "rule": "it-regular-conjugation/v1",
+  "records": 224841,
+  "words": 224783,
+  "allOutcomes": {
+    "declined:auxiliary-not-avere": {
+      "records": 19,
+      "words": 17,
+      "listed": [
+        "affaticare",
+        "cascare",
+        "incocciare",
+        "incrudelire",
+        "inferocire",
+        "infradiciare",
+        "insalvatichire",
+        "insanguinare",
+        "insecchire",
+        "insuperbire",
+        "invelenire",
+        "rifiorire",
+        "rifuggire",
+        "rifugiare",
+        "rintristire",
+        "sbilanciare",
+        "scolare"
+      ]
+    },
+    "declined:form-of-another-word": {
+      "records": 223859,
+      "words": 223841
+    },
+    "declined:no-own-call": {
+      "records": 725,
+      "words": 697
+    },
+    "declined:template-not-read": {
+      "records": 26,
+      "words": 22,
+      "listed": [
+        "convenire",
+        "diligere",
+        "evolvere",
+        "incingere",
+        "incogliere",
+        "infiggere",
+        "inscrivere",
+        "interdire",
+        "prediligere",
+        "prefiggere",
+        "prevalere",
+        "prorompere",
+        "prudere",
+        "rescindere",
+        "riconvenire",
+        "ridivenire",
+        "rivendere",
+        "sottintendere",
+        "stravolgere",
+        "suffiggere",
+        "svendere",
+        "trascendere"
+      ]
+    },
+    "settled:are": {
+      "records": 139,
+      "words": 136,
+      "listed": [
+        "accertare",
+        "addecimare",
+        "addipanare",
+        "addrizzare",
+        "adequare",
+        "adirare",
+        "adontare",
+        "adunare",
+        "affiatare",
+        "affigurare",
+        "appostare",
+        "bottinare",
+        "canalizzare",
+        "capitalizzare",
+        "cianfrinare",
+        "cifrare",
+        "ciondolare",
+        "combinare",
+        "concatenare",
+        "condensare",
+        "decantare",
+        "decatizzare",
+        "declassare",
+        "deidrogenare",
+        "demotivare",
+        "dializzare",
+        "discreditare",
+        "disertare",
+        "dissetare",
+        "disvelare",
+        "escogitare",
+        "filettare",
+        "fischiettare",
+        "frazionare",
+        "freddare",
+        "fucinare",
+        "gesticolare",
+        "giubilare",
+        "graduare",
+        "grafitare",
+        "granulare",
+        "grommare",
+        "hackerare",
+        "incettare",
+        "indossare",
+        "influenzare",
+        "inorpellare",
+        "insaldare",
+        "insalivare",
+        "inscenare",
+        "insellare",
+        "intronare",
+        "invasare",
+        "latitare",
+        "malignare",
+        "mammare",
+        "matematizzare",
+        "modulare",
+        "mutuare",
+        "nobilitare",
+        "ondulare",
+        "perseguitare",
+        "pettinare",
+        "picchettare",
+        "pignorare",
+        "posticipare",
+        "preaccennare",
+        "preordinare",
+        "prepensionare",
+        "propugnare",
+        "prosternare",
+        "pulsare",
+        "racemizzare",
+        "raggrumare",
+        "raggruppare",
+        "rapportare",
+        "rattristare",
+        "razzolare",
+        "registrare",
+        "responsabilizzare",
+        "riadoperare",
+        "riassegnare",
+        "ridimensionare",
+        "rimarginare",
+        "riorganizzare",
+        "ripopolare",
+        "riscontare",
+        "rizzare",
+        "ruspare",
+        "sbattezzare",
+        "sbevazzare",
+        "sbollentare",
+        "sburrare",
+        "scacazzare",
+        "scaffalare",
+        "schettinare",
+        "scombinare",
+        "secolarizzare",
+        "settare",
+        "sfacchinare",
+        "sforzare",
+        "sguazzare",
+        "shakerare",
+        "sillogizzare",
+        "simpatizzare",
+        "slabbrare",
+        "smagnetizzare",
+        "smagrare",
+        "smallare",
+        "smammare",
+        "socializzare",
+        "sollazzare",
+        "somministrare",
+        "spantanare",
+        "spappolare",
+        "sparlare",
+        "spasimare",
+        "spopolare",
+        "stabilizzare",
+        "stampare",
+        "stornare",
+        "strabuzzare",
+        "strozzare",
+        "suggestionare",
+        "svergognare",
+        "tappezzare",
+        "tarpare",
+        "tifare",
+        "tramestare",
+        "trasognare",
+        "trepidare",
+        "trivellare",
+        "urbanizzare",
+        "vigilare",
+        "vitaminizzare",
+        "zaffare"
+      ]
+    },
+    "settled:care": {
+      "records": 21,
+      "words": 21,
+      "listed": [
+        "allocare",
+        "disboscare",
+        "disseccare",
+        "distaccare",
+        "dittongare",
+        "embricare",
+        "estrinsecare",
+        "imbroccare",
+        "infangare",
+        "intascare",
+        "intersecare",
+        "maiolicare",
+        "mummificare",
+        "radicare",
+        "sbiancare",
+        "scomunicare",
+        "seccare",
+        "sfaticare",
+        "spiaccicare",
+        "vangare",
+        "verificare"
+      ]
+    },
+    "settled:ciare": {
+      "records": 13,
+      "words": 12,
+      "listed": [
+        "conteggiare",
+        "pasticciare",
+        "preannunciare",
+        "primeggiare",
+        "rimpiallacciare",
+        "sceneggiare",
+        "sculacciare",
+        "simboleggiare",
+        "sorseggiare",
+        "sovesciare",
+        "svaligiare",
+        "vagheggiare"
+      ]
+    },
+    "settled:iare": {
+      "records": 25,
+      "words": 24,
+      "listed": [
+        "cariare",
+        "daziare",
+        "divariare",
+        "falcidiare",
+        "fischiare",
+        "gozzovigliare",
+        "ingraziare",
+        "ossequiare",
+        "parodiare",
+        "presidiare",
+        "propiziare",
+        "ripudiare",
+        "sbrogliare",
+        "scagliare",
+        "scrocchiare",
+        "smagliare",
+        "smaliziare",
+        "smaniare",
+        "soverchiare",
+        "spannocchiare",
+        "strigliare",
+        "uguagliare",
+        "vagliare",
+        "viziare"
+      ]
+    },
+    "settled:ire-b": {
+      "records": 14,
+      "words": 13,
+      "listed": [
+        "accudire",
+        "disostruire",
+        "evoluire",
+        "gremire",
+        "impreziosire",
+        "interagire",
+        "ordire",
+        "rammorbidire",
+        "sbizzarrire",
+        "sfavorire",
+        "spaurire",
+        "starnutire",
+        "stormire"
+      ]
+    }
+  },
+  "withOwnCall": {
+    "records": 257,
+    "words": 245,
+    "outcomes": {
+      "declined:auxiliary-not-avere": {
+        "records": 19,
+        "words": 17,
+        "listed": [
+          "affaticare",
+          "cascare",
+          "incocciare",
+          "incrudelire",
+          "inferocire",
+          "infradiciare",
+          "insalvatichire",
+          "insanguinare",
+          "insecchire",
+          "insuperbire",
+          "invelenire",
+          "rifiorire",
+          "rifuggire",
+          "rifugiare",
+          "rintristire",
+          "sbilanciare",
+          "scolare"
+        ]
+      },
+      "declined:template-not-read": {
+        "records": 26,
+        "words": 22,
+        "listed": [
+          "convenire",
+          "diligere",
+          "evolvere",
+          "incingere",
+          "incogliere",
+          "infiggere",
+          "inscrivere",
+          "interdire",
+          "prediligere",
+          "prefiggere",
+          "prevalere",
+          "prorompere",
+          "prudere",
+          "rescindere",
+          "riconvenire",
+          "ridivenire",
+          "rivendere",
+          "sottintendere",
+          "stravolgere",
+          "suffiggere",
+          "svendere",
+          "trascendere"
+        ]
+      },
+      "settled:are": {
+        "records": 139,
+        "words": 136,
+        "listed": [
+          "accertare",
+          "addecimare",
+          "addipanare",
+          "addrizzare",
+          "adequare",
+          "adirare",
+          "adontare",
+          "adunare",
+          "affiatare",
+          "affigurare",
+          "appostare",
+          "bottinare",
+          "canalizzare",
+          "capitalizzare",
+          "cianfrinare",
+          "cifrare",
+          "ciondolare",
+          "combinare",
+          "concatenare",
+          "condensare",
+          "decantare",
+          "decatizzare",
+          "declassare",
+          "deidrogenare",
+          "demotivare",
+          "dializzare",
+          "discreditare",
+          "disertare",
+          "dissetare",
+          "disvelare",
+          "escogitare",
+          "filettare",
+          "fischiettare",
+          "frazionare",
+          "freddare",
+          "fucinare",
+          "gesticolare",
+          "giubilare",
+          "graduare",
+          "grafitare",
+          "granulare",
+          "grommare",
+          "hackerare",
+          "incettare",
+          "indossare",
+          "influenzare",
+          "inorpellare",
+          "insaldare",
+          "insalivare",
+          "inscenare",
+          "insellare",
+          "intronare",
+          "invasare",
+          "latitare",
+          "malignare",
+          "mammare",
+          "matematizzare",
+          "modulare",
+          "mutuare",
+          "nobilitare",
+          "ondulare",
+          "perseguitare",
+          "pettinare",
+          "picchettare",
+          "pignorare",
+          "posticipare",
+          "preaccennare",
+          "preordinare",
+          "prepensionare",
+          "propugnare",
+          "prosternare",
+          "pulsare",
+          "racemizzare",
+          "raggrumare",
+          "raggruppare",
+          "rapportare",
+          "rattristare",
+          "razzolare",
+          "registrare",
+          "responsabilizzare",
+          "riadoperare",
+          "riassegnare",
+          "ridimensionare",
+          "rimarginare",
+          "riorganizzare",
+          "ripopolare",
+          "riscontare",
+          "rizzare",
+          "ruspare",
+          "sbattezzare",
+          "sbevazzare",
+          "sbollentare",
+          "sburrare",
+          "scacazzare",
+          "scaffalare",
+          "schettinare",
+          "scombinare",
+          "secolarizzare",
+          "settare",
+          "sfacchinare",
+          "sforzare",
+          "sguazzare",
+          "shakerare",
+          "sillogizzare",
+          "simpatizzare",
+          "slabbrare",
+          "smagnetizzare",
+          "smagrare",
+          "smallare",
+          "smammare",
+          "socializzare",
+          "sollazzare",
+          "somministrare",
+          "spantanare",
+          "spappolare",
+          "sparlare",
+          "spasimare",
+          "spopolare",
+          "stabilizzare",
+          "stampare",
+          "stornare",
+          "strabuzzare",
+          "strozzare",
+          "suggestionare",
+          "svergognare",
+          "tappezzare",
+          "tarpare",
+          "tifare",
+          "tramestare",
+          "trasognare",
+          "trepidare",
+          "trivellare",
+          "urbanizzare",
+          "vigilare",
+          "vitaminizzare",
+          "zaffare"
+        ]
+      },
+      "settled:care": {
+        "records": 21,
+        "words": 21,
+        "listed": [
+          "allocare",
+          "disboscare",
+          "disseccare",
+          "distaccare",
+          "dittongare",
+          "embricare",
+          "estrinsecare",
+          "imbroccare",
+          "infangare",
+          "intascare",
+          "intersecare",
+          "maiolicare",
+          "mummificare",
+          "radicare",
+          "sbiancare",
+          "scomunicare",
+          "seccare",
+          "sfaticare",
+          "spiaccicare",
+          "vangare",
+          "verificare"
+        ]
+      },
+      "settled:ciare": {
+        "records": 13,
+        "words": 12,
+        "listed": [
+          "conteggiare",
+          "pasticciare",
+          "preannunciare",
+          "primeggiare",
+          "rimpiallacciare",
+          "sceneggiare",
+          "sculacciare",
+          "simboleggiare",
+          "sorseggiare",
+          "sovesciare",
+          "svaligiare",
+          "vagheggiare"
+        ]
+      },
+      "settled:iare": {
+        "records": 25,
+        "words": 24,
+        "listed": [
+          "cariare",
+          "daziare",
+          "divariare",
+          "falcidiare",
+          "fischiare",
+          "gozzovigliare",
+          "ingraziare",
+          "ossequiare",
+          "parodiare",
+          "presidiare",
+          "propiziare",
+          "ripudiare",
+          "sbrogliare",
+          "scagliare",
+          "scrocchiare",
+          "smagliare",
+          "smaliziare",
+          "smaniare",
+          "soverchiare",
+          "spannocchiare",
+          "strigliare",
+          "uguagliare",
+          "vagliare",
+          "viziare"
+        ]
+      },
+      "settled:ire-b": {
+        "records": 14,
+        "words": 13,
+        "listed": [
+          "accudire",
+          "disostruire",
+          "evoluire",
+          "gremire",
+          "impreziosire",
+          "interagire",
+          "ordire",
+          "rammorbidire",
+          "sbizzarrire",
+          "sfavorire",
+          "spaurire",
+          "starnutire",
+          "stormire"
+        ]
+      }
+    }
+  },
+  "recordsWithOwnCall": [
+    {
+      "word": "interdire",
+      "call": "{{It-conj|interdic|ere|avere\n|inf=interdire\n|pp=interdetto\n|prem1s=interdissi|prem3s=interdisse|prem3p=interdissero\n|fut1s=interdirò|fut2s=interdirai|fut3s=interdirà|fut1p=interdiremo|fut2p=interdirete|fut3p=interdiranno\n|cond1s=interdirei|cond2s=interdiresti|cond2p=interdirebbe|cond1p=interdiremmo|cond2p=interdireste|cond3p=interdirebbero\n}}",
+      "revisionId": 2715192,
+      "outcome": "declined:template-not-read"
+    },
+    {
+      "word": "maiolicare",
+      "call": "{{It-conj|maiolic|care|avere}}",
+      "revisionId": 1874308,
+      "outcome": "settled:care"
+    },
+    {
+      "word": "pettinare",
+      "call": "{{It-conj|pettin|are|avere}}",
+      "revisionId": 1871845,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "registrare",
+      "call": "{{It-conj|registr|are|avere}}",
+      "revisionId": 1870664,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "riassegnare",
+      "call": "{{It-conj|riassegn|are|avere}}",
+      "revisionId": 1871917,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "riconvenire",
+      "call": "{{It-conj|riconven|ire|avere\n|par=riconveniente\n|pp=riconvenuto\n|pres1s=riconvengo|pres2s=riconvieni|pres3s=riconviene|pres1p=riconveniamo|pres2p=riconvenite|pres3p=riconvengono\n|prem1s=riconvenni|prem2s=riconvenisti|prem3s=riconvenne|prem1p=riconvenimmo|prem2p=riconveniste|prem3p=riconvennero\n|fut1s=riconverrò|fut2s=riconverrai|fut3s=riconverrà|fut1p=riconverremo|fut2p=riconverrete|fut3p=riconverranno\n|cond1s=riconverrei|cond2s=riconverresti|cond3s=riconverrebbe|cond1p=riconverremmo|cond2p=riconverreste|cond3p=riconverrebbero\n|cong123s=riconvenga|cong1p=riconveniamo|cong2p=riconveniate|cong3p=riconvengano\n|imp2s=riconvieni|imp3s=riconvenga|imp1p=riconveniamo|imp2p=riconvenite|imp3p=riconvengano\n}}",
+      "revisionId": 2526640,
+      "outcome": "declined:template-not-read"
+    },
+    {
+      "word": "ridivenire",
+      "call": "{{It-conj|ridiven|ire|essere\n|par=ridiveniente\n|pp=ridivenuto\n|pres1s=ridivengo|pres2s=divieni|pres3s=diviene|pres1p=ridiveniamo|pres2p=ridivenite|pres3p=ridivengono\n|prem1s=ridivenni|prem2s=ridivenisti|prem3s=ridivenne|prem1p=ridivenimmo|prem2p=ridiveniste|prem3p=ridivennero\n|fut1s=diverrò|fut2s=diverrai|fut3s=diverrà|fut1p=diverremo|fut2p=diverrete|fut3p=diverranno\n|cond1s=diverrei|cond2s=diverresti|cond3s=diverrebbe|cond1p=diverremmo|cond2p=diverreste|cond3p=diverrebbero\n|cong123s=ridivenga|cong1p=ridiveniamo|cong2p=ridiveniate|cong3p=ridivengano\n|imp2s=divieni|imp3s=ridivenga|imp1p=ridiveniamo|imp2p=ridivenite|imp3p=ridivengano\n}}",
+      "revisionId": 3820975,
+      "outcome": "declined:template-not-read"
+    },
+    {
+      "word": "settare",
+      "call": "{{It-conj|sett|are|avere}}",
+      "revisionId": 1871927,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "sforzare",
+      "call": "{{It-conj|sforz|are|avere}}",
+      "revisionId": 1871026,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "slabbrare",
+      "call": "{{It-conj|slabbr|are|avere}}",
+      "revisionId": 1870726,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "stampare",
+      "call": "{{It-conj|stamp|are|avere}}",
+      "revisionId": 1871810,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "viziare",
+      "call": "{{It-conj|vizi|iare|avere}}",
+      "revisionId": 1874740,
+      "outcome": "settled:iare"
+    },
+    {
+      "word": "scolare",
+      "call": "{{It-conj|scol|are|avere, come intr. essere}}",
+      "revisionId": 1875640,
+      "outcome": "declined:auxiliary-not-avere"
+    },
+    {
+      "word": "affiatare",
+      "call": "{{It-conj|affiat|are|avere}}",
+      "revisionId": 1872792,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "cianfrinare",
+      "call": "{{It-conj|cianfrin|are|avere}}",
+      "revisionId": 1874277,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "pignorare",
+      "call": "{{It-conj|pignor|are|avere}}",
+      "revisionId": 1870645,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "grommare",
+      "call": "{{It-conj|gromm|are|avere}}",
+      "revisionId": 1870875,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "tarpare",
+      "call": "{{It-conj|tarp|are|avere}}",
+      "revisionId": 1872658,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "uguagliare",
+      "call": "{{It-conj|uguagli|iare|avere}}",
+      "revisionId": 1874903,
+      "outcome": "settled:iare"
+    },
+    {
+      "word": "trascendere",
+      "call": "{{It-conj|trascend|ere|avere\n|pp=trasceso\n|prem1s=trascesi|prem3s=trascese|prem3p=trascesero\n}}",
+      "revisionId": 2597125,
+      "outcome": "declined:template-not-read"
+    },
+    {
+      "word": "trascendere",
+      "call": "{{It-conj|trascend|ere|avere\n|pp=trasceso\n|prem1s=trascesi|prem3s=trascese|prem3p=trascesero\n}}",
+      "revisionId": 2597125,
+      "outcome": "declined:template-not-read"
+    },
+    {
+      "word": "sbattezzare",
+      "call": "{{It-conj|sbattezz|are|avere}}",
+      "revisionId": 1873722,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "sbattezzare",
+      "call": "{{It-conj|sbattezz|are|avere}}",
+      "revisionId": 1873722,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "gremire",
+      "call": "{{It-conj|grem|ire-b|avere}}",
+      "revisionId": 1870742,
+      "outcome": "settled:ire-b"
+    },
+    {
+      "word": "verificare",
+      "call": "{{It-conj|verific|care|avere}}",
+      "revisionId": 1869770,
+      "outcome": "settled:care"
+    },
+    {
+      "word": "addecimare",
+      "call": "{{It-conj|addecim|are|avere}}",
+      "revisionId": 1873681,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "addipanare",
+      "call": "{{It-conj|addipan|are|avere}}",
+      "revisionId": 4048916,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "addrizzare",
+      "call": "{{It-conj|addrizz|are|avere}}",
+      "revisionId": 3503803,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "adequare",
+      "call": "{{It-conj|adequ|are|avere}}",
+      "revisionId": 4060555,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "affigurare",
+      "call": "{{It-conj|affigur|are|avere}}",
+      "revisionId": 3799249,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "allocare",
+      "call": "{{It-conj|alloc|care|avere}}",
+      "revisionId": 1874361,
+      "outcome": "settled:care"
+    },
+    {
+      "word": "spannocchiare",
+      "call": "{{It-conj|spannocchi|iare|avere}}",
+      "revisionId": 1875075,
+      "outcome": "settled:iare"
+    },
+    {
+      "word": "spantanare",
+      "call": "{{It-conj|spantan|are|avere}}",
+      "revisionId": 1874242,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "spappolare",
+      "call": "{{It-conj|spappol|are|avere}}",
+      "revisionId": 1872213,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "starnutire",
+      "call": "{{It-conj|starnut|ire-b|avere}}",
+      "revisionId": 1875159,
+      "outcome": "settled:ire-b"
+    },
+    {
+      "word": "sbevazzare",
+      "call": "{{It-conj|sbevazz|are|avere}}",
+      "revisionId": 1873548,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "graduare",
+      "call": "{{It-conj|gradu|are|avere}}",
+      "revisionId": 1872850,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "smagliare",
+      "call": "{{It-conj|smagli|iare|avere}}",
+      "revisionId": 1874940,
+      "outcome": "settled:iare"
+    },
+    {
+      "word": "smagliare",
+      "call": "{{It-conj|smagli|iare|avere}}",
+      "revisionId": 1874940,
+      "outcome": "settled:iare"
+    },
+    {
+      "word": "smagnetizzare",
+      "call": "{{It-conj|smagnetizz|are|avere}}",
+      "revisionId": 1873743,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "smagrare",
+      "call": "{{It-conj|smagr|are|avere}}",
+      "revisionId": 1870728,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "smaliziare",
+      "call": "{{It-conj|smalizi|iare|avere}}",
+      "revisionId": 1874941,
+      "outcome": "settled:iare"
+    },
+    {
+      "word": "smallare",
+      "call": "{{It-conj|small|are|avere}}",
+      "revisionId": 1874073,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "insaldare",
+      "call": "{{It-conj|insald|are|avere}}",
+      "revisionId": 1873864,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "insalivare",
+      "call": "{{It-conj|insaliv|are|avere}}",
+      "revisionId": 1873865,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "insalvatichire",
+      "call": "{{It-conj|insalvatich|ire-b|avere, come intr. essere}}",
+      "revisionId": 1875576,
+      "outcome": "declined:auxiliary-not-avere"
+    },
+    {
+      "word": "insalvatichire",
+      "call": "{{It-conj|insalvatich|ire-b|avere, come intr. essere}}",
+      "revisionId": 1875576,
+      "outcome": "declined:auxiliary-not-avere"
+    },
+    {
+      "word": "insanguinare",
+      "call": "{{It-conj|insanguin|are|essere}}",
+      "revisionId": 1870243,
+      "outcome": "declined:auxiliary-not-avere"
+    },
+    {
+      "word": "inscenare",
+      "call": "{{It-conj|inscen|are|avere}}",
+      "revisionId": 1870241,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "inscrivere",
+      "call": "{{It-conj|inscriv|ere|avere\n|pp=inscritto\n|prem1s=inscrissi|prem3s=inscrisse|prem3p=inscrissero\n}}",
+      "revisionId": 2547473,
+      "outcome": "declined:template-not-read"
+    },
+    {
+      "word": "insecchire",
+      "call": "{{It-conj|insecch|ire-b|avere, come intr. essere}}",
+      "revisionId": 1875574,
+      "outcome": "declined:auxiliary-not-avere"
+    },
+    {
+      "word": "insecchire",
+      "call": "{{It-conj|insecch|ire-b|avere, come intr. essere}}",
+      "revisionId": 1875574,
+      "outcome": "declined:auxiliary-not-avere"
+    },
+    {
+      "word": "inorpellare",
+      "call": "{{It-conj|inorpell|are|avere}}",
+      "revisionId": 1874296,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "trasognare",
+      "call": "{{It-conj|trasogn|are|avere}}",
+      "revisionId": 1873369,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "adontare",
+      "call": "{{It-conj|adont|are|avere}}",
+      "revisionId": 1873511,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "rifuggire",
+      "call": "{{It-conj|rifugg|ire|essere}}",
+      "revisionId": 1875121,
+      "outcome": "declined:auxiliary-not-avere"
+    },
+    {
+      "word": "incocciare",
+      "call": "{{It-conj|incocc|ciare|avere, se intransitivo essere}}",
+      "revisionId": 1874571,
+      "outcome": "declined:auxiliary-not-avere"
+    },
+    {
+      "word": "diligere",
+      "call": "{{It-conj|dilig|ere|avere\n|pp=diletto\n|prem1s=dilessi|prem3s=dilesse|prem3p=dilessero\n}}",
+      "revisionId": 2714643,
+      "outcome": "declined:template-not-read"
+    },
+    {
+      "word": "gozzovigliare",
+      "call": "{{It-conj|gozzovigli|iare|avere}}",
+      "revisionId": 1874908,
+      "outcome": "settled:iare"
+    },
+    {
+      "word": "bottinare",
+      "call": "{{It-conj|bottin|are|avere}}",
+      "revisionId": 1874168,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "indossare",
+      "call": "{{It-conj|indoss|are|avere}}",
+      "revisionId": 1872068,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "distaccare",
+      "call": "{{It-conj|distacc|care|avere}}",
+      "revisionId": 1869464,
+      "outcome": "settled:care"
+    },
+    {
+      "word": "propugnare",
+      "call": "{{It-conj|propugn|are|avere}}",
+      "revisionId": 1872965,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "razzolare",
+      "call": "{{It-conj|razzol|are|avere}}",
+      "revisionId": 1873225,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "presidiare",
+      "call": "{{It-conj|presidi|iare|avere}}",
+      "revisionId": 1874804,
+      "outcome": "settled:iare"
+    },
+    {
+      "word": "inferocire",
+      "call": "{{It-conj|inferoc|ire-b|avere, come intr. essere}}",
+      "revisionId": 1875446,
+      "outcome": "declined:auxiliary-not-avere"
+    },
+    {
+      "word": "decatizzare",
+      "call": "{{It-conj|decatizz|are|avere}}",
+      "revisionId": 1874184,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "strabuzzare",
+      "call": "{{It-conj|strabuzz|are|avere}}",
+      "revisionId": 1873263,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "concatenare",
+      "call": "{{It-conj|concaten|are|avere}}",
+      "revisionId": 1871578,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "fischiare",
+      "call": "{{It-conj|fischi|iare|avere}}",
+      "revisionId": 1874777,
+      "outcome": "settled:iare"
+    },
+    {
+      "word": "fischiettare",
+      "call": "{{It-conj|fischiett|are|avere}}",
+      "revisionId": 1872172,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "freddare",
+      "call": "{{It-conj|fredd|are|avere}}",
+      "revisionId": 1873068,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "malignare",
+      "call": "{{It-conj|malign|are|avere}}",
+      "revisionId": 1870260,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "strozzare",
+      "call": "{{It-conj|strozz|are|avere}}",
+      "revisionId": 1872234,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "trepidare",
+      "call": "{{It-conj|trepid|are|avere}}",
+      "revisionId": 1871781,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "secolarizzare",
+      "call": "{{It-conj|secolarizz|are|avere}}",
+      "revisionId": 1873219,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "seccare",
+      "call": "{{It-conj|secc|care|avere}}",
+      "revisionId": 1869706,
+      "outcome": "settled:care"
+    },
+    {
+      "word": "matematizzare",
+      "call": "{{It-conj|matematizz|are|avere}}",
+      "revisionId": 1873741,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "modulare",
+      "call": "{{It-conj|modul|are|avere}}",
+      "revisionId": 1871750,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "shakerare",
+      "call": "{{It-conj|shaker|are|avere}}",
+      "revisionId": 1870722,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "incingere",
+      "call": "{{It-conj|incing|ere|avere\n|pp=incinto\n|prem1s=incinsi|prem3s=incinse|prem3p=incinsero\n}}",
+      "revisionId": 2418952,
+      "outcome": "declined:template-not-read"
+    },
+    {
+      "word": "incingere",
+      "call": "{{It-conj|incing|ere|avere\n|pp=incinto\n|prem1s=incinsi|prem3s=incinse|prem3p=incinsero\n}}",
+      "revisionId": 2418952,
+      "outcome": "declined:template-not-read"
+    },
+    {
+      "word": "sburrare",
+      "call": "{{It-conj|sburr|are|avere}}",
+      "revisionId": 1874016,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "pulsare",
+      "call": "{{It-conj|puls|are|avere}}",
+      "revisionId": 1871747,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "spiaccicare",
+      "call": "{{It-conj|spiaccic|care|avere}}",
+      "revisionId": 1874322,
+      "outcome": "settled:care"
+    },
+    {
+      "word": "rattristare",
+      "call": "{{It-conj|rattrist|are|avere}}",
+      "revisionId": 1872743,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "sbilanciare",
+      "call": "{{It-conj|sbilanc|ciare|essere}}",
+      "revisionId": 1869974,
+      "outcome": "declined:auxiliary-not-avere"
+    },
+    {
+      "word": "ordire",
+      "call": "{{It-conj|ord|ire-b|avere}}",
+      "revisionId": 1875277,
+      "outcome": "settled:ire-b"
+    },
+    {
+      "word": "rimarginare",
+      "call": "{{It-conj|rimargin|are|avere}}",
+      "revisionId": 1872613,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "capitalizzare",
+      "call": "{{It-conj|capitalizz|are|avere}}",
+      "revisionId": 1872453,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "sculacciare",
+      "call": "{{It-conj|sculacc|ciare|avere}}",
+      "revisionId": 1869990,
+      "outcome": "settled:ciare"
+    },
+    {
+      "word": "intersecare",
+      "call": "{{It-conj|intersec|care|avere}}",
+      "revisionId": 1869551,
+      "outcome": "settled:care"
+    },
+    {
+      "word": "sillogizzare",
+      "call": "{{It-conj|sillogizz|are|avere}}",
+      "revisionId": 1873094,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "sceneggiare",
+      "call": "{{It-conj|scenegg|ciare|avere}}",
+      "revisionId": 1869978,
+      "outcome": "settled:ciare"
+    },
+    {
+      "word": "raggrumare",
+      "call": "{{It-conj|raggrum|are|avere}}",
+      "revisionId": 1870922,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "sollazzare",
+      "call": "{{It-conj|sollazz|are|avere}}",
+      "revisionId": 1873136,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "rapportare",
+      "call": "{{It-conj|rapport|are|avere}}",
+      "revisionId": 1872854,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "somministrare",
+      "call": "{{It-conj|somministr|are|avere}}",
+      "revisionId": 1870732,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "smaniare",
+      "call": "{{It-conj|smani|iare|avere}}",
+      "revisionId": 1874942,
+      "outcome": "settled:iare"
+    },
+    {
+      "word": "sbollentare",
+      "call": "{{It-conj|sbollent|are|avere}}",
+      "revisionId": 1872981,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "sbollentare",
+      "call": "{{It-conj|sbollent|are|avere}}",
+      "revisionId": 1872981,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "prepensionare",
+      "call": "{{It-conj|prepension|are|avere}}",
+      "revisionId": 1873701,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "sfavorire",
+      "call": "{{It-conj|sfavor|ire-b|avere}}",
+      "revisionId": 1875427,
+      "outcome": "settled:ire-b"
+    },
+    {
+      "word": "sbizzarrire",
+      "call": "{{It-conj|sbizzarr|ire-b|avere}}",
+      "revisionId": 1875468,
+      "outcome": "settled:ire-b"
+    },
+    {
+      "word": "ingraziare",
+      "call": "{{It-conj|ingrazi|iare|avere}}",
+      "revisionId": 1875035,
+      "outcome": "settled:iare"
+    },
+    {
+      "word": "rifugiare",
+      "call": "{{It-conj|rifug|giare|essere}}",
+      "revisionId": 1869953,
+      "outcome": "declined:auxiliary-not-avere"
+    },
+    {
+      "word": "decantare",
+      "call": "{{It-conj|decant|are|avere}}",
+      "revisionId": 1871683,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "daziare",
+      "call": "{{It-conj|dazi|iare|avere}}",
+      "revisionId": 1875015,
+      "outcome": "settled:iare"
+    },
+    {
+      "word": "cifrare",
+      "call": "{{It-conj|cifr|are|avere}}",
+      "revisionId": 1870459,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "scagliare",
+      "call": "{{It-conj|scagli|iare|avere}}",
+      "revisionId": 1874754,
+      "outcome": "settled:iare"
+    },
+    {
+      "word": "stormire",
+      "call": "{{It-conj|storm|ire-b|avere}}",
+      "revisionId": 1875484,
+      "outcome": "settled:ire-b"
+    },
+    {
+      "word": "schettinare",
+      "call": "{{It-conj|schettin|are|avere}}",
+      "revisionId": 1874033,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "mutuare",
+      "call": "{{It-conj|mutu|are|avere}}",
+      "revisionId": 1872320,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "accertare",
+      "call": "{{It-conj|accert|are|avere}}",
+      "revisionId": 1872106,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "urbanizzare",
+      "call": "{{It-conj|urbanizz|are|avere}}",
+      "revisionId": 1872995,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "trivellare",
+      "call": "{{It-conj|trivell|are|avere}}",
+      "revisionId": 1872374,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "zaffare",
+      "call": "{{It-conj|zaff|are|avere}}",
+      "revisionId": 1873419,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "frazionare",
+      "call": "{{It-conj|frazion|are|avere}}",
+      "revisionId": 1872038,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "sovesciare",
+      "call": "{{It-conj|sovesc|ciare|avere}}",
+      "revisionId": 1874689,
+      "outcome": "settled:ciare"
+    },
+    {
+      "word": "fucinare",
+      "call": "{{It-conj|fucin|are|avere}}",
+      "revisionId": 1873801,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "filettare",
+      "call": "{{It-conj|filett|are|avere}}",
+      "revisionId": 1873011,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "conteggiare",
+      "call": "{{It-conj|contegg|ciare|avere}}",
+      "revisionId": 1869839,
+      "outcome": "settled:ciare"
+    },
+    {
+      "word": "giubilare",
+      "call": "{{It-conj|giubil|are|avere}}",
+      "revisionId": 1872066,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "giubilare",
+      "call": "{{It-conj|giubil|are|avere}}",
+      "revisionId": 1872066,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "condensare",
+      "call": "{{It-conj|condens|are|avere}}",
+      "revisionId": 1871664,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "dializzare",
+      "call": "{{It-conj|dializz|are|avere}}",
+      "revisionId": 1873679,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "rivendere",
+      "call": "{{It-conj|rivend|ere|avere}}",
+      "revisionId": 1875804,
+      "outcome": "declined:template-not-read"
+    },
+    {
+      "word": "canalizzare",
+      "call": "{{It-conj|canalizz|are|avere}}",
+      "revisionId": 1872687,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "responsabilizzare",
+      "call": "{{It-conj|responsabilizz|are|avere}}",
+      "revisionId": 1873301,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "cascare",
+      "call": "{{It-conj|casc|care|essere}}",
+      "revisionId": 1869399,
+      "outcome": "declined:auxiliary-not-avere"
+    },
+    {
+      "word": "combinare",
+      "call": "{{It-conj|combin|are|avere}}",
+      "revisionId": 1871659,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "riscontare",
+      "call": "{{It-conj|riscont|are|avere}}",
+      "revisionId": 1872639,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "adunare",
+      "call": "{{It-conj|adun|are|avere}}",
+      "revisionId": 1872154,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "interagire",
+      "call": "{{It-conj|interag|ire-b|avere}}",
+      "revisionId": 1875304,
+      "outcome": "settled:ire-b"
+    },
+    {
+      "word": "pasticciare",
+      "call": "{{It-conj|pasticc|ciare|avere}}",
+      "revisionId": 1869933,
+      "outcome": "settled:ciare"
+    },
+    {
+      "word": "pasticciare",
+      "call": "{{It-conj|pasticc|ciare|avere}}",
+      "revisionId": 1869933,
+      "outcome": "settled:ciare"
+    },
+    {
+      "word": "perseguitare",
+      "call": "{{It-conj|perseguit|are|avere}}",
+      "revisionId": 1872164,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "ridimensionare",
+      "call": "{{It-conj|ridimension|are|avere}}",
+      "revisionId": 1872515,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "adirare",
+      "call": "{{It-conj|adir|are|avere}}",
+      "revisionId": 1870422,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "demotivare",
+      "call": "{{It-conj|demotiv|are|avere}}",
+      "revisionId": 1873477,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "prevalere",
+      "call": "{{It-conj|preval|ere|essere\n|pp=prevalso\n|pres1s=prevalgo|pres3p=prevalgono\n|prem1s=prevalsi|prem3s=prevalse|prem3p=prevalsero\n|fut1s=prevarrò|fut2s=prevarrai|fut3s=prevarrà|fut1p=prevarremo|fut2p=prevarrete|fut3p=prevarranno\n|cong123s=prevalga|cong3p=prevalgano\n|cond1s=prevarrei|cond2s=prevarresti|cond3s=prevarrebbe|cond1p=prevarremmo|cond2p=prevarreste|cond3p=prevarrebbero\n|imp3s=prevalga|imp3p=prevalgano}}",
+      "revisionId": 3820976,
+      "outcome": "declined:template-not-read"
+    },
+    {
+      "word": "tappezzare",
+      "call": "{{It-conj|tappezz|are|avere}}",
+      "revisionId": 1873271,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "sparlare",
+      "call": "{{It-conj|sparl|are|avere}}",
+      "revisionId": 1872761,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "gesticolare",
+      "call": "{{It-conj|gesticol|are|avere}}",
+      "revisionId": 1871963,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "accudire",
+      "call": "{{It-conj|accud|ire-b|avere}}",
+      "revisionId": 1875293,
+      "outcome": "settled:ire-b"
+    },
+    {
+      "word": "accudire",
+      "call": "{{It-conj|accud|ire-b|avere}}",
+      "revisionId": 1875293,
+      "outcome": "settled:ire-b"
+    },
+    {
+      "word": "svendere",
+      "call": "{{It-conj|svend|ere|avere}}",
+      "revisionId": 1875809,
+      "outcome": "declined:template-not-read"
+    },
+    {
+      "word": "svendere",
+      "call": "{{It-conj|svend|ere|avere}}",
+      "revisionId": 1875809,
+      "outcome": "declined:template-not-read"
+    },
+    {
+      "word": "affaticare",
+      "call": "{{It-conj|affatic|care|essere}}",
+      "revisionId": 1869343,
+      "outcome": "declined:auxiliary-not-avere"
+    },
+    {
+      "word": "suggestionare",
+      "call": "{{It-conj|suggestion|are|avere}}",
+      "revisionId": 1873170,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "tifare",
+      "call": "{{It-conj|tif|are|avere}}",
+      "revisionId": 1872372,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "sbiancare",
+      "call": "{{It-conj|sbianc|care|avere}}",
+      "revisionId": 1869694,
+      "outcome": "settled:care"
+    },
+    {
+      "word": "influenzare",
+      "call": "{{It-conj|influenz|are|avere}}",
+      "revisionId": 1872037,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "disvelare",
+      "call": "{{It-conj|disvel|are|avere}}",
+      "revisionId": 1873249,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "infangare",
+      "call": "{{It-conj|infang|care|avere}}",
+      "revisionId": 1869534,
+      "outcome": "settled:care"
+    },
+    {
+      "word": "ossequiare",
+      "call": "{{It-conj|ossequi|iare|avere}}",
+      "revisionId": 1874950,
+      "outcome": "settled:iare"
+    },
+    {
+      "word": "disboscare",
+      "call": "{{It-conj|disbosc|care|avere}}",
+      "revisionId": 1869454,
+      "outcome": "settled:care"
+    },
+    {
+      "word": "incrudelire",
+      "call": "{{It-conj|incrudel|ire-b|avere, come intr. essere}}",
+      "revisionId": 1875630,
+      "outcome": "declined:auxiliary-not-avere"
+    },
+    {
+      "word": "falcidiare",
+      "call": "{{It-conj|falcidi|iare|avere}}",
+      "revisionId": 1874904,
+      "outcome": "settled:iare"
+    },
+    {
+      "word": "svaligiare",
+      "call": "{{It-conj|svalig|ciare|avere}}",
+      "revisionId": 1870028,
+      "outcome": "settled:ciare"
+    },
+    {
+      "word": "evolvere",
+      "call": "{{It-conj|evolv|ere|avere|pp=evoluto}}",
+      "revisionId": 3995253,
+      "outcome": "declined:template-not-read"
+    },
+    {
+      "word": "convenire",
+      "call": "{{It-conj|conven|ire|essere o avere\n|par=conveniente\n|pp=convenuto\n|pres1s=convengo|pres2s=convieni|pres3s=conviene|pres1p=conveniamo|pres2p=convenite|pres3p=convengono\n|prem1s=convenni|prem2s=convenisti|prem3s=convenne|prem1p=convenimmo|prem2p=conveniste|prem3p=convennero\n|fut1s=converrò|fut2s=converrai|fut3s=converrà|fut1p=converremo|fut2p=converrete|fut3p=converranno\n|cond1s=converrei|cond2s=converresti|cond3s=converrebbe|cond1p=converremmo|cond2p=converreste|cond3p=converrebbero\n|cong123s=convenga|cong1p=conveniamo|cong2p=conveniate|cong3p=convengano\n|imp2s=convieni|imp3s=convenga|imp1p=conveniamo|imp2p=convenite|imp3p=convengano\n}}",
+      "revisionId": 2525763,
+      "outcome": "declined:template-not-read"
+    },
+    {
+      "word": "socializzare",
+      "call": "{{It-conj|socializz|are|avere}}",
+      "revisionId": 1872065,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "svergognare",
+      "call": "{{It-conj|svergogn|are|avere}}",
+      "revisionId": 1872367,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "insuperbire",
+      "call": "{{It-conj|insuperb|ire-b|avere, se intr. essere}}",
+      "revisionId": 1875267,
+      "outcome": "declined:auxiliary-not-avere"
+    },
+    {
+      "word": "granulare",
+      "call": "{{It-conj|granul|are|avere}}",
+      "revisionId": 1871720,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "prorompere",
+      "call": "{{It-conj|proromp|ere|avere o essere\n|pp=prorotto\n|prem1s=proruppi|prem3s=proruppe|prem3p=proruppero\n}}",
+      "revisionId": 2728796,
+      "outcome": "declined:template-not-read"
+    },
+    {
+      "word": "invasare",
+      "call": "{{It-conj|invas|are|avere}}",
+      "revisionId": 1873133,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "escogitare",
+      "call": "{{It-conj|escogit|are|avere}}",
+      "revisionId": 1872170,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "deidrogenare",
+      "call": "{{It-conj|deidrogen|are|avere}}",
+      "revisionId": 1872776,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "raggruppare",
+      "call": "{{It-conj|raggrupp|are|avere}}",
+      "revisionId": 1872077,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "disertare",
+      "call": "{{It-conj|disert|are|avere}}",
+      "revisionId": 1871705,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "vagliare",
+      "call": "{{It-conj|vagli|iare|avere}}",
+      "revisionId": 1874915,
+      "outcome": "settled:iare"
+    },
+    {
+      "word": "nobilitare",
+      "call": "{{It-conj|nobilit|are|avere}}",
+      "revisionId": 1872929,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "scomunicare",
+      "call": "{{It-conj|scomunic|care|avere}}",
+      "revisionId": 1869703,
+      "outcome": "settled:care"
+    },
+    {
+      "word": "ondulare",
+      "call": "{{It-conj|ondul|are|avere}}",
+      "revisionId": 1871756,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "vigilare",
+      "call": "{{It-conj|vigil|are|avere}}",
+      "revisionId": 1871617,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "preannunciare",
+      "call": "{{It-conj|preannunc|ciare|avere}}",
+      "revisionId": 1869942,
+      "outcome": "settled:ciare"
+    },
+    {
+      "word": "vagheggiare",
+      "call": "{{It-conj|vaghegg|ciare|avere}}",
+      "revisionId": 1870046,
+      "outcome": "settled:ciare"
+    },
+    {
+      "word": "declassare",
+      "call": "{{It-conj|declass|are|avere}}",
+      "revisionId": 1871796,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "preordinare",
+      "call": "{{It-conj|preordin|are|avere}}",
+      "revisionId": 1873936,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "scombinare",
+      "call": "{{It-conj|scombin|are|avere}}",
+      "revisionId": 1872753,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "discreditare",
+      "call": "{{It-conj|discredit|are|avere}}",
+      "revisionId": 1873491,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "primeggiare",
+      "call": "{{It-conj|primegg|ciare|avere}}",
+      "revisionId": 1869940,
+      "outcome": "settled:ciare"
+    },
+    {
+      "word": "smammare",
+      "call": "{{It-conj|smamm|are|avere}}",
+      "revisionId": 1872359,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "sfaticare",
+      "call": "{{It-conj|sfatic|care|avere}}",
+      "revisionId": 1874459,
+      "outcome": "settled:care"
+    },
+    {
+      "word": "prudere",
+      "call": "{{It-conj|prud|ere|avere|pp=}}",
+      "revisionId": 3997076,
+      "outcome": "declined:template-not-read"
+    },
+    {
+      "word": "stravolgere",
+      "call": "{{It-conj|stravolg|ere|avere\n|pp=stravolto\n|prem1s=stravolsi|prem3s=stravolse|prem3p=stravolsero\n}}",
+      "revisionId": 2514670,
+      "outcome": "declined:template-not-read"
+    },
+    {
+      "word": "stabilizzare",
+      "call": "{{It-conj|stabilizz|are|avere}}",
+      "revisionId": 1872046,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "estrinsecare",
+      "call": "{{It-conj|estrinsec|care|avere}}",
+      "revisionId": 1869486,
+      "outcome": "settled:care"
+    },
+    {
+      "word": "ciondolare",
+      "call": "{{It-conj|ciondol|are|avere}}",
+      "revisionId": 1873022,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "spasimare",
+      "call": "{{It-conj|spasim|are|avere}}",
+      "revisionId": 1872899,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "appostare",
+      "call": "{{It-conj|appost|are|avere}}",
+      "revisionId": 1872343,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "cariare",
+      "call": "{{It-conj|cari|iare|avere}}",
+      "revisionId": 1874916,
+      "outcome": "settled:iare"
+    },
+    {
+      "word": "picchettare",
+      "call": "{{It-conj|picchett|are|avere}}",
+      "revisionId": 1872271,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "simboleggiare",
+      "call": "{{It-conj|simbolegg|ciare|avere}}",
+      "revisionId": 1870003,
+      "outcome": "settled:ciare"
+    },
+    {
+      "word": "prediligere",
+      "call": "{{It-conj|predilig|ere|avere\n|ppres = \"\"\n|pp=prediletto\n|prem1s=predilessi|prem3s=predilesse|prem3p=predilessero\n}}",
+      "revisionId": 2714693,
+      "outcome": "declined:template-not-read"
+    },
+    {
+      "word": "radicare",
+      "call": "{{It-conj|radic|care|avere}}",
+      "revisionId": 1869632,
+      "outcome": "settled:care"
+    },
+    {
+      "word": "riadoperare",
+      "call": "{{It-conj|riadoper|are|avere}}",
+      "revisionId": 1872569,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "posticipare",
+      "call": "{{It-conj|posticip|are|avere}}",
+      "revisionId": 1872495,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "spaurire",
+      "call": "{{It-conj|spaur|ire-b|avere}}",
+      "revisionId": 1875465,
+      "outcome": "settled:ire-b"
+    },
+    {
+      "word": "preaccennare",
+      "call": "{{It-conj|preaccenn|are|avere}}",
+      "revisionId": 1873934,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "ripudiare",
+      "call": "{{It-conj|ripudi|iare|avere}}",
+      "revisionId": 1874875,
+      "outcome": "settled:iare"
+    },
+    {
+      "word": "suffiggere",
+      "call": "{{It-conj|suffigg|ere|avere\n|pp=suffisso\n|prem1s=suffissi|prem3s=suffisse|prem3p=suffissero\n}}",
+      "revisionId": 2716213,
+      "outcome": "declined:template-not-read"
+    },
+    {
+      "word": "prefiggere",
+      "call": "{{It-conj|prefigg|ere|avere\n|pp=prefisso\n|prem1s=prefissi|prem3s=prefisse|prem3p=prefissero\n}}",
+      "revisionId": 2716078,
+      "outcome": "declined:template-not-read"
+    },
+    {
+      "word": "infiggere",
+      "call": "{{It-conj|infigg|ere|avere\n|pp=infisso\n|pp2=infitto\n|prem1s=infissi|prem3s=infisse|prem3p=infissero\n}}",
+      "revisionId": 3997073,
+      "outcome": "declined:template-not-read"
+    },
+    {
+      "word": "simpatizzare",
+      "call": "{{It-conj|simpatizz|are|avere}}",
+      "revisionId": 1872127,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "embricare",
+      "call": "{{It-conj|embric|care|avere}}",
+      "revisionId": 1869475,
+      "outcome": "settled:care"
+    },
+    {
+      "word": "incettare",
+      "call": "{{It-conj|incett|are|avere}}",
+      "revisionId": 1873855,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "vitaminizzare",
+      "call": "{{It-conj|vitaminizz|are|avere}}",
+      "revisionId": 1873400,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "incogliere",
+      "call": "{{It-conj|incogli|ere|avere\n|pp=incolto\n|pres1s=incolgo|pres2s=incogli|pres1p=incogliamo|pres3p=incolgono\n|prem1s=incolsi|prem3s=incolse|prem3p=incolsero\n|cong123s=incolga|cong1p=incogliamo|cong2p=incogliate|cong3p=incolgano\n|imp2s=incogli|imp3s=incolga|imp1p=incogliamo|imp3p=incolgano\n}}",
+      "revisionId": 2417069,
+      "outcome": "declined:template-not-read"
+    },
+    {
+      "word": "incogliere",
+      "call": "{{It-conj|incogli|ere|avere\n|pp=incolto\n|pres1s=incolgo|pres2s=incogli|pres1p=incogliamo|pres3p=incolgono\n|prem1s=incolsi|prem3s=incolse|prem3p=incolsero\n|cong123s=incolga|cong1p=incogliamo|cong2p=incogliate|cong3p=incolgano\n|imp2s=incogli|imp3s=incolga|imp1p=incogliamo|imp3p=incolgano\n}}",
+      "revisionId": 2417069,
+      "outcome": "declined:template-not-read"
+    },
+    {
+      "word": "sfacchinare",
+      "call": "{{It-conj|sfacchin|are|avere}}",
+      "revisionId": 1870333,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "disostruire",
+      "call": "{{It-conj|disostru|ire-b|avere}}",
+      "revisionId": 1875503,
+      "outcome": "settled:ire-b"
+    },
+    {
+      "word": "disseccare",
+      "call": "{{It-conj|dissecc|care|avere}}",
+      "revisionId": 1869463,
+      "outcome": "settled:care"
+    },
+    {
+      "word": "intronare",
+      "call": "{{It-conj|intron|are|avere}}",
+      "revisionId": 1870250,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "riorganizzare",
+      "call": "{{It-conj|riorganizz|are|avere}}",
+      "revisionId": 1871977,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "dissetare",
+      "call": "{{It-conj|disset|are|avere}}",
+      "revisionId": 1872834,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "propiziare",
+      "call": "{{It-conj|propizi|iare|avere}}",
+      "revisionId": 1874967,
+      "outcome": "settled:iare"
+    },
+    {
+      "word": "mummificare",
+      "call": "{{It-conj|mummific|care|avere}}",
+      "revisionId": 1869583,
+      "outcome": "settled:care"
+    },
+    {
+      "word": "scacazzare",
+      "call": "{{It-conj|scacazz|are|avere}}",
+      "revisionId": 1874017,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "soverchiare",
+      "call": "{{It-conj|soverchi|iare|avere}}",
+      "revisionId": 1874946,
+      "outcome": "settled:iare"
+    },
+    {
+      "word": "intascare",
+      "call": "{{It-conj|intasc|care|avere}}",
+      "revisionId": 1869545,
+      "outcome": "settled:care"
+    },
+    {
+      "word": "sguazzare",
+      "call": "{{It-conj|sguazz|are|avere}}",
+      "revisionId": 1872344,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "invelenire",
+      "call": "{{It-conj|invelen|ire-b|avere, se intr. essere}}",
+      "revisionId": 1875275,
+      "outcome": "declined:auxiliary-not-avere"
+    },
+    {
+      "word": "rintristire",
+      "call": "{{It-conj|rintrist|ire-b|essere}}",
+      "revisionId": 1875563,
+      "outcome": "declined:auxiliary-not-avere"
+    },
+    {
+      "word": "infradiciare",
+      "call": "{{It-conj|infradic|ciare|essere}}",
+      "revisionId": 1869893,
+      "outcome": "declined:auxiliary-not-avere"
+    },
+    {
+      "word": "imbroccare",
+      "call": "{{It-conj|imbrocc|care|avere}}",
+      "revisionId": 1869522,
+      "outcome": "settled:care"
+    },
+    {
+      "word": "strigliare",
+      "call": "{{It-conj|strigli|iare|avere}}",
+      "revisionId": 1874983,
+      "outcome": "settled:iare"
+    },
+    {
+      "word": "rizzare",
+      "call": "{{It-conj|rizz|are|avere}}",
+      "revisionId": 1872081,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "rifiorire",
+      "call": "{{It-conj|rifior|ire-b|avere, come intr. essere}}",
+      "revisionId": 1875362,
+      "outcome": "declined:auxiliary-not-avere"
+    },
+    {
+      "word": "tramestare",
+      "call": "{{It-conj|tramest|are|avere}}",
+      "revisionId": 1874142,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "vangare",
+      "call": "{{It-conj|vang|care|avere}}",
+      "revisionId": 1874351,
+      "outcome": "settled:care"
+    },
+    {
+      "word": "stornare",
+      "call": "{{It-conj|storn|are|avere}}",
+      "revisionId": 1873229,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "evoluire",
+      "call": "{{It-conj|evolu|ire-b|avere}}",
+      "revisionId": 1875509,
+      "outcome": "settled:ire-b"
+    },
+    {
+      "word": "mammare",
+      "call": "{{It-conj|mamm|are|avere}}",
+      "revisionId": 1870903,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "rimpiallacciare",
+      "call": "{{It-conj|rimpiallacc|ciare|avere}}",
+      "revisionId": 1874709,
+      "outcome": "settled:ciare"
+    },
+    {
+      "word": "rescindere",
+      "call": "{{It-conj|rescind|ere|avere\n|pp=rescisso\n|prem1s=rescissi|prem3s=rescisse|prem3p=rescissero\n}}",
+      "revisionId": 3520568,
+      "outcome": "declined:template-not-read"
+    },
+    {
+      "word": "grafitare",
+      "call": "{{It-conj|grafit|are|avere}}",
+      "revisionId": 1873823,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "parodiare",
+      "call": "{{It-conj|parodi|iare|avere}}",
+      "revisionId": 1874725,
+      "outcome": "settled:iare"
+    },
+    {
+      "word": "scrocchiare",
+      "call": "{{It-conj|scrocchi|iare|avere}}",
+      "revisionId": 1875068,
+      "outcome": "settled:iare"
+    },
+    {
+      "word": "racemizzare",
+      "call": "{{It-conj|racemizz|are|avere}}",
+      "revisionId": 1873954,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "ripopolare",
+      "call": "{{It-conj|ripopol|are|avere}}",
+      "revisionId": 1872328,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "ruspare",
+      "call": "{{It-conj|rusp|are|avere}}",
+      "revisionId": 1873356,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "sbrogliare",
+      "call": "{{It-conj|sbrogli|iare|avere}}",
+      "revisionId": 1874877,
+      "outcome": "settled:iare"
+    },
+    {
+      "word": "insellare",
+      "call": "{{It-conj|insell|are|avere}}",
+      "revisionId": 1873862,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "rammorbidire",
+      "call": "{{It-conj|rammorbid|ire-b|avere}}",
+      "revisionId": 1875531,
+      "outcome": "settled:ire-b"
+    },
+    {
+      "word": "impreziosire",
+      "call": "{{It-conj|imprezios|ire-b|avere}}",
+      "revisionId": 1875255,
+      "outcome": "settled:ire-b"
+    },
+    {
+      "word": "sorseggiare",
+      "call": "{{It-conj|sorsegg|ciare|avere}}",
+      "revisionId": 1870011,
+      "outcome": "settled:ciare"
+    },
+    {
+      "word": "divariare",
+      "call": "{{It-conj|divari|iare|avere}}",
+      "revisionId": 1875100,
+      "outcome": "settled:iare"
+    },
+    {
+      "word": "sottintendere",
+      "call": "{{It-conj|sottintend|ere|avere\n|pp=sottinteso\n|prem1s=sottintesi|prem3s=sottintese|prem3p=sottintesero\n}}",
+      "revisionId": 2421421,
+      "outcome": "declined:template-not-read"
+    },
+    {
+      "word": "latitare",
+      "call": "{{It-conj|latit|are|avere}}",
+      "revisionId": 1873312,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "spopolare",
+      "call": "{{It-conj|spopol|are|avere}}",
+      "revisionId": 1873227,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "hackerare",
+      "call": "{{It-conj|hacker|are|avere}}",
+      "revisionId": 1874270,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "scaffalare",
+      "call": "{{It-conj|scaffal|are|avere}}",
+      "revisionId": 1874019,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "prosternare",
+      "call": "{{It-conj|prostern|are|avere}}",
+      "revisionId": 1873948,
+      "outcome": "settled:are"
+    },
+    {
+      "word": "dittongare",
+      "call": "{{It-conj|dittong|care|avere}}",
+      "revisionId": 1875857,
+      "outcome": "settled:care"
+    }
+  ]
+}

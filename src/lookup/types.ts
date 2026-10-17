@@ -374,11 +374,12 @@ export interface RecoveredRef {
 
 /**
  * Where a fact a page shows was read: a field of an archive line, a line of a
- * raw page for a page-only entry (ADR 0026), or a form of a Wikidata word's
- * lexeme (ADR 0033, #833). The three are told apart by shape, never by a flag
+ * raw page for a page-only entry (ADR 0026), a Wikidata word's lexeme, for a
+ * fact it states of the whole word, its gender (#849), or one form of the
+ * lexeme (ADR 0033, #833). The four are told apart by shape, never by a flag
  * that could disagree with it.
  */
-export type FactRef = SourceRef | RecoveredRef | LexemeFormRef;
+export type FactRef = SourceRef | RecoveredRef | LexemeRef | LexemeFormRef;
 
 /** Whether a fact was read from the archive rather than from a raw page, or from a name entry's Wikidata item or a Wikidata word's lexeme. */
 export const isSourceRef = (ref: FactRef | NameRef | LexemeRef): ref is SourceRef => "jsonPointer" in ref;
@@ -392,7 +393,9 @@ export const factRefKey = (ref: FactRef): string =>
     ? `${ref.releaseId}\u0000${ref.lineNo}\u0000${ref.jsonPointer}`
     : isLexemeFormRef(ref)
       ? `${ref.wiki}\u0000${ref.snapshot}\u0000${ref.form}`
-      : `${ref.wiki}\u0000${ref.title}\u0000${ref.revisionId}\u0000${ref.line}`;
+      : isLexemeRef(ref)
+        ? `${ref.wiki}\u0000${ref.snapshot}\u0000${ref.lexeme}`
+        : `${ref.wiki}\u0000${ref.title}\u0000${ref.revisionId}\u0000${ref.line}`;
 
 /** The permanent URL of the page revision a recovered ref names. */
 export function recoveredRevisionUrl(ref: RecoveredRef): string {
@@ -575,6 +578,9 @@ export interface LexemeFormRef extends LexemeRef {
 
 /** Whether a fact was read off a Wikidata word's form. */
 export const isLexemeFormRef = (ref: FactRef): ref is LexemeFormRef => "form" in ref;
+
+/** Whether a fact was read off a Wikidata word's lexeme, or one of its forms. */
+export const isLexemeRef = (ref: FactRef): ref is LexemeRef | LexemeFormRef => "lexeme" in ref;
 
 /** Whether an entry is a Wikidata word rather than a reading of Wiktionary's or Lexema's, or a name entry. */
 export const isWikidataWord = (entry: EntryIdentity): entry is LexemeIdentity => entry.lexeme !== undefined;

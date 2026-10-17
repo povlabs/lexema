@@ -4,7 +4,7 @@
 // from the missing-word count (reports/2026-10-11-missing-common-words.md),
 // over the development fixture with its raw pages and page-only entries,
 // seeded the way `pnpm run seed:dev` seeds D1, and the release lines of
-// `fixtures/word-shapes.jsonl`: dare (lines 2340 and 2341), mi (12704),
+// `fixtures/word-shapes.jsonl`: dare (lines 2340 and 2341), jazz (7266), mi (12704),
 // piacere (33110), quello (33211 and 33212) and bravo (70242) of release
 // it-0c432803, then studio (7581), game (11654), valigia (40921), tipa
 // (54777), tata (67171), marine (91893), valigie (111783), annettere
@@ -182,10 +182,23 @@ test("an English plural finds its loanword: marines, games, yankees, studios (#8
   }
 });
 
+test("gajo, the old spelling with j, finds gaio the adjective; a word the dictionary spells with j keeps its answer: jazz (#830)", async () => {
+  // The development fixture has gaio, and gaia, gai and gaie, whose tables list it.
+  const gajo = await found("gajo");
+  assert.deepEqual(spellingsOf(gajo), ["j-spelling:gaio"]);
+  // gaio's own readings, but for the names Gaio and Gaia: no shape's word is a name.
+  assert.deepEqual(readingsOf(await found("gaio")), ["gaia adj (table)", "Gaio name", "Gaia name (table)", "gaio adj", "gai adj (table)", "gaie adj (table)"]);
+  assert.deepEqual(readingsOf(gajo), ["gaia adj (table)", "gaio adj", "gai adj (table)", "gaie adj (table)"]);
+  assert.deepEqual(spellingsOf(await found("Gajo")), ["j-spelling:gaio"]);
+  const jazz = await found("jazz");
+  assert.equal(jazz.route.kind, "surface");
+  assert.deepEqual(readingsOf(jazz), ["jazz adj"]);
+});
+
 test("the batch answers every shaped word with the records /v1/lookup answers it with, and exists() agrees (#809)", async () => {
   const words = [
     "quei", "quegli", "raccontarvi", "dammi", "dirlo", "fammi", "quell'", "bell'", "m'", "aver", "far", "bravissimo", "piaciute", "qqqqqq", "citta'",
-    "tate", "follie", "crucchi", "tipe", "fuggitivi", "artificieri", "poverina", "valige", "fischia", "annette", "marines", "games", "yankees", "studios",
+    "tate", "follie", "crucchi", "tipe", "fuggitivi", "artificieri", "poverina", "valige", "fischia", "annette", "marines", "games", "yankees", "studios", "gajo", "jazz",
   ];
   const { answers } = await lookupBatch({ db, releaseId: RELEASE, queries: words });
   for (const [at, word] of words.entries()) {

@@ -198,10 +198,17 @@ line each `recovered_definition`, `recovered_example`, `entry_definition` and
 it still holds what the renderer printed before #712; labels and every other
 column stay. The `{{Fig}}` rule renders the line each `recovered_label` and
 `entry_label` row labels again, and rewrites a label only where the line's
-`{{Fig}}` printed it; `{{Term|figurato|it}}` prints `figurato` and stays. A
-`wrapped-prose` definition takes its labels from the `#` line above its stored
-line, and a `numbered-prose` one shares its stored line with the other numbered
-meanings, so the rule leaves a label of theirs and counts it as undecided. It never touches
+`{{Fig}}` printed it; `{{Term|figurato|it}}` and `{{Glossa|figurato}}` print
+`figurato` and stay. A `wrapped-prose` definition takes its labels from the `#`
+line above its stored line (`pantomima`), and a `numbered-prose` one shares its
+stored line with the other numbered meanings. For these the rule reads the page
+from the dump the master's archive was built from (`RAW_PAGES`, default its
+copy in `.data/source/`, fetched from `povlabs/lexema-data` when the cache lacks
+it), held to its size and SHA-1, at the revision the definition was read off
+([#814](https://github.com/povlabs/lexema/issues/814)). It reads the dump only
+when such a definition holds a `figurato` label. A label whose page the dump
+does not hold at that revision, or whose lines do not say which template
+printed it, stays and is counted as undecided. It never touches
 `source_record_json`. It reads the rows back and fails if any still needs a
 rule. It prints one line per rule, led by the rule's name and version:
 `gloss-headword-lead/v1: sense_gloss: <n> row(s) changed`,
@@ -238,7 +245,9 @@ and 0 on every later run. A seed of it and its dump from before #712 holds 7
 `recovered_definition` and 4 `entry_definition` rows the label rule rewrites,
 and none of the two example tables. The shared dictionary held 4
 `recovered_label` and 6 `entry_label` rows the `{{Fig}}` rule rewrites
-([#800](https://github.com/povlabs/lexema/issues/800)). It writes through Wrangler, never through the
+([#800](https://github.com/povlabs/lexema/issues/800)), and then 1, pantomima's,
+once the rule read the dump ([#814](https://github.com/povlabs/lexema/issues/814)).
+It writes through Wrangler, never through the
 Worker's read-only binding.
 
 ## Hide another language's records in a seeded database
@@ -301,7 +310,9 @@ its release as `corrected_claim` rows beside the record. An entry may instead
 set cells of a verb's conjugation table, each named by its place in `forms[]`
 and the text the line holds there
 ([ADR 0030](../.decisions/0030-corrections-may-fix-edges-and-cells.md),
-[#723](https://github.com/povlabs/lexema/issues/723)); the seed writes those
+[#723](https://github.com/povlabs/lexema/issues/723)), or a noun's or
+adjective's listed form the same way (`eguale`'s plural,
+[#830](https://github.com/povlabs/lexema/issues/830)); the seed writes those
 as `corrected_form` rows, one per cell, and refuses an entry that misquotes its
 line. Each row carries its spelling's search key, so a search finds the corrected
 spelling, `siamo assorbiti`, beside the source's, which `lookup_form` keeps
@@ -386,7 +397,8 @@ from another revision, or the definition differs. The plan's counts name its
 `corrected_definition` rows; a definition entry changes no record.
 
 The same run also writes the hand-kept readings: whole readings the source
-lacks, `si` as a pronoun and `come` as a conjunction, each citing the
+lacks, `si` as a pronoun, `come` as a conjunction and `eguaglianza`, another
+spelling of `uguaglianza` ([#830](https://github.com/povlabs/lexema/issues/830)), each citing the
 en.wiktionary revision that shows it
 ([ADR 0031](../.decisions/0031-hand-kept-readings-fill-source-gaps.md),
 [#745](https://github.com/povlabs/lexema/issues/745)). The committed list is
@@ -505,7 +517,9 @@ unless its size and SHA-256 are the pinned ones. It keeps every Italian lexeme
 of a lexical category the table maps
 ([`src/wikidataWords/lexicalCategories.ts`](../src/wikidataWords/lexicalCategories.ts))
 with a spelling, lemma or form, among the words of `wikidata-words/words.txt`,
-and writes the snapshot in lexeme order. The words are those of the count's
+and writes the snapshot in lexeme order. Of each lexeme it keeps the lemma,
+the category, the grammatical genders the lexeme states (P5185, ADR 0033's
+2026-10-17 amendment), the forms and the Italian glosses. The words are those of the count's
 "in Wikidata's words" group
 ([reports/2026-10-11-missing-common-words.md](../reports/2026-10-11-missing-common-words.md)).
 Reading the dump is a heavy job: run it alone. Commit the snapshot: its diff
@@ -523,8 +537,12 @@ label. A held lexeme the snapshot no longer has is reported and left serving.
 It prints the words written, left out for no gloss, left out as answered, and
 no longer in the snapshot. `--plan-only` prints the
 counts and writes nothing. On a master without `wikidata_word` and
-`wikidata_word_key` it plans but refuses to write, and names `pnpm run
-update:upgrade`. No source row is touched, and no seed writes Wikidata words.
+`wikidata_word_key`, or with a `wikidata_word` from before its `genders`
+column ([#849](https://github.com/povlabs/lexema/issues/849)), it plans but
+refuses to write, and names `pnpm run update:upgrade`. The upgrade rebuilds
+such a table with its rows, each stating no gender, and the next load
+rewrites the rows of the same snapshot whose genders differ in place. No
+source row is touched, and no seed writes Wikidata words.
 
 A lookup shows a Wikidata word only where no Wiktionary reading answers the
 spelling ([src/lookup/wikidataWords.ts](../src/lookup/wikidataWords.ts)), so a

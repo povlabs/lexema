@@ -12,6 +12,8 @@ import type { CorrectionPlan } from "../import/correctRecords.js";
 import type { HidePlan } from "../import/hideRecords.js";
 import type { PageEntryPlan } from "../import/loadPageEntries.js";
 import type { RecoveredDefinitionPlan } from "../import/loadRecoveredDefinitions.js";
+import { cellSpellings, isCellCorrection } from "../italian/curatedCorrections.js";
+import { wordsLedTo } from "../italian/handKeptReadings.js";
 import { normalizeItalianExact } from "../italian/normalize.js";
 import type { NamePlan } from "../names/loadNames.js";
 import type { WikidataWordPlan } from "../wikidataWords/loadWikidataWords.js";
@@ -54,23 +56,27 @@ export const wordsOfHide = (plan: HidePlan): TouchedWords => touchedWords(plan.h
 
 /**
  * `correct:records`: the word of each record and page-only entry it writes a
- * correction for, the word each edge it writes names, whose page lists the
- * record's word among its forms, the word each edge it replaces or removes
- * named, whose page no longer does (#755), the word of each record a
- * recovered definition of which it hides (#773), the word of each record a
- * sense of which it hides (#857), and the word of each hand-kept reading it
- * writes (#745).
+ * correction for, each spelling a cell it sets gives or retires, which now
+ * finds that record or no longer does (#830), the word each edge it writes
+ * names, whose page lists the record's word among its forms, the word each
+ * edge it replaces or removes named, whose page no longer does (#755), the
+ * word of each record a recovered definition of which it hides (#773), the
+ * word of each record a sense of which it hides (#857), and the word of each
+ * hand-kept reading it writes (#745) and of each word that reading leads to,
+ * whose definitions and table its page shows (#830).
  */
 export const wordsOfCorrections = (plan: CorrectionPlan): TouchedWords =>
   touchedWords([
-    ...plan.entries.flatMap((entry) => (entry.state === "write" ? [entry.correction.record.word] : [])),
+    ...plan.entries.flatMap((entry) =>
+      entry.state !== "write" ? [] : [entry.correction.record.word, ...(isCellCorrection(entry.correction) ? cellSpellings(entry.correction) : [])],
+    ),
     ...plan.edges.flatMap(({ state, correction: { record, edge } }) =>
       state !== "write" ? [] : [record.word, ...(edge.removes === undefined ? [edge.target, ...(edge.replaces === undefined ? [] : [edge.replaces.text])] : [edge.removes.text])],
     ),
     ...plan.hides.flatMap((hide) => (hide.state === "write" ? [hide.correction.record.word] : [])),
     ...plan.senseHides.flatMap((hide) => (hide.state === "write" ? [hide.correction.record.word] : [])),
     ...plan.definitions.flatMap((definition) => (definition.state === "write" ? [definition.correction.entry.title] : [])),
-    ...plan.readings.flatMap((planned) => (planned.state === "write" ? [planned.reading.word] : [])),
+    ...plan.readings.flatMap((planned) => (planned.state === "write" ? [planned.reading.word, ...wordsLedTo(planned.reading)] : [])),
   ]);
 
 /** `load:names`: the label of each name entry it writes or removes (#794). */

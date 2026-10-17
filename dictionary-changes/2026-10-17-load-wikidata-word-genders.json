@@ -1,0 +1,16 @@
+{
+  "command": "load:wikidata-words",
+  "inputs": {},
+  "lookups": [
+    { "word": "targhetta", "gloss": "nota dipinta realisticamente" },
+    { "word": "targhette" },
+    { "word": "trucco" },
+    { "word": "flebo", "gloss": "per via endovenosa" },
+    { "word": "pento", "gloss": "un'azione sbagliata commessa" }
+  ],
+  "expected": {
+    "records": { "added": 0, "changed": 0, "removed": 0 },
+    "written": { "wikidata_word": 14, "wikidata_word_key": 33 },
+    "deleted": { "wikidata_word": 14, "wikidata_word_key": 33 }
+  }
+}

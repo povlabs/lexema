@@ -27,12 +27,16 @@
 // class the source settles, and the built cell carries one of those. Where the
 // source settles none, they are the verb's hand-kept table's
 // (src/italian/handKeptTables.ts, #844), and the page draws them the same way.
+//
+// A verb that is not pronominal and whose records have no table (`verificare`,
+// #841) takes the cells `it-regular-conjugation/v1` builds for the class its
+// own page's `{{It-conj}}` call settles, each where its tags place it.
 
 import { groupByAuxiliary } from "@lexema/italian/compoundAuxiliary.ts";
 import { essereAgreement, type AgreeingSpelling } from "@lexema/italian/essereAgreement.ts";
 import { PRONOMINAL_CONJUGATION_RULE, pronominalSpellings, type PronominalVerb } from "@lexema/italian/pronominalConjugation.ts";
 import type { HandKeptCell } from "@lexema/italian/handKeptTables.ts";
-import type { RegularCell } from "@lexema/italian/regularConjugation.ts";
+import type { REGULAR_CONJUGATION_RULE, RegularCell } from "@lexema/italian/regularConjugation.ts";
 import { factRefKey, isSearchedForm, sourceTagsOf, type DeclaredForm, type DeclaredVerbForm, type SearchedSpellings, type SourceForm } from "@lexema/lookup/types.ts";
 import {
   NON_FINITE_NAMES,
@@ -145,21 +149,37 @@ export interface PronominalForm {
   from: BaseCellOf;
 }
 
-/** A form a table can hold: a record's own `forms[]` entry, a declared lemma's form record, or a cell built by rule from a base verb's. */
-export type TableForm = SourceForm | DeclaredForm | PronominalForm;
+/**
+ * A cell of a regular table `it-regular-conjugation/v1` built for a verb that
+ * is not pronominal (#841): its spelling, `verifico`, and the regular cell,
+ * which carries the call that chose its class. It is Lexema's text, built when
+ * the page is built and never stored (ADR 0012).
+ */
+export interface RegularForm {
+  surface: string;
+  rule: typeof REGULAR_CONJUGATION_RULE;
+  cell: RegularCell;
+}
+
+/** A form a table can hold: a record's own `forms[]` entry, a declared lemma's form record, or a cell built by rule. */
+export type TableForm = SourceForm | DeclaredForm | PronominalForm | RegularForm;
 
 /** Whether a table's form is a record's own `forms[]` entry, which alone has an index there. */
 export const isSourceForm = (form: TableForm): form is SourceForm => "index" in form;
 
-/** Whether a table's form was built by rule rather than read from a record (#837). */
-export const isRuleBuilt = (form: TableForm): form is PronominalForm => "rule" in form;
+/** Whether a table's form was built by rule rather than read from a record (#837, #841). */
+export const isRuleBuilt = (form: TableForm): form is PronominalForm | RegularForm => "rule" in form;
 
 /** Whether a table's form is a declared lemma's form record, which is named by its own line. */
 export const isDeclaredForm = (form: TableForm): form is DeclaredForm => !isSourceForm(form) && !isRuleBuilt(form);
 
-/** A key no other form of one table shares: its place in the source, or, for a built cell, the rule and the base cell it was built from. */
+/** A key no other form of one table shares: its place in the source, or, for a built cell, the rule and the cell it was built from or is. */
 export const tableFormKey = (form: TableForm): string =>
-  isRuleBuilt(form) ? `${form.rule}\u0000${baseCellKey(form.from)}` : factRefKey(form.ref);
+  !isRuleBuilt(form)
+    ? factRefKey(form.ref)
+    : "cell" in form
+      ? baseCellKey(form.cell)
+      : `${form.rule}\u0000${baseCellKey(form.from)}`;
 
 /** Whether the search hit a table's form: a record's own entry, a Wikidata word's form or a declared form; never a built cell, which no search hits. */
 export const isSearchedTableForm = (searched: SearchedSpellings, form: TableForm): boolean => !isRuleBuilt(form) && isSearchedForm(searched, form.ref);
@@ -390,6 +410,17 @@ export function pronominalConjugationOf(verb: PronominalVerb, base: readonly Bas
     return surface === undefined ? [] : [{ surface, rule: PRONOMINAL_CONJUGATION_RULE, from }];
   });
   return layOut(placedBy(built, (form) => placeOfTags(tagsOfBase(form.from))), () => false);
+}
+
+/**
+ * A regular table's conjugation, for a verb that is not pronominal and whose
+ * records have none (`it-regular-conjugation/v1`, #841): each cell where its
+ * tags place it. The query is the verb itself, which no cell holds, so no cell
+ * is marked.
+ */
+export function regularConjugationOf(cells: readonly RegularCell[]): Conjugation<RegularForm> {
+  const built = cells.map((cell): RegularForm => ({ surface: cell.spelling, rule: cell.rule, cell }));
+  return layOut(placedBy(built, (form) => placeOfTags(form.cell)), () => false);
 }
 
 /** Whether a conjugation places any form at all. */

@@ -1,0 +1,14 @@
+{
+  "command": "correct:records",
+  "inputs": {},
+  "lookups": [
+    { "word": "eguali" },
+    { "word": "eguale" },
+    { "word": "eguaglianza", "gloss": "variante di uguaglianza" }
+  ],
+  "expected": {
+    "records": { "added": 0, "changed": 1, "removed": 0 },
+    "written": { "corrected_form": 1, "hand_kept_definition": 1, "correction_version": 1 },
+    "deleted": {}
+  }
+}

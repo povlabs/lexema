@@ -3,8 +3,10 @@
 // that refuse an invalid reading; the rows the seed writes, read back through
 // `lookup()` beside the source's own readings; and `correct:records` writing
 // them into a master seeded before them. Inputs are verbatim: archive lines
-// 963 `si`, 113594 and 113595 `come` of it-0c432803, and revisions 93469502
-// `si` and 93379611 `come` of en.wiktionary (fixtures/hand-kept-readings/).
+// 963 `si`, 55329 `uguaglianza`, 113594 and 113595 `come` of it-0c432803, and
+// revisions 93469502 `si`, 93379611 `come`, 89865273 `Sig.`, 63388291 `cosetta`
+// and 71378670 `eguaglianza` of
+// en.wiktionary (fixtures/hand-kept-readings/).
 
 import assert from "node:assert/strict";
 import test from "node:test";
@@ -30,7 +32,7 @@ import { touchedWords, wordsOfCorrections } from "../src/deploy/touchedWords.js"
 import { fromNodeSqlite } from "../src/lookup/database.js";
 import { lookup } from "../src/lookup/lookup.js";
 import { servedVersion, versionToken } from "../src/lookup/served.js";
-import { entryKey, type Reading } from "../src/lookup/types.js";
+import { entryKey, isFormOfReading, type Reading } from "../src/lookup/types.js";
 import type { MasterReader } from "../src/update/master.js";
 import { masterUpgradeSql } from "../src/update/masterUpgrade.js";
 import { PlanCounts } from "../src/update/planCounts.js";
@@ -53,10 +55,21 @@ const levelOf = (line: string): number => {
   return match === null ? 0 : match[1].length;
 };
 
-test("the list keeps exactly si's pronoun and come's conjunction, each as its cited revision shows it", async () => {
+const RULING_OF: Record<string, string> = {
+  "si:pron": "https://github.com/povlabs/lexema/issues/745#issuecomment-6080245573",
+  "come:conj": "https://github.com/povlabs/lexema/issues/745#issuecomment-6080245573",
+  "Sig.:abbrev": "https://github.com/povlabs/lexema/issues/809#issuecomment-6110591219",
+  "cosetta:noun": "https://github.com/povlabs/lexema/issues/809#issuecomment-6110591219",
+  "eguaglianza:noun": "https://github.com/povlabs/lexema/issues/830#issuecomment-6233334459",
+};
+
+test("the list keeps exactly si's pronoun, come's conjunction, Sig., cosetta and eguaglianza's noun, each as its cited revision shows it", async () => {
   assert.deepEqual(HAND_KEPT_READINGS.map((reading) => [handKeptId(reading), reading.partOfSpeech.posTitle, reading.evidence.map(evidenceUrl)]), [
     ["si:pron", "Pronome", ["https://en.wiktionary.org/w/index.php?title=si&oldid=93469502"]],
     ["come:conj", "Congiunzione", ["https://en.wiktionary.org/w/index.php?title=come&oldid=93379611"]],
+    ["Sig.:abbrev", "Acronimo / Abbreviazione", ["https://en.wiktionary.org/w/index.php?title=Sig.&oldid=89865273"]],
+    ["cosetta:noun", "Sostantivo", ["https://en.wiktionary.org/w/index.php?title=cosetta&oldid=63388291"]],
+    ["eguaglianza:noun", "Sostantivo", ["https://en.wiktionary.org/w/index.php?title=eguaglianza&oldid=71378670"]],
   ]);
   const etymologyOf = { si: "===Etymology 1===", come: undefined } as Record<string, string | undefined>;
   for (const reading of HAND_KEPT_READINGS) {
@@ -75,14 +88,16 @@ test("the list keeps exactly si's pronoun and come's conjunction, each as its ci
     const enclosing = lines.slice(italian, section.line - 1).filter((line) => levelOf(line) === 3).at(-1);
     if (etymologyOf[reading.word] !== undefined) assert.equal(enclosing, etymologyOf[reading.word]);
     // Every definition paraphrases a sense line of that section, quoted verbatim.
-    const end = lines.findIndex((line, i) => i >= section.line && levelOf(line) > 0 && levelOf(line) <= levelOf(section.wikitext)) + 1;
+    // The section ends at the next heading of its level or above, or with the revision.
+    const next = lines.findIndex((line, i) => i >= section.line && levelOf(line) > 0 && levelOf(line) <= levelOf(section.wikitext));
+    const end = next === -1 ? lines.length + 1 : next + 1;
     for (const { paraphrases, text } of reading.definitions) {
       assert.equal(at(paraphrases.line), paraphrases.wikitext);
       assert.match(paraphrases.wikitext, /^# /);
       assert.ok(paraphrases.line > section.line && paraphrases.line < end, `${reading.word}: line ${paraphrases.line} is in its section`);
       assert.notEqual(text, "");
     }
-    assert.equal(reading.ruling, "https://github.com/povlabs/lexema/issues/745#issuecomment-6080245573");
+    assert.equal(reading.ruling, RULING_OF[handKeptId(reading)]);
   }
 });
 
@@ -97,6 +112,9 @@ test("a reading without a word, a closed part of speech, a definition or an en.w
   refused({ ...SI_SPEC, evidence: [{ ...SI_SPEC.evidence[0], revisionId: 0 }] });
   refused({ ...SI_SPEC, evidence: [{ ...SI_SPEC.evidence[0], title: "" }] });
   refused({ ...SI_SPEC, ruling: "yes" });
+  // A definition of another spelling writes the word it leads to, so the page can link it.
+  const EGUAGLIANZA_SPEC: HandKeptReadingSpec = { ...readingOf("eguaglianza") };
+  refused({ ...EGUAGLIANZA_SPEC, definitions: [{ ...EGUAGLIANZA_SPEC.definitions[0], text: "variante di uguaglianze" }] });
   // The type refuses what the check refuses again at run time.
   // @ts-expect-error a reading has at least one definition
   refused({ ...SI_SPEC, definitions: [] });
@@ -175,6 +193,20 @@ test("a lookup reads each hand-kept reading beside the source's readings, as an 
       const come = await readingsOf("come");
       assert.deepEqual(come.map((reading) => reading.pos), ["adv", "prep", "conj"]);
       assert.deepEqual(shown(come[2]), ["kept-come:conj", "conj", "Congiunzione", textsOf(readingOf("come"))]);
+      // eguaglianza has no record; its reading leads to uguaglianza's, at the definition that names it (#830).
+      const [eguaglianza, ...none] = await readingsOf("eguaglianza");
+      assert.deepEqual(none, []);
+      assert.deepEqual(shown(eguaglianza), ["kept-eguaglianza:noun", "noun", "Sostantivo", ["variante di uguaglianza"]]);
+      assert.ok(isFormOfReading(eguaglianza));
+      const [link, ...more] = eguaglianza.lemmaLinks;
+      assert.deepEqual(more, []);
+      assert.ok(link?.kind === "candidates");
+      assert.deepEqual(link.ref, { wiki: "en.wiktionary.org", title: "eguaglianza", revisionId: 71378670, line: 9 });
+      assert.deepEqual(link.candidates.map((candidate) => [candidate.word, candidate.pos, candidate.ref]), [
+        ["uguaglianza", "noun", { releaseId: RELEASE, lineNo: 2, jsonPointer: "/word", lineSha256: "4e6edf62ea926dfc93715a25e5ff63a46a7469e3f6d5e4f6e9c0eecdf06ba294" }],
+      ]);
+      // si's and come's lines are definitions, and lead nowhere.
+      assert.deepEqual([...si, ...come].flatMap((reading) => reading.lemmaLinks), []);
 
       // Plain data, with no correction and nothing else that marks where it came from (ADR 0016).
       const [, pronoun] = si;
@@ -194,7 +226,10 @@ test("a lookup reads each hand-kept reading beside the source's readings, as an 
         assert.deepEqual(all(db, `SELECT * FROM ${table}`), all(plain, `SELECT * FROM ${table}`), table);
       }
       assert.deepEqual(all(db, "SELECT reading_id, count(*) AS n FROM hand_kept_definition GROUP BY reading_id ORDER BY reading_id"), [
+        { reading_id: "Sig.:abbrev", n: 1 },
         { reading_id: "come:conj", n: 1 },
+        { reading_id: "cosetta:noun", n: 1 },
+        { reading_id: "eguaglianza:noun", n: 1 },
         { reading_id: "si:pron", n: 4 },
       ]);
     });
@@ -264,10 +299,17 @@ test("correct:records writes the readings into a master seeded before them, once
 
     const reader = readerOf(before);
     const plan = planCorrections(reader, [], HAND_KEPT_READINGS);
-    assert.deepEqual(plan.readings.map(describeReading), ["  kept:si:pron: written, 4 definition(s)", "  kept:come:conj: written, 1 definition(s)"]);
+    assert.deepEqual(plan.readings.map(describeReading), [
+      "  kept:si:pron: written, 4 definition(s)",
+      "  kept:come:conj: written, 1 definition(s)",
+      "  kept:Sig.:abbrev: written, 1 definition(s)",
+      "  kept:cosetta:noun: written, 1 definition(s)",
+      "  kept:eguaglianza:noun: written, 1 definition(s)",
+    ]);
     // A reading keys to no record; its rows are what the counts name.
-    assert.deepEqual(plan.counts.toJSON(), { records: { added: 0, changed: 0, removed: 0 }, written: { hand_kept_definition: 5, correction_version: 1 }, deleted: {} });
-    assert.deepEqual(wordsOfCorrections(plan), touchedWords(["come", "si"]));
+    assert.deepEqual(plan.counts.toJSON(), { records: { added: 0, changed: 0, removed: 0 }, written: { hand_kept_definition: 8, correction_version: 1 }, deleted: {} });
+    // eguaglianza's page shows uguaglianza's definitions and table, so a Preview's slice serves that word too (#830).
+    assert.deepEqual(wordsOfCorrections(plan), touchedWords(["come", "si", "Sig.", "cosetta", "eguaglianza", "uguaglianza"]));
     // The SQL creates nothing (#509): the upgrade gives the master the table, and the plan is the same after it.
     assert.doesNotMatch(plan.sql, /\b(CREATE|DROP|ALTER)\b/);
     assert.deepEqual(missingForCorrections(reader), ["hand_kept_definition", "hand_kept_definition_by_key"]);
@@ -286,13 +328,19 @@ test("correct:records writes the readings into a master seeded before them, once
 
     const again = planCorrections(reader, [], HAND_KEPT_READINGS);
     assert.equal(again.sql, "");
-    assert.deepEqual(again.readings.map(describeReading), ["  kept:si:pron: already written", "  kept:come:conj: already written"]);
+    assert.deepEqual(again.readings.map(describeReading), [
+      "  kept:si:pron: already written",
+      "  kept:come:conj: already written",
+      "  kept:Sig.:abbrev: already written",
+      "  kept:cosetta:noun: already written",
+      "  kept:eguaglianza:noun: already written",
+    ]);
     assert.equal(again.counts, PlanCounts.NONE);
 
     // A held reading that differs is replaced whole: the counts name its rows deleted and written.
     before.exec("UPDATE hand_kept_definition SET text = 'altro' WHERE reading_id = 'si:pron' AND definition_index = 2");
     const rewrite = planCorrections(reader, [], HAND_KEPT_READINGS);
-    assert.deepEqual(rewrite.readings.map((entry) => entry.state), ["write", "already"]);
+    assert.deepEqual(rewrite.readings.map((entry) => entry.state), ["write", "already", "already", "already", "already"]);
     assert.deepEqual(rewrite.counts.toJSON(), {
       records: { added: 0, changed: 0, removed: 0 },
       written: { hand_kept_definition: 4, correction_version: 1 },

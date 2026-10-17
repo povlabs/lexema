@@ -379,13 +379,13 @@ function LemmaLineList({ words }: { words: readonly string[] }) {
   );
 }
 
-/** A reading's own *Forms*, in the shape they have. Nothing in a declared or built conjugation is searched but the verb itself, which no cell holds (#799, #837). */
+/** A reading's own *Forms*, in the shape they have. Nothing in a declared or built conjugation is searched but the verb itself, which no cell holds (#799, #837, #841). */
 function OwnFormsView({ owner, forms }: { owner: Reading; forms: OwnForms }) {
   return (
     <Block id={`forms-${entryKey(owner)}`} label={SECTION_LABEL.forms}>
       {forms.kind === "conjugation" ? (
         <ConjugationView conjugation={forms.conjugation} searchedSpellings={forms.searched} word={owner.word} />
-      ) : forms.kind === "declared-conjugation" || forms.kind === "pronominal-conjugation" ? (
+      ) : forms.kind === "declared-conjugation" || forms.kind === "pronominal-conjugation" || forms.kind === "regular-conjugation" ? (
         <ConjugationView conjugation={forms.conjugation} searchedSpellings={NOTHING_SEARCHED} word={owner.word} />
       ) : (
         <>

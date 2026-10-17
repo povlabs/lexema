@@ -12,6 +12,13 @@
 // lines and approved by Huey word for word on the pull request that adds them
 // (ADR 0008's 2026-10-03 amendment).
 //
+// A reading may be another spelling of a word the source has: `eguaglianza`,
+// the Constitution's spelling of `uguaglianza`, which the source lacks (Huey's
+// ruling of 2026-10-17 on #830). Its cited sense line says so,
+// `# {{alt form|it|uguaglianza}}`, and its definition writes that word; the
+// lookup gives the reading a lemma link to it, so its page leads there as a
+// form record's leads to its lemma (`alternativeOf`).
+//
 // A hand-kept reading keys to nothing in the source: no archive line, no raw
 // page, no `recovered_entry` row. The seed writes it as `hand_kept_definition`
 // rows (src/import/handKeptRows.ts), `pnpm run correct:records` writes it into a
@@ -79,11 +86,40 @@ export const RULING = /^https:\/\/github\.com\/povlabs\/lexema\/issues\/\d+#issu
 
 const isLine = ({ line, wikitext }: CitedLine): boolean => Number.isInteger(line) && line > 0 && wikitext.trim() !== "";
 
+/** A sense line that says its word is another spelling of an Italian word: `# {{alt form|it|uguaglianza}}`. */
+const ALTERNATIVE_FORM = /^#\s*\{\{(?:alt form|alt sp|alternative form of|alternative spelling of)\|it\|([^|{}]+)(?:\|[^{}]*)?\}\}\s*$/;
+
+/**
+ * The word a cited sense line names its reading another spelling of:
+ * `uguaglianza` for `# {{alt form|it|uguaglianza}}` (#830). The reading
+ * leads to that word as a form record leads to its lemma
+ * (src/lookup/handKept.ts). None for a line that defines.
+ */
+export function alternativeOf(line: Pick<CitedLine, "wikitext">): string | undefined {
+  return ALTERNATIVE_FORM.exec(line.wikitext)?.[1].trim() || undefined;
+}
+
+/** The words `reading` leads to, as another spelling of each: `uguaglianza` for `eguaglianza` (#830). None for a reading that only defines. */
+export const wordsLedTo = (reading: Pick<HandKeptReadingSpec, "definitions">): string[] =>
+  reading.definitions.flatMap(({ paraphrases }) => alternativeOf(paraphrases) ?? []);
+
+const isLetter = (char: string | undefined): boolean => char !== undefined && /\p{L}/u.test(char);
+
+/** Whether `text` writes `word` as a whole word, so a page can link it there. */
+function writes(text: string, word: string): boolean {
+  for (let at = text.indexOf(word); at !== -1; at = text.indexOf(word, at + 1)) {
+    if (!isLetter(text[at - 1]) && !isLetter(text[at + word.length])) return true;
+  }
+  return false;
+}
+
 /**
  * The only way to make a `HandKeptReading`. It refuses a spec without a word,
  * with a part of speech outside the closed set, with a blank definition, with
- * two definitions of one sense line, or with evidence that is not a permanent
- * link to an en.wiktionary revision, so none of these is a value a list can hold.
+ * two definitions of one sense line, with a definition of another spelling
+ * that does not write the word it leads to, or with evidence that is not a
+ * permanent link to an en.wiktionary revision, so none of these is a value a
+ * list can hold.
  */
 export function handKeptReading(spec: HandKeptReadingSpec): HandKeptReading {
   const refuse = (why: string): never => {
@@ -97,6 +133,8 @@ export function handKeptReading(spec: HandKeptReadingSpec): HandKeptReading {
   for (const { text, paraphrases } of spec.definitions) {
     if (text.trim() === "" || text.trim() !== text) refuse("a definition is blank or has surrounding spaces");
     if (!isLine(paraphrases) || paraphrases.line <= spec.section.line) refuse(`a definition paraphrases no sense line of its section: ${paraphrases.line}`);
+    const alternative = alternativeOf(paraphrases);
+    if (alternative !== undefined && !writes(text, alternative)) refuse(`a definition of another spelling does not write the word it leads to: ${alternative}`);
   }
   if (new Set(spec.definitions.map(({ paraphrases }) => paraphrases.line)).size !== spec.definitions.length) refuse("two definitions paraphrase one line");
   if (spec.evidence.length === 0) refuse("it cites no revision");
@@ -123,6 +161,8 @@ function handKeptList(readings: readonly HandKeptReading[]): readonly HandKeptRe
 }
 
 const RULING_745 = "https://github.com/povlabs/lexema/issues/745#issuecomment-6080245573";
+/** Huey's ruling of 2026-10-11 that `sig.` and `cosette` resolve (#819, which folds in #817). */
+const RULING_809 = "https://github.com/povlabs/lexema/issues/809#issuecomment-6110591219";
 
 /**
  * The committed list. Add a reading only with its evidence, and only on a
@@ -171,5 +211,56 @@ export const HAND_KEPT_READINGS: readonly HandKeptReading[] = handKeptList([
     ],
     evidence: [{ wiki: "en.wiktionary.org", title: "come", revisionId: 93379611, timestamp: "2026-10-03T08:45:29Z", shows: "{{head|it|conjunction}}" }],
     ruling: RULING_745,
+  }),
+  // it.wiktionary has no page `Sig.` and no record spells it. en.wiktionary's
+  // Italian section heads it `===Noun===`, and its one sense is an
+  // abbreviation of `signore`: what `Acronimo / Abbreviazione` names, as for
+  // the source's `Dott.` ("abbreviazione di dottore").
+  handKeptReading({
+    word: "Sig.",
+    partOfSpeech: statedPartOfSpeech("Acronimo / Abbreviazione"),
+    section: { line: 4, wikitext: "===Noun===" },
+    definitions: [
+      {
+        text: "abbreviazione di signore",
+        paraphrases: { line: 7, wikitext: "# {{abbreviation of|it|signore|signor(e)}}: [[Mr.]]" },
+      },
+    ],
+    evidence: [{ wiki: "en.wiktionary.org", title: "Sig.", revisionId: 89865273, timestamp: "2026-03-16T03:33:51Z", shows: "{{head|it|noun|g=m|feminine|Sig.ra|plural|Sigg.|or|Sig.ri}}" }],
+    ruling: RULING_809,
+  }),
+  // The source's only `cosetta` is the proper name `Cosetta` (archive line
+  // 36245), which no word shape reads, so `cosette` found nothing.
+  // en.wiktionary has the common noun, feminine, with one sense; `cosette`
+  // reaches it as its regular plural (rule `it-word-shape/v1`, `inflected`).
+  handKeptReading({
+    word: "cosetta",
+    partOfSpeech: statedPartOfSpeech("Sostantivo"),
+    section: { line: 4, wikitext: "===Noun===" },
+    definitions: [
+      {
+        text: "cosa piccola o di poco conto",
+        paraphrases: { line: 7, wikitext: "# [[trifle]] (little thing)" },
+      },
+    ],
+    evidence: [{ wiki: "en.wiktionary.org", title: "cosetta", revisionId: 63388291, timestamp: "2021-07-25T12:22:57Z", shows: "{{it-noun|f}}" }],
+    ruling: RULING_809,
+  }),
+  // The source has no record of `eguaglianza`, the older spelling the
+  // Constitution writes (art. 3), and it.wiktionary has no page for it.
+  // en.wiktionary's noun is another spelling of `uguaglianza`, which the
+  // source has; the reading leads there.
+  handKeptReading({
+    word: "eguaglianza",
+    partOfSpeech: statedPartOfSpeech("Sostantivo"),
+    section: { line: 6, wikitext: "===Noun===" },
+    definitions: [
+      {
+        text: "variante di uguaglianza",
+        paraphrases: { line: 9, wikitext: "# {{alt form|it|uguaglianza}}" },
+      },
+    ],
+    evidence: [{ wiki: "en.wiktionary.org", title: "eguaglianza", revisionId: 71378670, timestamp: "2023-02-23T01:13:31Z", shows: "{{it-noun|f}}" }],
+    ruling: "https://github.com/povlabs/lexema/issues/830#issuecomment-6233334459",
   }),
 ]);

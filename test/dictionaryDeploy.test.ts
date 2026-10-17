@@ -59,7 +59,11 @@ const FILLERS = Array.from({ length: 60 }, (_, i) =>
   record({ word: `parola${String.fromCharCode(97 + (i % 26))}${String.fromCharCode(97 + Math.floor(i / 26))}`, pos: "noun", pos_title: "Sostantivo", senses: [{ glosses: ["una parola"] }] }),
 );
 
-const NORMALIZE = { command: "normalize:source-text", inputs: { rules: [...SOURCE_TEXT_UPDATE_RULES] } };
+/** `normalize:source-text` over the master's archive `archive` (#814). */
+const normalize = (archive: string) => ({ command: "normalize:source-text", inputs: { archive, rules: [...SOURCE_TEXT_UPDATE_RULES] } });
+/** A change that reads no files, for the runs through the command line, which fetch from the real povlabs/lexema-data. */
+const UPGRADE = { command: "update:upgrade", inputs: {} };
+const UPGRADE_COUNTS = { records: { added: 0, changed: 0, removed: 0 }, written: {}, deleted: {} };
 /** What `normalize:source-text` plans on the dictionary `beforeTheRules` leaves (test/planOnly.test.ts). */
 const NORMALIZE_COUNTS = { records: { added: 0, changed: 3, removed: 0 }, written: { sense_gloss: 2 }, deleted: { lookup_form: 1, grammar_claim: 1 } };
 
@@ -90,6 +94,29 @@ async function seeded(dir: string, lines: readonly string[]): Promise<DatabaseSy
   return db;
 }
 
+/** The master's archive and an empty dump, as povlabs/lexema-data would serve them, and the catalogs that name them. */
+type MasterData = Required<Pick<DeployDeps, "fetcher" | "catalog" | "dumps">> & { readonly releaseId: string };
+
+async function masterData(dir: string): Promise<MasterData> {
+  const archive = await readFile(archiveOf(dir));
+  const sha256 = createHash("sha256").update(archive).digest("hex");
+  const releaseId = `it-${sha256.slice(0, 8)}`;
+  const dumpBytes = Buffer.from("<mediawiki>\n</mediawiki>\n");
+  const source = join(dir, "lexema-data", "source");
+  await mkdir(source, { recursive: true });
+  await writeFile(join(source, `${releaseId}.jsonl.gz`), archive);
+  await writeFile(join(source, "itwiktionary-20991001-pages-articles.xml"), dumpBytes);
+  return {
+    releaseId,
+    catalog: { [sha256]: { sourceUrl: "https://example.invalid/fixture.jsonl.gz", retrievedAt: "2099-10-02T00:00:00Z", dump: { id: "itwiktionary-20991001", basis: "recorded" }, evidence: [] } } as unknown as Record<string, never>,
+    dumps: { "itwiktionary-20991001": { file: "itwiktionary-20991001-pages-articles.xml", bytes: dumpBytes.length, sha1: createHash("sha1").update(dumpBytes).digest("hex") } },
+    fetcher: async (path, to) => {
+      await mkdir(dirname(to), { recursive: true });
+      await copyFile(join(dir, "lexema-data", path), to);
+    },
+  };
+}
+
 /** Git with a fixed author and no signing, so a commit never depends on the machine's config. */
 function git(cwd: string, ...args: string[]): string {
   return execFileSync("git", ["-c", "user.name=test", "-c", "user.email=test@example.invalid", "-c", "commit.gpgsign=false", ...args], {
@@ -102,6 +129,10 @@ interface World {
   readonly d1: LocalD1;
   readonly work: string;
   readonly origin: string;
+  /** The master's archive and dump as povlabs/lexema-data would serve them, for a change that reads them. */
+  readonly data: MasterData;
+  /** `normalize:source-text` over the master's archive. */
+  readonly normalize: ReturnType<typeof normalize>;
   /** Commit `files` to main and push it; returns the commit. */
   commit(files: Record<string, string>): Promise<string>;
   /** Where `production` is on the remote. */
@@ -120,8 +151,10 @@ async function withWorld(run: (world: World) => Promise<void>, lines: readonly s
     git(dir, "init", "--bare", "--initial-branch=main", origin);
     git(dir, "clone", origin, work);
     git(work, "checkout", "-B", "main");
+    const data = await masterData(dir);
     const world: World = {
-      dir, d1, work, origin,
+      dir, d1, work, origin, data,
+      normalize: normalize(data.releaseId),
       async commit(files) {
         for (const [path, text] of Object.entries(files)) {
           await mkdir(dirname(join(work, path)), { recursive: true });
@@ -145,7 +178,9 @@ async function withWorld(run: (world: World) => Promise<void>, lines: readonly s
             bookmarks.push(writes(d1).length);
             return `bookmark-${bookmarks.length}`;
           },
-          fetcher: async (path) => assert.fail(`nothing should be fetched, asked for ${path}`),
+          fetcher: data.fetcher,
+          catalog: data.catalog,
+          dumps: data.dumps,
           workDir: join(dir, "run"),
           onStep: (step) => steps.push(step),
           steps,
@@ -186,7 +221,7 @@ const declaration = (change: object, counts: object = NORMALIZE_COUNTS): string 
 
 test("a push adding one declaration records a bookmark, plans, applies, reads back, looks up the words and then fast-forwards production", async () => {
   await withWorld(async (world) => {
-    const head = await world.commit({ "dictionary-changes/2026-10-normalize.json": declaration(NORMALIZE) });
+    const head = await world.commit({ "dictionary-changes/2026-10-normalize.json": declaration(world.normalize) });
     const deps = world.deps(head);
     const outcome = await deployDictionary(deps);
 
@@ -208,7 +243,7 @@ test("a push adding one declaration records a bookmark, plans, applies, reads ba
 
 test("the run logs the bookmark and its restore command as soon as it is taken, before the first write", async () => {
   await withWorld(async (world) => {
-    const head = await world.commit({ "dictionary-changes/2026-10-normalize.json": declaration(NORMALIZE) });
+    const head = await world.commit({ "dictionary-changes/2026-10-normalize.json": declaration(world.normalize) });
     const log: { line: string; writesBefore: number }[] = [];
     const deps = world.deps(head, deployLog((line) => log.push({ line, writesBefore: writes(world.d1).length }), "lexema-dictionary"));
     const outcome = await deployDictionary(deps);
@@ -226,9 +261,9 @@ test("the run logs the bookmark and its restore command as soon as it is taken, 
 test("a push adding no declaration writes nothing to the dictionary and fast-forwards production", async () => {
   await withWorld(async (world) => {
     // A declaration that only changes, and a file beside the declarations, are not declarations added.
-    await world.commit({ "dictionary-changes/2026-10-normalize.json": declaration(NORMALIZE) });
+    await world.commit({ "dictionary-changes/2026-10-normalize.json": declaration(world.normalize) });
     git(world.work, "push", "origin", `HEAD:refs/heads/${PRODUCTION_BRANCH}`);
-    const head = await world.commit({ "dictionary-changes/2026-10-normalize.json": declaration(NORMALIZE, { records: { added: 0, changed: 0, removed: 0 } }), "dictionary-changes/notes.md": "x\n", "README.md": "x\n" });
+    const head = await world.commit({ "dictionary-changes/2026-10-normalize.json": declaration(world.normalize, { records: { added: 0, changed: 0, removed: 0 } }), "dictionary-changes/notes.md": "x\n", "README.md": "x\n" });
     const before = world.d1.sha256();
     const deps = world.deps(head);
     const outcome = await deployDictionary(deps);
@@ -249,7 +284,7 @@ test("a push adding no declaration writes nothing to the dictionary and fast-for
 test("a plan whose counts differ from the declaration stops red before any write and leaves production unmoved", async () => {
   await withWorld(async (world) => {
     const base = world.production();
-    const head = await world.commit({ "dictionary-changes/2026-10-normalize.json": declaration(NORMALIZE, { ...NORMALIZE_COUNTS, written: { sense_gloss: 3 } }) });
+    const head = await world.commit({ "dictionary-changes/2026-10-normalize.json": declaration(world.normalize, { ...NORMALIZE_COUNTS, written: { sense_gloss: 3 } }) });
     const before = world.d1.sha256();
     const deps = world.deps(head);
     const outcome = await deployDictionary(deps);
@@ -273,7 +308,7 @@ test("a plan that crosses a hard limit stops red before any write, even when its
   // Without the other records, changing three is more than 5% of the dictionary.
   await withWorld(async (world) => {
     const base = world.production();
-    const head = await world.commit({ "dictionary-changes/2026-10-normalize.json": declaration(NORMALIZE) });
+    const head = await world.commit({ "dictionary-changes/2026-10-normalize.json": declaration(world.normalize) });
     const before = world.d1.sha256();
     const outcome = await deployDictionary(world.deps(head));
 
@@ -288,7 +323,7 @@ test("a plan that crosses a hard limit stops red before any write, even when its
 test("a read-back mismatch turns the run red, names the bookmark and the restore command, and restores nothing", async () => {
   await withWorld(async (world) => {
     const base = world.production();
-    const head = await world.commit({ "dictionary-changes/2026-10-normalize.json": declaration(NORMALIZE) });
+    const head = await world.commit({ "dictionary-changes/2026-10-normalize.json": declaration(world.normalize) });
     // A file that is accepted and does not land: what a read-back is for.
     const lost: string[][] = [];
     const target = { dictionary: "lexema-dictionary", execute: (args: readonly string[], capture: boolean) => (args[0] === "--json" ? world.d1.target.execute(args, capture) : (lost.push([...args]), "")) };
@@ -316,7 +351,7 @@ test("a read-back mismatch turns the run red, names the bookmark and the restore
 test("a word-lookup mismatch turns the run red and names the bookmark and the restore command", async () => {
   await withWorld(async (world) => {
     const base = world.production();
-    const head = await world.commit({ "dictionary-changes/2026-10-normalize.json": declaration(NORMALIZE) });
+    const head = await world.commit({ "dictionary-changes/2026-10-normalize.json": declaration(world.normalize) });
     const deps = world.deps(head, { words: [...WORD_LIST, "inesistentissimo"] });
     const outcome = await deployDictionary(deps);
 
@@ -330,9 +365,9 @@ test("a word-lookup mismatch turns the run red and names the bookmark and the re
 
 const NORMALIZE_FILE = "dictionary-changes/2026-10-normalize.json";
 
-/** A run of `NORMALIZE` declaring `lookups`, recording each step's detail beside the steps. */
+/** A run of `world.normalize` declaring `lookups`, recording each step's detail beside the steps. */
 async function deployWithLookups(world: World, lookups: readonly object[], extra: Partial<DeployDeps> = {}) {
-  const head = await world.commit({ [NORMALIZE_FILE]: declaration({ ...NORMALIZE, lookups }) });
+  const head = await world.commit({ [NORMALIZE_FILE]: declaration({ ...world.normalize, lookups }) });
   const details = new Map<DeployStep, string>();
   const deps = world.deps(head, extra);
   const outcome = await deployDictionary({ ...deps, onStep: (step, detail) => (deps.steps.push(step), details.set(step, detail)) });
@@ -351,7 +386,7 @@ test("a declared word the write makes found, with the gloss it declares, goes gr
   });
 });
 
-/** Run `NORMALIZE` declaring `lookups`, and check it went red at the word lookup, after the write, for `reasons`, leaving production where it was. */
+/** Run `world.normalize` declaring `lookups`, and check it went red at the word lookup, after the write, for `reasons`, leaving production where it was. */
 async function redAtWordLookup(world: World, lookups: readonly object[], reasons: readonly string[], extra: Partial<DeployDeps> = {}): Promise<void> {
   const base = world.production();
   const { deps, outcome } = await deployWithLookups(world, lookups, extra);
@@ -422,7 +457,7 @@ function withoutPageEntryTables(d1: LocalD1): void {
 test("a dictionary without the page-entry tables gets the upgrade as its own batch, before any data, and the run goes green", async () => {
   await withWorld(async (world) => {
     withoutPageEntryTables(world.d1);
-    const head = await world.commit({ "dictionary-changes/2026-10-normalize.json": declaration(NORMALIZE) });
+    const head = await world.commit({ "dictionary-changes/2026-10-normalize.json": declaration(world.normalize) });
     const deps = world.deps(head);
     const outcome = await deployDictionary(deps);
 
@@ -440,7 +475,7 @@ test("a dictionary without the page-entry tables gets the upgrade as its own bat
     assert.match(deploySummary(outcome, "lexema-dictionary"), /The upgrade ran first and added `recovered_entry`/);
 
     // The next run finds nothing missing and runs no DDL.
-    const next = await world.commit({ "dictionary-changes/2026-10-normalize-again.json": declaration(NORMALIZE, { records: { added: 0, changed: 0, removed: 0 } }) });
+    const next = await world.commit({ "dictionary-changes/2026-10-normalize-again.json": declaration(world.normalize, { records: { added: 0, changed: 0, removed: 0 } }) });
     const again = await deployDictionary(world.deps(next));
     assert.equal(again.kind, "green", deploySummary(again, "lexema-dictionary"));
     if (again.kind === "green") assert.deepEqual(again.upgraded, { added: [], changed: [], rebuilt: [], replaced: [] });
@@ -494,7 +529,7 @@ test("a dictionary holding an older definition of a page-entry table gets schema
     const schema = await readFile("src/db/schema.sql", "utf8");
     assert.deepEqual(changedUpgrade(masterReaderOf(world.d1.target), schema), ["recovered_entry", "corrected_definition"]);
 
-    const head = await world.commit({ "dictionary-changes/2026-10-normalize.json": declaration(NORMALIZE) });
+    const head = await world.commit({ "dictionary-changes/2026-10-normalize.json": declaration(world.normalize) });
     const deps = world.deps(head);
     const outcome = await deployDictionary(deps);
 
@@ -527,7 +562,7 @@ test("a dictionary holding an older definition of a page-entry table gets schema
     }
 
     // The next run finds every definition current and rebuilds nothing.
-    const next = await world.commit({ "dictionary-changes/2026-10-normalize-again.json": declaration(NORMALIZE, { records: { added: 0, changed: 0, removed: 0 } }) });
+    const next = await world.commit({ "dictionary-changes/2026-10-normalize-again.json": declaration(world.normalize, { records: { added: 0, changed: 0, removed: 0 } }) });
     const again = await deployDictionary(world.deps(next));
     assert.equal(again.kind, "green", deploySummary(again, "lexema-dictionary"));
     if (again.kind === "green") assert.deepEqual(again.upgraded, { added: [], changed: [], rebuilt: [], replaced: [] });
@@ -551,7 +586,7 @@ test("a dictionary holding only an older serving view gets it replaced by the up
     assert.deepEqual(changedUpgrade(masterReaderOf(world.d1.target), schema), []);
     assert.deepEqual(changedViews(masterReaderOf(world.d1.target), schema), ["surface_hit"]);
 
-    const head = await world.commit({ "dictionary-changes/2026-10-normalize.json": declaration(NORMALIZE) });
+    const head = await world.commit({ "dictionary-changes/2026-10-normalize.json": declaration(world.normalize) });
     const details: [DeployStep, string][] = [];
     const outcome = await deployDictionary(world.deps(head, { onStep: (step, detail) => details.push([step, detail]) }));
 
@@ -569,7 +604,7 @@ test("a dictionary holding only an older serving view gets it replaced by the up
     assert.deepEqual(changedViews(masterReaderOf(world.d1.target), schema), []);
 
     // The next run finds the view current and runs no DDL.
-    const next = await world.commit({ "dictionary-changes/2026-10-normalize-again.json": declaration(NORMALIZE, { records: { added: 0, changed: 0, removed: 0 } }) });
+    const next = await world.commit({ "dictionary-changes/2026-10-normalize-again.json": declaration(world.normalize, { records: { added: 0, changed: 0, removed: 0 } }) });
     const again = await deployDictionary(world.deps(next));
     assert.equal(again.kind, "green", deploySummary(again, "lexema-dictionary"));
     if (again.kind === "green") assert.deepEqual(again.upgraded, { added: [], changed: [], rebuilt: [], replaced: [] });
@@ -580,7 +615,7 @@ test("a dictionary holding only an older serving view gets it replaced by the up
 test("a first batch D1 refuses leaves the run red with nothing written, and the summary names no restore", async () => {
   await withWorld(async (world) => {
     const base = world.production();
-    const head = await world.commit({ "dictionary-changes/2026-10-normalize.json": declaration(NORMALIZE) });
+    const head = await world.commit({ "dictionary-changes/2026-10-normalize.json": declaration(world.normalize) });
     const before = world.d1.sha256();
     // What the live run met (#507): D1 rolled the batch back and Wrangler exited non-zero.
     const refused: string[][] = [];
@@ -614,7 +649,7 @@ test("a first batch D1 refuses leaves the run red with nothing written, and the 
 test("a batch D1 refuses after an earlier batch landed still reports the write, with the restore command", async () => {
   await withWorld(async (world) => {
     withoutPageEntryTables(world.d1);
-    const head = await world.commit({ "dictionary-changes/2026-10-normalize.json": declaration(NORMALIZE) });
+    const head = await world.commit({ "dictionary-changes/2026-10-normalize.json": declaration(world.normalize) });
     let sent = 0;
     const target = {
       dictionary: "lexema-dictionary",
@@ -693,23 +728,8 @@ test("correct:records and hide:records declarations on a dictionary without thei
       db.close();
     }
     // The master's archive and an empty dump, as povlabs/lexema-data would serve them.
-    const archive = await readFile(archiveOf(world.dir));
-    const sha256 = createHash("sha256").update(archive).digest("hex");
-    const releaseId = `it-${sha256.slice(0, 8)}`;
-    const dumpBytes = Buffer.from("<mediawiki>\n</mediawiki>\n");
-    const source = join(world.dir, "lexema-data", "source");
-    await mkdir(source, { recursive: true });
-    await writeFile(join(source, `${releaseId}.jsonl.gz`), archive);
-    await writeFile(join(source, "itwiktionary-20991001-pages-articles.xml"), dumpBytes);
-    const sources = {
-      catalog: { [sha256]: { sourceUrl: "https://example.invalid/fixture.jsonl.gz", retrievedAt: "2099-10-02T00:00:00Z", dump: { id: "itwiktionary-20991001", basis: "recorded" }, evidence: [] } } as unknown as Record<string, never>,
-      dumps: { "itwiktionary-20991001": { file: "itwiktionary-20991001-pages-articles.xml", bytes: dumpBytes.length, sha1: createHash("sha1").update(dumpBytes).digest("hex") } },
-      fetcher: (async (path, to) => {
-        await mkdir(dirname(to), { recursive: true });
-        await copyFile(join(world.dir, "lexema-data", path), to);
-      }) satisfies DataFetcher,
-      corrections,
-    };
+    const { releaseId, ...files } = world.data;
+    const sources = { ...files, corrections };
     const CORRECT = { command: "correct:records" };
     const HIDE = { command: "hide:records", inputs: { archive: releaseId, rules: ["section-language/v1", "form-of-foreign-lemma/v1"] } };
     // Planned before the upgrade, as the pull request plan check plans them against the live dictionary.
@@ -810,7 +830,10 @@ test("the master's archive is read from source/it-extract.jsonl.gz, and a feed's
   const feed = filesFor(parseChange("test", JSON.stringify({ command: "update:auto", inputs: { feedRelease: "it-78385b62" } })));
   assert.deepEqual(feed?.archive.path, "source/it-78385b62.jsonl.gz");
   assert.deepEqual(feed?.dump.path, "source/itwiktionary-20260901-pages-articles.xml.bz2");
-  assert.equal(filesFor(parseChange("test", JSON.stringify(NORMALIZE))), null);
+  // normalize:source-text reads the master's dump for rule rendered-fig-label/v1 (#814).
+  const normalized = filesFor(parseChange("test", JSON.stringify(normalize("it-0c432803"))));
+  assert.deepEqual([normalized?.archive.path, normalized?.dump.path], ["source/it-extract.jsonl.gz", "source/itwiktionary-20260701-pages-articles.xml.bz2"]);
+  assert.equal(filesFor(parseChange("test", JSON.stringify(UPGRADE))), null);
 });
 
 test("a file is read from the public lexema-data on raw.githubusercontent.com, with no token", async () => {
@@ -834,9 +857,9 @@ test("a file is read from the public lexema-data on raw.githubusercontent.com, w
 test("the plan-only entry runs the plan and writes nothing", async () => {
   await withWorld(async (world) => {
     const before = world.d1.sha256();
-    const answer = await planOnly(parseChange("test", JSON.stringify(NORMALIZE)), {
+    const answer = await planOnly(parseChange("test", JSON.stringify(world.normalize)), {
+      ...world.data,
       reader: masterReaderOf(world.d1.target),
-      fetcher: async (path) => assert.fail(`nothing should be fetched, asked for ${path}`),
       workDir: join(world.dir, "plan"),
     });
     assert.deepEqual(answer.counts.toJSON(), NORMALIZE_COUNTS);
@@ -846,9 +869,9 @@ test("the plan-only entry runs the plan and writes nothing", async () => {
     // Through the command line, with the counts as a step output.
     const output = join(world.dir, "github-output");
     await writeFile(output, "");
-    const result = await deployMain(["--plan-only", "--change", JSON.stringify(NORMALIZE)], { SEED_STATE: world.d1.persistTo, GITHUB_OUTPUT: output, RUNNER_TEMP: world.dir }, world.d1.wrangler);
+    const result = await deployMain(["--plan-only", "--change", JSON.stringify(UPGRADE)], { SEED_STATE: world.d1.persistTo, GITHUB_OUTPUT: output, RUNNER_TEMP: world.dir }, world.d1.wrangler);
     assert.equal(result.status, 0, result.out);
-    assert.deepEqual(JSON.parse(result.out).counts, NORMALIZE_COUNTS);
+    assert.deepEqual(JSON.parse(result.out).counts, UPGRADE_COUNTS);
     assert.equal(await readFile(output, "utf8"), `counts=${result.out}\n`);
 
     assert.deepEqual(writes(world.d1), []);
@@ -864,14 +887,14 @@ test("the pull request plan check plans an added declaration with the checkout's
     const env = { SEED_STATE: world.d1.persistTo, RUNNER_TEMP: world.dir };
     const check = () => deployMain(["--plan-only", "--added-since", base], env, world.d1.wrangler, gitIn(world.work));
 
-    await world.commit({ "dictionary-changes/2026-10-normalize.json": `${JSON.stringify(NORMALIZE)}\n` });
+    await world.commit({ "dictionary-changes/2026-10-upgrade.json": `${JSON.stringify(UPGRADE)}\n` });
     const missing = await check();
     assert.equal(missing.status, 1, missing.out);
     assert.match(missing.out, /It has no `expected` yet\./);
     const printed = /```json\n([\s\S]*?)\n```/.exec(missing.out)?.[1] ?? assert.fail(missing.out);
-    assert.deepEqual(JSON.parse(printed), { ...NORMALIZE, expected: NORMALIZE_COUNTS });
+    assert.deepEqual(JSON.parse(printed), { ...UPGRADE, expected: UPGRADE_COUNTS });
 
-    await world.commit({ "dictionary-changes/2026-10-normalize.json": `${printed}\n` });
+    await world.commit({ "dictionary-changes/2026-10-upgrade.json": `${printed}\n` });
     const matching = await check();
     assert.equal(matching.status, 0, matching.out);
     assert.match(matching.out, /The plan's counts match `expected`\./);

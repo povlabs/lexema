@@ -94,12 +94,12 @@ test("a word of none of the shapes names nothing, and neither does a phrase", ()
 });
 
 test("no shape's word is a name, an abbreviation, a symbol or a nominal plural; a verb's plural is (#809)", () => {
-  for (const shape of ["clitic", "elided", "truncated", "demonstrative", "superlative", "participle", "inflected", "conjugated", "plural-spelling", "english-plural"] as const) {
+  for (const shape of ["clitic", "elided", "truncated", "demonstrative", "superlative", "participle", "j-spelling", "inflected", "conjugated", "plural-spelling", "english-plural"] as const) {
     assert.equal(shapeAdmits(shape, record("name")), false, shape);
     assert.equal(shapeAdmits(shape, record("abbrev")), false, shape);
     assert.equal(shapeAdmits(shape, record("symbol")), false, shape);
-    // Only a plural has another plural spelling.
-    if (shape !== "plural-spelling") assert.equal(shapeAdmits(shape, record("adj", true)), false, shape);
+    // Only a plural has another plural spelling, and a j-spelling only respells its word.
+    if (shape !== "plural-spelling" && shape !== "j-spelling") assert.equal(shapeAdmits(shape, record("adj", true)), false, shape);
   }
   assert.equal(shapeAdmits("truncated", record("verb", true)), true, "devon of devono");
   assert.equal(shapeAdmits("truncated", record("noun")), true, "cuor of cuore");
@@ -153,6 +153,21 @@ test("a -ce or -ge plural names its -cie or -gie spelling, and back: valige vali
   assert.deepEqual(keysOf("valige", "plural-spelling"), ["valigie"]);
   assert.deepEqual(keysOf("provincie", "plural-spelling"), ["province"]);
   assert.deepEqual(keysOf("case", "plural-spelling"), []);
+});
+
+test("a j between vowels names the spelling with i, every one of them and no other j: gajo gaio, noje noie, abbujare abbuiare (#830)", () => {
+  assert.deepEqual(keysOf("gajo", "j-spelling"), ["gaio"]);
+  assert.deepEqual(keysOf("noje", "j-spelling"), ["noie"]);
+  assert.deepEqual(keysOf("abbujare", "j-spelling"), ["abbuiare"]);
+  assert.deepEqual(keysOf("jujube", "j-spelling"), ["juiube"], "the first j opens the word");
+  for (const key of ["jazz", "junior", "fiordj", "hajj", "gaj'", "sono gajo"]) assert.deepEqual(keysOf(key, "j-spelling"), [], key);
+});
+
+test("a j-spelling is any word's but a name's, a plural's too: gioje of gioie (#830)", () => {
+  assert.equal(shapeAdmits("j-spelling", record("adj")), true, "gajo of gaio");
+  assert.equal(shapeAdmits("j-spelling", record("noun", true)), true, "gioje of gioie");
+  assert.equal(shapeAdmits("j-spelling", record("verb", false, false, true)), true, "abbajare of abbaiare, whatever its table");
+  assert.equal(shapeAdmits("j-spelling", record("name")), false, "Aja is no aia");
 });
 
 test("an English plural in -s names its loanword: marines marine, games game, yankees yankee, studios studio (#809)", () => {
@@ -209,6 +224,7 @@ test("rule it-word-shape-line/v1 says what each shape is of its word, ending wit
   assert.equal(lineOf("crucchi", "inflected", "crucco"), "plurale di crucco");
   assert.equal(lineOf("poverina", "inflected", "poverino"), "femminile singolare di poverino");
   assert.equal(lineOf("fuggitive", "inflected", "fuggitivo"), "femminile plurale di fuggitivo");
+  assert.equal(lineOf("gajo", "j-spelling", "gaio"), "grafia antica di gaio");
   assert.equal(lineOf("fischia", "conjugated", "fischiare"), "voce del verbo fischiare");
   assert.equal(lineOf("valige", "plural-spelling", "valigie"), "variante grafica di valigie");
   assert.equal(lineOf("marines", "english-plural", "marine"), "plurale di marine");

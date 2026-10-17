@@ -11,6 +11,7 @@ import { readRulePass, findHiddenRecords } from "../import/hiddenLayer.js";
 import { planHide, unhidden } from "../import/hideRecords.js";
 import { archiveWords, findPageEntries, planPageEntries, unloaded } from "../import/loadPageEntries.js";
 import { findRecoveredDefinitions, planListing, planRecoveredDefinitions, readPagesForTheRules, unwrittenDefinitions } from "../import/loadRecoveredDefinitions.js";
+import { readFigLabelPages } from "../import/figLabelUpdate.js";
 import { planSourceText } from "../import/normalizeSourceText.js";
 import { CURATED_CORRECTIONS, type CuratedCorrection } from "../italian/curatedCorrections.js";
 import { HAND_KEPT_READINGS, type HandKeptReading } from "../italian/handKeptReadings.js";
@@ -55,10 +56,10 @@ export interface WritePlan {
   readonly listing?: readonly string[];
 }
 
-/** A change and the files it reads: `update:auto`, `hide:records`, `load:page-entries` and `load:recovered-definitions` read an archive and a dump, the others none. */
+/** A change and the files it reads: `update:auto`, `hide:records`, `normalize:source-text`, `load:page-entries` and `load:recovered-definitions` read an archive and a dump, the others none. */
 export type ReadyChange =
-  | { readonly change: Extract<DeclaredChange, { command: "update:upgrade" | "normalize:source-text" | "correct:records" | "load:names" | "load:wikidata-words" }> }
-  | { readonly change: Extract<DeclaredChange, { command: "update:auto" | "hide:records" | "load:page-entries" | "load:recovered-definitions" }>; readonly files: FetchedFiles };
+  | { readonly change: Extract<DeclaredChange, { command: "update:upgrade" | "correct:records" | "load:names" | "load:wikidata-words" }> }
+  | { readonly change: Extract<DeclaredChange, { command: "update:auto" | "hide:records" | "normalize:source-text" | "load:page-entries" | "load:recovered-definitions" }>; readonly files: FetchedFiles };
 
 /**
  * What a plan reads besides the dictionary and the files: the archive facts
@@ -87,7 +88,6 @@ async function openMasterDump(path: string, archive: string, archiveSha256: stri
 export function readyChange(change: DeclaredChange, files: FetchedFiles | null): ReadyChange {
   switch (change.command) {
     case "update:upgrade":
-    case "normalize:source-text":
     case "correct:records":
     case "load:names":
     case "load:wikidata-words":
@@ -95,6 +95,7 @@ export function readyChange(change: DeclaredChange, files: FetchedFiles | null):
       return { change };
     case "update:auto":
     case "hide:records":
+    case "normalize:source-text":
     case "load:page-entries":
     case "load:recovered-definitions":
       if (files === null) throw new Error(`${change.command} reads an archive and a dump`);
@@ -122,18 +123,6 @@ export async function planWrite(ready: ReadyChange, reader: MasterReader, applie
           readBack: (after) => upgradeShortfall(after, schema, upgrade),
           rebuilds: rebuildsOf(upgrade),
           touched: NO_WORDS,
-        };
-      }
-      case "normalize:source-text": {
-        const plan = planSourceText(reader);
-        return {
-          run: planOnlyRun(change.command, plan.counts, reader),
-          sql: plan.sql,
-          readBack: (after) => {
-            const left = planSourceText(after).statements;
-            return left === 0 ? [] : [`${left} source text change(s) still pending after the file ran`];
-          },
-          touched: unbounded(change.command),
         };
       }
       case "correct:records": {
@@ -186,6 +175,25 @@ export async function planWrite(ready: ReadyChange, reader: MasterReader, applie
         ];
       },
       touched: wordsOfApply(plan),
+    };
+  }
+
+  if (change.command === "normalize:source-text") {
+    const master = readMasterRelease(reader);
+    const sha256 = await sha256Of(files.archive);
+    if (sha256 !== master.archiveSha256) {
+      throw new DataRefused([`${change.file} declares ${change.inputs.archive}, but the master ${master.releaseId} was seeded from the archive with SHA-256 ${master.archiveSha256}`]);
+    }
+    const pages = await readFigLabelPages(reader, () => openMasterDump(files.dump, change.inputs.archive, sha256, catalog, dumps));
+    const plan = planSourceText(reader, pages);
+    return {
+      run: planOnlyRun(change.command, plan.counts, reader),
+      sql: plan.sql,
+      readBack: (after) => {
+        const left = planSourceText(after, pages).statements;
+        return left === 0 ? [] : [`${left} source text change(s) still pending after the file ran`];
+      },
+      touched: unbounded(change.command),
     };
   }
 

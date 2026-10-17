@@ -10,6 +10,10 @@
 // `accertarsi` and 596085 `abbuffarsi` (and pentirsi's form records 595530,
 // 596003 and 597777, which the page tests read). The regular tables are checked against
 // whole source tables of the same classes in fixtures/dev-seed.jsonl.
+//
+// A verb that is not pronominal takes its class from its own page's call alone
+// (`ownClassOf`, #841): the verb records of fixtures/base-verb-regular-tables.jsonl,
+// verbatim lines of it-0c432803, none of which has forms.
 
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
@@ -19,6 +23,7 @@ import { personOfItalianVerbForm, placeItalianVerbForm, type TenseBox, type Verb
 import { pronominalSpellings, pronominalVerb, type PronominalVerb } from "../src/italian/pronominalConjugation.js";
 import {
   conjugationPageOf,
+  ownClassOf,
   REGULAR_CONJUGATION_RULE,
   regularCells,
   regularClassOf,
@@ -42,6 +47,7 @@ const recordsOf = async (fixture: string): Promise<RawRecord[]> =>
     .map((line) => JSON.parse(line) as RawRecord);
 
 const PRONOMINAL = await recordsOf("pronominal-verb-tables.jsonl");
+const BASE_VERBS = await recordsOf("base-verb-regular-tables.jsonl");
 const DEV_SEED = await recordsOf("dev-seed.jsonl");
 
 const verbOf = (word: string): PronominalVerb => {
@@ -229,4 +235,70 @@ test("each class's cells are the ones a whole source table of that class holds, 
     assert.deepEqual(compared(built.keys()), compared(source.keys()), word);
     for (const key of compared(built.keys())) assert.deepEqual([...(built.get(key) ?? [])].sort(), [...(source.get(key) ?? [])].sort(), `${word} ${key}`);
   }
+});
+
+/** What `ownClassOf` answers for a verb record of the base-verb fixture, read off its own glosses. */
+function ownClassOfRecord(word: string): ClassAnswer {
+  const record = BASE_VERBS.find((one) => one.word === word && one.pos === "verb" && (one.forms ?? []).length === 0);
+  assert.ok(record !== undefined, `the fixture has ${word}'s verb record, with no forms`);
+  return ownClassOf(word, (record.senses ?? []).flatMap((sense) => sense.glosses ?? []), CONJUGATION_TEMPLATE_CALLS);
+}
+
+/** The simple present a settled class's cells spell, io to loro. */
+const presentOf = (settled: SettledClass): string[] =>
+  regularCells(settled)
+    .filter((cell) => slotKey(cell)?.startsWith("presente ") === true)
+    .map((cell) => cell.spelling);
+
+test("a verb that is not pronominal takes the class its own page's call settles: verificare, stampare, ingraziare, seccare, accudire (#841)", () => {
+  const cases: readonly [string, ConjugationClass, string[]][] = [
+    ["verificare", "care", ["verifico", "verifichi", "verifica", "verifichiamo", "verificate", "verificano"]],
+    ["stampare", "are", ["stampo", "stampi", "stampa", "stampiamo", "stampate", "stampano"]],
+    ["ingraziare", "iare", ["ingrazio", "ingrazi", "ingrazia", "ingraziamo", "ingraziate", "ingraziano"]],
+    ["seccare", "care", ["secco", "secchi", "secca", "secchiamo", "seccate", "seccano"]],
+  ];
+  for (const [word, conjugationClass, present] of cases) {
+    const answer = ownClassOfRecord(word);
+    assert.ok(answer.kind === "settled", `${word}: ${JSON.stringify(answer)}`);
+    assert.equal(answer.conjugationClass, conjugationClass, word);
+    assert.equal(answer.base, word);
+    assert.ok(answer.evidence.kind === "template" && answer.evidence.page.title === conjugationPageOf(word), word);
+    assert.deepEqual(presentOf(answer), present, word);
+  }
+  // `accudire` has no fixture record; its call alone settles the -isc- class.
+  const accudire = ownClassOf("accudire", [], CONJUGATION_TEMPLATE_CALLS);
+  assert.ok(accudire.kind === "settled" && accudire.conjugationClass === "ire-b");
+  assert.deepEqual(presentOf(accudire), ["accudisco", "accudisci", "accudisce", "accudiamo", "accudite", "accudiscono"]);
+});
+
+test("care and ciare take a stem in g, as Modulo:It-conj writes them: vangare vanghi, conteggiare conteggerò (#841)", () => {
+  const vangare = ownClassOfRecord("vangare");
+  assert.ok(vangare.kind === "settled" && vangare.evidence.kind === "template" && vangare.evidence.page.call === "{{It-conj|vang|care|avere}}");
+  assert.deepEqual(presentOf(vangare), ["vango", "vanghi", "vanga", "vanghiamo", "vangate", "vangano"]);
+  const conteggiare = ownClassOfRecord("conteggiare");
+  assert.ok(conteggiare.kind === "settled" && conteggiare.evidence.kind === "template" && conteggiare.evidence.page.call === "{{It-conj|contegg|ciare|avere}}");
+  assert.deepEqual(presentOf(conteggiare), ["conteggio", "conteggi", "conteggia", "conteggiamo", "conteggiate", "conteggiano"]);
+  assert.ok(regularCells(conteggiare).some((cell) => cell.spelling === "conteggerò"));
+});
+
+test("each reason ownClassOf declines, on real words (#841)", () => {
+  // A call that overrides a form, or names the second conjugation.
+  for (const word of ["prefiggere", "rivendere"]) {
+    const answer = ownClassOfRecord(word);
+    assert.ok(answer.kind === "declined" && answer.reason === "template-not-read" && answer.page?.title === conjugationPageOf(word), word);
+  }
+  // A call naming essere, or both auxiliaries: the rule writes avere.
+  const affaticare = ownClassOfRecord("affaticare");
+  assert.ok(affaticare.kind === "declined" && affaticare.reason === "auxiliary-not-avere" && affaticare.page?.call === "{{It-conj|affatic|care|essere}}");
+  const scolare = ownClassOf("scolare", [], CONJUGATION_TEMPLATE_CALLS);
+  assert.ok(scolare.kind === "declined" && scolare.reason === "auxiliary-not-avere" && scolare.page?.call === "{{It-conj|scol|are|avere, come intr. essere}}");
+  // No call pinned for its own page: the ending alone settles nothing for such a verb.
+  assert.deepEqual(ownClassOf("parlottare", [], CONJUGATION_TEMPLATE_CALLS), { kind: "declined", reason: "no-own-call" });
+  // A call on a base verb's page is no call of a pronominal verb's own.
+  assert.deepEqual(ownClassOf("accertarsi", [], CONJUGATION_TEMPLATE_CALLS), { kind: "declined", reason: "no-own-call" });
+  // A record whose every gloss names the verb it is a form of.
+  assert.deepEqual(ownClassOf("verificare", ["prima persona singolare dell'indicativo presente di verificare"], CONJUGATION_TEMPLATE_CALLS), {
+    kind: "declined",
+    reason: "form-of-another-word",
+  });
 });

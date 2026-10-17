@@ -649,13 +649,15 @@ holds needs nothing. Otherwise it starts the `deploy` job, whose steps are
    [schema.sql](../src/db/schema.sql)'s, such as a `hidden_record` from
    before [#389](https://github.com/povlabs/lexema/issues/389), without
    `lemma_line`. Comments and spacing do not count.
-   The rebuilt tables come in six groups (`REBUILT_GROUPS`): the four
+   The rebuilt tables come in seven groups (`REBUILT_GROUPS`): the four
    page-entry tables with `corrected_definition`; `recovered_definition` with
    `recovered_label` and `recovered_example`; `hidden_record`;
    `corrected_form`; `corrected_edge`, whose rows may name no word since
-   [#755](https://github.com/povlabs/lexema/issues/755); and `name_entry`,
+   [#755](https://github.com/povlabs/lexema/issues/755); `name_entry`,
    whose category may be `person` since
-   [#794](https://github.com/povlabs/lexema/issues/794). For a
+   [#794](https://github.com/povlabs/lexema/issues/794); and `wikidata_word`
+   with `wikidata_word_key`, rebuilt for a `wikidata_word` from before
+   `genders` ([#849](https://github.com/povlabs/lexema/issues/849)). For a
    changed definition the upgrade rebuilds that table's group with its rows:
    it copies the rows aside, drops the group's tables, creates them and their
    indexes from schema.sql and copies the rows back by the columns both
@@ -768,10 +770,13 @@ with no token and no API rate limit, and checks every file's checksum (#527):
 | a dump | `source/<its KNOWN_DUMPS file>`, such as `source/itwiktionary-20260901-pages-articles.xml.bz2` |
 
 A declaration of `update:auto` reads its feed release's archive and the dump
-its `ARCHIVE_FACTS` entry names; `hide:records`, `load:page-entries` and
-`load:recovered-definitions` read the master's archive and its dump.
-`update:upgrade`, `normalize:source-text` and `correct:records` read none:
-`correct:records` writes the committed list of curated corrections.
+its `ARCHIVE_FACTS` entry names; `hide:records`, `normalize:source-text`,
+`load:page-entries` and `load:recovered-definitions` read the master's archive
+and its dump. `normalize:source-text` opens the dump only when rule
+`rendered-fig-label/v1` has a page to read
+([RUN_AN_IMPORT.md](RUN_AN_IMPORT.md#normalize-source-text-in-a-seeded-database), #814).
+`update:upgrade` and `correct:records` read none: `correct:records` writes the
+committed list of curated corrections.
 
 ### Load recovered definitions
 
@@ -898,7 +903,14 @@ running.
 
 1. It reads the declarations the pull request adds, in path order, the order
    the deploy takes them from the one commit a pull request lands as. A
-   declaration may leave `expected` out until this check gives it.
+   declaration may leave `expected` out until this check gives it. It also
+   reads each declaration the pull request edits that `production` does not
+   hold yet, and puts these first, in path order (#825). Such a file was
+   merged past `production` and not applied, as after a red deploy, so the
+   next deploy plans it as the pull request leaves it. It fetches
+   `production` to tell, and is red when it cannot. An edited declaration that
+   `production` holds is applied already, and it is not planned: editing it
+   changes nothing the deploy does.
 2. It plans the first one with the pull request's own code against
    `lexema-dictionary`, and holds the counts to `expected` and to the hard
    limits, as the deploy will. This includes `update:auto`, `hide:records`,

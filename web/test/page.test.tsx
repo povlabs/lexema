@@ -1177,6 +1177,61 @@ test("a form rule it-word-shape/v1 reads is its base word's form block, titled a
   });
 });
 
+// Old spellings (#830) ----------------------------------------------------------
+
+/** `fixtures/eguale.jsonl`: equivalenti and eguale, as release it-0c432803 has them (lines 457791 and 486085). */
+const EGUALE_LINES = (await readFile(join(REPO, "fixtures/eguale.jsonl"), "utf8")).trimEnd().split("\n");
+/** uguaglianza's one record, release line 55329, as `fixtures/hand-kept-readings/archive-lines.jsonl` holds it. */
+const UGUAGLIANZA_LINES = (await readFile(join(REPO, "fixtures/hand-kept-readings/archive-lines.jsonl"), "utf8"))
+  .trimEnd()
+  .split("\n")
+  .filter((line) => (JSON.parse(line) as { word: string }).word === "uguaglianza");
+
+test("the Constitution's old spellings read: eguale's grid shows eguali, eguaglianza leads to uguaglianza, gajo is gaio (#830)", async () => {
+  const lines = [...(await devSeedLines()), ...EGUALE_LINES, ...UGUAGLIANZA_LINES];
+  const corrections = FixtureLines.of(lines, RELEASE).key(cellCorrections(CURATED_CORRECTIONS)).held;
+  const egualeGrid = [
+    HEAD,
+    ["maschile", "egualel'eguale·un eguale", "egualigli eguali·degli eguali"],
+    ["femminile", "egualel'eguale·un'eguale", "egualile eguali·delle eguali"],
+  ];
+  await withLines(lines, async ({ db }) => {
+    // eguale's page names equivalenti its plural; the corrected form fills both plural cells, as its page's `m e f` says.
+    const eguale = await render(db, "eguale");
+    assert.deepEqual(headingsOf(eguale), ["1·Aggettivo·maschile e femminile, singolare"]);
+    assert.deepEqual(gridRows(eguale), egualeGrid);
+    assert.doesNotMatch(textOf(eguale), /equivalenti/);
+    // eguali is its form: eguale's block, under a line built from each cell.
+    const eguali = await render(db, "eguali");
+    assert.deepEqual(headingsOf(eguali), ["1·Aggettivo, forma flessa·maschile e femminile, plurale"]);
+    assert.deepEqual(formLines(eguali), ["maschile plurale di eguale", "femminile plurale di eguale"]);
+    assert.deepEqual(lemmaFormsOf(eguali), ["Forme dieguale"]);
+    assert.deepEqual(gridRows(eguali), egualeGrid);
+    // equivalenti keeps its own reading, and shows no eguale.
+    const equivalenti = await render(db, "equivalenti");
+    assert.deepEqual(headingsOf(equivalenti), ["1·Aggettivo, forma flessa·maschile e femminile, plurale"]);
+    assert.deepEqual(formLines(equivalenti), ["plurale di equivalente"]);
+    assert.doesNotMatch(textOf(equivalenti), /eguale/);
+
+    // eguaglianza's hand-kept reading links uguaglianza and draws its Definitions and grid, as a form record's page does.
+    const eguaglianza = await render(db, "eguaglianza");
+    assert.deepEqual(headingsOf(eguaglianza), ["1·Sostantivo"]);
+    assert.deepEqual(formLines(eguaglianza), ["variante di uguaglianza"]);
+    assert.match(eguaglianza, /variante di <a [^>]*href="\/\?q=uguaglianza">uguaglianza<\/a>/);
+    assert.deepEqual(lemmaFormsOf(eguaglianza), ["Forme diuguaglianza"]);
+    assert.deepEqual(lemmaDefinitions(eguaglianza).map(({ lemma }) => lemma), ["uguaglianza"]);
+
+    // gajo is the old spelling of gaio: gaio's block, led by the shape's line.
+    assertShapePage(await render(db, "gajo"), "gajo", {
+      headings: ["1·Aggettivo·gaio"],
+      lines: ["grafia antica di gaio"],
+      links: ["gaio"],
+      forms: ["gaio"],
+      fonte: "gaio",
+    });
+  }, undefined, undefined, corrections);
+});
+
 /**
  * `fixtures/essere-compound-cells.jsonl`: arrendersi, accorgersi, assorbire and
  * perdersi, as release it-0c432803 has them (lines 624, 770, 113784, 137480).
@@ -4101,8 +4156,8 @@ test("pronominal verbs with no base table take the class the source settles: acc
     const answer = await attempt(db, "accertarsi");
     assert.ok(answer.outcome === "found");
     assert.ok(answer.bases.length > 0 && answer.bases.every((base) => base.forms.length === 0));
-    // accertare's own page is left as it was: no table.
-    assert.doesNotMatch(await render(db, "accertare"), />Forme</);
+    // accertare's own page takes the regular table its own call settles (#841).
+    assert.equal(tenseColumn(await render(db, "accertare"), "Indicativo", "presente")[0], "io accerto");
 
     const abbuffarsi = await render(db, "abbuffarsi");
     assert.equal(tenseColumn(abbuffarsi, "Indicativo", "presente")[0], "io mi abbuffo");
@@ -4192,6 +4247,144 @@ test("a cell built on a regular table carries the regular cell and the call that
     }
     const pento = forms.find((form) => form.surface === "mi pento");
     assert.ok(pento !== undefined && isRegularCell(pento.from) && pento.from.spelling === "pento");
+  });
+});
+
+// Verbs that are not pronominal and whose records have no table (#841) ----------
+//
+// `fixtures/base-verb-regular-tables.jsonl` holds real lines of it-0c432803,
+// in archive order: 48957 `pettinare`, 50090 `stampare`, 110507 `verificare`,
+// 203831 `verifico`, 227167 `stampano`, 228964 `pettiniamo`, 302925
+// `seccare`, 336555 `vanghi`, 420334 `ingraziare`, 422393 `accertare`, 432840
+// `conteggiare`, 441081 `rivendere`, 456627 `affaticare`, 552839 `prefiggere`
+// and 612227 `vangare`. Each verb record has no forms; each has a call pinned
+// for its own Appendice page (src/italian/conjugationTemplateCalls.ts).
+
+const BASE_VERB_LINES = (await readFile(join(REPO, "fixtures/base-verb-regular-tables.jsonl"), "utf8")).trimEnd().split("\n");
+const withBaseVerbs = (run: (f: Fixture) => Promise<void>) => withLines(BASE_VERB_LINES, run);
+
+test("a verb with no forms takes the regular table its own {{It-conj}} call settles: verificare, stampare, accertare, pettinare, seccare, ingraziare (#841)", async () => {
+  await withBaseVerbs(async ({ db }) => {
+    const verificare = await render(db, "verificare");
+    assert.equal(occurrencesOf(verificare, ">Forme<"), 1);
+    assert.deepEqual(tenseColumn(verificare, "Indicativo", "presente"), [
+      "io verifico",
+      "tu verifichi",
+      "lui, lei verifica",
+      "noi verifichiamo",
+      "voi verificate",
+      "loro verificano",
+    ]);
+    assert.equal(tenseColumn(verificare, "Indicativo", "futuro semplice")[0], "io verificherò");
+    assert.deepEqual(tenseColumn(verificare, "Indicativo", "passato prossimo"), [
+      "io ho verificato",
+      "tu hai verificato",
+      "lui, lei ha verificato",
+      "noi abbiamo verificato",
+      "voi avete verificato",
+      "loro hanno verificato",
+    ]);
+    assert.equal(textOf(nonFinite(verificare, "ausiliare") ?? ""), "avere");
+    assert.equal(textOf(nonFinite(verificare, "gerundio") ?? ""), "verificando");
+    assert.equal(textOf(nonFinite(verificare, "participio") ?? ""), "verificato");
+    assert.equal(textOf(firstCell(panel(verificare, "Imperativo"), "tu") ?? ""), "verifica, non verificare");
+    // Each built spelling links to its own search; nothing is marked, and nothing says how it was made.
+    assert.match(verificare, builtLink("verifico"));
+    assert.doesNotMatch(verificare, /data-searched=""/);
+    assert.doesNotMatch(verificare, /data-form="/);
+    assert.doesNotMatch(textOf(verificare), /it-regular|It-conj|Appendice|regola|costruit|calcolat/i);
+
+    const stampare = await render(db, "stampare");
+    assert.equal(tenseColumn(stampare, "Indicativo", "presente")[0], "io stampo");
+    assert.equal(tenseColumn(stampare, "Indicativo", "futuro semplice")[3], "noi stamperemo");
+    assert.equal(tenseColumn(stampare, "Congiuntivo", "presente")[5], "che loro stampino");
+    const accertare = await render(db, "accertare");
+    assert.equal(tenseColumn(accertare, "Indicativo", "passato remoto")[2], "lui, lei accertò");
+    const pettinare = await render(db, "pettinare");
+    assert.equal(tenseColumn(pettinare, "Indicativo", "presente")[3], "noi pettiniamo");
+    assert.equal(textOf(firstCell(panel(pettinare, "Imperativo"), "tu") ?? ""), "pettina, non pettinare");
+    const seccare = await render(db, "seccare");
+    assert.equal(tenseColumn(seccare, "Indicativo", "presente")[1], "tu secchi");
+    assert.equal(tenseColumn(seccare, "Condizionale", "presente")[0], "io seccherei");
+    const ingraziare = await render(db, "ingraziare");
+    assert.equal(tenseColumn(ingraziare, "Indicativo", "presente")[1], "tu ingrazi");
+    assert.equal(tenseColumn(ingraziare, "Congiuntivo", "presente")[3], "che noi ingraziamo");
+  });
+});
+
+test("a call that writes care or ciare on a g stem settles the class the template writes: vangare, conteggiare (#841)", async () => {
+  await withBaseVerbs(async ({ db }) => {
+    const vangare = await render(db, "vangare");
+    assert.equal(tenseColumn(vangare, "Indicativo", "presente")[1], "tu vanghi");
+    assert.equal(tenseColumn(vangare, "Indicativo", "futuro semplice")[0], "io vangherò");
+    const conteggiare = await render(db, "conteggiare");
+    assert.equal(tenseColumn(conteggiare, "Indicativo", "presente")[0], "io conteggio");
+    assert.equal(tenseColumn(conteggiare, "Indicativo", "futuro semplice")[0], "io conteggerò");
+  });
+});
+
+test("a call that overrides a cell, names a class the rule does not build, or names essere gives no table: prefiggere, rivendere, affaticare (#841)", async () => {
+  await withBaseVerbs(async ({ db }) => {
+    for (const word of ["prefiggere", "rivendere", "affaticare"]) {
+      const html = await render(db, word);
+      assert.equal(readingsOfPage(html).length > 0, true, word);
+      assert.doesNotMatch(html, />Forme</, word);
+      assert.doesNotMatch(textOf(html), /mancan|missing|nessuna voce|nessun dato/i, word);
+    }
+  });
+});
+
+test("a verb record with its own forms keeps showing them unchanged: alzare, trasferire (#841)", async () => {
+  await withPronominal(async ({ db }) => {
+    for (const [word, io] of [["alzare", "alzo"], ["trasferire", "trasferisco"]] as const) {
+      const html = await render(db, word);
+      assert.equal(occurrencesOf(html, ">Forme<"), 1, word);
+      assert.equal(tenseColumn(html, "Indicativo", "presente")[0], `io ${io}`, word);
+      // Every cell is the record's own form, named by its index; none is built.
+      assert.match(html, /data-form="\d+"/, word);
+      assert.doesNotMatch(html, builtLink(io), word);
+    }
+  });
+});
+
+test("a regular cell is the rule's in the page model, carrying the call that chose its class, and no source place (#841)", async () => {
+  await withBaseVerbs(async ({ db }) => {
+    const answer = await attempt(db, "verificare");
+    assert.ok(answer.outcome === "found" && answer.route.kind !== "phrase");
+    const page = wordPage("verificare", answer.readings, answer.lemmas, answer.route, answer.declared, answer.bases);
+    const [entry] = page.readings;
+    assert.ok(entry.kind === "source");
+    const own = entry.parts.find((part) => part.kind === "own-forms");
+    assert.ok(own?.kind === "own-forms" && own.forms.kind === "regular-conjugation");
+    const forms = [
+      ...own.forms.conjugation.nonFinite.flatMap((item) => item.forms),
+      ...own.forms.conjugation.moods.flatMap((mood) => [...mood.simple, ...mood.compound].flatMap((tense) => tense.cells.flatMap((cell) => cell.forms))),
+    ];
+    assert.ok(forms.length > 90);
+    for (const form of forms) {
+      assert.equal(form.rule, "it-regular-conjugation/v1");
+      assert.ok(!("ref" in form), form.surface);
+      assert.ok(form.cell.evidence.kind === "template" && form.cell.evidence.page.call === "{{It-conj|verific|care|avere}}", form.surface);
+      assert.equal(form.cell.evidence.page.revisionId, 1869770);
+    }
+  });
+});
+
+test("a searched form of such a verb finds its verb: verifico, stampano, pettiniamo, vanghi (#841)", async () => {
+  await withBaseVerbs(async ({ db }) => {
+    for (const [query, verb] of [
+      ["verifico", "verificare"],
+      ["stampano", "stampare"],
+      ["pettiniamo", "pettinare"],
+      ["vanghi", "vangare"],
+    ] as const) {
+      const answer = await attempt(db, query);
+      assert.equal(answer.outcome, "found", query);
+      const html = await render(db, query);
+      // Its form record's line names the verb, and links to its page.
+      assert.match(textOf(html), new RegExp(`di ${verb}`), query);
+      assert.match(html, new RegExp(`href="/\\?q=${verb}"`), query);
+    }
   });
 });
 

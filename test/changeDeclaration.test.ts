@@ -50,8 +50,9 @@ test("a declaration of each command parses to its command, inputs and expected c
   assert.deepEqual(parseDeclaration(FILE, declared({ command: "update:upgrade" })).inputs, {});
   const hide = parseDeclaration(FILE, declared({ command: "hide:records", inputs: { archive: "it-0c432803", rules: [...HIDING_RULES].reverse() } }));
   assert.deepEqual(hide.inputs, { archive: "it-0c432803", rules: HIDING_RULES });
-  const normalize = parseDeclaration(FILE, declared({ command: "normalize:source-text", inputs: { rules: [...SOURCE_TEXT_UPDATE_RULES] } }));
-  assert.deepEqual(normalize.inputs, { rules: SOURCE_TEXT_UPDATE_RULES });
+  const normalize = parseDeclaration(FILE, declared({ command: "normalize:source-text", inputs: { archive: "it-0c432803", rules: [...SOURCE_TEXT_UPDATE_RULES] } }));
+  assert.deepEqual(normalize.inputs, { archive: "it-0c432803", rules: SOURCE_TEXT_UPDATE_RULES });
+  assert.match(refusal(declared({ command: "normalize:source-text", inputs: { rules: [...SOURCE_TEXT_UPDATE_RULES] } })), /inputs\.archive must be a release id/);
 });
 
 test("a correct:records declaration takes no inputs and counts the correction tables", () => {
@@ -244,6 +245,11 @@ test("every declaration already in dictionary-changes parses as before, with no 
       continue;
     }
     // The Wikidata words (#812) name four they add with a gloss, a form among them, a word Wiktionary answers, and a word with no gloss they leave out.
+    // The Wikidata words' genders (#849) name the nouns whose Forme they place.
+    if (name === "2026-10-17-load-wikidata-word-genders.json") {
+      assert.deepEqual(parseDeclaration(path, text).lookups?.map((item) => item.word), ["targhetta", "targhette", "trucco", "flebo", "pento"]);
+      continue;
+    }
     if (name === "2026-10-11-load-wikidata-words.json") {
       assert.deepEqual(parseDraft(path, text).lookups?.map((item) => item.word), ["flebo", "pento", "magazine", "freccette", "papà", "paralimpico"]);
       continue;
@@ -253,16 +259,34 @@ test("every declaration already in dictionary-changes parses as before, with no 
       assert.deepEqual(parseDeclaration(path, text).lookups?.map((item) => [item.word, item.gloss]), [["si", "pronome riflessivo di terza persona"], ["come", "non appena"]]);
       continue;
     }
+    // Sig. and cosetta (#819) name the spellings that reach them, cosetta's proper name, and dr., which keeps its record.
+    if (name === "2026-10-17-hand-kept-readings-sig-cosetta.json") {
+      assert.deepEqual(parseDeclaration(path, text).lookups?.map((item) => item.word), ["sig.", "Sig.", "cosette", "cosetta", "dr."]);
+      continue;
+    }
     // The label punctuation rule (#712) names words whose page text it rewrites.
-    // It deployed before the rule for the labels `{{Fig}}` printed (#800), so it is refused for that alone.
+    // It deployed before the rule for the labels `{{Fig}}` printed (#800), and
+    // before that rule read the master's dump (#814), so it is refused for those alone.
     if (name === "2026-10-09-normalize-label-punctuation.json") {
-      assert.equal(refusal(text, path), "inputs.rules must name every rule the command applies; it lacks rendered-fig-label/v1");
+      assert.equal(
+        refusal(text, path),
+        "inputs.archive must be a release id, it- and eight lowercase hex digits, got undefined\ninputs.rules must name every rule the command applies; it lacks rendered-fig-label/v1",
+      );
       assert.deepEqual((JSON.parse(text) as { lookups: { word: string }[] }).lookups.map((item) => item.word), ["cinquantadue", "ozelot", "travet"]);
       continue;
     }
     // The labels `{{Fig}}` printed (#800) name a word whose recovered definition it relabels.
+    // It deployed before the rule read the master's dump (#814), so it is refused for naming no archive alone.
     if (name === "2026-10-11-normalize-fig-label.json") {
-      assert.deepEqual(parseDeclaration(path, text).lookups?.map((item) => [item.word, item.gloss]), [["casa", "casa costruttrice"]]);
+      assert.equal(refusal(text, path), "inputs.archive must be a release id, it- and eight lowercase hex digits, got undefined");
+      assert.deepEqual((JSON.parse(text) as { lookups: { word: string; gloss: string }[] }).lookups.map((item) => [item.word, item.gloss]), [["casa", "casa costruttrice"]]);
+      continue;
+    }
+    // The `{{Fig}}` label of pantomima's wrapped line, read off the master's dump (#814), names pantomima with that definition.
+    if (name === "2026-10-17-normalize-fig-label-wrapped-it-0c432803.json") {
+      const declaration = parseDeclaration(path, text);
+      assert.deepEqual(declaration.inputs, { archive: "it-0c432803", rules: SOURCE_TEXT_UPDATE_RULES });
+      assert.deepEqual(declaration.lookups?.map((item) => [item.word, item.gloss]), [["pantomima", "Susseguirsi di gesti vivaci e concitati"]]);
       continue;
     }
     // The upgrade that keys corrected cells (#743) names the spellings a search now finds, and the source's it still finds.
@@ -276,6 +300,15 @@ test("every declaration already in dictionary-changes parses as before, with no 
     // The hidden sense (#857) names the word whose page it changes, with the definition the page then shows first.
     if (name === "2026-10-17-correct-gaio-hidden-sense.json") {
       assert.deepEqual(parseDeclaration(path, text).lookups?.map((item) => [item.word, item.gloss]), [["gaio", "allegro"]]);
+      continue;
+    }
+    // The old spellings (#830) name eguale's corrected plural, eguale, and eguaglianza with its hand-kept definition.
+    if (name === "2026-10-17-correct-old-spellings.json") {
+      assert.deepEqual(parseDeclaration(path, text).lookups?.map((item) => [item.word, item.gloss]), [
+        ["eguali", null],
+        ["eguale", null],
+        ["eguaglianza", "variante di uguaglianza"],
+      ]);
       continue;
     }
     // The hidden recovered line (#773) names the word whose page it changes.

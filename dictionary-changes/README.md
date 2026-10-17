@@ -24,7 +24,7 @@ cannot read as one, naming the file.
 | `update:upgrade` | none |
 | `update:auto` | `feedRelease`: the feed release id |
 | `hide:records` | `archive`: the release id the master was seeded from; `rules`: every hiding rule |
-| `normalize:source-text` | `rules`: every source text rule the command applies |
+| `normalize:source-text` | `archive`: the release id the master was seeded from, whose dump rule `rendered-fig-label/v1` reads pages from ([#814](https://github.com/povlabs/lexema/issues/814)); `rules`: every source text rule the command applies |
 | `correct:records` | none: it writes the committed lists of curated corrections and hand-kept readings ([ADR 0031](../.decisions/0031-hand-kept-readings-fill-source-gaps.md)), and `expected` pins what those lists write ([RUN_AN_IMPORT.md](../docs/RUN_AN_IMPORT.md#write-the-curated-corrections-into-a-seeded-database)) |
 | `load:page-entries` | `archive`: the release id the master was seeded from, whose dump the rule reads; `rules`: every page-entry and page-fact rule ([PAGE_ENTRIES.md](../docs/PAGE_ENTRIES.md#load-them-into-a-seeded-dictionary)) |
 | `load:names` | none: it writes the committed Wikidata snapshot `names/wikidata-names.jsonl` as a diff, the names whose key the dictionary does not already answer, and `expected` pins what it writes and removes ([ADR 0032](../.decisions/0032-wikidata-names-fill-proper-name-gaps.md), [RUN_AN_IMPORT.md](../docs/RUN_AN_IMPORT.md#write-the-wikidata-names-into-a-seeded-database)) |
@@ -41,8 +41,8 @@ with no `expected`, or with the counts you expect. The
 plans it with the pull request's own code: green when the counts match, red
 otherwise, printing the declaration with the plan's counts to copy in. Add
 one declaration per pull request, since the check counts only the first.
-This holds for `update:auto`, `hide:records`, `load:page-entries` and
-`load:recovered-definitions` too: the
+This holds for `update:auto`, `hide:records`, `normalize:source-text`,
+`load:page-entries` and `load:recovered-definitions` too: the
 check reads their archive and dump from `povlabs/lexema-data` with a read-only
 token.
 

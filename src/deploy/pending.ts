@@ -47,12 +47,7 @@ const REMOTE_PRODUCTION = `refs/remotes/origin/${PRODUCTION_BRANCH}`;
  * on one line, since then no range says what was deployed.
  */
 export function deployRange(git: Git, head: string): DeployRange {
-  try {
-    git.run(["fetch", "--no-tags", "origin", `+refs/heads/${PRODUCTION_BRANCH}:${REMOTE_PRODUCTION}`]);
-  } catch (error: unknown) {
-    throw new RangeRefused(`could not fetch the ${PRODUCTION_BRANCH} branch; it must exist before a deploy runs (docs/DEPLOY.md): ${error instanceof Error ? error.message : String(error)}`);
-  }
-  const production = git.run(["rev-parse", "--verify", `${REMOTE_PRODUCTION}^{commit}`]).trim();
+  const production = fetchProduction(git);
   const tip = git.run(["rev-parse", "--verify", `${head}^{commit}`]).trim();
   if (git.test(["merge-base", "--is-ancestor", tip, production])) return { kind: "deployed-already", production, head: tip };
   if (!git.test(["merge-base", "--is-ancestor", production, tip])) {
@@ -65,6 +60,22 @@ export function deployRange(git: Git, head: string): DeployRange {
   const paths = [...new Set(added)].filter((path) => git.test(["cat-file", "-e", `${tip}:${path}`]));
   const declarations = paths.map((path) => parseDeclaration(path, git.run(["show", `${tip}:${path}`])));
   return { kind: "pending", production, head: tip, declarations };
+}
+
+/**
+ * Fetch `production` from the remote and return its commit. A shallow checkout
+ * fetches that one commit only: a full fetch there would download the history
+ * behind it, and a depth in a full checkout would make that checkout shallow.
+ * Refuses when `production` cannot be fetched.
+ */
+export function fetchProduction(git: Git): string {
+  const shallow = git.run(["rev-parse", "--is-shallow-repository"]).trim() === "true";
+  try {
+    git.run(["fetch", "--no-tags", ...(shallow ? ["--depth=1"] : []), "origin", `+refs/heads/${PRODUCTION_BRANCH}:${REMOTE_PRODUCTION}`]);
+  } catch (error: unknown) {
+    throw new RangeRefused(`could not fetch the ${PRODUCTION_BRANCH} branch; it must exist before a deploy runs (docs/DEPLOY.md): ${error instanceof Error ? error.message : String(error)}`);
+  }
+  return git.run(["rev-parse", "--verify", `${REMOTE_PRODUCTION}^{commit}`]).trim();
 }
 
 /** Fast-forward `production` on the remote to `head`; a push that is not a fast-forward is refused by the remote. */

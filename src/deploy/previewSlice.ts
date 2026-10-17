@@ -40,8 +40,13 @@ import { bareKey, deletionKeys, foldKey } from "../lookup/nearby.js";
 import { lacksKeyedColumn, select, type MasterReader } from "../update/master.js";
 import { keyedColumnOf } from "../update/masterUpgrade.js";
 
-/** The version of how a slice is built; part of the fingerprint, so a changed build rebuilds every slice. */
-export const SLICE_FORMAT = "preview-slice/v1";
+/**
+ * The version of how a slice is built; part of the fingerprint, so a changed
+ * build rebuilds every slice. v2: a correction run also names the spellings a
+ * corrected cell gives and retires, and the word a hand-kept reading leads to
+ * (#830).
+ */
+export const SLICE_FORMAT = "preview-slice/v2";
 
 /**
  * The tables a slice holds beside the dictionary's: the words it serves, as

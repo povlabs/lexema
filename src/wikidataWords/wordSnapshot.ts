@@ -27,7 +27,7 @@ export function snapshotOf(words: readonly WikidataWord[]): WikidataWord[] {
 /** The snapshot's text: one JSON object per line, keys in a fixed order, ending in a newline. */
 export function snapshotText(words: readonly WikidataWord[]): string {
   return snapshotOf(words)
-    .map(({ lexeme, lemma, category, forms, glosses }) => `${JSON.stringify({ lexeme, lemma, category, forms, glosses })}\n`)
+    .map(({ lexeme, lemma, category, genders, forms, glosses }) => `${JSON.stringify({ lexeme, lemma, category, genders, forms, glosses })}\n`)
     .join("");
 }
 

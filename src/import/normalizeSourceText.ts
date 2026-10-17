@@ -2,11 +2,14 @@
 // update (ADR 0019), planned in the order the seed applies them and run in one
 // step, like an apply (src/update/apply.ts). A later rule reads the glosses an
 // earlier one rewrites from the plan, not the database, so the file does what
-// running the rules one after another did.
+// running the rules one after another did. Rule `rendered-fig-label/v1` also
+// reads pages of the master's dump (figLabelUpdate.ts, #814), so a plan is
+// given them: `readFigLabelPages` reads the ones it needs.
 
-import { FIG_LABEL_RULE, type FigLabelReport, planFigLabels } from "./figLabelUpdate.js";
+import { FIG_LABEL_RULE, type FigLabelReport, figLabelPlanner } from "./figLabelUpdate.js";
 import { GLOSS_GRAMMAR_STAMP_RULE } from "../italian/glossGrammarStamp.js";
 import { SOURCE_TEXT_RULES } from "../italian/sourceTextNormalization.js";
+import type { RawPageSource } from "../source/rawPage.js";
 import type { MasterReader } from "../update/master.js";
 import { PlanCounts, type CountedTable, type TableRows } from "../update/planCounts.js";
 import { type GlossStampReport, planGlossStamps } from "./glossStampUpdate.js";
@@ -55,15 +58,15 @@ function added(into: Partial<Record<CountedTable, number>>, rows: TableRows): vo
   for (const [table, n] of Object.entries(rows) as [CountedTable, number][]) into[table] = (into[table] ?? 0) + n;
 }
 
-/** Plan every rule into one file. It reads the database; it writes nothing. */
-export function planSourceText(db: MasterReader): SourceTextPlan {
+/** Plan every rule into one file. It reads the database and `pages`, the dump pages `readFigLabelPages` read; it writes nothing. */
+export function planSourceText(db: MasterReader, pages: RawPageSource): SourceTextPlan {
   const glosses = new PlannedGlosses();
   const headwordLeads = planHeadwordLeads(db, glosses);
   const personOrdinals = planPersonOrdinals(db, glosses);
   const forms = planPlaceholderForms(db, glosses);
   const glossStamps = planGlossStamps(db, glosses);
   const labelPunctuation = planLabelPunctuation(db, glosses);
-  const figLabels = planFigLabels(db, glosses);
+  const figLabels = figLabelPlanner(pages)(db, glosses);
   const plans: RulePlan<unknown>[] = [headwordLeads, personOrdinals, forms, glossStamps, labelPunctuation, figLabels];
 
   const glossRows = glosses.rows();
@@ -96,10 +99,10 @@ export function planSourceText(db: MasterReader): SourceTextPlan {
  * Plan every rule, run the file in one step through `applyFile`, then read the
  * database back. Throws when anything is still pending afterwards.
  */
-export async function normalizeSourceText(db: MasterReader, applyFile: (sql: string) => Promise<void> | void): Promise<SourceTextPlan> {
-  const plan = planSourceText(db);
+export async function normalizeSourceText(db: MasterReader, pages: RawPageSource, applyFile: (sql: string) => Promise<void> | void): Promise<SourceTextPlan> {
+  const plan = planSourceText(db, pages);
   if (plan.sql !== "") await applyFile(plan.sql);
-  const after = planSourceText(db);
+  const after = planSourceText(db, pages);
   if (after.statements > 0) throw new Error(`${after.statements} source text change(s) still pending after the update`);
   return plan;
 }

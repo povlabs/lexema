@@ -106,6 +106,19 @@ export function nameEntryBeforePeople(reader: MasterReader): boolean {
 }
 
 /**
+ * Whether the master's `wikidata_word` is from before `genders` (#849), so a
+ * load cannot write a lexeme's genders into it. Its stored definition then
+ * differs from schema.sql's, so `changedUpgrade` lists it and the upgrade
+ * rebuilds it with its keys; a master without the table has nothing to rebuild.
+ */
+export function wikidataWordBeforeGenders(reader: MasterReader): boolean {
+  return (
+    select<{ name: string }>(reader, "SELECT name FROM sqlite_schema WHERE type = 'table' AND name = 'wikidata_word'").length > 0 &&
+    select<{ name: string }>(reader, "SELECT name FROM pragma_table_info('wikidata_word') WHERE name = 'genders'").length === 0
+  );
+}
+
+/**
  * Whether the master has `table` without its keyed column (`keyedColumnOf`):
  * a `corrected_form` from before #743, with no `surface_key`. Its stored
  * definition then differs from schema.sql's, so the upgrade rebuilds it, keying
@@ -156,7 +169,8 @@ export function changedViews(reader: MasterReader, schema: string): ServingView[
 /**
  * The upgrade names among `names` the master lacks, or holds as the upgrade
  * still rebuilds them (`hidden_record` from before #389, `corrected_edge` from
- * before #755, `name_entry` from before people, a table without its keyed column), in the order of
+ * before #755, `name_entry` from before people, `wikidata_word` from before
+ * genders, a table without its keyed column), in the order of
  * `names`. A command whose SQL writes into them refuses to write while any is
  * listed: its SQL holds no DDL, and `update:upgrade` is what clears them.
  */
@@ -165,6 +179,7 @@ export function upgradeNeededFor(reader: MasterReader, names: readonly string[])
   if (names.includes("hidden_record") && hiddenRecordBefore389(reader)) needed.add("hidden_record");
   if (names.includes("corrected_edge") && correctedEdgeBefore755(reader)) needed.add("corrected_edge");
   if (names.includes("name_entry") && nameEntryBeforePeople(reader)) needed.add("name_entry");
+  if (names.includes("wikidata_word") && wikidataWordBeforeGenders(reader)) needed.add("wikidata_word");
   for (const name of names) if (lacksKeyedColumn(reader, name)) needed.add(name);
   return names.filter((name) => needed.has(name));
 }

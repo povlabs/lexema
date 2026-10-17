@@ -1,5 +1,6 @@
 // A regular verb's table, for a pronominal verb whose base verb has no record
-// with one, by rule `it-regular-conjugation/v1` (#838).
+// with one (#838), or for a verb no record of which has one (#841), by rule
+// `it-regular-conjugation/v1`.
 //
 // `it-pronominal-conjugation/v1` (pronominalConjugation.ts) builds a
 // pronominal verb's table from its base verb's cells: `trasferirsi` from
@@ -26,6 +27,16 @@
 //   the template's own documentation states (Template:It-conj/man): `-are` is
 //   the first conjugation; `-care` and `-gare` add an `h` before `e` and `i`;
 //   `-ciare` and `-giare` drop their `i` there; `-gliare` drops it before `i`.
+//
+// A verb that is not pronominal takes the table only from its own page's call
+// (#841): `verificare` from `{{It-conj|verific|care|avere}}`. Huey ruled on
+// 2026-10-17 that such a verb gets the table pronominal verbs get when its own
+// Appendice page has an `{{It-conj}}` call
+// (https://github.com/povlabs/lexema/issues/841#issuecomment-6233282178); its
+// ending alone settles nothing. The call must name avere, the auxiliary the
+// rule writes: a call naming essere, or both (`avere, come intr. essere`),
+// settles nothing for such a verb, whose table would then be on the wrong
+// auxiliary. A pronominal verb's table is on essere whatever the call names.
 //
 // Everything else is declined, and the page shows no table: an `-ire` verb
 // with no call (`-isc-` or not), any other `-iare` (its `i` may be stressed,
@@ -88,7 +99,11 @@ export type DeclineReason =
   /** An `-ire` verb with no call: `-isc-` or not, the ending does not say. */
   | "ire-isc"
   /** The second conjugation, or `-orre`, `-urre`: `avvedersi`, `prefiggersi`. */
-  | "second-conjugation";
+  | "second-conjugation"
+  /** A verb that is not pronominal, with no call pinned for its own page (#841). */
+  | "no-own-call"
+  /** A verb that is not pronominal, whose own call names an auxiliary other than avere: `{{It-conj|arross|ire-b|essere}}` (#841). */
+  | "auxiliary-not-avere";
 
 /** A verb whose class the source settles: the class, the stem the template writes, its base verb, and what settled it. */
 export interface SettledClass {
@@ -126,13 +141,20 @@ const TEMPLATE_CLASS: Readonly<Record<string, ConjugationClass>> = {
   "irsi-b": "ire-b",
 };
 
-/** What a class's infinitive adds to its stem, and the letters the stem must end in. */
+/**
+ * What a class's infinitive adds to its stem, and the letters the stem must
+ * end in. Modulo:It-conj (revision 4048685 in the release's dump) writes
+ * `care` and `gare` in one branch, and `ciare` and `giare` in another, on any
+ * stem: `{{It-conj|vang|care|avere}}` is *vango, vanghi*, and
+ * `{{It-conj|contegg|ciare|avere}}` *conteggio, conteggerò* (#841). So either
+ * name takes a stem in `c` or `g`.
+ */
 const INFINITIVE: Readonly<Record<ConjugationClass, { ending: string; stemEnds: RegExp }>> = {
   are: { ending: "are", stemEnds: /\p{L}$/u },
-  care: { ending: "are", stemEnds: /c$/u },
-  gare: { ending: "are", stemEnds: /g$/u },
-  ciare: { ending: "iare", stemEnds: /c$/u },
-  giare: { ending: "iare", stemEnds: /g$/u },
+  care: { ending: "are", stemEnds: /[cg]$/u },
+  gare: { ending: "are", stemEnds: /[cg]$/u },
+  ciare: { ending: "iare", stemEnds: /[cg]$/u },
+  giare: { ending: "iare", stemEnds: /[cg]$/u },
   iare: { ending: "are", stemEnds: /i$/u },
   ire: { ending: "ire", stemEnds: /\p{L}$/u },
   "ire-b": { ending: "ire", stemEnds: /\p{L}$/u },
@@ -144,20 +166,45 @@ export function infinitiveOf(conjugationClass: ConjugationClass, stem: string): 
   return stemEnds.test(stem) ? `${stem}${ending}` : undefined;
 }
 
-/** The class a pinned call names for one of `verb`'s bases, or why it names none this rule reads. */
-function classOfCall(verb: PronominalVerb, page: PinnedTemplateCall): ClassAnswer {
+/** A pinned call this rule reads: the class it names, the stem, the infinitive they write, and the auxiliary it names, as written. */
+interface ReadCall {
+  conjugationClass: ConjugationClass;
+  stem: string;
+  infinitive: string;
+  auxiliary: string | undefined;
+}
+
+/** What a pinned call names, or undefined when it overrides a form or names a class this rule does not build. */
+function readCall(page: PinnedTemplateCall): ReadCall | undefined {
   const [call] = templatesOn(page.call.replace(/\n/g, ""));
-  const declined: ClassAnswer = { kind: "declined", reason: "template-not-read", page };
-  if (call === undefined || call.name !== "It-conj" || Object.keys(call.named).length > 0 || call.positional.length > 3) return declined;
-  const [stem, type] = call.positional;
+  if (call === undefined || call.name !== "It-conj" || Object.keys(call.named).length > 0 || call.positional.length > 3) return undefined;
+  const [stem, type, auxiliary] = call.positional;
   const conjugationClass = TEMPLATE_CLASS[type ?? ""];
-  const base = stem === undefined || conjugationClass === undefined ? undefined : infinitiveOf(conjugationClass, stem);
-  if (stem === undefined || conjugationClass === undefined || base === undefined || !verb.bases.includes(base)) return declined;
-  return { kind: "settled", conjugationClass, stem, base, evidence: { kind: "template", page } };
+  const infinitive = stem === undefined || conjugationClass === undefined ? undefined : infinitiveOf(conjugationClass, stem);
+  if (stem === undefined || conjugationClass === undefined || infinitive === undefined) return undefined;
+  return { conjugationClass, stem, infinitive, auxiliary: auxiliary?.trim() };
+}
+
+/** The class a read call settles, the call's page its evidence. */
+const settledBy = (read: ReadCall, page: PinnedTemplateCall): SettledClass => ({
+  kind: "settled",
+  conjugationClass: read.conjugationClass,
+  stem: read.stem,
+  base: read.infinitive,
+  evidence: { kind: "template", page },
+});
+
+/** The class a pinned call names for one of a pronominal verb's bases, or why it names none this rule reads. */
+function classOfCall(bases: readonly string[], page: PinnedTemplateCall): ClassAnswer {
+  const read = readCall(page);
+  return read === undefined || !bases.includes(read.infinitive) ? { kind: "declined", reason: "template-not-read", page } : settledBy(read, page);
 }
 
 /** Whether a gloss says what it is a form of: "seconda persona singolare dell'indicativo presente di traversare". */
 const isFormGloss = (gloss: string): boolean => glossBase(gloss.replace(/,/g, ""))?.formOpening === true;
+
+/** Whether a record's glosses all say it is a form of another word. */
+const isFormOfAnotherWord = (glosses: readonly string[]): boolean => glosses.length > 0 && glosses.every(isFormGloss);
 
 /** The verbs that do not follow their conjugation, and the prefixes their compounds take that a regular verb's ending can share. */
 function irregularFamily(base: string): boolean {
@@ -198,15 +245,30 @@ function classOfEnding(base: string): ClassAnswer {
  * settles it.
  */
 export function regularClassOf(verb: PronominalVerb, glosses: readonly string[], calls: TemplateCalls): ClassAnswer {
-  if (glosses.length > 0 && glosses.every(isFormGloss)) return { kind: "declined", reason: "form-of-another-word" };
+  if (isFormOfAnotherWord(glosses)) return { kind: "declined", reason: "form-of-another-word" };
   for (const title of [verb.word, ...verb.bases].map(conjugationPageOf)) {
     const page = calls[title];
-    if (page !== undefined) return classOfCall(verb, page);
+    if (page !== undefined) return classOfCall(verb.bases, page);
   }
   const [base] = verb.bases;
   if (base.endsWith("are")) return classOfEnding(base);
   if (base.endsWith("ire")) return { kind: "declined", reason: "ire-isc" };
   return { kind: "declined", reason: "second-conjugation" };
+}
+
+/**
+ * The regular class of `word`, a verb that is not pronominal and no record of
+ * which has a table (#841), read off its record's glosses and the call pinned
+ * for its own Appendice page alone; or why none settles it. The call must
+ * write `word` itself and name avere.
+ */
+export function ownClassOf(word: string, glosses: readonly string[], calls: TemplateCalls): ClassAnswer {
+  if (isFormOfAnotherWord(glosses)) return { kind: "declined", reason: "form-of-another-word" };
+  const page = calls[conjugationPageOf(word)];
+  if (page === undefined) return { kind: "declined", reason: "no-own-call" };
+  const read = readCall(page);
+  if (read === undefined || read.infinitive !== word) return { kind: "declined", reason: "template-not-read", page };
+  return read.auxiliary === "avere" ? settledBy(read, page) : { kind: "declined", reason: "auxiliary-not-avere", page };
 }
 
 /** One base verb cell, as a record's table lists it: its spelling, its tags as the source would write them, and its place. */

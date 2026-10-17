@@ -218,9 +218,10 @@ the spellings of the words the key may be a form of, each with its shape:
 | `demonstrative` | `quei`, `quegli`, `bei`, `begli` | `quello`, `bello` | adjectives |
 | `superlative` | `bravissimo`, `ricchissimi` | `bravo`, `brave`; `ricco` | adjectives |
 | `participle` | `piaciute`, `valsa` | the masculine singular, `piaciuto` | a verb's past participle cell |
+| `j-spelling` | `gajo`, `noja`, `abbujare` | the key with each `j` between two vowels read as `i`, the old spelling of that `i` (`gaio`, #830) | any, plurals too |
 
 Four more shapes read the regular forms of a word whose record lists none.
-They answer only when none of the six above does:
+They answer only when none of the seven above does:
 
 | Shape | Example | Spellings named | Records admitted |
 | --- | --- | --- | --- |
@@ -230,12 +231,18 @@ They answer only when none of the six above does:
 | `english-plural` | `marines`, `games`, `studios` | the key without its `-s`, three letters at least | nouns |
 
 No shape admits a proper name, an abbreviation, a symbol or a word part, and
-none but `plural-spelling` admits a spelling the source states a plural on a
-noun, adjective, pronoun or article record: `belle` is no `bell'`, `capitane`
+none but `plural-spelling` and `j-spelling` admits a spelling the source
+states a plural on a noun, adjective, pronoun or article record: `belle` is no `bell'`, `capitane`
 no `capitan`. A verb's plural is admitted (`devon` of `devono`). Of each shape
 only the lowest tier with an admitted record answers. `inflected` does not
 read a stated `invariable`: the source states it on `follia`, whose plural
-`follie` is regular. An accent written as an apostrophe
+`follie` is regular. `j-spelling` reads no other `j`: `jazz` and `junior` keep theirs, and a word
+the dictionary spells with a `j` between vowels (`troja`, `mojito`) answers as
+typed, before any shape. We checked this against release it-0c432803 for
+[Huey's ruling](https://github.com/povlabs/lexema/issues/830#issuecomment-6233334459).
+Of its Italian records with a `j` between vowels, only three spell another
+record when read with `i`: `troja` (`troia`), the forms of `abbujare`
+(`abbuiare`) and the name `Aja` (`aia`). An accent written as an apostrophe
 (`citta'`) is no elision, and a word with an accent missing (`perche`) is no
 shape: accents are meaning ([LOOKUP_DESIGN.md](LOOKUP_DESIGN.md#accents-are-meaning)),
 and the not-found answer offers the accented word.

@@ -1,0 +1,15 @@
+{
+  "command": "normalize:source-text",
+  "inputs": {
+    "archive": "it-0c432803",
+    "rules": ["gloss-headword-lead/v1", "gloss-person-ordinal/v1", "form-plural-placeholder/v1", "it-gloss-stamp/v1", "rendered-label-punctuation/v1", "rendered-fig-label/v1"]
+  },
+  "lookups": [
+    { "word": "pantomima", "gloss": "Susseguirsi di gesti vivaci e concitati" }
+  ],
+  "expected": {
+    "records": { "added": 0, "changed": 1, "removed": 0 },
+    "written": { "recovered_label": 1 },
+    "deleted": {}
+  }
+}
