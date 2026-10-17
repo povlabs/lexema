@@ -123,6 +123,8 @@ function handKeptList(readings: readonly HandKeptReading[]): readonly HandKeptRe
 }
 
 const RULING_745 = "https://github.com/povlabs/lexema/issues/745#issuecomment-6080245573";
+/** Huey's ruling of 2026-10-11 that `sig.` and `cosette` resolve (#819, which folds in #817). */
+const RULING_809 = "https://github.com/povlabs/lexema/issues/809#issuecomment-6110591219";
 
 /**
  * The committed list. Add a reading only with its evidence, and only on a
@@ -171,5 +173,39 @@ export const HAND_KEPT_READINGS: readonly HandKeptReading[] = handKeptList([
     ],
     evidence: [{ wiki: "en.wiktionary.org", title: "come", revisionId: 93379611, timestamp: "2026-10-03T08:45:29Z", shows: "{{head|it|conjunction}}" }],
     ruling: RULING_745,
+  }),
+  // it.wiktionary has no page `Sig.` and no record spells it. en.wiktionary's
+  // Italian section heads it `===Noun===`, and its one sense is an
+  // abbreviation of `signore`: what `Acronimo / Abbreviazione` names, as for
+  // the source's `Dott.` ("abbreviazione di dottore").
+  handKeptReading({
+    word: "Sig.",
+    partOfSpeech: statedPartOfSpeech("Acronimo / Abbreviazione"),
+    section: { line: 4, wikitext: "===Noun===" },
+    definitions: [
+      {
+        text: "abbreviazione di signore",
+        paraphrases: { line: 7, wikitext: "# {{abbreviation of|it|signore|signor(e)}}: [[Mr.]]" },
+      },
+    ],
+    evidence: [{ wiki: "en.wiktionary.org", title: "Sig.", revisionId: 89865273, timestamp: "2026-03-16T03:33:51Z", shows: "{{head|it|noun|g=m|feminine|Sig.ra|plural|Sigg.|or|Sig.ri}}" }],
+    ruling: RULING_809,
+  }),
+  // The source's only `cosetta` is the proper name `Cosetta` (archive line
+  // 36245), which no word shape reads, so `cosette` found nothing.
+  // en.wiktionary has the common noun, feminine, with one sense; `cosette`
+  // reaches it as its regular plural (rule `it-word-shape/v1`, `inflected`).
+  handKeptReading({
+    word: "cosetta",
+    partOfSpeech: statedPartOfSpeech("Sostantivo"),
+    section: { line: 4, wikitext: "===Noun===" },
+    definitions: [
+      {
+        text: "cosa piccola o di poco conto",
+        paraphrases: { line: 7, wikitext: "# [[trifle]] (little thing)" },
+      },
+    ],
+    evidence: [{ wiki: "en.wiktionary.org", title: "cosetta", revisionId: 63388291, timestamp: "2021-07-25T12:22:57Z", shows: "{{it-noun|f}}" }],
+    ruling: RULING_809,
   }),
 ]);

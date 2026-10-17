@@ -253,6 +253,11 @@ test("every declaration already in dictionary-changes parses as before, with no 
       assert.deepEqual(parseDeclaration(path, text).lookups?.map((item) => [item.word, item.gloss]), [["si", "pronome riflessivo di terza persona"], ["come", "non appena"]]);
       continue;
     }
+    // Sig. and cosetta (#819) name the spellings that reach them, cosetta's proper name, and dr., which keeps its record.
+    if (name === "2026-10-17-hand-kept-readings-sig-cosetta.json") {
+      assert.deepEqual(parseDeclaration(path, text).lookups?.map((item) => item.word), ["sig.", "Sig.", "cosette", "cosetta", "dr."]);
+      continue;
+    }
     // The label punctuation rule (#712) names words whose page text it rewrites.
     // It deployed before the rule for the labels `{{Fig}}` printed (#800), so it is refused for that alone.
     if (name === "2026-10-09-normalize-label-punctuation.json") {

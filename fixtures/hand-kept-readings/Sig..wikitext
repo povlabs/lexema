@@ -1,0 +1,10 @@
+{{also|Appendix:Variations of "sig"}}
+==Italian==
+
+===Noun===
+{{head|it|noun|g=m|feminine|Sig.ra|plural|Sigg.|or|Sig.ri}}
+
+# {{abbreviation of|it|signore|signor(e)}}: [[Mr.]]
+
+====Coordinate terms====
+* {{l|it|Dott.|t=Dr.}}
