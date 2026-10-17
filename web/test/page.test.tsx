@@ -28,7 +28,8 @@ import { gzipSync } from "node:zlib";
 import { renderToStaticMarkup } from "react-dom/server";
 import { seedSql } from "../../src/import/seedSql.js";
 import { PageOnlyCandidates, readUnrecordedPageTitles, UNRECORDED_PAGE_TITLES_FILE } from "../../src/import/pageOnlyCandidates.js";
-import { CURATED_CORRECTIONS, definitionCorrections, type CuratedCorrection } from "../../src/italian/curatedCorrections.js";
+import { FixtureLines } from "../../src/italian/correctionsAtLines.js";
+import { CURATED_CORRECTIONS, cellCorrections, definitionCorrections, type CuratedCorrection } from "../../src/italian/curatedCorrections.js";
 import { atFixtureLines, correctionFixtureLines } from "../../test/correctionFixture.js";
 import { DECLARED_CORRECTION_LINES, declaredCorrections } from "../../test/declaredCorrectionFixture.js";
 import { seededDictionary } from "../../test/seededDictionary.js";
@@ -4262,6 +4263,76 @@ test("a pronominal verb listed for Huey gets no table: attremirsi, sdarsi, inost
       assert.doesNotMatch(textOf(html), /mancan|missing|nessuna voce|nessun dato/i, word);
     }
   });
+});
+
+// Pronominal tables the source builds on avere (#839) ----------------------------
+//
+// `fixtures/pronominal-avere-tables.jsonl` holds the eleven records of the ten
+// verbs whose conjugation pages build every compound tense on avere, verbatim
+// lines of it-0c432803 (test/pronominalAvereCells.test.ts names them). Each
+// carries its own table, so the page draws it, with the committed list's
+// cells keyed to its lines (ADR 0030).
+
+const AVERE_TABLE_LINES = (await readFile(join(REPO, "fixtures/pronominal-avere-tables.jsonl"), "utf8")).trimEnd().split("\n");
+const AVERE_TABLE_CELLS = FixtureLines.of(AVERE_TABLE_LINES, RELEASE).key(cellCorrections(CURATED_CORRECTIONS)).held;
+
+/** Each verb, and its past participle as its table spells it. */
+const AVERE_TABLE_VERBS: [string, string][] = [
+  ["abbagliarsi", "abbagliato"],
+  ["abbracciarsi", "abbracciato"],
+  ["dominarsi", "dominato"],
+  ["incontrarsi", "incontrato"],
+  ["mangiarsi", "mangiato"],
+  ["rimediarsi", "rimediato"],
+  ["rovesciarsi", "rovesciato"],
+  ["sottomettersi", "sottomesso"],
+  ["staccarsi", "staccato"],
+  ["suddividersi", "suddiviso"],
+];
+
+test("abbagliarsi's page reads mi sono abbagliato/a in passato prossimo io, and its auxiliary essere (#839)", async () => {
+  assert.equal(AVERE_TABLE_CELLS.length, AVERE_TABLE_LINES.length);
+  await withLines(AVERE_TABLE_LINES, async ({ db }) => {
+    const html = await render(db, "abbagliarsi");
+    assert.equal(occurrencesOf(html, ">Forme<"), 1);
+    assert.deepEqual(tenseColumn(html, "Indicativo", "passato prossimo"), [
+      "io mi sono abbagliato/a",
+      "tu ti sei abbagliato/a",
+      "lui, lei si è abbagliato/a",
+      "noi ci siamo abbagliati/e",
+      "voi vi siete abbagliati/e",
+      "loro si sono abbagliati/e",
+    ]);
+    assert.equal(textOf(nonFinite(html, "ausiliare") ?? ""), "essere");
+    // The simple tenses stay as the source gives them, and nothing says a cell was corrected.
+    assert.equal(tenseColumn(html, "Indicativo", "presente")[0], "io mi abbaglio");
+    assert.doesNotMatch(textOf(html), /\bmi ho\b|corrett|correzion/i);
+  }, undefined, undefined, AVERE_TABLE_CELLS);
+  // Without the list, the page shows the source's avere table.
+  await withLines(AVERE_TABLE_LINES, async ({ db }) => {
+    const html = await render(db, "abbagliarsi");
+    assert.equal(tenseColumn(html, "Indicativo", "passato prossimo")[0], "io mi ho abbagliato");
+    assert.equal(textOf(nonFinite(html, "ausiliare") ?? ""), "avere");
+  });
+});
+
+test("each of the ten verbs' pages builds every compound tense on essere, and names essere its auxiliary (#839)", async () => {
+  await withLines(AVERE_TABLE_LINES, async ({ db }) => {
+    for (const [word, participle] of AVERE_TABLE_VERBS) {
+      const html = await render(db, word);
+      const plural = `${participle.slice(0, -1)}i`;
+      assert.equal(textOf(nonFinite(html, "ausiliare") ?? ""), "essere", word);
+      assert.equal(tenseColumn(html, "Indicativo", "passato prossimo")[0], `io mi sono ${participle}/a`, word);
+      assert.equal(tenseColumn(html, "Congiuntivo", "passato")[3], `che noi ci siamo ${plural}/e`, word);
+      for (const [mood, tense] of COMPOUND_TENSES) {
+        const cells = tenseColumn(html, mood, tense);
+        assert.equal(cells.length, 6, `${word} ${mood} ${tense}`);
+        cells.forEach((cell, row) =>
+          assert.match(cell, new RegExp(`^\\S.* [${row < 3 ? "mts" : "cvs"}]i (sono|sei|è|siamo|siete|ero|eri|era|eravamo|eravate|erano|fui|fosti|fu|fummo|foste|furono|sarò|sarai|sarà|saremo|sarete|saranno|sarei|saresti|sarebbe|saremmo|sareste|sarebbero|sia|siate|siano|fossi|fosse|fossimo|fossero) ${row < 3 ? `${participle}/a` : `${plural}/e`}$`), `${word} ${mood} ${tense}`),
+        );
+      }
+    }
+  }, undefined, undefined, AVERE_TABLE_CELLS);
 });
 
 test("page-only readings present their page's fields without origin marks or invented forms, and API IDs are page identities", async () => {

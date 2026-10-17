@@ -199,6 +199,22 @@ test("every declaration already in dictionary-changes parses as before, with no 
       assert.deepEqual(parseDeclaration(path, text).lookups?.map((item) => item.word), ["assorbire"]);
       continue;
     }
+    // The ten pronominal verbs whose tables are set on essere (#839) name each verb.
+    if (name === "2026-10-17-correct-pronominal-avere-cells.json") {
+      assert.deepEqual(parseDeclaration(path, text).lookups?.map((item) => item.word), [
+        "abbagliarsi",
+        "abbracciarsi",
+        "dominarsi",
+        "incontrarsi",
+        "mangiarsi",
+        "rimediarsi",
+        "rovesciarsi",
+        "sottomettersi",
+        "staccarsi",
+        "suddividersi",
+      ]);
+      continue;
+    }
     // The form_of edge corrections (#722) name the words whose pages they change.
     if (name === "2026-10-08-correct-form-of-edges.json") {
       assert.deepEqual(

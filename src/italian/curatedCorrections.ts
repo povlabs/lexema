@@ -106,6 +106,15 @@
 // into a master seeded before it, and a lookup reads the cell in place of the
 // source's spelling (`formsOf` in src/lookup/lookup.ts).
 //
+// The same kind sets the tables of ten pronominal verbs (#839). Their
+// it.wiktionary conjugation pages pass `avere` to `{{It-conj}}`, so the source
+// reads `mi ho abbagliato` and names avere the auxiliary; Italian builds these
+// on essere, `mi sono abbagliato`. Huey ruled on 2026-10-17
+// (https://github.com/povlabs/lexema/issues/839#issuecomment-6233239777) to
+// set every compound cell and the auxiliary to essere, citing each page, as
+// for `assorbire`. Each cell reads what rule `it-pronominal-conjugation/v1`
+// builds for its place from the base verb's table (test/pronominalAvereCells.test.ts).
+//
 // A fourth kind hides one recovered definition that states no dictionary word
 // (#773). Rule `recovered-prose-line/v1` reads `diplomatizzare`'s Verbo line 3,
 // `{{Transitivo|it}}hhhhhhhh`, as a definition by layout alone (ADR 0029), so
@@ -544,6 +553,77 @@ const assorbireCell = (index: number, auxiliary: string): CorrectedCell => ({
   surface: `${auxiliary} assorbiti, assorti`,
 });
 
+/** Six spellings of one tense, by row: io, tu, lui/lei, noi, voi, loro. */
+type SixRows = readonly [string, string, string, string, string, string];
+
+/** The pronoun before a pronominal verb's finite form, by row. */
+const PRONOUNS: SixRows = ["mi", "ti", "si", "ci", "vi", "si"];
+
+/**
+ * The compound tenses of an `{{It-conj}}` table, in the order its `forms[]`
+ * lists them: each one's first row, counted from the table's first compound
+ * cell (passato prossimo `io`), the auxiliary the pages of #839 build it on,
+ * and the one essere builds it on. The three simple tenses of the condizionale
+ * and congiuntivo sit between them, so the offsets skip 6 and 12 cells.
+ */
+const COMPOUND_TENSES_ON_AVERE: readonly { offset: number; avere: SixRows; essere: SixRows }[] = [
+  // indicativo: passato prossimo, trapassato prossimo, trapassato remoto, futuro anteriore
+  { offset: 0, avere: ["ho", "hai", "ha", "abbiamo", "avete", "hanno"], essere: ["sono", "sei", "è", "siamo", "siete", "sono"] },
+  { offset: 6, avere: ["avevo", "avevi", "aveva", "avevamo", "avevate", "avevano"], essere: ["ero", "eri", "era", "eravamo", "eravate", "erano"] },
+  { offset: 12, avere: ["ebbi", "avesti", "ebbe", "avemmo", "aveste", "ebbero"], essere: ["fui", "fosti", "fu", "fummo", "foste", "furono"] },
+  { offset: 18, avere: ["avrò", "avrai", "avrà", "avremo", "avrete", "avranno"], essere: ["sarò", "sarai", "sarà", "saremo", "sarete", "saranno"] },
+  // condizionale passato
+  { offset: 30, avere: ["avrei", "avresti", "avrebbe", "avremmo", "avreste", "avrebbero"], essere: ["sarei", "saresti", "sarebbe", "saremmo", "sareste", "sarebbero"] },
+  // congiuntivo: passato, trapassato
+  { offset: 48, avere: ["abbia", "abbia", "abbia", "abbiamo", "abbiate", "abbiano"], essere: ["sia", "sia", "sia", "siamo", "siate", "siano"] },
+  { offset: 54, avere: ["avessi", "avessi", "avesse", "avessimo", "aveste", "avessero"], essere: ["fossi", "fossi", "fosse", "fossimo", "foste", "fossero"] },
+];
+
+/** A pronominal verb's table whose conjugation page builds it on avere (#839). */
+interface AvereTable {
+  record: CorrectedRecord;
+  /** The page's revision in dump `itwiktionary-20260701`, and its `{{It-conj}}` call, verbatim. */
+  page: { revisionId: number; call: string };
+  /** The place in `forms[]` of the auxiliary cell, `avere`, and of passato prossimo `io`. */
+  auxiliary: number;
+  firstCompound: number;
+  /** The past participle, masculine singular: `abbagliato`. */
+  participle: string;
+  /** A second spelling the page's `pp2` adds after the participle in every compound cell: `sottomessosi`. */
+  secondParticiple?: string;
+}
+
+/**
+ * The cells of a pronominal table on avere, set on essere (#839): the
+ * auxiliary `avere` reads `essere`, and each compound cell, `mi ho abbagliato`,
+ * reads `mi sono abbagliato`, its participle plural on a plural row, as rule
+ * `it-pronominal-conjugation/v1` builds it from the base verb's cell. A
+ * second spelling the page's `pp2` adds is not part of what the rule builds,
+ * and the cell drops it. It cites the page the table came from, which builds
+ * every one of those cells on avere: the page carries the error.
+ */
+function onEssere(table: AvereTable): CellCorrection {
+  const { record, page, auxiliary, firstCompound, participle, secondParticiple } = table;
+  const plural = `${participle.slice(0, -1)}i`;
+  const compound = COMPOUND_TENSES_ON_AVERE.flatMap(({ offset, avere, essere }) =>
+    PRONOUNS.map((pronoun, row): CorrectedCell => ({
+      index: firstCompound + offset + row,
+      replaces: `${pronoun} ${avere[row]} ${participle}${secondParticiple === undefined ? "" : `, ${secondParticiple}`}`,
+      surface: `${pronoun} ${essere[row]} ${row < 3 ? participle : plural}`,
+    })),
+  );
+  return {
+    record,
+    cells: [{ index: auxiliary, replaces: "avere", surface: "essere" }, ...compound],
+    evidence: [{ wiki: "it.wiktionary.org", title: `Appendice:Coniugazioni/Italiano/${record.word}`, revisionId: page.revisionId, shows: page.call }],
+  };
+}
+
+const SUDDIVIDERSI_PAGE = {
+  revisionId: 1871323,
+  call: "{{It-conj|suddivid|ersi|avere|\npp=suddiviso|pp2=suddivisosi|\nprem1s=suddivisi|prem3s=suddivise|prem3s2=''|prem3p=suddivisero|prem3p2=''\n}}",
+};
+
 /** The entries written by hand. Add an entry only with its evidence, and only on a ruling. */
 export const HAND_CORRECTIONS: readonly CuratedCorrection[] = [
   {
@@ -789,6 +869,95 @@ export const HAND_CORRECTIONS: readonly CuratedCorrection[] = [
       ruling: "https://github.com/povlabs/lexema/issues/773#issuecomment-6082693102",
     },
   },
+  // Huey's ruling on #839, 2026-10-17
+  // (https://github.com/povlabs/lexema/issues/839#issuecomment-6233239777):
+  // ten pronominal verbs' tables on essere, in archive order. Each page's
+  // revision in dump `itwiktionary-20260701` passes `avere`, mangiarsi's too,
+  // though its page passes `essere` today; so every one of them is corrected.
+  onEssere({
+    record: { releaseId: IT, lineNo: 40838, lineSha256: "aeaa99add26cc33a35ef580bffad5ae3f4dcefd153a17939f35a0a8a3ea2d524", word: "rimediarsi", pos: "verb" },
+    page: { revisionId: 1871438, call: "{{It-conj|rimedi|iarsi|avere}}" },
+    auxiliary: 1,
+    firstCompound: 29,
+    participle: "rimediato",
+  }),
+  onEssere({
+    record: { releaseId: IT, lineNo: 43665, lineSha256: "2cd40d13d6db7fd0785c211a64666ee0d51e38e65517b558913c38b5bd6c5cab", word: "sottomettersi", pos: "verb" },
+    page: {
+      revisionId: 3674754,
+      call: "{{It-conj|sottomett|ersi|avere|\npp=sottomesso|pp2=sottomessosi|\nprem1s=sottomisi|prem3s=sottomise|prem3s2=''|prem3p=sottomisero|prem3p2=''\n}}",
+    },
+    auxiliary: 1,
+    firstCompound: 30,
+    participle: "sottomesso",
+    secondParticiple: "sottomessosi",
+  }),
+  onEssere({
+    record: { releaseId: IT, lineNo: 46649, lineSha256: "d7ed86c20d9e262cd3be02551bc47d015ea35dbe72dfcd7210d80d3994409b17", word: "abbagliarsi", pos: "verb" },
+    page: { revisionId: 1871502, call: "{{It-conj|abbagli|iarsi|avere}}" },
+    auxiliary: 1,
+    firstCompound: 29,
+    participle: "abbagliato",
+  }),
+  onEssere({
+    record: { releaseId: IT, lineNo: 47444, lineSha256: "d80db5710223066cc57ead0e34f06b50b016f2c36b802fb85466488cb8fcf5f0", word: "abbracciarsi", pos: "verb" },
+    page: { revisionId: 1871503, call: "{{It-conj|abbracc|ciarsi|avere}}" },
+    auxiliary: 1,
+    firstCompound: 29,
+    participle: "abbracciato",
+  }),
+  onEssere({
+    record: { releaseId: IT, lineNo: 48343, lineSha256: "08478bfc91b9811a22e0e74511b18bb67de4f05773d28bc08b30259be97055e8", word: "dominarsi", pos: "verb" },
+    page: { revisionId: 1871550, call: "{{It-conj|domin|arsi|avere}}" },
+    auxiliary: 1,
+    firstCompound: 29,
+    participle: "dominato",
+  }),
+  onEssere({
+    record: { releaseId: IT, lineNo: 48582, lineSha256: "770259d98ca1562b9566bcf156e8c8ff82e52750b74fdfd1c0af7a22a913be27", word: "incontrarsi", pos: "verb" },
+    page: { revisionId: 1886367, call: "{{It-conj|incontr|arsi|avere}}" },
+    auxiliary: 1,
+    firstCompound: 29,
+    participle: "incontrato",
+  }),
+  onEssere({
+    record: { releaseId: IT, lineNo: 49460, lineSha256: "7a6d74ab506b2f0bfbad6bdf5f4dd86a6c0245328e82a6d046d3a9443f4b075f", word: "rovesciarsi", pos: "verb" },
+    page: { revisionId: 3502745, call: "{{It-conj|rovesc|ciarsi|avere}}" },
+    auxiliary: 1,
+    firstCompound: 29,
+    participle: "rovesciato",
+  }),
+  // suddividersi's two records hold the same table, from the same page.
+  onEssere({
+    record: { releaseId: IT, lineNo: 106940, lineSha256: "b75a48cff15d983069b27524bfff43f49dfec274a8219896c9ce3291547e9cb0", word: "suddividersi", pos: "verb" },
+    page: SUDDIVIDERSI_PAGE,
+    auxiliary: 1,
+    firstCompound: 30,
+    participle: "suddiviso",
+    secondParticiple: "suddivisosi",
+  }),
+  onEssere({
+    record: { releaseId: IT, lineNo: 106941, lineSha256: "0cd1f78127048cb25efe7abbfafe74b90e974f5813390990b014add6228e57c1", word: "suddividersi", pos: "verb" },
+    page: SUDDIVIDERSI_PAGE,
+    auxiliary: 1,
+    firstCompound: 30,
+    participle: "suddiviso",
+    secondParticiple: "suddivisosi",
+  }),
+  onEssere({
+    record: { releaseId: IT, lineNo: 404796, lineSha256: "448d18dd411759894fe0b97bc787356b3c3073e62943da82b84b6238af8ffeb8", word: "mangiarsi", pos: "verb" },
+    page: { revisionId: 1886364, call: "{{It-conj|mang|giarsi|avere}}" },
+    auxiliary: 1,
+    firstCompound: 29,
+    participle: "mangiato",
+  }),
+  onEssere({
+    record: { releaseId: IT, lineNo: 404816, lineSha256: "76a7cb8441575a2bfff936010efccd3a5b2b36ae1a770fab4e735f2a986d2d21", word: "staccarsi", pos: "verb" },
+    page: { revisionId: 1886422, call: "{{It-conj|stacc|carsi|avere}}" },
+    auxiliary: 1,
+    firstCompound: 29,
+    participle: "staccato",
+  }),
 ];
 
 /**
