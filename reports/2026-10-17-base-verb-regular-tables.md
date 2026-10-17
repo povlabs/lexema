@@ -67,7 +67,7 @@ A word with two records gets one table, under its first record with a meaning.
 | `iare` (24) | cariare, daziare, divariare, falcidiare, fischiare, gozzovigliare, ingraziare, ossequiare, parodiare, presidiare, propiziare, ripudiare, sbrogliare, scagliare, scrocchiare, smagliare, smaliziare, smaniare, soverchiare, spannocchiare, strigliare, uguagliare, vagliare, viziare |
 | `ire-b` (13) | accudire, disostruire, evoluire, gremire, impreziosire, interagire, ordire, rammorbidire, sbizzarrire, sfavorire, spaurire, starnutire, stormire |
 
-Seven calls write `care` or `ciare` on a stem in `g`: `dittongare`,
+Ten calls write `care` or `ciare` on a stem in `g`: `dittongare`,
 `infangare`, `vangare` (`{{It-conj|vang|care|avere}}`) and `primeggiare`,
 `sceneggiare`, `simboleggiare`, `sorseggiare`, `svaligiare`, `vagheggiare`,
 `conteggiare` (`{{It-conj|contegg|ciare|avere}}`). Modulo:It-conj (revision
