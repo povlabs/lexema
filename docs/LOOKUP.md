@@ -244,8 +244,9 @@ Of its Italian records with a `j` between vowels, only three spell another
 record when read with `i`: `troja` (`troia`), the forms of `abbujare`
 (`abbuiare`) and the name `Aja` (`aia`). An accent written as an apostrophe
 (`citta'`) is no elision, and a word with an accent missing (`perche`) is no
-shape: accents are meaning ([LOOKUP_DESIGN.md](LOOKUP_DESIGN.md#accents-are-meaning)),
-and the not-found answer offers the accented word.
+shape: accents are meaning ([LOOKUP_DESIGN.md](LOOKUP_DESIGN.md#accents-are-meaning)).
+A word with its final accent missing is read by the last step instead,
+[below](#a-word-typed-without-its-final-accent).
 
 Every spelling is read in one statement, `shapeReadOf` (`SHAPE_READ_SQL` on a
 dictionary with every optional table): the source's rows as `SEARCH_SQL`
@@ -321,6 +322,39 @@ The readings are those verbs, made as a shape's are; `route` is
 whose form it is, where that form was read, and the pronominal infinitive.
 `exists()` and `lookupBatch` answer the same way, the batch reading every pair
 of its words in the same two waits. Nothing derived is stored.
+
+### A word typed without its final accent
+
+A reader often types a word without its final accent: `perche` for `perché`,
+`piu` for `più`. When every route above misses, a Wikidata word too, and the
+key is one word, `lookup()` opens the one served headword that writes the key
+with a final accent (#846, Huey's
+[ruling](https://github.com/povlabs/lexema/issues/846#issuecomment-6233340944);
+[`src/italian/finalAccent.ts`](../src/italian/finalAccent.ts), read in
+[`src/lookup/accentless.ts`](../src/lookup/accentless.ts)):
+
+1. The key must be one word ending in a plain vowel. Anything else sends
+   nothing more.
+2. `ACCENTED_HEADWORD_SQL` reads the keys `accent_fold` holds under the key's
+   letters, and keeps those some record heads (`lookup_form.origin =
+   'headword'`). It is sent in the call that reads the page-only entries, as
+   soon as the source spells nothing as typed, so it costs one statement and
+   no call.
+3. A headword counts when taking off its final accent gives the key
+   (`accentlessSpelling`): `perché` for `perche`. An accent inside the word
+   must match as typed, and a final apostrophe is no accent.
+4. Exactly one headword must count. When two do, the step opens nothing:
+   `piu` opens nothing on release it-0c432803, which has both `più` and `piú`.
+
+The readings are the headword's own, as a search for it answers them;
+`route` is `{ kind: "accentless", headword }`, the headword as its first
+headword row writes it. The step runs only where nothing else answers, so a
+key that is a word of its own keeps its answer: `papa` stays `papa`, `e` stays
+the conjunction, and `citta` stays the form in `citto`'s table. `exists()` and
+`lookupBatch` answer the same way, the batch reading every word's headword in
+one statement more. The word page shows the headword's own page, with no line
+about the accent ([`searchAttempt.ts`](../web/lib/dictionary/searchAttempt.ts)).
+Nothing derived is stored.
 
 ## Outcomes
 
@@ -665,7 +699,14 @@ and 3):
 1. **Exact lookup**, which already failed.
 2. **Accent.** The query's key with its accents taken off (`foldKey`: NFD,
    combining marks removed) is probed in `accent_fold`, which holds every
-   `surface_key` whose folded spelling differs from it. `citta` → `città`. An
+   `surface_key` whose folded spelling differs from it. `cittá` → `città`.
+   Since #846 a word typed without the final accent of one headword opens
+   that headword instead ([above](#a-word-typed-without-its-final-accent)), so
+   this offer remains for the cases that rule leaves out: a wrong accent
+   (`perchè` → `perché`), a missing final apostrophe (`dall` → `dall'`), and
+   a key two headwords lack a final accent of (`piu` → `più`, `piú`). An
+   accent written as an apostrophe (`citta'`) is not found either, and gets
+   whatever the later steps offer. An
    accented query also tries its unaccented spelling. A query that does not
    end in an apostrophe also tries its folded key with one added, as a key of
    its own and in `accent_fold` (#468): `dall` → `dall'`, offered in the same

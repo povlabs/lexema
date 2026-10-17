@@ -280,7 +280,10 @@ offers what is close, in order: the same letters with an accent, a spelling one
 edit away, the words that begin with it, or how to search instead
 ([the lookup reference](LOOKUP.md#when-nothing-is-found)). The old "Nothing in
 this release matches … Accents matter" line is gone: the accent step now finds
-`città` for `citta` itself.
+`città` for `cittá` itself. A word typed without the final accent of one
+headword is no not-found page: it shows that headword's own page, `perche`
+`perché`'s, with no line about the accent (#846,
+[the lookup reference](LOOKUP.md#a-word-typed-without-its-final-accent)).
 
 **A word only its forms name.** About 9,000 lemmas have no record of their own,
 but the bot-made records of their forms say which form they are

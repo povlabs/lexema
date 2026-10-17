@@ -1344,7 +1344,11 @@ export interface PhraseForm {
  * `it-pronominal-pair/v2` reads it, a reflexive pronoun and a verb form, as a
  * pronominal verb the dictionary has (`mi trasferisco` of `trasferirsi`,
  * #810, #834); `pairs` are the pairs that answered, and the readings are
- * those verbs.
+ * those verbs. `accentless`: nothing answers it, not even a Wikidata word,
+ * and it is one word typed without the final accent of exactly one served
+ * headword (`perche` of `perché`, #846, src/lookup/accentless.ts);
+ * `headword` is that headword as the source writes it, and the readings are
+ * its own, as a search for it answers them.
  */
 export type FoundRoute =
   | { kind: "surface" }
@@ -1352,7 +1356,8 @@ export type FoundRoute =
   | { kind: "feminine"; agreement: AgreeingSpelling }
   | { kind: "first-spelling"; agreement: AgreeingSpelling }
   | { kind: "shape"; spellings: [ShapedSpelling, ...ShapedSpelling[]] }
-  | { kind: "pronominal"; pairs: [PronominalPair, ...PronominalPair[]] };
+  | { kind: "pronominal"; pairs: [PronominalPair, ...PronominalPair[]] }
+  | { kind: "accentless"; headword: string };
 
 /**
  * The index was probed and at least one record matched. The readings are a
