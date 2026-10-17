@@ -33,8 +33,23 @@ export interface SourceRef {
   lineSha256: string;
 }
 
+/**
+ * One occurrence of the searched surface on one reading: a field of an
+ * archive line, or a Wikidata word's lemma or one of its forms (#851).
+ */
+export type Evidence = ArchiveEvidence | LexemeEvidence;
+
+/**
+ * One occurrence of the searched surface on a Wikidata word (ADR 0033, #851):
+ * its lemma, pointed at by its lexeme, or one of its forms, pointed at by the
+ * form's id. A lexeme names no conjugation table.
+ */
+export type LexemeEvidence =
+  | { origin: "headword"; surface: string; ref: LexemeRef; formSource: null }
+  | { origin: "embedded-form"; surface: string; ref: LexemeFormRef; formSource: null };
+
 /** One occurrence of the searched surface on one record. */
-export interface Evidence {
+export interface ArchiveEvidence {
   /**
    * 'headword'      — this record IS about the surface.
    * 'embedded-form' — it merely lists the surface in a table. It may or may not
@@ -170,8 +185,19 @@ export interface SourceForm {
   claims: GrammarClaim[];
 }
 
-/** A form's own tags and raw tags, recovered from its claims by pointer. */
+/**
+ * A form's own tags and raw tags, recovered from its claims by pointer. A
+ * Wikidata word's form states only tags the closed vocabulary maps, so on it
+ * an unclassified claim is a raw tag: the pronoun its row writes (#833).
+ */
 export function sourceTagsOf(form: SourceForm): { tags: string[]; rawTags: string[] } {
+  if (isLexemeFormRef(form.ref)) {
+    const said = form.claims.flatMap((claim) => (claim.status === "missing" ? [] : [claim]));
+    return {
+      tags: said.flatMap((claim) => (claim.status === "stated" ? [claim.sourceText] : [])),
+      rawTags: said.flatMap((claim) => (claim.status === "unclassified" ? [claim.sourceText] : [])),
+    };
+  }
   return sourceTagsAt(
     form.claims.flatMap((claim) => (claim.status === "missing" ? [] : [{ pointer: sourcePointerOf(claim.ref), text: claim.sourceText }])),
   );
@@ -347,11 +373,12 @@ export interface RecoveredRef {
 }
 
 /**
- * Where a fact a page shows was read: a field of an archive line, or a line of
- * a raw page for a page-only entry (ADR 0026). The two are told apart by
- * shape, never by a flag that could disagree with it.
+ * Where a fact a page shows was read: a field of an archive line, a line of a
+ * raw page for a page-only entry (ADR 0026), or a form of a Wikidata word's
+ * lexeme (ADR 0033, #833). The three are told apart by shape, never by a flag
+ * that could disagree with it.
  */
-export type FactRef = SourceRef | RecoveredRef;
+export type FactRef = SourceRef | RecoveredRef | LexemeFormRef;
 
 /** Whether a fact was read from the archive rather than from a raw page, or from a name entry's Wikidata item or a Wikidata word's lexeme. */
 export const isSourceRef = (ref: FactRef | NameRef | LexemeRef): ref is SourceRef => "jsonPointer" in ref;
@@ -363,7 +390,9 @@ export const sourcePointerOf = (ref: FactRef): string | undefined => (isSourceRe
 export const factRefKey = (ref: FactRef): string =>
   isSourceRef(ref)
     ? `${ref.releaseId}\u0000${ref.lineNo}\u0000${ref.jsonPointer}`
-    : `${ref.wiki}\u0000${ref.title}\u0000${ref.revisionId}\u0000${ref.line}`;
+    : isLexemeFormRef(ref)
+      ? `${ref.wiki}\u0000${ref.snapshot}\u0000${ref.form}`
+      : `${ref.wiki}\u0000${ref.title}\u0000${ref.revisionId}\u0000${ref.line}`;
 
 /** The permanent URL of the page revision a recovered ref names. */
 export function recoveredRevisionUrl(ref: RecoveredRef): string {
@@ -533,6 +562,19 @@ export interface LexemeRef {
   lineSha256?: never;
   jsonPointer?: never;
 }
+
+/**
+ * Where a fact of one form of a Wikidata word was read (#833): its lexeme, as
+ * `LexemeRef` names it, and the form's own id there. A form's tags are read
+ * off its grammatical features (src/wikidataWords/formFeatures.ts), so each
+ * points at the form that states them.
+ */
+export interface LexemeFormRef extends LexemeRef {
+  form: `L${number}-F${number}`;
+}
+
+/** Whether a fact was read off a Wikidata word's form. */
+export const isLexemeFormRef = (ref: FactRef): ref is LexemeFormRef => "form" in ref;
 
 /** Whether an entry is a Wikidata word rather than a reading of Wiktionary's or Lexema's, or a name entry. */
 export const isWikidataWord = (entry: EntryIdentity): entry is LexemeIdentity => entry.lexeme !== undefined;
@@ -1106,20 +1148,52 @@ export function namesOneRecordOf(pos: string, inflection: Pick<InflectionOf, "ta
  *
  * The two come off the same evidence list, split by the kind each occurrence
  * carries. An `embedded-form` occurrence is the surface inside this record's
- * table, and its `ref.jsonPointer` is the same pointer the matching
- * `SourceForm` carries — both read from one `lookup_form` row
- * (`src/db/schema.sql`, view `surface_hit`), so a page marks a form by pointer
- * rather than by spelling: no normalizing, no case guessing, and no risk of
- * outlining a spelling the index never matched. A `headword` occurrence has no
- * `forms[]` entry to point at — its ref is `/word` — so it is its own flag, and
- * a record whose headword is the query is marked where that headword sits.
+ * table, and its ref names the same form the matching `SourceForm` carries:
+ * a record's by the JSON pointer both read from one `lookup_form` row
+ * (`src/db/schema.sql`, view `surface_hit`), a Wikidata word's by the form's
+ * id (#851). So a page marks a form by its {@link SearchedFormKey} rather than
+ * by spelling: no normalizing, no case guessing, and no risk of outlining a
+ * spelling the index never matched. A `headword` occurrence has no `forms[]`
+ * entry to point at — its ref is `/word`, or the lexeme — so it is its own
+ * flag, and a record whose headword is the query is marked where that
+ * headword sits.
  */
 export interface SearchedSpellings {
   /** True when the query hit this record's own headword. */
   readonly headword: boolean;
-  /** The `ref.jsonPointer` of every `forms[]` entry the query hit. */
-  readonly formPointers: ReadonlySet<string>;
+  /** The key of every form the query hit. */
+  readonly forms: ReadonlySet<SearchedFormKey>;
 }
+
+/**
+ * Which form a search hit, as one string: a record's `forms[]` entry by its
+ * JSON pointer, which starts with `/`, or a Wikidata word's form by its id,
+ * which starts with `L` (#851). The two shapes cannot meet, and a key is
+ * always one of them.
+ */
+export type SearchedFormKey = `/${string}` | `L${number}-F${number}`;
+
+/** The key a search names a form by, read off where the form was read; none for a raw page's line, or a record's whole line, which no query hits as a form. */
+export function searchedFormKey(ref: FactRef): SearchedFormKey | undefined {
+  if (isLexemeFormRef(ref)) return ref.form;
+  return isSourceRef(ref) && ref.jsonPointer.startsWith("/") ? (ref.jsonPointer as `/${string}`) : undefined;
+}
+
+/** Where a form a search can hit was read: a record's `forms[]` entry, or a Wikidata word's form. */
+export type SearchableFormRef = SourceRef | LexemeFormRef;
+
+/** `ref`, when the search hit the form read there; undefined otherwise. */
+export function searchedFormRef(searched: SearchedSpellings, ref: FactRef): SearchableFormRef | undefined {
+  if (!isLexemeFormRef(ref) && !isSourceRef(ref)) return undefined;
+  const key = searchedFormKey(ref);
+  return key !== undefined && searched.forms.has(key) ? ref : undefined;
+}
+
+/** Whether the search hit the form read at `ref`. */
+export const isSearchedForm = (searched: SearchedSpellings, ref: FactRef): boolean => searchedFormRef(searched, ref) !== undefined;
+
+/** What a search hit of a table it did not reach: nothing. */
+export const NOTHING_SEARCHED: SearchedSpellings = { headword: false, forms: new Set() };
 
 /**
  * Read {@link SearchedSpellings} off a reading's own evidence (#49), or off a
@@ -1128,10 +1202,11 @@ export interface SearchedSpellings {
 export function searchedSpellings(hit: { readonly evidence: readonly Evidence[] }): SearchedSpellings {
   return {
     headword: hit.evidence.some((occurrence) => occurrence.origin === "headword"),
-    formPointers: new Set(
-      hit.evidence
-        .filter((occurrence) => occurrence.origin === "embedded-form")
-        .map((occurrence) => occurrence.ref.jsonPointer),
+    forms: new Set(
+      hit.evidence.flatMap((occurrence) => {
+        const key = occurrence.origin === "embedded-form" ? searchedFormKey(occurrence.ref) : undefined;
+        return key === undefined ? [] : [key];
+      }),
     ),
   };
 }
@@ -1260,9 +1335,10 @@ export interface PhraseForm {
  * shape of words the dictionary has (`raccontarvi` of `raccontare`,
  * `quei` of `quello`, #809); `spellings` are the spellings that answered, and the
  * readings are their records. `pronominal`: it is none of these, and rule
- * `it-pronominal-pair/v1` reads it, `si` and a verb form, as a pronominal
- * verb the dictionary has (`si trasferiscono` of `trasferirsi`, #810);
- * `pairs` are the pairs that answered, and the readings are those verbs.
+ * `it-pronominal-pair/v2` reads it, a reflexive pronoun and a verb form, as a
+ * pronominal verb the dictionary has (`mi trasferisco` of `trasferirsi`,
+ * #810, #834); `pairs` are the pairs that answered, and the readings are
+ * those verbs.
  */
 export type FoundRoute =
   | { kind: "surface" }

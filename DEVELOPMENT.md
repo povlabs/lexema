@@ -141,6 +141,12 @@ pnpm run seed:dev
 pnpm --filter @lexema/web build
 ```
 
+`pnpm run seed:state <directory>` puts a seeded state at a new directory in about
+a second. It copies a state kept for the seed's inputs in the main checkout's
+`.data/seeded-states/`, and runs `seed:dev` first when none is kept
+([src/import/seededStates.ts](./src/import/seededStates.ts)). `fabrika ui render`
+starts the page this way ([.fabrika.jsonc](./.fabrika.jsonc)).
+
 See [how to run the search page](./docs/RUN_THE_SITE.md) for the full recipe,
 [how to deploy it](./docs/DEPLOY.md) for production,
 [why the search page works this way](./docs/WEB.md) for the design, and

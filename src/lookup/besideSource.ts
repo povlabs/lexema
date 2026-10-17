@@ -25,13 +25,13 @@ const NEWEST = `k.snapshot = (SELECT MAX(l.snapshot) FROM wikidata_word l WHERE 
 /** One arm per layer of the read of one key's readings; every arm names every column, so any one may come first. */
 const READING_ARMS = {
   kept: `SELECT 'kept' AS layer, reading_id, definition_index, word, pos, pos_title, text, page_line, wikitext,
-       section_line, section_wikitext, evidence_url, revision_timestamp, NULL AS item, NULL AS category, NULL AS snapshot
+       section_line, section_wikitext, evidence_url, revision_timestamp, NULL AS item, NULL AS category, NULL AS snapshot, NULL AS forms
   FROM hand_kept_definition WHERE word_key = ?1`,
   name: `SELECT 'name' AS layer, NULL AS reading_id, NULL AS definition_index, label AS word, NULL AS pos, NULL AS pos_title, description AS text, NULL AS page_line, NULL AS wikitext,
-       NULL AS section_line, NULL AS section_wikitext, NULL AS evidence_url, NULL AS revision_timestamp, item, category, NULL AS snapshot
+       NULL AS section_line, NULL AS section_wikitext, NULL AS evidence_url, NULL AS revision_timestamp, item, category, NULL AS snapshot, NULL AS forms
   FROM name_entry WHERE label_key = ?1`,
   lexeme: `SELECT 'lexeme' AS layer, NULL AS reading_id, NULL AS definition_index, w.lemma AS word, NULL AS pos, NULL AS pos_title, w.glosses AS text, NULL AS page_line, NULL AS wikitext,
-       NULL AS section_line, NULL AS section_wikitext, NULL AS evidence_url, NULL AS revision_timestamp, w.lexeme AS item, w.category AS category, w.snapshot AS snapshot
+       NULL AS section_line, NULL AS section_wikitext, NULL AS evidence_url, NULL AS revision_timestamp, w.lexeme AS item, w.category AS category, w.snapshot AS snapshot, w.forms AS forms
   FROM wikidata_word_key k JOIN wikidata_word w ON w.lexeme = k.lexeme AND w.snapshot = k.snapshot
  WHERE k.word_key = ?1 AND ${NEWEST}`,
 } as const;
@@ -83,7 +83,7 @@ SELECT label_key, 'name', NULL, NULL, label, NULL, NULL, NULL, NULL, item, categ
 type BesideRow =
   | ({ layer: "kept" } & HandKeptDefinitionRow)
   | { layer: "name"; word: string; text: string; item: `Q${number}`; category: string }
-  | { layer: "lexeme"; word: string; text: string; item: `L${number}`; category: string; snapshot: string };
+  | { layer: "lexeme"; word: string; text: string; item: `L${number}`; category: string; snapshot: string; forms: string };
 type BesideHeadRow =
   | ({ layer: "kept" } & HandKeptHeadRow)
   | { layer: "name"; set_key: string; word: string; item: `Q${number}`; category: string }
@@ -147,7 +147,7 @@ function layered(db: LookupDatabase, releaseId: string, readings: DictionaryRead
         .sort((a, b) => lexemeNumber(a.lexeme) - lexemeNumber(b.lexeme));
       return {
         readings: [...handKeptReadingsFrom(releaseId, kept), ...inShownOrder(names).map((row) => nameReading(releaseId, row))],
-        wikidataWords: words.map((row) => wikidataWordReading(releaseId, row)),
+        wikidataWords: words.map((row) => wikidataWordReading(releaseId, row, key)),
       };
     },
     heads: async (keys) => {
