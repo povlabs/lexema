@@ -1,15 +1,28 @@
 // What the footer's one *Fonte* credits (ADR 0009, ADR 0032, ADR 0033, #827):
-// the Wiktionary page of a word, or, on a page of Wikidata entries alone, the
-// Wikidata page of the first: a name entry's item, or a Wikidata word's
-// lexeme. One value, so a page cannot credit both or neither.
+// the Wiktionary page of a word; on a page a hand-kept reading heads, the
+// en.wiktionary revision it cites (ADR 0031, #856); or, on a page of Wikidata
+// entries alone, the Wikidata page of the first: a name entry's item, or a
+// Wikidata word's lexeme. One value, so a page cannot credit two or none.
 
 import { wikidataItemUrl } from "@lexema/lookup/names.ts";
-import { lexemePageUrl, sourcePageUrl } from "./sourcePage.ts";
-import { nameSourceLinkName, sourceLinkName } from "./wordPageText.ts";
+import type { CitedRevision } from "@lexema/lookup/types.ts";
+import { citedRevisionUrl, lexemePageUrl, sourcePageUrl } from "./sourcePage.ts";
+import { citedRevisionLinkName, nameSourceLinkName, sourceLinkName } from "./wordPageText.ts";
 
 /** The Wiktionary page of `word`: every page with a Wiktionary reading. */
 export interface WiktionarySource {
   kind: "wiktionary";
+  word: string;
+}
+
+/**
+ * The en.wiktionary revision a hand-kept reading cites, on a page that reading
+ * heads: it.wiktionary has no page it was read from (`eguaglianza`, `Sig.`;
+ * Huey's ruling of 2026-10-17 on #856). `word` is the reading's.
+ */
+export interface CitedRevisionSource {
+  kind: "cited-revision";
+  cites: CitedRevision;
   word: string;
 }
 
@@ -27,7 +40,7 @@ export interface LexemeSource {
   word: string;
 }
 
-export type FooterSource = WiktionarySource | WikidataSource | LexemeSource;
+export type FooterSource = WiktionarySource | CitedRevisionSource | WikidataSource | LexemeSource;
 
 export const wiktionarySource = (word: string): WiktionarySource => ({ kind: "wiktionary", word });
 
@@ -36,6 +49,8 @@ export function footerSourceLink(source: FooterSource): { href: string; name: st
   switch (source.kind) {
     case "wiktionary":
       return { href: sourcePageUrl(source.word), name: sourceLinkName(source.word) };
+    case "cited-revision":
+      return { href: citedRevisionUrl(source.cites), name: citedRevisionLinkName(source.word) };
     case "wikidata":
       return { href: wikidataItemUrl(source.item), name: nameSourceLinkName(source.word) };
     case "lexeme":

@@ -466,6 +466,17 @@ export function everyRecovered(reading: Pick<Reading, "senses" | "recovered">): 
 }
 
 /**
+ * The en.wiktionary revision a hand-kept reading cites (ADR 0031): where its
+ * text came from, so what the page's *Fonte* and the API's credit open for
+ * it, since it.wiktionary has no page it was read from (Huey's ruling of
+ * 2026-10-17 on #856). `citedRevisionUrl` (src/lookup/handKept.ts) is its link.
+ */
+export interface CitedRevision {
+  title: string;
+  revisionId: number;
+}
+
+/**
  * What an entry is: a source record, pointed at by its archive line; a
  * page-only entry (ADR 0024, #403), pointed at by its page revision; a
  * hand-kept reading (ADR 0031, #745), pointed at by the en.wiktionary revision
@@ -476,7 +487,7 @@ export function everyRecovered(reading: Pick<Reading, "senses" | "recovered">): 
 export type EntryIdentity =
   | ({ recordId: number; entryId?: never; handKeptId?: never; nameItem?: never; description?: never; ref: SourceRef } & NotLexeme)
   | ({ entryId: number; recordId?: never; handKeptId?: never; nameItem?: never; description?: never; ref: PageEntryRef } & NotLexeme)
-  | ({ handKeptId: string; recordId?: never; entryId?: never; nameItem?: never; description?: never; ref: PageEntryRef } & NotLexeme)
+  | ({ handKeptId: string; recordId?: never; entryId?: never; nameItem?: never; description?: never; ref: PageEntryRef; cites: CitedRevision } & NotLexeme)
   | (NameIdentity & NotLexeme)
   | LexemeIdentity;
 

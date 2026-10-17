@@ -366,7 +366,9 @@ heading naming no gender or number of its record's. The page shows no
 pronunciation, etymology, word list or expression: they are the base
 word's. Its one *Fonte* opens the Wiktionary page of the base word whose
 record it shows (`quei` → *quello*), since the searched spelling has none
-(`shapeSourceWord`; [Huey, 2026-10-15](https://github.com/povlabs/lexema/issues/802#issuecomment-6194867415)). The other records
+(`shapeSourceReading`; [Huey, 2026-10-15](https://github.com/povlabs/lexema/issues/802#issuecomment-6194867415)),
+or the en.wiktionary revision a hand-kept base word cites (`cosette` →
+*cosetta*'s; [#856](https://github.com/povlabs/lexema/issues/856#issuecomment-6237102495)). The other records
 keep their readings, as every page did before #695, less two kinds of form;
 #696 ruled only that a lone one carries no number. A record
 that lists the query and declares itself a form of a reading about the query
@@ -662,7 +664,11 @@ more. It opens the Italian Wiktionary page of the spelling in the page's title:
 page instead: `vado via` links to `andare via`'s page, never the searched
 word's; a search that spells two expressions links to the first one the page
 shows: `volto le spalle` links to *voltare le spalle*. A word shape's page
-links to the base word whose record it shows: `quei` links to *quello*'s page
+links to the base word whose record it shows: `quei` links to *quello*'s page.
+A page a hand-kept reading heads links the en.wiktionary revision that reading
+cites, since it.wiktionary has no page it was read from: `eguaglianza` and
+`Sig.` link theirs, and the API credits the reading the same way
+(`citedRevisionUrl`; [#856](https://github.com/povlabs/lexema/issues/856#issuecomment-6237102495))
 ([#291](https://github.com/povlabs/lexema/issues/291);
 [#802](https://github.com/povlabs/lexema/issues/802#issuecomment-6194867415);
 [design law](../design-system-manifest.md#layout)).

@@ -166,6 +166,21 @@ test("every found result carries the release and an attribution with the word's 
   }
 });
 
+test("a hand-kept reading is credited to the en.wiktionary revision it cites, alike by /lookup, /lookup/batch and /exists: Sig. (#856)", async () => {
+  // it.wiktionary has no page `Sig.`; its reading cites en.wiktionary's revision 89865273 (src/italian/handKeptReadings.ts).
+  const cited = {
+    licence: "CC BY-SA 4.0",
+    licence_url: "https://creativecommons.org/licenses/by-sa/4.0/",
+    source: "Wiktionary",
+    source_url: "https://en.wiktionary.org/w/index.php?title=Sig.&oldid=89865273",
+  };
+  const looked = await okBody("lookup?q=Sig.");
+  assert.deepEqual(looked.results.map((result: Json) => [result.word, result.attribution]), [["Sig.", cited]]);
+  const batch = await okBody("lookup/batch", JSON.stringify({ q: ["Sig."] }));
+  assert.deepEqual(batch.results.map((result: Json) => [result.lemma, result.attribution]), [["Sig.", cited]]);
+  assert.deepEqual((await okBody("exists?q=Sig.")).attribution, cited);
+});
+
 /** Every spelling `findNearby` offers, in the order the answer lists them. */
 function offeredBy(nearby: Nearby): string[] {
   switch (nearby.kind) {

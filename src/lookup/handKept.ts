@@ -8,12 +8,16 @@
 // spelling leads to its word, as a form record leads to its lemma:
 // `eguaglianza` to uguaglianza (#830).
 
+import { evidenceUrl } from "../italian/curatedCorrections.js";
 import { alternativeOf } from "../italian/handKeptReadings.js";
 import { keyedRead, readKeys, type DictionaryRead, type KeyedRead, type LookupDatabase } from "./database.js";
 import { readingPartOfSpeech } from "./articles.js";
 import { lemmaLink, NO_ENTRY_FACTS } from "./pageFacts.js";
 import type { DictionaryTables } from "./served.js";
-import type { LemmaCandidate, PageEntryRef, Reading, ReadingPartOfSpeech, RecoveredDefinition } from "./types.js";
+import type { CitedRevision, LemmaCandidate, PageEntryRef, Reading, ReadingPartOfSpeech, RecoveredDefinition } from "./types.js";
+
+/** A cited revision's permanent link, as the reading's evidence states it: `https://en.wiktionary.org/w/index.php?title=Sig.&oldid=89865273`. */
+export const citedRevisionUrl = ({ title, revisionId }: CitedRevision): string => evidenceUrl({ wiki: "en.wiktionary.org", title, revisionId });
 
 /** One definition of a hand-kept reading, as `HAND_KEPT_SQL` reads it. */
 export interface HandKeptDefinitionRow {
@@ -61,12 +65,14 @@ export interface HandKeptHeadRow {
 /**
  * A hand-kept reading named, without its definitions: what a batch candidate
  * carries (src/lookup/batch.ts). `revisionId` and `pageLine` are its `ref`'s
- * revision and section line, so its public id is the one a full lookup gives it.
+ * revision and section line, so its public id is the one a full lookup gives it;
+ * `cites` is that revision, which its credit opens.
  */
 export interface HandKeptHead {
   handKeptId: string;
   releaseId: string;
   revisionId: number;
+  cites: CitedRevision;
   pageLine: number;
   word: string;
   pos: string;
@@ -129,10 +135,13 @@ export async function handKeptReadingsFrom(db: LookupDatabase, releaseId: string
 const NO_PAGE_CANDIDATES = async (): Promise<LemmaCandidate[]> => [];
 
 /** A reading named by its head row, as `HAND_KEPT_HEADS_SQL` reads it or one read as it reads them; `releaseId` is the served release's. */
-export const handKeptHeadOf = (releaseId: string, row: Omit<HandKeptHeadRow, "set_key">): HandKeptHead => ({
-  handKeptId: row.reading_id, releaseId, revisionId: revisionOf(row.evidence_url).revisionId, pageLine: row.section_line,
-  word: row.word, pos: row.pos, posTitle: row.pos_title,
-});
+export const handKeptHeadOf = (releaseId: string, row: Omit<HandKeptHeadRow, "set_key">): HandKeptHead => {
+  const cites = citedRevisionOf(row.evidence_url);
+  return {
+    handKeptId: row.reading_id, releaseId, revisionId: cites.revisionId, cites, pageLine: row.section_line,
+    word: row.word, pos: row.pos, posTitle: row.pos_title,
+  };
+};
 
 /** A hand-kept reading's part of speech, articles and all: its own, with no claims, forms or pronunciations, since it keys to no record. */
 function handKeptPartOfSpeech({ pos, word }: { pos: string; word: string }): ReadingPartOfSpeech {
@@ -146,6 +155,12 @@ function revisionOf(url: string): { wiki: string; title: string; revisionId: num
   return { wiki: parsed.hostname, title: parsed.searchParams.get("title") ?? "", revisionId: Number(parsed.searchParams.get("oldid")) };
 }
 
+/** The cited revision a reading's stored permanent link names. */
+function citedRevisionOf(url: string): CitedRevision {
+  const { title, revisionId } = revisionOf(url);
+  return { title, revisionId };
+}
+
 function readingOf(releaseId: string, [first, ...rest]: readonly [HandKeptDefinitionRow, ...HandKeptDefinitionRow[]]): Reading {
   const revision = revisionOf(first.evidence_url);
   const ref: PageEntryRef = {
@@ -157,7 +172,7 @@ function readingOf(releaseId: string, [first, ...rest]: readonly [HandKeptDefini
   }));
   const { claims, forms, wordFacts, lemmaLinks } = NO_ENTRY_FACTS;
   return {
-    handKeptId: first.reading_id, ref, word: first.word,
+    handKeptId: first.reading_id, ref, cites: citedRevisionOf(first.evidence_url), word: first.word,
     ...handKeptPartOfSpeech(first), posTitle: first.pos_title,
     isAboutQuery: true, evidence: [], senses: [], recovered, forms, wordFacts, translations: [],
     grammar: { record: claims, byForm: new Map(), bySense: new Map() },

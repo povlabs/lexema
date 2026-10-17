@@ -38,7 +38,7 @@ import { dictionaryTables, servedBy, type DictionaryTables } from "./served.js";
 import { besideSourceOf } from "./besideSource.js";
 import { unlessDeclaredLemma } from "./wikidataWords.js";
 import { readTranslations } from "./sourceRecord.js";
-import { lemmasOfPartOfSpeech, sourceTagsAt, type QueryInfo, type RejectedResult, type ReleaseInfo, type Translation } from "./types.js";
+import { lemmasOfPartOfSpeech, sourceTagsAt, type CitedRevision, type QueryInfo, type RejectedResult, type ReleaseInfo, type Translation } from "./types.js";
 import { agreeingQuery, agreementProbes, namesCell, type AgreeingQuery } from "../italian/essereAgreement.js";
 import { personOfItalianVerbForm } from "../italian/moods.js";
 import { prefixUpperBound } from "./keyRange.js";
@@ -53,7 +53,7 @@ import { prefixUpperBound } from "./keyRange.js";
 export type CandidateRecord = (
   | { recordId: number; entryId?: never; handKeptId?: never; nameItem?: never; lexeme?: never; lineNo: number }
   | { entryId: number; revisionId: number; pageLine: number; recordId?: never; handKeptId?: never; nameItem?: never; lexeme?: never; lineNo?: never }
-  | { handKeptId: string; revisionId: number; pageLine: number; recordId?: never; entryId?: never; nameItem?: never; lexeme?: never; lineNo?: never }
+  | { handKeptId: string; revisionId: number; cites: CitedRevision; pageLine: number; recordId?: never; entryId?: never; nameItem?: never; lexeme?: never; lineNo?: never }
   | { nameItem: `Q${number}`; recordId?: never; entryId?: never; handKeptId?: never; lexeme?: never; lineNo?: never; revisionId?: never; pageLine?: never }
   | { lexeme: `L${number}`; recordId?: never; entryId?: never; handKeptId?: never; nameItem?: never; lineNo?: never; revisionId?: never; pageLine?: never }
 ) & {
