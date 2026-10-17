@@ -148,11 +148,11 @@
 // (`senseHideMisquote`). The seed writes it as a `hidden_sense` row beside
 // the record (src/import/correctedLayer.ts), `pnpm run correct:records`
 // writes it into a master seeded before it, and a lookup reads the record as
-// having no such sense (`SENSE_GLOSS_SQL` in src/lookup/lookup.ts). The
-// `sense` row and its gloss stay as imported. The digest pins the line, so a
-// record a later release changes does not get it: the seed reports it, and
-// the update reports it for the record that replaced its record (ADR 0025,
-// ADR 0027).
+// having no such sense (`readSenseRows` picks `HIDING_SENSE_GLOSS_SQL` in
+// src/lookup/lookup.ts). The `sense` row and its gloss stay as imported.
+// The digest pins the line, so a record a later release changes does not
+// get it: the seed reports it, and the update reports it for the record
+// that replaced its record (ADR 0025, ADR 0027).
 
 import { FORM_OF_GLOSS_EDGE_EVIDENCE } from "./formOfGlossEdgeEvidence.js";
 import { formOfGlossEdgeCorrections } from "./formOfGlossEdge.js";
