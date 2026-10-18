@@ -25,8 +25,8 @@ catalogs:
       specifier: 1.56.0
       version: 1.56.0
     '@kampus/fabrika-cli':
-      specifier: 0.9.0
-      version: 0.9.0
+      specifier: 0.10.0
+      version: 0.10.0
     '@tailwindcss/vite':
       specifier: 4.3.3
       version: 4.3.3
@@ -117,7 +117,7 @@ importers:
     devDependencies:
       '@kampus/fabrika-cli':
         specifier: 'catalog:'
-        version: 0.9.0(fast-check@4.10.2)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(redis@6.3.0)(ws@8.22.0)
+        version: 0.10.0(fast-check@4.10.2)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(redis@6.3.0)(ws@8.22.0)
       '@types/node':
         specifier: catalog:node22
         version: 22.20.1
@@ -1059,8 +1059,8 @@ packages:
   '@jridgewell/trace-mapping@0.3.9':
     resolution: {integrity: sha512-3Belt6tdc8bPgAtbcmdtNJlirVoTmEb5e2gC94PnkwEW9jI6CAHUeoG85tjWP5WquqfavoMtMwiG4P926ZKKuQ==}
 
-  '@kampus/fabrika-cli@0.9.0':
-    resolution: {integrity: sha512-rB5X7N7N2VCNzKGi1yeAfj9YjFlUyk8vPd+oVyjqmvanySa14Z3UcvhU5ffByM9qCN13dzwE6rJUkVzgb55rhw==}
+  '@kampus/fabrika-cli@0.10.0':
+    resolution: {integrity: sha512-KVVxu86TDR2Usf93yFWS+55c8bDMUsaQp2mZPFExUi3old8+JLrJFFV4CZ9AUy0+dCX9WW9bVnqMaLTC8QXDzA==}
     engines: {node: '>=22.12'}
     hasBin: true
 
@@ -3227,7 +3227,7 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.6.0
 
-  '@kampus/fabrika-cli@0.9.0(fast-check@4.10.2)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(redis@6.3.0)(ws@8.22.0)':
+  '@kampus/fabrika-cli@0.10.0(fast-check@4.10.2)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(redis@6.3.0)(ws@8.22.0)':
     dependencies:
       '@demlik/tea': 0.19.0(effect@4.0.0-rc.112)(fast-check@4.10.2)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(ws@8.22.0)
       '@effect/platform-node': 4.0.0-rc.112(effect@4.0.0-rc.112)(redis@6.3.0)

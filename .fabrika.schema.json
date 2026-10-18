@@ -112,6 +112,11 @@
 				"pattern": "\\.md$"
 			}
 		},
+		"baseRedLaps": {
+			"type": "integer",
+			"description": "How many free laps one epic child's task gets when `lane integrate` proves the assembly base was already red (exit 75), counted since the task's last UNBLOCKED or DONE. Past it, `lane report` records the `assembly-base-red` park instead of the lap. Shipped default 2; 0 parks every red base at once.",
+			"minimum": 0
+		},
 		"boardVocabulary": {
 			"type": "object",
 			"description": "The statuses, types, priorities, audiences and standing lanes this repo's board runs on. Every sub-key is independently optional.",
@@ -175,7 +180,7 @@
 				},
 				"standingLanes": {
 					"type": "array",
-					"description": "The standing-lane labels; an empty list means every issue homes on a milestone.",
+					"description": "The standing-lane labels this repo runs. Nothing is shipped for it: an absent key and an empty list both mean every issue homes on a milestone.",
 					"items": {
 						"type": "string",
 						"minLength": 1
@@ -194,38 +199,85 @@
 					"description": "The on-call board. `\"onCall\": {}` splits on the shipped values; declare only the sub-keys you want to change.",
 					"properties": {
 						"route": {
-							"type": "object",
-							"description": "Which issues land on the on-call board: an issue whose origin, type or any label matches goes there; everything else stays on the product board. Default: origin customer, type bug, no label.",
-							"properties": {
-								"origins": {
+							"description": "Which issues land on the on-call board: an issue that matches any one rule goes there; everything else stays on the product board. Default: every customer report and every bug, `[{\"origins\": [\"customer\"]}, {\"types\": [\"bug\"]}]`. For a smaller on-call, declare rules that each name several attributes, e.g. `[{\"types\": [\"bug\"], \"labels\": [\"p0\", \"p1\"]}, {\"types\": [\"bug\"], \"origins\": [\"customer\"]}]` keeps a p2 bug nobody outside filed, a customer's ask and an untyped report on the table.",
+							"oneOf": [
+								{
 									"type": "array",
+									"description": "A list of rules; an issue that matches any one goes to on-call.",
 									"items": {
-										"type": "string",
-										"minLength": 1
-									},
-									"uniqueItems": true,
-									"description": "Origins that route an issue to on-call, as the Origin field names them (customer, hand-start, driver pick, found mid-lane, experiment, bet). An issue with no row reads as customer when its filer only uses the product. Default customer."
+										"type": "object",
+										"description": "One rule. An issue matches it when it matches every attribute the rule names; an attribute left out does not narrow it, and a rule must name at least one.",
+										"properties": {
+											"origins": {
+												"type": "array",
+												"items": {
+													"type": "string",
+													"minLength": 1
+												},
+												"uniqueItems": true,
+												"description": "Origins, one of which the issue must be known by, as the Origin field names them (customer, hand-start, driver pick, found mid-lane, experiment, bet). An issue reads as customer when its filer only uses the product.",
+												"minItems": 1
+											},
+											"types": {
+												"type": "array",
+												"items": {
+													"type": "string",
+													"minLength": 1
+												},
+												"uniqueItems": true,
+												"description": "Type names, without the `type:` prefix, one of which the issue must carry as a `type:` label.",
+												"minItems": 1
+											},
+											"labels": {
+												"type": "array",
+												"items": {
+													"type": "string",
+													"minLength": 1
+												},
+												"uniqueItems": true,
+												"description": "Labels, one of which the issue must carry.",
+												"minItems": 1
+											}
+										},
+										"minProperties": 1,
+										"additionalProperties": false
+									}
 								},
-								"types": {
-									"type": "array",
-									"items": {
-										"type": "string",
-										"minLength": 1
+								{
+									"type": "object",
+									"description": "The older form: an issue whose origin, type or any label matches goes to on-call. A list left out keeps origin customer, type bug, no label. Prefer the list of rules.",
+									"properties": {
+										"origins": {
+											"type": "array",
+											"items": {
+												"type": "string",
+												"minLength": 1
+											},
+											"uniqueItems": true,
+											"description": "Origins that route an issue to on-call. Default customer."
+										},
+										"types": {
+											"type": "array",
+											"items": {
+												"type": "string",
+												"minLength": 1
+											},
+											"uniqueItems": true,
+											"description": "Type names, without the `type:` prefix, that route an issue to on-call. Default bug."
+										},
+										"labels": {
+											"type": "array",
+											"items": {
+												"type": "string",
+												"minLength": 1
+											},
+											"uniqueItems": true,
+											"description": "Labels that route an issue to on-call. Default none."
+										}
 									},
-									"uniqueItems": true,
-									"description": "Type names, without the `type:` prefix, that route an issue to on-call. Default bug."
-								},
-								"labels": {
-									"type": "array",
-									"items": {
-										"type": "string",
-										"minLength": 1
-									},
-									"uniqueItems": true,
-									"description": "Labels that route an issue to on-call. Default none."
+									"additionalProperties": false
 								}
-							},
-							"additionalProperties": false
+							]
 						},
 						"responseTargets": {
 							"type": "object",
@@ -342,6 +394,14 @@
 				"type": "string",
 				"pattern": "^@([A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)$|^@([^/\\s]+)\\/([^/\\s]+)$"
 			}
+		},
+		"catalogGuard": {
+			"type": "string",
+			"description": "Whether `fabrika guard catalog-guard check` judges this repo: `on` (the shipped default — every dependency in a workspace package.json must be a `catalog:` or `workspace:` reference) or `off` (the guard judges no manifest, exits 0 saying so, and `build check` lists it under `skipped`). Turn it off in a repo that does not use a pnpm catalog. It governs catalog-guard and no other guard.",
+			"enum": [
+				"on",
+				"off"
+			]
 		},
 		"ci": {
 			"type": "object",
@@ -498,6 +558,51 @@
 			],
 			"additionalProperties": false
 		},
+		"digest": {
+			"type": "object",
+			"description": "Post a report of missed response targets to a chat webhook when `fabrika table digest` runs, usually from a scheduled workflow. Leave it out and nothing is sent.",
+			"properties": {
+				"tool": {
+					"type": "string",
+					"enum": [
+						"slack",
+						"discord"
+					],
+					"description": "The chat tool whose webhook receives the report."
+				},
+				"webhookEnv": {
+					"type": "string",
+					"pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+					"description": "The name of the environment variable that holds the webhook URL. The URL is a credential: keep it in a secret, never in this file. Default FABRIKA_DIGEST_WEBHOOK."
+				},
+				"sections": {
+					"type": "array",
+					"items": {
+						"type": "string",
+						"enum": [
+							"triage",
+							"on-call"
+						]
+					},
+					"minItems": 1,
+					"uniqueItems": true,
+					"description": "The sections the report carries. `triage`: untriaged issues past `triageTargetHours`. `on-call`: open on-call items past the `boards.onCall` response target their labels pick. Default both."
+				},
+				"triageTargetHours": {
+					"type": "number",
+					"exclusiveMinimum": 0,
+					"description": "How many hours an untriaged issue may wait before the report lists it. Default 24."
+				},
+				"allClear": {
+					"type": "boolean",
+					"description": "Post a message when nothing is past its target. Default false: an empty report is not sent."
+				}
+			},
+			"required": [
+				"tool"
+			],
+			"additionalProperties": false
+		},
 		"docLeakExempt": {
 			"type": "array",
 			"description": "Docs whose subject IS path hygiene — `build check --surface prose` skips its leak scan on them. Repo-relative path suffixes. Empty (or absent) means nothing is exempt.",
@@ -575,7 +680,7 @@
 			"properties": {
 				"uncaused": {
 					"type": "string",
-					"description": "What a BLOCKED carrying no `--cause` gets: `record` (the bare park, which routes to a human) or `refuse` (unappended, so every park names why).",
+					"description": "What a BLOCKED carrying no `--cause` gets: `refuse` (unappended at exit 52, so every park names why — the shipped value) or `record` (the bare park, which routes to a human).",
 					"enum": [
 						"record",
 						"refuse"
@@ -663,11 +768,29 @@
 		},
 		"reviewUi": {
 			"type": "object",
-			"description": "What the rendered-review gate (`review-ui`) needs from a PR that has no preview deploy. Absent changes nothing: a PR with no preview ends CANT-SEE.",
+			"description": "How this repo reviews a change to a screen. A repo that declares no `mode`, no `screens`, no `whenNoPreview` rule and no `uiSurfaces` row has screen review off.",
 			"properties": {
+				"mode": {
+					"type": "string",
+					"enum": [
+						"preview",
+						"hand-check",
+						"skip"
+					],
+					"description": "`preview`: the reviewer opens a hosted copy of each pull request, and a screen change with no preview ends CANT-SEE. `hand-check`: an owner's screenshots on the pull request stand in for the render. `skip`: screen review is not set up — a screen change gets the text review only, and the run says the screen check was skipped. Unset resolves to `skip` in a repo that declares no `screens`, no `whenNoPreview` rule and no `uiSurfaces` row, and to `preview` otherwise. `skip` beside a `whenNoPreview` rule is refused."
+				},
+				"screens": {
+					"type": "array",
+					"description": "Where the screens live, for a repo with no `uiSurfaces` row to name them: repo-relative source roots that raise the ui class. Ending in `/` a root is a directory covering every file under it; otherwise it names exactly one file. No start command is needed.",
+					"items": {
+						"type": "string",
+						"minLength": 1,
+						"pattern": "^(?!/)(?!.*(^|/)\\.\\.(/|$))\\S(.*\\S)?$"
+					}
+				},
 				"whenNoPreview": {
 					"type": "array",
-					"description": "Path rules for a PR with no preview deploy. The first rule whose glob matches a ui-class file sets that file's mode; a file no rule matches needs a render (`require-render`). A PR whose ui files land in different modes takes the strictest: require-render, then hand-check, then skip.",
+					"description": "Path rules for a PR with no preview deploy. The first rule whose glob matches a ui-class file sets that file's mode; a file no rule matches takes the repo's `mode` (`preview` needs a render, `hand-check` an owner's screenshots). A PR whose ui files land in different modes takes the strictest: require-render, then hand-check, then skip.",
 					"items": {
 						"type": "object",
 						"properties": {
@@ -707,63 +830,20 @@
 			"minLength": 1,
 			"pattern": "^(?!/)(?!\\.\\.).+"
 		},
-		"surfaceDispositions": {
+		"shipScope": {
 			"type": "object",
-			"description": "What this repo does when a surface fabrika reads is missing. Declare only the ids you move; every other falls to its shipped disposition.",
-			"propertyNames": {
-				"enum": [
-					"gh-rest",
-					"git-worktree",
-					"git-origin",
-					"git-history",
-					"authoritative-source-checkout",
-					"collaborator-permissions",
-					"issue-dependencies",
-					"settings-patch",
-					"dep-pin",
-					"label-taxonomy",
-					"issue-shape-markers",
-					"standing-lanes",
-					"issue-home",
-					"roadmap-focus",
-					"cycle-doc",
-					"decisions-corpus",
-					"decisions-rarity-floor",
-					"patterns-dir",
-					"patterns-index",
-					"patterns-admission-bar",
-					"glossary-registers",
-					"prose-homes",
-					"doc-gates",
-					"dep-manifest",
-					"design-manifest",
-					"design-prohibitions",
-					"design-inventory",
-					"golden-pointer",
-					"ui-surfaces",
-					"dev-server",
-					"preview-deployment",
-					"codeowners",
-					"landing-path",
-					"required-status-contexts",
-					"governance-floor-workflow",
-					"code-validators",
-					"readout-artifact",
-					"gitignore-row",
-					"claude-md-section",
-					"temp-root",
-					"claim-signal",
-					"verdict-history"
-				]
+			"description": "Whether `ship scope` answers from the repository's main working tree.",
+			"properties": {
+				"mainWorkingTree": {
+					"type": "string",
+					"description": "What a shipper's own `ship scope` does when it stands in the main working tree: `refuse` (exit 33 with nothing read — the shipped default, and the behaviour before this key) or `allow` (read the pull request and print its scope from there, for a repo that keeps one checkout or ships by hand).",
+					"enum": [
+						"refuse",
+						"allow"
+					]
+				}
 			},
-			"additionalProperties": {
-				"type": "string",
-				"enum": [
-					"fail-loud",
-					"degrade",
-					"bootstrap"
-				]
-			}
+			"additionalProperties": false
 		},
 		"table": {
 			"type": "object",
@@ -810,6 +890,19 @@
 					"type": "integer",
 					"minimum": 1,
 					"description": "The most proposed rows agenda prep adds for one table. Default 25."
+				},
+				"customerRows": {
+					"type": "integer",
+					"minimum": 0,
+					"description": "How many of the `agendaCap` rows `table prep` holds for the Customers section, from 0 up to `agendaCap`. Default 0: prep admits every section in `sections` order under the one cap. Above 0, the sections ahead of Customers stop short of the held rows, so a long Tails list cannot keep a customer's ask off the agenda. A held row Customers does not fill goes back to the other sections in `sections` order, and Customers candidates past the held rows wait for the rows left, as without the hold. A row already on this table's agenda keeps its place, and a Customers one among them counts toward the held rows."
+				},
+				"ruledStage": {
+					"type": "string",
+					"enum": [
+						"proposed",
+						"bet"
+					],
+					"description": "The Stage `table prep` gives a Tails row whose issue already carries a ruling. Default proposed: the row waits for a yes at the table. At bet the row arrives as that yes, which also approves its pitch, so choose it only when a ruling already is the yes. At bet a ruled row arrives as bet only while the running bets leave rows of `agendaCap` free; the rest, and a row that still needs a pick, arrive proposed."
 				},
 				"flagMultiple": {
 					"type": "number",
