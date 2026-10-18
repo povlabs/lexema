@@ -18,12 +18,15 @@ import { LABEL_PUNCTUATION_RULE, type LabelPunctuationReport, planLabelPunctuati
 import { type FormNormalizationReport, planPlaceholderForms } from "./normalizeForms.js";
 import { type GlossNormalizationReport, planPersonOrdinals } from "./normalizeGlosses.js";
 import { PlannedGlosses, type RulePlan } from "./sourceTextUpdate.js";
+import { planWebAddresses, type WebAddressReport } from "./webAddressUpdate.js";
 
 /**
  * The rules `normalize:source-text` applies, in the order it applies them:
- * the seed takes a headword lead off before it normalizes what is left.
+ * the seed takes a web address out first, then a headword lead, before it
+ * normalizes what is left.
  */
 export const SOURCE_TEXT_UPDATE_RULES = [
+  SOURCE_TEXT_RULES.webAddressGloss,
   SOURCE_TEXT_RULES.headwordLeadGloss,
   SOURCE_TEXT_RULES.personOrdinalGloss,
   SOURCE_TEXT_RULES.pluralPlaceholderForm,
@@ -36,6 +39,7 @@ export type SourceTextUpdateRule = (typeof SOURCE_TEXT_UPDATE_RULES)[number];
 
 /** What each rule found, as its own update reports it. */
 export interface SourceTextReports {
+  readonly webAddresses: WebAddressReport;
   readonly headwordLeads: HeadwordLeadReport;
   readonly glosses: GlossNormalizationReport;
   readonly forms: FormNormalizationReport;
@@ -61,13 +65,14 @@ function added(into: Partial<Record<CountedTable, number>>, rows: TableRows): vo
 /** Plan every rule into one file. It reads the database and `pages`, the dump pages `readFigLabelPages` read; it writes nothing. */
 export function planSourceText(db: MasterReader, pages: RawPageSource): SourceTextPlan {
   const glosses = new PlannedGlosses();
+  const webAddresses = planWebAddresses(db, glosses);
   const headwordLeads = planHeadwordLeads(db, glosses);
   const personOrdinals = planPersonOrdinals(db, glosses);
   const forms = planPlaceholderForms(db, glosses);
   const glossStamps = planGlossStamps(db, glosses);
   const labelPunctuation = planLabelPunctuation(db, glosses);
   const figLabels = figLabelPlanner(pages)(db, glosses);
-  const plans: RulePlan<unknown>[] = [headwordLeads, personOrdinals, forms, glossStamps, labelPunctuation, figLabels];
+  const plans: RulePlan<unknown>[] = [webAddresses, headwordLeads, personOrdinals, forms, glossStamps, labelPunctuation, figLabels];
 
   const glossRows = glosses.rows();
   const written: Partial<Record<CountedTable, number>> = { sense_gloss: glossRows.written };
@@ -80,6 +85,7 @@ export function planSourceText(db: MasterReader, pages: RawPageSource): SourceTe
   const statements = plans.flatMap((plan) => plan.statements);
   return {
     reports: {
+      webAddresses: webAddresses.report,
       headwordLeads: headwordLeads.report,
       glosses: personOrdinals.report,
       forms: forms.report,
