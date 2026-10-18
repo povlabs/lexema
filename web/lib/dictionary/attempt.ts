@@ -9,6 +9,7 @@
 import type { Nearby } from "@lexema/lookup/nearby.ts";
 import type { DeclaredLemmaResult, DeclaredVerbForm, FoundResult, NotFoundResult, Reading, RejectedResult } from "@lexema/lookup/types.ts";
 import type { DeclaredLemmaPage } from "./declaredLemmaPage.ts";
+import type { VerbRecords } from "./wordPage.ts";
 
 /**
  * A lookup that reached the database, or the fact that it did not.
@@ -38,12 +39,17 @@ import type { DeclaredLemmaPage } from "./declaredLemmaPage.ts";
  * records of its base verb (#837, `pronominalBaseWords` in wordPage.ts):
  * `trasferirsi`'s table is built from `trasferire`'s. Empty for any other word.
  *
+ * A verb form found whose verb's records draw no table also carries that
+ * verb's records, as a search of the verb reads them, with its base verbs'
+ * (#852, `builtTableVerbWords` in wordPage.ts): `verifico` draws the table
+ * built for `verificare`. Empty for any other word.
+ *
  * The failure is a value rather than a thrown error so the page has to render
  * it. It carries no detail on purpose: the reason is a database message meant
  * for whoever runs the Worker, and it goes to the log, not to the reader.
  */
 export type Attempt =
-  | (FoundResult & { written: string[]; lemmas: Reading[]; declared: DeclaredVerbForm[]; bases: Reading[] })
+  | (FoundResult & { written: string[]; lemmas: Reading[]; declared: DeclaredVerbForm[]; bases: Reading[]; verbs: VerbRecords[] })
   | (DeclaredLemmaResult & { page: DeclaredLemmaPage; written: string[] })
   | RejectedResult
   | (NotFoundResult & { nearby: Nearby })

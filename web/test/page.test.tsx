@@ -44,7 +44,7 @@ import { lookup } from "../../src/lookup/lookup.js";
 import { formsOfQueryReadings, isFormOfReading, isSourceRef, type Reading, type SourceRef } from "../../src/lookup/types.js";
 import type { Attempt } from "@/lib/dictionary/attempt.ts";
 import { searchAttempt } from "@/lib/dictionary/searchAttempt.ts";
-import { isHandKeptCell, isRegularCell } from "@/lib/dictionary/conjugation.ts";
+import { isHandKeptCell, isRegularCell, type Conjugation, type TableForm } from "@/lib/dictionary/conjugation.ts";
 import { definitionsOf, type DefinitionItem } from "@/lib/dictionary/definitions.ts";
 import { agreementOf, declaredGridOf, NUMBERS } from "@/lib/dictionary/genderGrid.ts";
 import { GridView } from "@/components/dictionary/Forms";
@@ -78,6 +78,7 @@ import {
   type LemmaPart,
   type ShownEntry,
   type VerbFormBlock,
+  type VerbTable,
 } from "@/lib/dictionary/wordPage.ts";
 import { VerbFormBlockView } from "@/components/dictionary/Reading";
 import { WordView } from "@/components/dictionary/Word";
@@ -4415,6 +4416,121 @@ test("a searched form of such a verb finds its verb: verifico, stampano, pettini
       assert.match(textOf(html), new RegExp(`di ${verb}`), query);
       assert.match(html, new RegExp(`href="/\\?q=${verb}"`), query);
     }
+  });
+});
+
+// A form of a verb whose table is built by rule (#852) ---------------------------
+
+/** Every cell of a conjugation, as `mood tense person: spellings`, and whether it is marked. */
+const cellsOf = (conjugation: Conjugation<TableForm>): { cell: string; searched: boolean }[] => [
+  ...conjugation.nonFinite.map((item) => ({ cell: `${item.label}: ${item.forms.map((form) => form.surface).join(", ")}`, searched: false })),
+  ...conjugation.moods.flatMap((mood) =>
+    [...mood.simple, ...mood.compound].flatMap((tense) =>
+      tense.cells.map((cell, row) => ({ cell: `${mood.mood} ${tense.name} ${mood.persons[row]}: ${cell.forms.map((form) => form.surface).join(", ")}`, searched: cell.searched })),
+    ),
+  ),
+];
+
+/** The built conjugation a word's own page draws as its *Forms*. */
+async function ownBuiltTable(db: DatabaseSync, word: string): Promise<Conjugation<TableForm>> {
+  const answer = await attempt(db, word);
+  assert.ok(answer.outcome === "found" && answer.route.kind !== "phrase", word);
+  const page = wordPage(word, answer.readings, answer.lemmas, answer.route, answer.declared, answer.bases, answer.verbs);
+  const own = page.readings.flatMap((entry) => partsOf(entry, "own-forms"));
+  assert.equal(own.length, 1, word);
+  return own[0].forms.kind === "grid" ? assert.fail(word) : own[0].forms.conjugation;
+}
+
+/** The one verb form block of a form's page, and its tables. */
+async function formBlockOf(db: DatabaseSync, query: string): Promise<{ block: VerbFormBlock; tables: VerbTable[] }> {
+  const answer = await attempt(db, query);
+  assert.ok(answer.outcome === "found" && answer.route.kind !== "phrase", query);
+  const page = wordPage(query, answer.readings, answer.lemmas, answer.route, answer.declared, answer.bases, answer.verbs);
+  const blocks = page.readings.filter((entry): entry is VerbFormBlock => entry.kind === "verb-form");
+  assert.equal(blocks.length, 1, query);
+  return { block: blocks[0], tables: blocks[0].tables };
+}
+
+/** The spellings a built table marks; a built cell names no record's form, so it carries no `data-form`. */
+const searchedBuilt = (html: string): string[] =>
+  [...html.matchAll(/<a class="[^"]*" href="[^"]+" lang="it" data-searched="">([^<]+)<\/a>/g)].map((match) => textOf(match[1]));
+
+test("a searched form of a verb whose table is built draws that table, the cells its record names marked: verifico, stampano, pettiniamo, vanghi (#852)", async () => {
+  await withBaseVerbs(async ({ db }) => {
+    for (const [query, verb, marked] of [
+      ["verifico", "verificare", ["Indicativo presente io"]],
+      ["stampano", "stampare", ["Indicativo presente loro"]],
+      // Each line of its record names a cell, and each is marked.
+      ["pettiniamo", "pettinare", ["Indicativo presente noi", "Congiuntivo presente noi", "Imperativo presente noi"]],
+      ["vanghi", "vangare", ["Indicativo presente tu", "Congiuntivo presente io", "Congiuntivo presente tu", "Congiuntivo presente lui, lei", "Imperativo presente lui, lei"]],
+    ] as const) {
+      const html = await render(db, query);
+      assert.deepEqual(lemmaFormsOf(html), [`Forme di${verb}`], query);
+      assert.deepEqual(searchedBuilt(html), marked.map(() => query), query);
+
+      // The table is the one the verb's own page draws, cell for cell, with only the cells the record names marked.
+      const { tables } = await formBlockOf(db, query);
+      assert.equal(tables.length, 1, query);
+      const [table] = tables;
+      assert.ok(table.kind === "built-conjugation" && table.built.kind === "regular-conjugation", query);
+      const cells = cellsOf(table.built.conjugation);
+      assert.deepEqual(cells.map((one) => one.cell), cellsOf(await ownBuiltTable(db, verb)).map((one) => one.cell), query);
+      assert.deepEqual(cells.filter((one) => one.searched).map((one) => one.cell), marked.map((cell) => `${cell}: ${query}`), query);
+      assert.equal(table.built.conjugation.openMood, "Indicativo", query);
+    }
+    const verifico = await render(db, "verifico");
+    assert.equal(tenseColumn(verifico, "Indicativo", "presente")[0], "io verifico");
+    assert.match(panel(verifico, "Indicativo"), new RegExp(`<th scope="row" class="${esc(PERSON_SEARCHED)}" lang="it">io</th>`));
+    // The verb's own page still marks nothing.
+    assert.doesNotMatch(await render(db, "verificare"), /data-searched=""/);
+  });
+});
+
+test("a form of a pronominal verb whose table is built draws it, the cell its record names marked: pentiti, pentita (#852)", async () => {
+  await withPronominal(async ({ db }) => {
+    // pentiti's record is pentirsi's plural participle, which no cell holds,
+    // and its tu imperative; both lines name pentirsi, and its table shows once.
+    const html = await render(db, "pentiti");
+    assert.deepEqual(lemmaFormsOf(html), ["Forme dipentirsi"]);
+    assert.equal(occurrencesOf(html, 'id="lemma-forms-'), 1);
+    assert.deepEqual(searchedBuilt(html), ["pentiti"]);
+    assert.equal(textOf(firstCell(panel(html, "Imperativo"), "tu") ?? ""), "pentiti, non pentirti");
+    const { tables } = await formBlockOf(db, "pentiti");
+    assert.equal(tables.length, 1);
+    const [table] = tables;
+    assert.ok(table.kind === "built-conjugation" && table.built.kind === "pronominal-conjugation");
+    const cells = cellsOf(table.built.conjugation);
+    assert.deepEqual(cells.map((one) => one.cell), cellsOf(await ownBuiltTable(db, "pentirsi")).map((one) => one.cell));
+    assert.deepEqual(cells.filter((one) => one.searched).map((one) => one.cell), ["Imperativo presente tu: pentiti, non pentirti"]);
+
+    // A feminine participle names no cell: the table shows, with nothing marked.
+    const pentita = await render(db, "pentita");
+    assert.deepEqual(lemmaFormsOf(pentita), ["Forme dipentirsi"]);
+    assert.doesNotMatch(pentita, /data-searched=""/);
+  });
+});
+
+test("a form page draws a verb's built table once, however many of its records name the verb (#852)", async () => {
+  await withBaseVerbs(async ({ db }) => {
+    const answer = await attempt(db, "verifico");
+    assert.ok(answer.outcome === "found" && answer.route.kind !== "phrase");
+    const [record] = archiveReadings(answer.readings);
+    // A second record of the same form, naming the same verb.
+    const twice: [Reading, ...Reading[]] = [record, { ...record, recordId: record.recordId + 1_000_000 }];
+    const page = wordPage("verifico", twice, answer.lemmas, answer.route, answer.declared, answer.bases, answer.verbs);
+    const tables = page.readings.flatMap((entry) => (entry.kind === "verb-form" ? entry.tables : partsOf(entry, "lemma-forms").flatMap((part) => part.tables)));
+    assert.deepEqual(tables.map((table) => `${table.kind} ${table.lemma.word}`), ["built-conjugation verificare"]);
+  });
+});
+
+test("a form of a verb whose records have their own forms draws that table as before, and reads no verb records for it: andavano (#852)", async () => {
+  await withDevSeed(async ({ db }) => {
+    const answer = await attempt(db, "andavano");
+    assert.ok(answer.outcome === "found");
+    assert.deepEqual(answer.verbs, []);
+    const { tables } = await formBlockOf(db, "andavano");
+    // How it marks the searched cell is the andavano test's above.
+    assert.deepEqual(tables.map((table) => `${table.kind} ${table.lemma.word}`), ["conjugation andare"]);
   });
 });
 

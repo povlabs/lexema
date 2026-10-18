@@ -31,6 +31,11 @@
 // A verb that is not pronominal and whose records have no table (`verificare`,
 // #841) takes the cells `it-regular-conjugation/v1` builds for the class its
 // own page's `{{It-conj}}` call settles, each where its tags place it.
+//
+// A built table names no place in the source, so no search hits a built cell.
+// On a page reached through one of the verb's form records (`verifico`, #852),
+// the cell marked is the one the form record says it is: the slot its gloss
+// names (`it-verb-form-gloss/v1`), where the rule spells the record's word.
 
 import { groupByAuxiliary } from "@lexema/italian/compoundAuxiliary.ts";
 import { essereAgreement, type AgreeingSpelling } from "@lexema/italian/essereAgreement.ts";
@@ -147,6 +152,8 @@ export interface PronominalForm {
   surface: string;
   rule: typeof PRONOMINAL_CONJUGATION_RULE;
   from: BaseCellOf;
+  /** Whether a searched form record names this cell ({@link SearchedSlot}). */
+  searched: boolean;
 }
 
 /**
@@ -159,6 +166,21 @@ export interface RegularForm {
   surface: string;
   rule: typeof REGULAR_CONJUGATION_RULE;
   cell: RegularCell;
+  /** Whether a searched form record names this cell ({@link SearchedSlot}). */
+  searched: boolean;
+}
+
+/**
+ * A cell of a built table a searched form record names (#852): the record's
+ * own spelling, at the slot one of its glosses names by `it-verb-form-gloss/v1`.
+ * `verifico`, "prima persona singolare dell'indicativo presente di
+ * verificare", names verificare's `io` cell of the indicative present. A built
+ * cell is marked only where it sits at that slot and spells the record's word,
+ * so a gloss the rule disagrees with marks nothing.
+ */
+export interface SearchedSlot {
+  spelling: string;
+  slot: VerbFormGloss;
 }
 
 /** A form a table can hold: a record's own `forms[]` entry, a declared lemma's form record, or a cell built by rule. */
@@ -181,8 +203,13 @@ export const tableFormKey = (form: TableForm): string =>
       ? baseCellKey(form.cell)
       : `${form.rule}\u0000${baseCellKey(form.from)}`;
 
-/** Whether the search hit a table's form: a record's own entry, a Wikidata word's form or a declared form; never a built cell, which no search hits. */
-export const isSearchedTableForm = (searched: SearchedSpellings, form: TableForm): boolean => !isRuleBuilt(form) && isSearchedForm(searched, form.ref);
+/**
+ * Whether the search hit a table's form: a record's own entry, a Wikidata
+ * word's form or a declared form, by pointer; or a built cell a searched form
+ * record names (#852), which no pointer reaches.
+ */
+export const isSearchedTableForm = (searched: SearchedSpellings, form: TableForm): boolean =>
+  isRuleBuilt(form) ? form.searched : isSearchedForm(searched, form.ref);
 
 const NONE_AGREE: ReadonlyMap<string, AgreeingSpelling> = new Map();
 
@@ -311,6 +338,18 @@ function placeOfGloss(slot: VerbFormGloss): Place | undefined {
   }
 }
 
+const samePlace = (a: Place, b: Place): boolean =>
+  a.kind === "finite" ? b.kind === "finite" && a.mood === b.mood && a.tense === b.tense && a.person === b.person : b.kind === "non-finite" && a.label === b.label;
+
+/** Whether a built cell spelled `surface`, at `place`, is one a searched form record names. */
+function namedBy(searched: readonly SearchedSlot[], surface: string, place: Place | undefined): boolean {
+  if (place === undefined) return false;
+  return searched.some((one) => {
+    const named = placeOfGloss(one.slot);
+    return one.spelling === surface && named !== undefined && samePlace(named, place);
+  });
+}
+
 const isCompound = (mood: Mood, tense: string): boolean =>
   TENSE_BOXES.some((box) => TENSE_NAMES[box].compound && tensePlace(box).mood === mood && TENSE_NAMES[box].tense === tense);
 
@@ -398,29 +437,31 @@ export function declaredConjugationOf(forms: readonly DeclaredVerbForm[]): Conju
  * `it-pronominal-conjugation/v1` (#837): each built cell where its base cell
  * sits. The base cells are a base record's forms, or the ones
  * `it-regular-conjugation/v1` built (#838). The query is the pronominal verb
- * itself, which no cell holds, so no cell is marked.
+ * itself, which no cell holds, so no cell is marked; on a page reached through
+ * one of its form records, the cells `searched` names are (#852).
  */
-export function pronominalConjugationOf(verb: PronominalVerb, base: readonly BaseCellOf[]): Conjugation<PronominalForm> {
+export function pronominalConjugationOf(verb: PronominalVerb, base: readonly BaseCellOf[], searched: readonly SearchedSlot[] = []): Conjugation<PronominalForm> {
   const spellings = pronominalSpellings(
     verb,
     base.map((from) => ({ spelling: isLexemaCell(from) ? from.spelling : from.surface, ...tagsOfBase(from) })),
   );
   const built = base.flatMap((from, i): PronominalForm[] => {
     const surface = spellings[i];
-    return surface === undefined ? [] : [{ surface, rule: PRONOMINAL_CONJUGATION_RULE, from }];
+    return surface === undefined ? [] : [{ surface, rule: PRONOMINAL_CONJUGATION_RULE, from, searched: namedBy(searched, surface, placeOfTags(tagsOfBase(from))) }];
   });
-  return layOut(placedBy(built, (form) => placeOfTags(tagsOfBase(form.from))), () => false);
+  return layOut(placedBy(built, (form) => placeOfTags(tagsOfBase(form.from))), (form) => form.searched);
 }
 
 /**
  * A regular table's conjugation, for a verb that is not pronominal and whose
  * records have none (`it-regular-conjugation/v1`, #841): each cell where its
  * tags place it. The query is the verb itself, which no cell holds, so no cell
- * is marked.
+ * is marked; on a page reached through one of its form records, the cells
+ * `searched` names are (#852).
  */
-export function regularConjugationOf(cells: readonly RegularCell[]): Conjugation<RegularForm> {
-  const built = cells.map((cell): RegularForm => ({ surface: cell.spelling, rule: cell.rule, cell }));
-  return layOut(placedBy(built, (form) => placeOfTags(form.cell)), () => false);
+export function regularConjugationOf(cells: readonly RegularCell[], searched: readonly SearchedSlot[] = []): Conjugation<RegularForm> {
+  const built = cells.map((cell): RegularForm => ({ surface: cell.spelling, rule: cell.rule, cell, searched: namedBy(searched, cell.spelling, placeOfTags(cell)) }));
+  return layOut(placedBy(built, (form) => placeOfTags(form.cell)), (form) => form.searched);
 }
 
 /** Whether a conjugation places any form at all. */

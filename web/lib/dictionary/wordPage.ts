@@ -117,6 +117,7 @@ import { pronominalVerb, type PronominalVerb } from "@lexema/italian/pronominalC
 import { handKeptCells, handKeptTableOf } from "@lexema/italian/handKeptTables.ts";
 import { ownClassOf, regularCells, regularClassOf, type RegularCell } from "@lexema/italian/regularConjugation.ts";
 import { VERB_FORM_LINE_RULE, verbFormLine, type SpelledGender } from "@lexema/italian/verbFormLine.ts";
+import { readVerbFormGloss } from "@lexema/italian/verbFormGloss.ts";
 import { WORD_SHAPE_LINE_RULE, wordShapeLine, type ShapedSpelling } from "@lexema/italian/wordShape.ts";
 import { mergeExpressions } from "@lexema/lookup/expressions.ts";
 import {
@@ -154,6 +155,7 @@ import {
   type Conjugation,
   type PronominalForm,
   type RegularForm,
+  type SearchedSlot,
 } from "./conjugation.ts";
 import { agreementOf, placesOf, type Agreement, type GridPlace, type Spelling } from "./genderGrid.ts";
 import { GRID_FORM_LINE_RULE, gridFormLine } from "./gridFormLine.ts";
@@ -185,6 +187,9 @@ import type {
  * - A verb's whole conjugation, opened where the form sits when its table
  *   lists it (`andare` for `andavano`), and otherwise as the verb's own page
  *   opens it, with nothing marked (`andare` for `andati`, #666).
+ * - A verb's table built by rule, when its records draw none: the one its own
+ *   page draws (`TakenConjugation`), with the cells the form's records name
+ *   marked (`verificare` for `verifico`, #852).
  * - A noun's or adjective's gender and number grid, superlatives included,
  *   with nothing marked: `bello` for `bella`, `casa` for `case` (#626).
  */
@@ -201,10 +206,23 @@ export type LemmaTable =
        */
       definitions: (LemmaDefinitions & Pick<Reading, "lemmaLinks">) | undefined;
     }
+  | {
+      kind: "built-conjugation";
+      lemma: LemmaCandidate;
+      built: PronominalConjugation | RegularConjugation;
+      /** The verb record's own definitions, as a listed verb's carry them. */
+      definitions: (LemmaDefinitions & Pick<Reading, "lemmaLinks">) | undefined;
+    }
   | { kind: "grid"; lemma: Reading; agreement: Agreement };
 
-/** A verb's conjugation, the one kind of table a verb form block shows. */
+/** A verb's conjugation as its records list it. */
 export type ConjugationTable = Extract<LemmaTable, { kind: "conjugation" }>;
+
+/** A verb's table built by rule, drawn under a form of it (#852). */
+export type BuiltConjugationTable = Extract<LemmaTable, { kind: "built-conjugation" }>;
+
+/** A verb's table, the one kind of table a verb form block shows: its records' own, or the one built for it. */
+export type VerbTable = ConjugationTable | BuiltConjugationTable;
 
 /** A noun's or adjective's gender and number grid, the table a noun or adjective form shows in place of its own. */
 export type GridTable = Extract<LemmaTable, { kind: "grid" }>;
@@ -465,21 +483,90 @@ function takenConjugationOf(
   readings: readonly Reading[],
   declared: readonly DeclaredVerbForm[],
   bases: readonly Reading[],
+  searched: readonly SearchedSlot[] = [],
 ): TakenConjugation | undefined {
   const pronominal = pronominalOf(readings);
   const baseCells = pronominal === undefined ? undefined : pronominalBaseCells(pronominal, bases);
   if (pronominal !== undefined && baseCells !== undefined) {
-    const conjugation = pronominalConjugationOf(pronominal.verb, baseCells);
+    const conjugation = pronominalConjugationOf(pronominal.verb, baseCells, searched);
     if (placesAny(conjugation)) return { kind: "pronominal-conjugation", conjugation, owner: pronominal.owner };
   }
   const regular = regularOf(readings);
   if (regular !== undefined) {
-    const conjugation = regularConjugationOf(regular.cells);
+    const conjugation = regularConjugationOf(regular.cells, searched);
     if (placesAny(conjugation)) return { kind: "regular-conjugation", conjugation, owner: regular.owner };
   }
   if (!wantsDeclaredConjugation(readings)) return undefined;
   const conjugation = declaredConjugationOf(declared);
   return placesAny(conjugation) ? { kind: "declared-conjugation", conjugation } : undefined;
+}
+
+/**
+ * A verb's records as a search of the verb reads them, and the records of its
+ * base verbs (`pronominalBaseWords`): what its own page builds its table from.
+ */
+export interface VerbRecords {
+  word: string;
+  readings: Reading[];
+  bases: Reading[];
+}
+
+/** Whether the records the lookup returned for a verb candidate give it no table to draw. */
+const drawsNoTable = (candidate: Extract<LemmaLink, { kind: "candidates" }>["candidates"][number]): boolean =>
+  !conjugates((candidate.listing ?? candidate.unlisted)?.forms ?? []);
+
+/**
+ * The verbs whose records a page needs read to draw, under a form of them,
+ * the table built for them (#852): each verb a verb form record about the
+ * query names, none of whose records the lookup returned draws a table
+ * (`verificare` for `verifico`, `pentirsi` for `pentiti`). Empty for any
+ * other page, so a search reads nothing more.
+ */
+export function builtTableVerbWords(readings: readonly Reading[]): string[] {
+  const words = readings
+    .filter((reading) => reading.isAboutQuery && isVerbReading(reading) && isFormOfReading(reading))
+    .flatMap((reading) =>
+      reading.lemmaLinks.flatMap((link) => {
+        if (link.kind !== "candidates") return [];
+        const verbs = link.candidates.filter((candidate) => candidate.pos === "verb");
+        return verbs.length > 0 && verbs.every(drawsNoTable) ? verbs.map((candidate) => candidate.word) : [];
+      }),
+    );
+  return [...new Set(words)];
+}
+
+/**
+ * The cells of `verb`'s table the query's verb form records name (#852): each
+ * record's word, at the slot each of its glosses about `verb` names
+ * (`it-verb-form-gloss/v1`).
+ */
+function searchedSlotsOf(about: readonly Reading[], verb: string): SearchedSlot[] {
+  return about
+    .filter((reading) => isVerbReading(reading) && isFormOfReading(reading))
+    .flatMap((reading) =>
+      glossesOf(reading).flatMap((gloss) => {
+        const slot = readVerbFormGloss(gloss, verb);
+        return slot === undefined ? [] : [{ spelling: reading.word, slot }];
+      }),
+    );
+}
+
+/** The tables built for the verbs a page's form records name, by verb (`builtTablesOf`). */
+type BuiltTables = ReadonlyMap<string, PronominalConjugation | RegularConjugation>;
+
+/**
+ * The tables built by rule for the verbs a form page's records name, by verb
+ * (#852): for each, the one its own page draws (`takenConjugationOf`), with
+ * the cells the query's records name marked. A verb whose own page draws no
+ * built table has none here.
+ */
+function builtTablesOf(about: readonly Reading[], verbs: readonly VerbRecords[]): BuiltTables {
+  const tables = new Map<string, PronominalConjugation | RegularConjugation>();
+  for (const verb of verbs) {
+    const taken = takenConjugationOf(verb.readings, [], verb.bases, searchedSlotsOf(about, verb.word));
+    if (taken !== undefined && isBuiltConjugation(taken)) tables.set(verb.word, taken);
+  }
+  return tables;
 }
 
 /**
@@ -761,7 +848,7 @@ export interface VerbFormBlock {
   /** The verb records the rule-built lines were read from, which have no reading of their own. */
   verbs: Reading[];
   /** The verb's conjugation, one per distinct table; the block's only *Forms*. */
-  tables: ConjugationTable[];
+  tables: VerbTable[];
   /** The verb's own definitions, of the record whose table the block shows first: the block's *Definitions* (#686). */
   definitions: LemmaDefinitionList | undefined;
 }
@@ -1056,26 +1143,35 @@ function tableKey(listing: { readonly forms: readonly SourceForm[] }): string {
   );
 }
 
-/** What tells two conjugations apart: the lemma's word and what its table shows. */
-const conjugationKey = (table: ConjugationTable): string => `${table.lemma.word}\u0000${tableKey(table.listing)}`;
+/** What tells two verb tables apart: the lemma's word and what its table shows; a verb has one built table. */
+const conjugationKey = (table: VerbTable): string =>
+  table.kind === "built-conjugation" ? `${table.built.kind}\u0000${table.lemma.word}` : `${table.lemma.word}\u0000${tableKey(table.listing)}`;
 
 /**
  * The verb lemmas' tables, for a verb reading that is a form of them, by the
  * word each `form_of` edge names: every candidate of every link whose table
  * the lookup returned, listing the query or not (#666), once per distinct
- * table.
+ * table. A verb whose records give it no table draws the one `built` holds
+ * for it, the one its own page draws (#852).
  */
-function conjugationTablesByVerb(reading: Reading): Map<string, ConjugationTable[]> {
-  const byVerb = new Map<string, Map<string, ConjugationTable>>();
+function conjugationTablesByVerb(reading: Reading, built: BuiltTables): Map<string, VerbTable[]> {
+  const byVerb = new Map<string, Map<string, VerbTable>>();
   if (!isVerbReading(reading)) return new Map();
   for (const link of reading.lemmaLinks) {
     if (link.kind !== "candidates") continue;
     for (const lemma of link.candidates) {
+      if (lemma.pos !== "verb") continue;
       const listing = lemma.listing ?? lemma.unlisted;
-      if (lemma.pos !== "verb" || listing === undefined) continue;
+      const forms = drawsNoTable(lemma) ? built.get(lemma.word) : undefined;
       const definitions = lemma.definitions === undefined ? undefined : { ...lemma.definitions, lemmaLinks: [] };
-      const table: ConjugationTable = { kind: "conjugation", lemma, listing, definitions };
-      const tables = byVerb.get(link.targetWord) ?? new Map<string, ConjugationTable>();
+      const table: VerbTable | undefined =
+        forms !== undefined
+          ? { kind: "built-conjugation", lemma, built: forms, definitions }
+          : listing === undefined
+            ? undefined
+            : { kind: "conjugation", lemma, listing, definitions };
+      if (table === undefined) continue;
+      const tables = byVerb.get(link.targetWord) ?? new Map<string, VerbTable>();
       if (!tables.has(conjugationKey(table))) tables.set(conjugationKey(table), table);
       byVerb.set(link.targetWord, tables);
     }
@@ -1084,9 +1180,9 @@ function conjugationTablesByVerb(reading: Reading): Map<string, ConjugationTable
 }
 
 /** {@link conjugationTablesByVerb}, every verb's tables together, once per distinct table. */
-function conjugationTablesOf(reading: Reading): ConjugationTable[] {
-  const tables = new Map<string, ConjugationTable>();
-  for (const table of [...conjugationTablesByVerb(reading).values()].flat()) {
+function conjugationTablesOf(reading: Reading, built: BuiltTables): VerbTable[] {
+  const tables = new Map<string, VerbTable>();
+  for (const table of [...conjugationTablesByVerb(reading, built).values()].flat()) {
     if (!tables.has(conjugationKey(table))) tables.set(conjugationKey(table), table);
   }
   return [...tables.values()];
@@ -1095,7 +1191,7 @@ function conjugationTablesOf(reading: Reading): ConjugationTable[] {
 /** One verb a form record about the query is a form of: its tables, and the record's definitions that name it. */
 interface FormOfVerb {
   verb: string;
-  tables: ConjugationTable[];
+  tables: VerbTable[];
   items: [DefinitionItem, ...DefinitionItem[]];
 }
 
@@ -1115,9 +1211,9 @@ interface FormOfVerb {
  * definition went to gives its tables to the record's first block, so no
  * table is left out.
  */
-function formOfVerbs(reading: Reading): FormOfVerb[] | undefined {
+function formOfVerbs(reading: Reading, built: BuiltTables): FormOfVerb[] | undefined {
   if (!isVerbReading(reading) || !isFormOfReading(reading)) return undefined;
-  const tables = conjugationTablesByVerb(reading);
+  const tables = conjugationTablesByVerb(reading, built);
   const itemsOf = new Map<string, DefinitionItem[]>();
   for (const link of reading.lemmaLinks) {
     if (link.kind === "candidates" && link.candidates.some((candidate) => candidate.pos === "verb")) itemsOf.set(link.targetWord, []);
@@ -1133,7 +1229,7 @@ function formOfVerbs(reading: Reading): FormOfVerb[] | undefined {
     itemsOf.get(verb)?.push(item);
   }
   const verbs: FormOfVerb[] = [];
-  const unlined: ConjugationTable[] = [];
+  const unlined: VerbTable[] = [];
   for (const [verb, verbItems] of itemsOf) {
     const lined = nonEmpty(verbItems);
     if (lined === undefined) unlined.push(...(tables.get(verb) ?? []));
@@ -1312,6 +1408,8 @@ class Drawn {
 /** What tells two tables apart: their shape, their lemma's word and what they show. */
 function drawnKey(table: LemmaTable | { kind: "own"; reading: Reading; forms: OwnForms }): string {
   if (table.kind === "conjugation") return `conjugation\u0000${conjugationKey(table)}`;
+  // A verb's built table is the one its own page draws, whichever form record names it (#852).
+  if (table.kind === "built-conjugation") return conjugationKey(table);
   // A base word's grid shows once, whichever of its records it is read from:
   // `bella`'s noun record shows no second *Forme di bello* (rule 1, #695).
   if (table.kind === "grid") return `lemma-grid\u0000${table.lemma.word}`;
@@ -1342,7 +1440,9 @@ function drawsHere(table: LemmaTable, drawn: Drawn): boolean {
  * verbs' lines. `declared` are the verb forms the query's form records declare
  * (#799), drawn only when `wantsDeclaredConjugation(readings)` holds. `bases`
  * are the records of the words `pronominalBaseWords(readings)` names, which a
- * pronominal verb's table is built from (#837).
+ * pronominal verb's table is built from (#837). `verbs` are the records of the
+ * verbs `builtTableVerbWords(readings)` names, whose built tables a form of
+ * them draws (#852).
  */
 export function wordPage(
   query: string,
@@ -1351,6 +1451,7 @@ export function wordPage(
   route: WordRoute,
   declared: readonly DeclaredVerbForm[] = [],
   bases: readonly Reading[] = [],
+  verbs: readonly VerbRecords[] = [],
 ): WordPage {
   const gender: SpelledGender = route.kind === "feminine" ? "feminine" : "as-listed";
   const taken = takenConjugationOf(readings, declared, bases);
@@ -1374,7 +1475,8 @@ export function wordPage(
   const ownRecords = about.filter((reading) => !isFormOfReading(reading));
   const merged = mergeWordFacts(about, ownRecords);
   const placed = placeWordFacts(about, ownRecords, merged);
-  const page: PageParts = { ordered, about, own: ownKeysOf(readings), lemmas, placed, gender, taken, shape };
+  const built = builtTablesOf(about, verbs);
+  const page: PageParts = { ordered, about, own: ownKeysOf(readings), lemmas, placed, gender, taken, built, shape };
 
   // Only records about the searched word are readings (rule 2 of Huey's ruling
   // of 2026-10-06, #695): a record that only lists the query in its table is
@@ -1473,6 +1575,8 @@ interface PageParts {
   gender: SpelledGender;
   /** The conjugation a page whose verb records draw none takes instead (#799, #837). */
   taken: TakenConjugation | undefined;
+  /** The tables built for the verbs its form records name whose records draw none (#852). */
+  built: BuiltTables;
   /** What rule `it-word-shape/v1` read the query as, on a shape's page (#809); none on any other. */
   shape: ShapePage | undefined;
 }
@@ -1603,7 +1707,7 @@ function shapeFormBlock(records: NonEmpty<Reading>, shape: ShapeReading, drawn: 
  * nothing to show, its bare heading.
  */
 function pageDrafts(
-  { ordered, about, own, lemmas, placed, gender, taken, shape }: PageParts,
+  { ordered, about, own, lemmas, placed, gender, taken, built, shape }: PageParts,
   which: "about" | "every",
 ): Unnumbered<PageEntry | BareReading>[] {
   // Each verb the query is a form of gets one block, in the place its first
@@ -1671,7 +1775,7 @@ function pageDrafts(
       }
       continue;
     }
-    const verbs = formOfVerbs(reading);
+    const verbs = formOfVerbs(reading, built);
     if (verbs === undefined) {
       const parts = formPartsOf(reading, lemmas, own);
       for (const part of parts) {
@@ -1703,7 +1807,7 @@ function pageDrafts(
   const drawn = new Drawn();
   return joinBlocksOfOneBaseWord(slots).flatMap((slot): Unnumbered<PageEntry | BareReading>[] => {
     if (slot.kind === "reading") {
-      const shown = shownReading(slot, lemmas, own, placed, drawn, taken, shape);
+      const shown = shownReading(slot, lemmas, own, placed, drawn, taken, built, shape);
       return shown !== undefined ? [shown] : slot.readings.map((reading) => ({ kind: "bare", reading }));
     }
     if (slot.kind === "grid") return [gridFormBlock(slot, drawn)];
@@ -1970,6 +2074,7 @@ function shownReading(
   placed: PlacedFacts,
   drawn: Drawn,
   taken: TakenConjugation | undefined,
+  built: BuiltTables,
   shape: ShapeReading | undefined,
 ): Unnumbered<PageReading> | undefined {
   const [reading, ...rest] = records;
@@ -1986,7 +2091,7 @@ function shownReading(
     const listed = nonEmpty(tables.filter((table) => drawsHere(table, drawn)));
     return listed === undefined ? [] : [{ kind: "lemma-forms", tables: listed }];
   };
-  const conjugations = conjugationTablesOf(reading);
+  const conjugations = conjugationTablesOf(reading, built);
 
   if (!isFormOfReading(reading)) {
     const forms = ownFormsOf(reading, taken);
@@ -2025,12 +2130,12 @@ function shownReading(
   // A verb whose `form_of` edges name no verb (`andarsene`) still shows the
   // table built for it (#837, #841): the table is the verb's own, and no base
   // word's table stands beside it.
-  const built = takenBy(reading, taken);
-  if (built !== undefined && isBuiltConjugation(built) && drawn.first(drawnKey({ kind: "own", reading, forms: built }))) {
-    parts.push({ kind: "own-forms", forms: built });
+  const ownBuilt = takenBy(reading, taken);
+  if (ownBuilt !== undefined && isBuiltConjugation(ownBuilt) && drawn.first(drawnKey({ kind: "own", reading, forms: ownBuilt }))) {
+    parts.push({ kind: "own-forms", forms: ownBuilt });
   }
   if (definitions !== undefined) parts.push({ kind: "lemma-definitions", definitions });
-  parts.push(...tablesPart([...records.flatMap(conjugationTablesOf), ...grids, ...joinedTables]));
+  parts.push(...tablesPart([...records.flatMap((record) => conjugationTablesOf(record, built)), ...grids, ...joinedTables]));
   const shown = nonEmpty(parts);
   const baseWord = lead?.word ?? reading.lemmaLinks[0]?.targetWord ?? reading.word;
   const heading = blockHeadingOf(speech, reading.posTitle);
@@ -2168,7 +2273,7 @@ interface BlockDraft {
   sources: BlockRecord[];
   verbs: Reading[];
   /** By {@link conjugationKey}, so an identical table shows once. */
-  tables: Map<string, ConjugationTable>;
+  tables: Map<string, VerbTable>;
 }
 
 /** A grid's form block as it is gathered: its word's records, the first heading it, and its lines by text, each once. */
@@ -2191,7 +2296,7 @@ interface ReadingSlot {
   /** Lines of verb form records that join a noun or adjective form's block, its base word not a verb (Q5 of #708). */
   joined: JoinedLines[];
   /** The conjugations of the verb blocks those lines came from, so no table is left out. */
-  joinedTables: ConjugationTable[];
+  joinedTables: VerbTable[];
   /** The base word of a block that holds one part of its form record's lines (`formPartsOf`); none for a block of whole records. */
   part: string | undefined;
 }
@@ -2218,7 +2323,7 @@ interface ShapeSlot {
 /** One place on the page: a source reading, a verb's block, a grid's, or a shape's. */
 type Slot = ReadingSlot | BlockSlot | GridSlot | ShapeSlot;
 
-const addTables = (block: BlockDraft, tables: readonly ConjugationTable[]): void => {
+const addTables = (block: BlockDraft, tables: readonly VerbTable[]): void => {
   for (const table of tables) if (!block.tables.has(conjugationKey(table))) block.tables.set(conjugationKey(table), table);
 };
 
