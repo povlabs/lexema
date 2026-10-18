@@ -4293,7 +4293,8 @@ test("a cell built on a regular table carries the regular cell and the call that
 // Verbs that are not pronominal and whose records have no table (#841) ----------
 //
 // `fixtures/base-verb-regular-tables.jsonl` holds real lines of it-0c432803,
-// in archive order: 48957 `pettinare`, 50090 `stampare`, 110507 `verificare`,
+// in archive order: 48957 `pettinare`, 50090 `stampare`, 53930 to 53932
+// `scolare` (an adjective, a noun form and a verb), 110507 `verificare`,
 // 203831 `verifico`, 227167 `stampano`, 228964 `pettiniamo`, 302925
 // `seccare`, 336555 `vanghi`, 420334 `ingraziare`, 422393 `accertare`, 432840
 // `conteggiare`, 441081 `rivendere`, 456627 `affaticare`, 552839 `prefiggere`
@@ -4340,6 +4341,19 @@ test("a verb with no forms takes the regular table its own {{It-conj}} call sett
     assert.equal(tenseColumn(stampare, "Congiuntivo", "presente")[5], "che loro stampino");
     const accertare = await render(db, "accertare");
     assert.equal(tenseColumn(accertare, "Indicativo", "passato remoto")[2], "lui, lei accertò");
+    // An avere verb's compound tenses stay on avere alone, one line a cell, the participle as it is (#873).
+    assert.equal(textOf(nonFinite(accertare, "ausiliare") ?? ""), "avere");
+    assert.deepEqual(tenseColumn(accertare, "Indicativo", "passato prossimo"), [
+      "io ho accertato",
+      "tu hai accertato",
+      "lui, lei ha accertato",
+      "noi abbiamo accertato",
+      "voi avete accertato",
+      "loro hanno accertato",
+    ]);
+    for (const [mood, tense] of COMPOUND_TENSES) {
+      for (const cell of tenseColumn(accertare, mood, tense)) assert.match(cell, /^\S.* \S+ accertato$/, `${mood} ${tense}`);
+    }
     const pettinare = await render(db, "pettinare");
     assert.equal(tenseColumn(pettinare, "Indicativo", "presente")[3], "noi pettiniamo");
     assert.equal(textOf(firstCell(panel(pettinare, "Imperativo"), "tu") ?? ""), "pettina, non pettinare");
@@ -4363,9 +4377,67 @@ test("a call that writes care or ciare on a g stem settles the class the templat
   });
 });
 
-test("a call that overrides a cell, names a class the rule does not build, or names essere gives no table: prefiggere, rivendere, affaticare (#841)", async () => {
+test("a call whose class is on essere draws every compound tense on essere, in both genders: affaticare (#873)", async () => {
   await withBaseVerbs(async ({ db }) => {
-    for (const word of ["prefiggere", "rivendere", "affaticare"]) {
+    const affaticare = await render(db, "affaticare");
+    assert.equal(occurrencesOf(affaticare, ">Forme<"), 1);
+    assert.equal(tenseColumn(affaticare, "Indicativo", "presente")[1], "tu affatichi");
+    assert.deepEqual(tenseColumn(affaticare, "Indicativo", "passato prossimo"), [
+      "io sono affaticato/a",
+      "tu sei affaticato/a",
+      "lui, lei è affaticato/a",
+      "noi siamo affaticati/e",
+      "voi siete affaticati/e",
+      "loro sono affaticati/e",
+    ]);
+    // Every compound tense is on essere, one line a cell, agreeing as `it-essere-agreement/v2` writes it.
+    for (const [mood, tense] of COMPOUND_TENSES) {
+      const cells = tenseColumn(affaticare, mood, tense);
+      assert.equal(cells.length, 6, `${mood} ${tense}`);
+      cells.forEach((cell, row) => assert.match(cell, row < 3 ? /^\S.* \S+ affaticato\/a$/ : /^\S.* \S+ affaticati\/e$/, `${mood} ${tense}`));
+    }
+    assert.equal(tenseColumn(affaticare, "Condizionale", "passato")[0], "io sarei affaticato/a");
+    assert.equal(tenseColumn(affaticare, "Congiuntivo", "trapassato")[3], "che noi fossimo affaticati/e");
+    assert.equal(textOf(nonFinite(affaticare, "ausiliare") ?? ""), "essere");
+    assert.equal(textOf(nonFinite(affaticare, "participio") ?? ""), "affaticato");
+    // The shown spelling links to the built spelling's own search, and nothing says how it was made.
+    assert.match(affaticare, builtLink("sono affaticato", "sono affaticato/a"));
+    assert.doesNotMatch(textOf(affaticare), /it-regular|It-conj|Appendice|regola|costruit|calcolat/i);
+  });
+});
+
+test("a call naming both auxiliaries draws each compound cell on two lines, avere then essere: scolare (#873)", async () => {
+  await withBaseVerbs(async ({ db }) => {
+    const scolare = await render(db, "scolare");
+    // The adjective's grid, and the verb's table.
+    assert.equal(occurrencesOf(scolare, ">Forme<"), 2);
+    assert.deepEqual(tenseColumn(scolare, "Indicativo", "passato prossimo"), [
+      "io ho scolato | sono scolato/a",
+      "tu hai scolato | sei scolato/a",
+      "lui, lei ha scolato | è scolato/a",
+      "noi abbiamo scolato | siamo scolati/e",
+      "voi avete scolato | siete scolati/e",
+      "loro hanno scolato | sono scolati/e",
+    ]);
+    for (const [mood, tense] of COMPOUND_TENSES) {
+      const cells = tenseColumn(scolare, mood, tense);
+      assert.equal(cells.length, 6, `${mood} ${tense}`);
+      cells.forEach((cell, row) => assert.match(cell, row < 3 ? /^\S.* \S+ scolato \| \S+ scolato\/a$/ : /^\S.* \S+ scolato \| \S+ scolati\/e$/, `${mood} ${tense}`));
+    }
+    // Each line is its own link, as vivere's are (`it-compound-auxiliary/v1`).
+    assert.match(
+      panel(scolare, "Indicativo"),
+      /<td [^>]*><span><a [^>]*>ho scolato<\/a><\/span><div><span><a [^>]*>sono scolato\/a<\/a><\/span><\/div><\/td>/,
+    );
+    assert.equal(textOf(nonFinite(scolare, "ausiliare") ?? ""), "avere, come intr. essere");
+    // A simple tense keeps one line.
+    assert.equal(tenseColumn(scolare, "Indicativo", "presente")[0], "io scolo");
+  });
+});
+
+test("a call that overrides a cell, or names a class the rule does not build, gives no table: prefiggere, rivendere (#841)", async () => {
+  await withBaseVerbs(async ({ db }) => {
+    for (const word of ["prefiggere", "rivendere"]) {
       const html = await render(db, word);
       assert.equal(readingsOfPage(html).length > 0, true, word);
       assert.doesNotMatch(html, />Forme</, word);

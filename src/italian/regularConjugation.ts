@@ -33,10 +33,16 @@
 // 2026-10-17 that such a verb gets the table pronominal verbs get when its own
 // Appendice page has an `{{It-conj}}` call
 // (https://github.com/povlabs/lexema/issues/841#issuecomment-6233282178); its
-// ending alone settles nothing. The call must name avere, the auxiliary the
-// rule writes: a call naming essere, or both (`avere, come intr. essere`),
-// settles nothing for such a verb, whose table would then be on the wrong
-// auxiliary. A pronominal verb's table is on essere whatever the call names.
+// ending alone settles nothing. Its compound tenses are built on the auxiliary
+// the call names, as Modulo:It-conj builds them: avere (`verificare`), essere
+// (`{{It-conj|affatic|care|essere}}`: `sono affaticato`, `siamo affaticati`),
+// or both (`{{It-conj|scol|are|avere, come intr. essere}}`: `ho scolato` then
+// `sono scolato` in each cell). Huey ruled on 2026-10-18 that the rule covers
+// essere and both, following what the call states
+// (https://github.com/povlabs/lexema/issues/873#issuecomment-6252704549). A
+// call that names neither settles nothing. A pronominal verb's base cells are
+// on avere whatever the call names, and `it-pronominal-conjugation/v1` turns
+// every compound tense to essere.
 //
 // Everything else is declined, and the page shows no table: an `-ire` verb
 // with no call (`-isc-` or not), any other `-iare` (its `i` may be stressed,
@@ -102,15 +108,39 @@ export type DeclineReason =
   | "second-conjugation"
   /** A verb that is not pronominal, with no call pinned for its own page (#841). */
   | "no-own-call"
-  /** A verb that is not pronominal, whose own call names an auxiliary other than avere: `{{It-conj|arross|ire-b|essere}}` (#841). */
-  | "auxiliary-not-avere";
+  /** A verb that is not pronominal, whose own call names neither avere nor essere as its auxiliary, or none at all (#873). */
+  | "auxiliary-not-read";
 
-/** A verb whose class the source settles: the class, the stem the template writes, its base verb, and what settled it. */
+/**
+ * The auxiliary a built table's compound tenses are on, as Modulo:It-conj
+ * (revision 4048685) reads a call's third parameter: exactly `avere`, exactly
+ * `essere`, or any other text, on which it writes each compound cell twice,
+ * the avere spelling then the essere one. The rule reads that other text only
+ * when it names both (`avere, come intr. essere`), and keeps it as `named`:
+ * the auxiliary cell spells it as a record's table does, one spelling per part
+ * before `, ` (`avere`, `come intr. essere`).
+ */
+export type TableAuxiliary = { kind: "avere" } | { kind: "essere" } | { kind: "both"; named: string };
+
+/** Avere: the auxiliary of every pronominal verb's base cells, and of a table an `-are` ending settles. */
+export const ON_AVERE: TableAuxiliary = { kind: "avere" };
+
+/** The auxiliary a call's third parameter names, or undefined when it names neither avere nor essere. */
+export function tableAuxiliaryOf(named: string | undefined): TableAuxiliary | undefined {
+  if (named === undefined) return undefined;
+  if (named === "avere") return ON_AVERE;
+  if (named === "essere") return { kind: "essere" };
+  const words = new Set(named.split(/[^\p{L}]+/u));
+  return words.has("avere") && words.has("essere") ? { kind: "both", named } : undefined;
+}
+
+/** A verb whose class the source settles: the class, the stem the template writes, its base verb, the auxiliary its compound tenses are on, and what settled it. */
 export interface SettledClass {
   kind: "settled";
   conjugationClass: ConjugationClass;
   stem: string;
   base: string;
+  auxiliary: TableAuxiliary;
   evidence: ClassEvidence;
 }
 
@@ -185,19 +215,20 @@ function readCall(page: PinnedTemplateCall): ReadCall | undefined {
   return { conjugationClass, stem, infinitive, auxiliary: auxiliary?.trim() };
 }
 
-/** The class a read call settles, the call's page its evidence. */
-const settledBy = (read: ReadCall, page: PinnedTemplateCall): SettledClass => ({
+/** The class a read call settles, its compound tenses on `auxiliary`, the call's page its evidence. */
+const settledBy = (read: ReadCall, page: PinnedTemplateCall, auxiliary: TableAuxiliary): SettledClass => ({
   kind: "settled",
   conjugationClass: read.conjugationClass,
   stem: read.stem,
   base: read.infinitive,
+  auxiliary,
   evidence: { kind: "template", page },
 });
 
-/** The class a pinned call names for one of a pronominal verb's bases, or why it names none this rule reads. */
+/** The class a pinned call names for one of a pronominal verb's bases, on avere, or why it names none this rule reads. */
 function classOfCall(bases: readonly string[], page: PinnedTemplateCall): ClassAnswer {
   const read = readCall(page);
-  return read === undefined || !bases.includes(read.infinitive) ? { kind: "declined", reason: "template-not-read", page } : settledBy(read, page);
+  return read === undefined || !bases.includes(read.infinitive) ? { kind: "declined", reason: "template-not-read", page } : settledBy(read, page, ON_AVERE);
 }
 
 /** Whether a gloss says what it is a form of: "seconda persona singolare dell'indicativo presente di traversare". */
@@ -227,6 +258,7 @@ function classOfEnding(base: string): ClassAnswer {
     conjugationClass,
     stem: stemOf,
     base,
+    auxiliary: ON_AVERE,
     evidence: { kind: "ending", base, ending },
   });
   if (base.endsWith("ciare") && base !== "sciare") return settled("ciare", base.slice(0, -"iare".length), "-ciare");
@@ -260,7 +292,8 @@ export function regularClassOf(verb: PronominalVerb, glosses: readonly string[],
  * The regular class of `word`, a verb that is not pronominal and no record of
  * which has a table (#841), read off its record's glosses and the call pinned
  * for its own Appendice page alone; or why none settles it. The call must
- * write `word` itself and name avere.
+ * write `word` itself, and the table's compound tenses are on the auxiliary
+ * it names (#873).
  */
 export function ownClassOf(word: string, glosses: readonly string[], calls: TemplateCalls): ClassAnswer {
   if (isFormOfAnotherWord(glosses)) return { kind: "declined", reason: "form-of-another-word" };
@@ -268,7 +301,8 @@ export function ownClassOf(word: string, glosses: readonly string[], calls: Temp
   if (page === undefined) return { kind: "declined", reason: "no-own-call" };
   const read = readCall(page);
   if (read === undefined || read.infinitive !== word) return { kind: "declined", reason: "template-not-read", page };
-  return read.auxiliary === "avere" ? settledBy(read, page) : { kind: "declined", reason: "auxiliary-not-avere", page };
+  const auxiliary = tableAuxiliaryOf(read.auxiliary);
+  return auxiliary === undefined ? { kind: "declined", reason: "auxiliary-not-read", page } : settledBy(read, page, auxiliary);
 }
 
 /** One base verb cell, as a record's table lists it: its spelling, its tags as the source would write them, and its place. */
@@ -289,7 +323,7 @@ export type Six = readonly [string, string, string, string, string, string];
 
 /**
  * A base verb's simple forms, slot by slot: everything its table holds but
- * avere, which builds each compound tense on `pastParticiple`. A slot may hold
+ * the auxiliary, which builds each compound tense on `pastParticiple`. A slot may hold
  * several spellings, joined by `, ` as a record's cell joins them (`avvisto,
  * avveduto`).
  */
@@ -393,15 +427,66 @@ const ENDINGS: Readonly<Record<ConjugationClass, Endings>> = {
   "ire-b": INCHOATIVE,
 };
 
-/** Avere, by the compound tense it builds, as a record's table writes it. */
-const AVERE: readonly { tags: readonly string[]; subjunctive: boolean; conditional: boolean; forms: Six }[] = [
-  { tags: ["past", "perfect"], subjunctive: false, conditional: false, forms: ["ho", "hai", "ha", "abbiamo", "avete", "hanno"] },
-  { tags: ["pluperfect", "past", "perfect"], subjunctive: false, conditional: false, forms: ["avevo", "avevi", "aveva", "avevamo", "avevate", "avevano"] },
-  { tags: ["historic", "past-remote"], subjunctive: false, conditional: false, forms: ["ebbi", "avesti", "ebbe", "avemmo", "aveste", "ebbero"] },
-  { tags: ["future", "perfect"], subjunctive: false, conditional: false, forms: ["avrò", "avrai", "avrà", "avremo", "avrete", "avranno"] },
-  { tags: ["past"], subjunctive: false, conditional: true, forms: ["avrei", "avresti", "avrebbe", "avremmo", "avreste", "avrebbero"] },
-  { tags: ["past"], subjunctive: true, conditional: false, forms: ["abbia", "abbia", "abbia", "abbiamo", "abbiate", "abbiano"] },
-  { tags: ["past", "perfect"], subjunctive: true, conditional: false, forms: ["avessi", "avessi", "avesse", "avessimo", "aveste", "avessero"] },
+/** A compound tense: its tags as a record's table writes them, and the forms of avere and of essere it is built on, io to loro. */
+interface CompoundTense {
+  tags: readonly string[];
+  subjunctive: boolean;
+  conditional: boolean;
+  avere: Six;
+  essere: Six;
+}
+
+/** Each compound tense, in the order a record's table lists them. */
+const COMPOUND: readonly CompoundTense[] = [
+  {
+    tags: ["past", "perfect"],
+    subjunctive: false,
+    conditional: false,
+    avere: ["ho", "hai", "ha", "abbiamo", "avete", "hanno"],
+    essere: ["sono", "sei", "è", "siamo", "siete", "sono"],
+  },
+  {
+    tags: ["pluperfect", "past", "perfect"],
+    subjunctive: false,
+    conditional: false,
+    avere: ["avevo", "avevi", "aveva", "avevamo", "avevate", "avevano"],
+    essere: ["ero", "eri", "era", "eravamo", "eravate", "erano"],
+  },
+  {
+    tags: ["historic", "past-remote"],
+    subjunctive: false,
+    conditional: false,
+    avere: ["ebbi", "avesti", "ebbe", "avemmo", "aveste", "ebbero"],
+    essere: ["fui", "fosti", "fu", "fummo", "foste", "furono"],
+  },
+  {
+    tags: ["future", "perfect"],
+    subjunctive: false,
+    conditional: false,
+    avere: ["avrò", "avrai", "avrà", "avremo", "avrete", "avranno"],
+    essere: ["sarò", "sarai", "sarà", "saremo", "sarete", "saranno"],
+  },
+  {
+    tags: ["past"],
+    subjunctive: false,
+    conditional: true,
+    avere: ["avrei", "avresti", "avrebbe", "avremmo", "avreste", "avrebbero"],
+    essere: ["sarei", "saresti", "sarebbe", "saremmo", "sareste", "sarebbero"],
+  },
+  {
+    tags: ["past"],
+    subjunctive: true,
+    conditional: false,
+    avere: ["abbia", "abbia", "abbia", "abbiamo", "abbiate", "abbiano"],
+    essere: ["sia", "sia", "sia", "siamo", "siate", "siano"],
+  },
+  {
+    tags: ["past", "perfect"],
+    subjunctive: true,
+    conditional: false,
+    avere: ["avessi", "avessi", "avesse", "avessimo", "aveste", "avessero"],
+    essere: ["fossi", "fossi", "fosse", "fossimo", "foste", "fossero"],
+  },
 ];
 
 const NUMBERS = ["singular", "singular", "singular", "plural", "plural", "plural"] as const;
@@ -409,23 +494,40 @@ const PERSONS = ["first-person", "second-person", "third-person", "first-person"
 const PRONOUNS: Six = ["io", "tu", "lui/lei", "noi", "voi", "essi/esse"];
 const CHE: Six = ["che io", "che tu", "che lui/che lei", "che noi", "che voi", "che essi/che esse"];
 
+/** What the auxiliary cell spells: `avere`, `essere`, or a call's two-auxiliary text cut where a record's table cuts it (`avere`, `come intr. essere`). */
+const auxiliarySpellings = (auxiliary: TableAuxiliary): readonly string[] => (auxiliary.kind === "both" ? auxiliary.named.split(", ") : [auxiliary.kind]);
+
 /**
  * A base verb's cells, in the order a record's table lists them: auxiliary,
  * gerund, participles, the indicative's simple and compound tenses, the
- * conditional, the subjunctive, the imperative. The auxiliary is avere, as
- * every regular table of these classes writes it;
- * `it-pronominal-conjugation/v1` turns it, and every compound tense, to essere.
+ * conditional, the subjunctive, the imperative. Each compound tense is on
+ * `auxiliary`, as Modulo:It-conj builds it: on avere the participle stays as
+ * it is (`abbiamo verificato`); on essere it is plural on a plural row
+ * (`siamo affaticati`); on both, each cell holds the avere spelling, then the
+ * essere one (`abbiamo scolato`, `siamo scolati`). A pronominal verb's base
+ * cells are on avere, and `it-pronominal-conjugation/v1` turns the auxiliary,
+ * and every compound tense, to essere.
  */
-export function paradigmCells(paradigm: Paradigm): ParadigmCell[] {
+export function paradigmCells(paradigm: Paradigm, auxiliary: TableAuxiliary = ON_AVERE): ParadigmCell[] {
   const cells: Omit<ParadigmCell, "index">[] = [];
   const add = (spelling: string, tags: readonly string[], rawTags: readonly string[] = []) => cells.push({ spelling, tags, rawTags });
   const { pastParticiple } = paradigm;
-  const personal = (six: Six, tense: readonly string[], compound?: Six) =>
-    six.forEach((form, i) => add(compound === undefined ? form : `${compound[i]} ${pastParticiple}`, [NUMBERS[i], PERSONS[i], ...tense], [PRONOUNS[i]]));
-  const pronouned = (six: Six, tense: readonly string[], pronouns: Six, compound?: Six) =>
-    six.forEach((form, i) => add(compound === undefined ? form : `${compound[i]} ${pastParticiple}`, tense, [pronouns[i]]));
+  const pluralParticiple = `${pastParticiple.slice(0, -1)}i`;
+  /** A compound tense's spellings on row `i`, one per auxiliary it is on, avere first. */
+  const compoundAt = (tense: CompoundTense, i: number): string[] => {
+    const onAvere = `${tense.avere[i]} ${pastParticiple}`;
+    const onEssere = `${tense.essere[i]} ${NUMBERS[i] === "plural" ? pluralParticiple : pastParticiple}`;
+    if (auxiliary.kind === "avere") return [onAvere];
+    return auxiliary.kind === "essere" ? [onEssere] : [onAvere, onEssere];
+  };
+  const personal = (six: Six, tense: readonly string[]) => six.forEach((form, i) => add(form, [NUMBERS[i], PERSONS[i], ...tense], [PRONOUNS[i]]));
+  const pronouned = (six: Six, tense: readonly string[], pronouns: Six) => six.forEach((form, i) => add(form, tense, [pronouns[i]]));
+  const personalCompound = (tense: CompoundTense) =>
+    PERSONS.forEach((person, i) => compoundAt(tense, i).forEach((spelling) => add(spelling, [NUMBERS[i], person, ...tense.tags], [PRONOUNS[i]])));
+  const pronounedCompound = (tense: CompoundTense, pronouns: Six) =>
+    pronouns.forEach((pronoun, i) => compoundAt(tense, i).forEach((spelling) => add(spelling, tense.tags, [pronoun])));
 
-  add("avere", ["auxiliary"]);
+  for (const spelling of auxiliarySpellings(auxiliary)) add(spelling, ["auxiliary"]);
   add(paradigm.gerund, ["gerund"]);
   add(paradigm.presentParticiple, ["present", "participle"]);
   add(pastParticiple, ["past", "participle"]);
@@ -433,12 +535,12 @@ export function paradigmCells(paradigm: Paradigm): ParadigmCell[] {
   personal(paradigm.imperfect, ["imperfect"]);
   personal(paradigm.pastRemote, ["past-remote"]);
   personal(paradigm.future, ["future"]);
-  for (const avere of AVERE.filter((one) => !one.subjunctive && !one.conditional)) personal(avere.forms, avere.tags, avere.forms);
+  for (const tense of COMPOUND.filter((one) => !one.subjunctive && !one.conditional)) personalCompound(tense);
   pronouned(paradigm.conditional, ["present"], PRONOUNS);
-  for (const avere of AVERE.filter((one) => one.conditional)) pronouned(avere.forms, avere.tags, PRONOUNS, avere.forms);
+  for (const tense of COMPOUND.filter((one) => one.conditional)) pronounedCompound(tense, PRONOUNS);
   pronouned(paradigm.subjunctive, ["present"], CHE);
   pronouned(paradigm.subjunctiveImperfect, ["imperfect"], CHE);
-  for (const avere of AVERE.filter((one) => one.subjunctive)) pronouned(avere.forms, avere.tags, CHE, avere.forms);
+  for (const tense of COMPOUND.filter((one) => one.subjunctive)) pronounedCompound(tense, CHE);
   const [tu, lui, noi, voi, loro] = paradigm.imperative;
   add(tu, ["imperative"], ["tu"]);
   add(`non ${paradigm.infinitive}`, ["imperative"], ["tu"]);
@@ -470,8 +572,12 @@ export function classParadigm(conjugationClass: ConjugationClass, stem: string):
   };
 }
 
-/** The base verb's cells for a settled class (`paradigmCells`), each carrying what settled it. */
+/** The base verb's cells for a settled class (`paradigmCells`), on its auxiliary, each carrying what settled it. */
 export function regularCells(settled: SettledClass): RegularCell[] {
   const { evidence } = settled;
-  return paradigmCells(classParadigm(settled.conjugationClass, settled.stem)).map((cell) => ({ ...cell, rule: REGULAR_CONJUGATION_RULE, evidence }));
+  return paradigmCells(classParadigm(settled.conjugationClass, settled.stem), settled.auxiliary).map((cell) => ({
+    ...cell,
+    rule: REGULAR_CONJUGATION_RULE,
+    evidence,
+  }));
 }

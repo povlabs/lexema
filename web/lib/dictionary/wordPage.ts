@@ -332,8 +332,10 @@ function ownFormsOf(reading: Reading, taken: TakenConjugation | undefined): OwnF
  *   no class, it builds on the verb's hand-kept table, if the list keeps one
  *   (#844): `avvedersi` on `avvedere`'s cells.
  * - For any other verb, the regular one `it-regular-conjugation/v1` builds
- *   for the class its own page's `{{It-conj}}` call settles (#841):
- *   `verificare` from `{{It-conj|verific|care|avere}}`.
+ *   for the class its own page's `{{It-conj}}` call settles (#841), on the
+ *   auxiliary the call names (#873): `verificare` from
+ *   `{{It-conj|verific|care|avere}}`, `affaticare` on essere from
+ *   `{{It-conj|affatic|care|essere}}`.
  * - Else the one its form records declare (#799), built as a declared lemma's
  *   is (#453): `bellare`'s record has no table, and some thirty records say
  *   "… di bellare".
@@ -433,9 +435,10 @@ const glossesOf = (reading: Reading): string[] => reading.senses.flatMap((sense)
  * The regular cells a page may draw for a verb that is not pronominal
  * (`it-regular-conjugation/v1`, #841), and the reading that draws them: the
  * class the call pinned for the verb's own Appendice page settles
- * (`ownClassOf`). None when no call is pinned for it or the call settles no
- * class: `prefiggere`'s overrides its participle, `rivendere`'s names the
- * second conjugation, `affaticare`'s names essere.
+ * (`ownClassOf`), its compound tenses on the auxiliary the call names (#873):
+ * `affaticare`'s on essere, `scolare`'s on both. None when no call is pinned
+ * for it or the call settles no class: `prefiggere`'s overrides its
+ * participle, `rivendere`'s names the second conjugation.
  */
 function regularOf(readings: readonly Reading[]): { cells: RegularCell[]; owner: Reading } | undefined {
   const owner = builtTableOwner(readings, (reading) => pronominalVerb(reading.word) === undefined);
