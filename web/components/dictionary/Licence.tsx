@@ -19,6 +19,10 @@
 // sentence that every Wikidata name and word links its own item or lexeme:
 // since #827 a name on a mixed page links none
 // (https://github.com/povlabs/lexema/issues/802#issuecomment-6133207273).
+// Section 3's third paragraph credits the English Wiktionary for the hand-kept
+// readings (ADR 0031), on Huey's ruling of 2026-10-18
+// (https://github.com/povlabs/lexema/issues/877#issuecomment-6252861816), its
+// wording for Huey to approve on that pull request.
 
 import { ExternalLink } from "@/components/shared/ExternalLink";
 import { LEGAL_ITEMS, LEGAL_PARAGRAPH, LEGAL_UNBROKEN, LINK } from "@/components/shared/styles.ts";
@@ -31,6 +35,8 @@ const LICENCE_URL = "https://creativecommons.org/licenses/by-sa/4.0/";
 const LICENCE_TEXT_URL = "https://creativecommons.org/licenses/by-sa/4.0/legalcode";
 /** Wikidata's own data licence (ADR 0032). */
 const CC0_URL = "https://creativecommons.org/publicdomain/zero/1.0/deed.it";
+/** The English Wiktionary, whose cited revisions the hand-kept readings paraphrase (ADR 0031, #877). */
+const EN_WIKTIONARY_URL = "https://en.wiktionary.org/";
 
 /** A dump's `YYYY-MM-DD` date, as a reader would say it. */
 const DAY = dayIn("it-IT");
@@ -110,6 +116,13 @@ export function Licence({ release }: { release: ServedRelease }) {
               <p className={LEGAL_PARAGRAPH}>
                 Gli autori di ogni voce sono registrati nella cronologia delle versioni della sua pagina del
                 Wikizionario. Ogni voce di Lexema rimanda a quella pagina.
+              </p>
+              <p className={LEGAL_PARAGRAPH}>
+                Alcuni significati che il Wikizionario non ha sono curati a mano a partire da versioni citate del{" "}
+                <ExternalLink language="it" className={LINK} href={EN_WIKTIONARY_URL}>
+                  Wiktionary in inglese
+                </ExternalLink>
+                .
               </p>
               <p className={LEGAL_PARAGRAPH}>
                 I nomi propri che il Wikizionario non spiega, come luoghi, organizzazioni, lingue, valute e festività,
