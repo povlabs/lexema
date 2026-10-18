@@ -13,6 +13,7 @@ import { besideSourceOf, type BesideReadings } from "./besideSource.js";
 import { handKeptReadingsOf } from "./handKept.js";
 import { nameEntriesOf } from "./names.js";
 import { unlessDeclaredLemma, wikidataWordsOf } from "./wikidataWords.js";
+import { declaredLemma, declaredLemmaHeads } from "./declaredLemma.js";
 import { pageEntriesOf, type PageEntries } from "./pageEntry.js";
 import { readExpressions } from "./expressions.js";
 import { placeRecovered, type RecoveredOfRecord, type StoredRecovered } from "./recovered.js";
@@ -232,6 +233,10 @@ export async function exists({ db, releaseId, query }: LookupOptions): Promise<E
   const opened = (await openedHeadwords(db, releaseId, tables, [key])).get(key);
   const headword = opened === undefined ? undefined : await exists({ db, releaseId, query: opened.key });
   if (headword?.outcome === "present") return { ...headword, query: prepared.query };
+  // Nor a headword: it may be a declared lemma (#818), credited to the first
+  // record that declares itself its form, as a lookup credits it.
+  const [declared] = (await declaredLemmaHeads(db, releaseId, [key], tables)).get(key) ?? [];
+  if (declared !== undefined) return { ...found, word: declared.credit };
   return { outcome: "absent", query: prepared.query, release: prepared.release };
 }
 
@@ -341,7 +346,13 @@ export async function lookup({ db, releaseId, query }: LookupOptions): Promise<L
     const headword = await lookup({ db, releaseId, query: opened.key });
     if (headword.outcome === "found") return { ...headword, query: queryInfo, route: { kind: "accentless", headword: opened.surface } };
   }
-  return { outcome: "not-found", query: queryInfo, release };
+
+  // No reading of anything answers it. It may still be a declared lemma, a
+  // word no record heads that form-of records name: `fratellino`, whose
+  // plural record says "plurale di fratellino" (#453). It is answered with
+  // the forms those records place, and no definition (#818).
+  const notFound = { outcome: "not-found", query: queryInfo, release } as const;
+  return (await declaredLemma(db, releaseId, notFound, tables)) ?? notFound;
 }
 
 /**

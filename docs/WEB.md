@@ -294,10 +294,11 @@ its part of speech alone (`Verbo`), a verb's forms placed by
 `it-verb-form-gloss/v1`, a noun's or adjective's plurals by `it-plural-gloss/v1`
 ([#453](https://github.com/povlabs/lexema/issues/453)). It shows no
 definitions block and says nothing of what the word lacks. A word whose forms
-take no cell keeps the not-found page. The developer API's lookup does not do
-this, so its answers are unchanged; the probe is `declaredLemma` in
-[src/lookup/declaredLemma.ts](../src/lookup/declaredLemma.ts), run from
-[web/lib/dictionary/searchAttempt.ts](../web/lib/dictionary/searchAttempt.ts).
+take no cell keeps the not-found page. The probe is `declaredLemma` in
+[src/lookup/declaredLemma.ts](../src/lookup/declaredLemma.ts), which `lookup()`
+runs last, so the developer API answers the same word from the same read
+([#818](https://github.com/povlabs/lexema/issues/818),
+[LOOKUP.md](LOOKUP.md#a-word-only-form-of-records-name)).
 The measured reach is in
 [the report](../reports/2026-10-03-declared-lemmas.md).
 

@@ -4,7 +4,8 @@
 // src/api/calls.ts's.
 //
 // None of them ranks or places anew. `/lookup`, `/lemmatize` and `/inflect`
-// read `lookup()` and its candidates (./lookupAnswer.ts); `/lookup/batch` reads
+// read `lookup()` and its candidates (./lookupAnswer.ts), a declared lemma's
+// readings among them (#818); `/lookup/batch` reads
 // the same candidates light, for all its words at once (`lookupBatch`, #335);
 // `/exists` reads the first row of lookup's own search; `/suggest` and
 // `/nearby` are the search field's `suggest()` and the not-found page's
@@ -27,6 +28,8 @@ import {
   attributionOf,
   entryAttribution,
   candidatesOf,
+  declaredLemmaJson,
+  declaredLemmaLemmas,
   foundJson,
   idOf,
   inflectionsOf,
@@ -99,6 +102,7 @@ const lookupRoute: Route = async (_request, url) => {
       const nearby = await findNearby({ db, releaseId, query: result.query.raw });
       return { status: 404, body: notFoundJson(result, nearby) };
     }
+    if (result.outcome === "declared-lemma") return { status: 200, body: declaredLemmaJson(result, filters.filters) };
     return { status: 200, body: await foundJson(result, new Lookups(db, releaseId).lemma, filters.filters) };
   });
 };
@@ -114,6 +118,7 @@ const lemmatizeRoute: Route = async (_request, url) => {
     if (result.outcome === "rejected") throw unreadable("q", q);
     const head = { query: result.query.raw, release_id: result.release.releaseId };
     if (result.outcome === "not-found") return { status: 404, body: { ...head, results: [] } };
+    if (result.outcome === "declared-lemma") return { status: 200, body: { ...head, results: declaredLemmaLemmas(result) } };
     const candidates = await candidatesOf(result, lookups.lemma);
     return { status: 200, body: { ...head, results: candidates.map(lemmaJson) } };
   });

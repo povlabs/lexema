@@ -13,6 +13,11 @@
 //   words spell as their lemmas (`andare via` for `vado via`, #214). Its
 //   surface is the query as typed, and it has no place in any table.
 //
+// A declared lemma (#453, #818) has no record: nothing heads the query, and
+// form-of records name it. It is answered with one result per part of speech,
+// `declared_lemma`, carrying the forms those records place, laid out as its
+// page lays them out (lib/dictionary/declaredLemmaPage.ts), and no definition.
+//
 // Nothing here ranks or places anew. Definitions are the page's list
 // (lib/dictionary/definitions.ts), a verb's forms are the page's conjugation
 // (lib/dictionary/conjugation.ts) and a noun's or adjective's are the page's grid
@@ -26,10 +31,14 @@ import { normalizeItalianExact } from "@lexema/italian/normalize.ts";
 import { expressionMeaning } from "@lexema/lookup/expressions.ts";
 import { bareKey, type Nearby } from "@lexema/lookup/nearby.ts";
 import type { PhraseOffer } from "@lexema/lookup/phrase.ts";
-import { entryKey, isFormOfReading, isNameEntry, isVerbReading, isSearchedForm, isWikidataWord, lemmasOfPartOfSpeech, NOTHING_SEARCHED, publicEntryId, searchedSpellings } from "@lexema/lookup/types.ts";
+import { declaredLemmaHead, entryKey, isFormOfReading, isNameEntry, isVerbReading, isSearchedForm, isWikidataWord, lemmasOfPartOfSpeech, NOTHING_SEARCHED, publicEntryId, searchedSpellings } from "@lexema/lookup/types.ts";
 import { wikidataItemUrl } from "@lexema/lookup/names.ts";
 import type {
   CitedRevision,
+  DeclaredLemmaHead,
+  DeclaredLemmaReading,
+  DeclaredLemmaResult,
+  DeclaredVerbForm,
   FoundResult,
   LemmaTarget,
   NotFoundResult,
@@ -39,7 +48,8 @@ import type {
   SourceForm,
   Translation,
 } from "@lexema/lookup/types.ts";
-import { conjugationOf, slotOf, type Conjugation } from "@/lib/dictionary/conjugation.ts";
+import { conjugationOf, slotOf, type Conjugation, type TableForm } from "@/lib/dictionary/conjugation.ts";
+import { declaredTableOf, type DeclaredTable } from "@/lib/dictionary/declaredLemmaPage.ts";
 import { definitionsOf, senseLabels, type DefinitionItem } from "@/lib/dictionary/definitions.ts";
 import {
   agreementOf,
@@ -63,8 +73,8 @@ import {
   type VerbNarrowing,
 } from "./lookupFilters.ts";
 
-/** How the query reached a candidate's record. */
-export type Via = "headword" | "form" | "form_of" | "phrase";
+/** How the query reached a candidate's record, or, `declared_lemma`, that it is a word only form-of records name. */
+export type Via = "headword" | "form" | "form_of" | "phrase" | "declared_lemma";
 
 /**
  * One candidate: the record answered with, and how the query reached it. A
@@ -202,16 +212,34 @@ function nonFinitePlace(form: SourceForm): GrammarPlace {
 }
 
 /**
+ * Where a declared lemma's non-finite form sits, by the slot its gloss names
+ * (#818): a finite or imperative slot never reaches the non-finite line.
+ */
+function declaredNonFinitePlace(form: DeclaredVerbForm): GrammarPlace {
+  switch (form.slot.kind) {
+    case "gerund":
+      return NON_FINITE_PLACE.gerundio;
+    case "present-participle":
+      return NON_FINITE_PLACE["participio presente"];
+    case "past-participle":
+      return NON_FINITE_PLACE["participio passato"];
+    default:
+      return {};
+  }
+}
+
+/**
  * A conjugation as JSON, narrowed to the cells whose place fits. A tense or a
  * mood the narrowing empties is left out, and a conjugation it empties is
- * still a conjugation, with no moods.
+ * still a conjugation, with no moods. `placeOf` says where a non-finite form
+ * sits: by its tags for a record's form, by its gloss for a declared lemma's.
  */
-function conjugationJson(conjugation: Conjugation, narrowing: VerbNarrowing): FormsJson {
+function conjugationJson<F extends TableForm>(conjugation: Conjugation<F>, narrowing: VerbNarrowing, placeOf: (form: F) => GrammarPlace): FormsJson {
   if (conjugation.moods.length === 0 && conjugation.nonFinite.length === 0) return null;
   const narrowed = narrows(narrowing);
   const surfaces = (forms: readonly { surface: string }[]) => forms.map((form) => form.surface);
   const nonFinite = conjugation.nonFinite.flatMap((entry) => {
-    const kept = narrowed ? entry.forms.filter((form) => fits(nonFinitePlace(form), narrowing)) : entry.forms;
+    const kept = narrowed ? entry.forms.filter((form) => fits(placeOf(form), narrowing)) : entry.forms;
     return kept.length === 0 ? [] : [[entry.label, surfaces(kept)]];
   });
   const moods = conjugation.moods.flatMap((table) => {
@@ -296,11 +324,19 @@ export const attributionOf = (word: string): AttributionJson => ({
 /**
  * The credit of one entry: the en.wiktionary revision a hand-kept reading
  * cites (#856), its Wikidata item for a name entry, its lexeme for a Wikidata
- * word (ADR 0033), both under CC0, else its word's Wiktionary page. A lookup,
- * a batch lookup and `/exists` each hand it the entry they found, so the three
- * credit one entry alike.
+ * word (ADR 0033), both under CC0, the Wiktionary page of the first record
+ * that declares itself a form of a declared lemma's reading (#818), else its
+ * word's Wiktionary page. A lookup, a batch lookup and `/exists` each hand it
+ * the entry they found, so the three credit one entry alike.
  */
-export const entryAttribution = (entry: { word: string; cites?: CitedRevision; nameItem?: `Q${number}`; lexeme?: `L${number}` }): AttributionJson => {
+export const entryAttribution = (entry: {
+  word: string;
+  cites?: CitedRevision;
+  nameItem?: `Q${number}`;
+  lexeme?: `L${number}`;
+  declaredLemma?: Pick<DeclaredLemmaHead, "credit">;
+}): AttributionJson => {
+  if (entry.declaredLemma !== undefined) return attributionOf(entry.declaredLemma.credit);
   if (entry.cites !== undefined) return citedRevisionAttribution(entry.cites);
   if (entry.nameItem !== undefined) return wikidataAttribution(wikidataItemUrl(entry.nameItem));
   if (entry.lexeme !== undefined) return wikidataAttribution(lexemePageUrl(entry.lexeme));
@@ -441,7 +477,7 @@ export function resultJson(candidate: Candidate, filters: LookupFilters): Result
 
   const forms: FormsJson =
     conjugation !== undefined
-      ? conjugationJson(conjugation, filters.verb)
+      ? conjugationJson(conjugation, filters.verb, nonFinitePlace)
       : agreement?.grid !== undefined || agreement?.superlative !== undefined
         ? {
             type: "gender_number",
@@ -556,6 +592,75 @@ export async function foundJson(result: FoundResult, readLemma: LemmaReader, fil
       .filter((candidate) => admits(filters, { pos: candidate.reading.pos, via: candidate.via }))
       .map((candidate) => resultJson(candidate, filters)),
   };
+}
+
+/**
+ * One reading of a declared lemma as the core of a result (#818): named by
+ * its word and part of speech, never by a record's line, reached as the query
+ * itself, placed where its page puts it (a noun's lemma in the singolare cells
+ * its plurals give it), and credited to the first record that declares a form.
+ */
+function declaredCoreJson(reading: DeclaredLemmaReading, releaseId: string, table: DeclaredTable | undefined): ResultCoreJson {
+  const head = declaredLemmaHead(reading);
+  const headword: SearchedSpellings = { headword: true, forms: new Set() };
+  return {
+    id: publicEntryId({ releaseId, declaredLemma: head }),
+    word: head.word,
+    pos: head.pos,
+    pos_title: head.posTitle,
+    match: { surface: head.word, via: "declared_lemma", grammar: table?.shape === "grid" ? gridPlaces(table.grid, headword, {}) : [] },
+    attribution: entryAttribution({ word: head.word, declaredLemma: head }),
+  };
+}
+
+/**
+ * A declared lemma's answer (#818): one result per reading the filters keep,
+ * in the lookup's order, each with its forms laid out as its page lays them
+ * out (`declaredTableOf`), or null when none takes a cell. It has no record,
+ * so every other section is empty: no definition, no pronunciation, nothing
+ * Lexema would have to make up.
+ */
+export function declaredLemmaJson(result: DeclaredLemmaResult, filters: LookupFilters): FoundJson {
+  const releaseId = result.release.releaseId;
+  return {
+    query: result.query.raw,
+    release_id: releaseId,
+    results: result.readings
+      .filter((reading) => admits(filters, { pos: reading.pos, via: "declared_lemma" }))
+      .map((reading) => {
+        const table = declaredTableOf(reading);
+        const forms: FormsJson =
+          table === undefined
+            ? null
+            : table.shape === "conjugation"
+              ? conjugationJson(table.conjugation, filters.verb, declaredNonFinitePlace)
+              : { type: "gender_number", grid: gridJson(table.grid, filters.agreement), superlativo: null };
+        return shaped(
+          {
+            ...declaredCoreJson(reading, releaseId, table),
+            pronunciations: [],
+            definitions: [],
+            examples: [],
+            forms,
+            etymology: null,
+            synonyms: [],
+            antonyms: [],
+            derived: [],
+            expressions: [],
+            translations: [],
+          },
+          filters,
+        );
+      }),
+  };
+}
+
+/** A declared lemma's readings for `/lemmatize`: each is its own lemma (#818). */
+export function declaredLemmaLemmas(result: DeclaredLemmaResult): LemmaJson[] {
+  return result.readings.map((reading) => {
+    const { id, word, pos, pos_title, match, attribution } = declaredCoreJson(reading, result.release.releaseId, declaredTableOf(reading));
+    return { id, lemma: word, pos, pos_title, match, attribution };
+  });
 }
 
 export function notFoundJson(result: NotFoundResult, nearby: Nearby): NotFoundJson {
