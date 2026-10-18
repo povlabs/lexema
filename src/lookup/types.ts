@@ -1088,6 +1088,20 @@ export function isFormOfReading(reading: Reading): boolean {
 }
 
 /**
+ * Whether the search reached this record only through table cells a curated
+ * correction spells (ADR 0027, ADR 0030): `eguali` reaches `eguale`, whose
+ * source lists `equivalenti` in the cell the correction sets to `eguali`
+ * (#830). The searched spelling is the record's only by the correction, so
+ * the source names it on no page of its own (#875).
+ */
+export function isReachedOnlyByCorrection(reading: Reading): boolean {
+  const searched = searchedSpellings(reading);
+  if (searched.headword || searched.forms.size === 0) return false;
+  const cells = reading.forms.filter((form) => isSearchedForm(searched, form.ref));
+  return cells.length === searched.forms.size && cells.every((form) => form.corrected !== undefined);
+}
+
+/**
  * The readings that are only forms of the query's own readings: on `bello`'s
  * page, the records of `bella`, `belli` and `bellissimo`, which list `bello`
  * in their tables and declare themselves its forms (#622).

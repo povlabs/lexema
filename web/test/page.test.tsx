@@ -1208,11 +1208,16 @@ test("the Constitution's old spellings read: eguale's grid shows eguali, eguagli
     assert.deepEqual(formLines(eguali), ["maschile plurale di eguale", "femminile plurale di eguale"]);
     assert.deepEqual(lemmaFormsOf(eguali), ["Forme dieguale"]);
     assert.deepEqual(gridRows(eguali), egualeGrid);
+    // Only the correction spells eguali, so it.wiktionary has no page of it: its one Fonte opens eguale's,
+    // as a word shape's opens its base word's (Huey, 2026-10-18, #875). eguale keeps its own.
+    assert.deepEqual(fonteLinks(eguali), ["https://it.wiktionary.org/wiki/eguale"]);
+    assert.deepEqual(fonteLinks(eguale), ["https://it.wiktionary.org/wiki/eguale"]);
     // equivalenti keeps its own reading, and shows no eguale.
     const equivalenti = await render(db, "equivalenti");
     assert.deepEqual(headingsOf(equivalenti), ["1·Aggettivo, forma flessa·maschile e femminile, plurale"]);
     assert.deepEqual(formLines(equivalenti), ["plurale di equivalente"]);
     assert.doesNotMatch(textOf(equivalenti), /eguale/);
+    assert.deepEqual(fonteLinks(equivalenti), ["https://it.wiktionary.org/wiki/equivalenti"]);
 
     // eguaglianza's hand-kept reading links uguaglianza and draws its Definitions and grid, as a form record's page does.
     const eguaglianza = await render(db, "eguaglianza");

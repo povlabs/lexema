@@ -57,6 +57,7 @@ import { FORM_LINES, JUMP_LINK } from "@/components/shared/styles.ts";
 import type { Conjugation } from "@/lib/dictionary/conjugation.ts";
 import { definitionsOf, type DefinitionItem } from "@/lib/dictionary/definitions.ts";
 import { phrasePage, type PhrasePage } from "@/lib/dictionary/phrasePage.ts";
+import { sourcePageUrl } from "@/lib/dictionary/sourcePage.ts";
 import { searchAttempt } from "@/lib/dictionary/searchAttempt.ts";
 import {
   baseWordOf,
@@ -76,6 +77,18 @@ const RELEASE = "it-word-page-rules";
 
 const linesOf = async (file: string): Promise<string[]> => (await readFile(join(REPO, file), "utf8")).trimEnd().split("\n");
 
+/** The archive lines of the dev seed and the seven companion fixtures. */
+const ruleLines = async (): Promise<string[]> => [
+  ...(await linesOf("fixtures/dev-seed.jsonl")),
+  ...(await linesOf("fixtures/salivate.jsonl")),
+  ...(await linesOf("fixtures/citto.jsonl")),
+  ...(await linesOf("fixtures/essere-compound-cells.jsonl")),
+  ...(await linesOf("fixtures/sfocato.jsonl")),
+  ...(await linesOf("fixtures/no-base-record.jsonl")),
+  ...(await linesOf("fixtures/pronominal-avere-tables.jsonl")),
+  ...(await linesOf("fixtures/eguale.jsonl")),
+];
+
 /**
  * The dev seed and the seven companion fixtures, with the committed raw pages,
  * seeded once for this file: with the committed list's table cells (#723) and
@@ -85,16 +98,7 @@ const linesOf = async (file: string): Promise<string[]> => (await readFile(join(
  */
 async function dictionary(edges: "corrected" | "as-censused" = "corrected"): Promise<DatabaseSync> {
   return seededDictionary(`word-page-rules-${edges}`, async (outputDir) => {
-    const lines = [
-      ...(await linesOf("fixtures/dev-seed.jsonl")),
-      ...(await linesOf("fixtures/salivate.jsonl")),
-      ...(await linesOf("fixtures/citto.jsonl")),
-      ...(await linesOf("fixtures/essere-compound-cells.jsonl")),
-      ...(await linesOf("fixtures/sfocato.jsonl")),
-      ...(await linesOf("fixtures/no-base-record.jsonl")),
-      ...(await linesOf("fixtures/pronominal-avere-tables.jsonl")),
-      ...(await linesOf("fixtures/eguale.jsonl")),
-    ];
+    const lines = await ruleLines();
     await mkdir(outputDir, { recursive: true });
     const archive = join(outputDir, "fixture.jsonl.gz");
     await writeFile(archive, gzipSync(Buffer.from(`${lines.join("\n")}\n`, "utf8")));
@@ -1094,3 +1098,33 @@ for (const fix of new Set(Object.values(PARTS_A_FIX_REMOVES))) {
     }
   });
 }
+
+// A form only a correction spells (#875) -------------------------------------------
+
+test("every spelling a table cell correction sets opens a page whose one Fonte is its record's Wiktionary page (#875)", async () => {
+  const cells = atFixtureLines(await ruleLines(), RELEASE, cellCorrections(CURATED_CORRECTIONS));
+  const db = await dictionary();
+  try {
+    const wrong: Record<string, string[]> = {};
+    let pages = 0;
+    for (const correction of cells) {
+      for (const cell of correction.cells) {
+        if (cell.auxiliary) continue;
+        const attempt = await searchAttempt(fromNodeSqlite(db), RELEASE, cell.surface);
+        if (attempt.outcome !== "found") continue;
+        pages += 1;
+        const html = renderToStaticMarkup(
+          <SearchPage raw={cell.surface} version={`${RELEASE}.0`}>
+            <Outcome raw={cell.surface} attempt={attempt} />
+          </SearchPage>,
+        );
+        const fonte = [...html.matchAll(/<a [^>]*href="([^"]+)"[^>]*>Fonte</g)].map((match) => match[1]);
+        if (fonte.join() !== sourcePageUrl(correction.record.word)) wrong[cell.surface] = fonte;
+      }
+    }
+    assert.ok(pages > 0, "a corrected spelling opens a page");
+    assert.deepEqual(wrong, {});
+  } finally {
+    db.close();
+  }
+});
