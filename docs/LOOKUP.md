@@ -362,6 +362,25 @@ one statement more. The word page shows the headword's own page, with no line
 about the accent ([`searchAttempt.ts`](../web/lib/dictionary/searchAttempt.ts)).
 Nothing derived is stored.
 
+### A spelled cardinal the source does not list
+
+The source lists some number words (`cinquantanove`, `duemila`) and not the
+compounds between them (`duemilauno`). When every route above misses, the
+accentless step too, and the key spells an Italian cardinal from 0 to
+999.999, `lookup()` answers it with one reading rule `it-cardinal/v1` builds
+([ADR 0034](../.decisions/0034-spelled-cardinals-get-a-rule-built-reading.md),
+[`src/italian/cardinal.ts`](../src/italian/cardinal.ts), read in
+[`src/lookup/cardinal.ts`](../src/lookup/cardinal.ts)). Its word is the key,
+its part of speech `adj`, `Aggettivo numerale`, as the source files its
+numerals, and its one definition the fixed text "numero cardinale
+corrispondente a N", N the value in digits. It states no grammar and no
+form. A key a form-of record names as its lemma is a declared lemma (#453)
+and gets no such reading. `route` is `{ kind: "surface" }`. `exists()`
+answers `present` with the cardinal, and `lookupBatch` gives one candidate
+for it, so the three agree. The reading's identity is its `cardinal`, its
+API id `<release>:cardinal:<value>`, and its credit Lexema's Licenza page.
+Nothing derived is stored.
+
 ## Outcomes
 
 | `outcome` | When | Carries |

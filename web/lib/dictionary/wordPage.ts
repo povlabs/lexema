@@ -130,6 +130,7 @@ import {
   isNameEntry,
   isNounReading,
   isReachedOnlyByCorrection,
+  isRuleBuiltCardinal,
   isVerbReading,
   isWikidataWord,
   lemmasOfPartOfSpeech,
@@ -1563,9 +1564,12 @@ function correctedFormSourceReading(found: readonly [Reading, ...Reading[]]): Re
  * entry for the spelling, so one link covers every reading (ADR 0009, amended
  * on #281). A page of Wikidata entries alone credits the Wikidata page of the
  * first it shows: a name entry's item (ADR 0032, #827), or a Wikidata word's
- * lexeme (ADR 0033, #812).
+ * lexeme (ADR 0033, #812). A page whose one reading is a cardinal rule
+ * `it-cardinal/v1` built has no source page at all, so it credits Lexema's
+ * Licenza page (ADR 0034; Huey's ruling of 2026-10-18 on #804).
  */
 function footerSourceOf(found: readonly [Reading, ...Reading[]], shown: WordReadings, title: Reading | string): FooterSource {
+  if (found.every(isRuleBuiltCardinal)) return { kind: "licence", word: found[0].word };
   if (typeof title !== "string" && title.handKeptId !== undefined) return { kind: "cited-revision", cites: title.cites, word: title.word };
   const headword = typeof title === "string" ? title : title.word;
   if (!found.every(isFromWikidata)) return wiktionarySource(headword);

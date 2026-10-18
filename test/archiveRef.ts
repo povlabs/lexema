@@ -3,9 +3,9 @@
 // archive record's fact narrows its ref here, and fails if it is not one.
 
 import assert from "node:assert/strict";
-import { isSourceRef, type FactRef, type LexemeRef, type NameRef, type SourceRef } from "../src/lookup/types.js";
+import { isSourceRef, type CardinalRef, type FactRef, type LexemeRef, type NameRef, type SourceRef } from "../src/lookup/types.js";
 
-export function archiveRef(ref: FactRef | NameRef | LexemeRef): SourceRef {
+export function archiveRef(ref: FactRef | NameRef | LexemeRef | CardinalRef): SourceRef {
   assert.ok(isSourceRef(ref), "an archive record's fact points into the archive");
   return ref;
 }

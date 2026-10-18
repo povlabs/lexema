@@ -26,8 +26,10 @@ import { normalizeItalianExact } from "@lexema/italian/normalize.ts";
 import { expressionMeaning } from "@lexema/lookup/expressions.ts";
 import { bareKey, type Nearby } from "@lexema/lookup/nearby.ts";
 import type { PhraseOffer } from "@lexema/lookup/phrase.ts";
-import { entryKey, isFormOfReading, isNameEntry, isVerbReading, isSearchedForm, isWikidataWord, lemmasOfPartOfSpeech, NOTHING_SEARCHED, publicEntryId, searchedSpellings } from "@lexema/lookup/types.ts";
+import { entryKey, isFormOfReading, isNameEntry, isRuleBuiltCardinal, isVerbReading, isSearchedForm, isWikidataWord, lemmasOfPartOfSpeech, NOTHING_SEARCHED, publicEntryId, searchedSpellings } from "@lexema/lookup/types.ts";
 import { wikidataItemUrl } from "@lexema/lookup/names.ts";
+import type { ItalianCardinal } from "@lexema/italian/cardinal.ts";
+import { ORIGIN } from "@/worker/shared/hosts.ts";
 import type {
   CitedRevision,
   FoundResult,
@@ -51,7 +53,7 @@ import {
   numbersOf,
   type Grid,
 } from "@/lib/dictionary/genderGrid.ts";
-import { citedRevisionUrl, lexemePageUrl, sourcePageUrl } from "@/lib/dictionary/sourcePage.ts";
+import { citedRevisionUrl, lexemePageUrl, LICENCE_PAGE_PATH, sourcePageUrl } from "@/lib/dictionary/sourcePage.ts";
 import {
   admits,
   fits,
@@ -250,6 +252,7 @@ function recoveredJson(definition: RecoveredDefinition): DefinitionJson {
 function definitionJson(item: DefinitionItem): DefinitionJson {
   if (item.from === "name") return { definition: item.description, labels: [], examples: item.examples, items: [] };
   if (item.from === "lexeme") return { definition: item.gloss.text, labels: [], examples: item.examples, items: [] };
+  if (item.from === "cardinal") return { definition: item.text, labels: [], examples: item.examples, items: [] };
   if (item.from === "page") return { ...recoveredJson(item.definition), examples: item.examples };
   return {
     definition: item.sense.glosses.map((gloss) => gloss.text).join("\n"),
@@ -262,8 +265,9 @@ function definitionJson(item: DefinitionItem): DefinitionJson {
 /**
  * The credit every result carries, so a client can pass it on (ADR 0009): the
  * Wiktionary page of the word; for a hand-kept reading, the en.wiktionary
- * revision it cites, under the same licence (ADR 0031, #856); or, for a name
- * entry, its Wikidata item, which is CC0 (ADR 0032).
+ * revision it cites, under the same licence (ADR 0031, #856); for a name
+ * entry, its Wikidata item, which is CC0 (ADR 0032); or, for a cardinal rule
+ * `it-cardinal/v1` built, Lexema itself, under CC0 (ADR 0034, #804).
  */
 export type AttributionJson =
   | {
@@ -283,6 +287,12 @@ export type AttributionJson =
       licence_url: "https://creativecommons.org/publicdomain/zero/1.0/";
       source: "Wikidata";
       source_url: string;
+    }
+  | {
+      licence: "CC0 1.0";
+      licence_url: "https://creativecommons.org/publicdomain/zero/1.0/";
+      source: "Lexema";
+      source_url: string;
     };
 
 /** The credit of a word's Wiktionary page. */
@@ -296,11 +306,13 @@ export const attributionOf = (word: string): AttributionJson => ({
 /**
  * The credit of one entry: the en.wiktionary revision a hand-kept reading
  * cites (#856), its Wikidata item for a name entry, its lexeme for a Wikidata
- * word (ADR 0033), both under CC0, else its word's Wiktionary page. A lookup,
- * a batch lookup and `/exists` each hand it the entry they found, so the three
- * credit one entry alike.
+ * word (ADR 0033), both under CC0, Lexema's Licenza page for a cardinal rule
+ * `it-cardinal/v1` built (ADR 0034), else its word's Wiktionary page. A
+ * lookup, a batch lookup and `/exists` each hand it the entry they found, so
+ * the three credit one entry alike.
  */
-export const entryAttribution = (entry: { word: string; cites?: CitedRevision; nameItem?: `Q${number}`; lexeme?: `L${number}` }): AttributionJson => {
+export const entryAttribution = (entry: { word: string; cites?: CitedRevision; nameItem?: `Q${number}`; lexeme?: `L${number}`; cardinal?: ItalianCardinal }): AttributionJson => {
+  if (entry.cardinal !== undefined) return LEXEMA_ATTRIBUTION;
   if (entry.cites !== undefined) return citedRevisionAttribution(entry.cites);
   if (entry.nameItem !== undefined) return wikidataAttribution(wikidataItemUrl(entry.nameItem));
   if (entry.lexeme !== undefined) return wikidataAttribution(lexemePageUrl(entry.lexeme));
@@ -314,6 +326,19 @@ const citedRevisionAttribution = (cites: CitedRevision): AttributionJson => ({
   source: "Wiktionary",
   source_url: citedRevisionUrl(cites),
 });
+
+/**
+ * The credit of a cardinal rule `it-cardinal/v1` built: Lexema made it, by a
+ * fixed rule, and no source states it, so it credits neither Wiktionary nor
+ * CC BY-SA (Huey's ruling of 2026-10-18 on #804). Its link is the live
+ * Licenza page, which the page's *Fonte* opens too.
+ */
+const LEXEMA_ATTRIBUTION: AttributionJson = {
+  licence: "CC0 1.0",
+  licence_url: "https://creativecommons.org/publicdomain/zero/1.0/",
+  source: "Lexema",
+  source_url: `${ORIGIN.lexema}${LICENCE_PAGE_PATH}`,
+};
 
 /** The credit of a Wikidata page, which Lexema passes on under CC0 as it received it. */
 const wikidataAttribution = (sourceUrl: string): AttributionJson => ({
@@ -580,6 +605,7 @@ export interface LemmaJson {
 export const idOf = (reading: Reading): string => {
   if (isNameEntry(reading)) return publicEntryId({ releaseId: reading.ref.releaseId, nameItem: reading.nameItem });
   if (isWikidataWord(reading)) return publicEntryId({ releaseId: reading.ref.releaseId, lexeme: reading.lexeme });
+  if (isRuleBuiltCardinal(reading)) return publicEntryId({ releaseId: reading.ref.releaseId, cardinal: reading.cardinal });
   const { recordId, ref } = reading;
   return publicEntryId(
     recordId === undefined

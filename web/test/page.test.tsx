@@ -1484,9 +1484,9 @@ const VIRA_LINES = (await readFile(join(REPO, "fixtures/vira.jsonl"), "utf8")).t
 /** The text of every sense a record has, in order: what its own page shows as its definitions when none is furniture. */
 const senseTexts = (reading: Reading): string[] => reading.senses.flatMap((sense) => sense.glosses.map((gloss) => gloss.text));
 
-/** Where a definition was read: its sense's pointer, or its raw page line; a name entry's description and a Wikidata word's gloss have neither. */
+/** Where a definition was read: its sense's pointer, or its raw page line; a name entry's description, a Wikidata word's gloss and a rule-built cardinal's definition have neither. */
 const definitionRef = (item: DefinitionItem) => {
-  if (item.from === "name" || item.from === "lexeme") return undefined;
+  if (item.from === "name" || item.from === "lexeme" || item.from === "cardinal") return undefined;
   return item.from === "record" ? item.sense.ref : item.definition.ref;
 };
 
