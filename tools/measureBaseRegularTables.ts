@@ -9,14 +9,15 @@
 // names a verb record's form. For each it gives what `ownClassOf` answers,
 // reading the calls pinned in src/italian/conjugationTemplateCalls.ts as the
 // page does: the class its own `Appendice:Coniugazioni/Italiano/<verb>` page's
-// call settles, or why none does. Most such records are forms of a verb the
+// call settles and the auxiliary its compound tenses are on (#873), or why
+// none does. Most such records are forms of a verb the
 // release has no record of (`metallizzino`, of metallizzare), which it counts
 // by their glosses. Then it gives the same split for the records whose own
 // page has a pinned call, word by word. It changes nothing.
 
 import { CONJUGATION_TEMPLATE_CALLS } from "../src/italian/conjugationTemplateCalls.js";
 import { pronominalVerb } from "../src/italian/pronominalConjugation.js";
-import { conjugationPageOf, ownClassOf, REGULAR_CONJUGATION_RULE } from "../src/italian/regularConjugation.js";
+import { conjugationPageOf, ownClassOf, REGULAR_CONJUGATION_RULE, type TableAuxiliary } from "../src/italian/regularConjugation.js";
 import { fillsCell, namesVerb, readVerbs } from "./pronominalArchive.js";
 
 const [archive] = process.argv.slice(2);
@@ -24,12 +25,13 @@ if (!archive) throw new Error("usage: tools/measureBaseRegularTables.ts <it-extr
 
 const verbs = await readVerbs(archive);
 
-/** One record's outcome: its word, the call on its own page if one is pinned, and the class settled or the reason declined. */
+/** One record's outcome: its word, the call on its own page if one is pinned, the class settled or the reason declined, and a settled table's auxiliary. */
 interface Outcome {
   word: string;
   call: string | undefined;
   revisionId: number | undefined;
   outcome: string;
+  auxiliary?: TableAuxiliary["kind"];
 }
 
 const outcomes: Outcome[] = [];
@@ -40,7 +42,8 @@ for (const [word, records] of verbs) {
     const glosses = (record.senses ?? []).flatMap((sense) => sense.glosses ?? []);
     const answer = ownClassOf(word, glosses, CONJUGATION_TEMPLATE_CALLS);
     const outcome = answer.kind === "settled" ? `settled:${answer.conjugationClass}` : `declined:${answer.reason}`;
-    outcomes.push({ word, call: page?.call, revisionId: page?.revisionId, outcome });
+    const auxiliary = answer.kind === "settled" ? { auxiliary: answer.auxiliary.kind } : {};
+    outcomes.push({ word, call: page?.call, revisionId: page?.revisionId, outcome, ...auxiliary });
   }
 }
 
@@ -66,6 +69,7 @@ const result = {
   words: new Set(outcomes.map((one) => one.word)).size,
   allOutcomes: tally(outcomes),
   withOwnCall: { records: withCall.length, words: new Set(withCall.map((one) => one.word)).size, outcomes: tally(withCall) },
+  settledByAuxiliary: tally(withCall.flatMap((one) => (one.auxiliary === undefined ? [] : [{ ...one, outcome: `settled-on:${one.auxiliary}` }]))),
   recordsWithOwnCall: withCall,
 };
 process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);

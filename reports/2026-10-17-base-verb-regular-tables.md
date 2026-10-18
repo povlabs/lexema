@@ -80,7 +80,8 @@ change it read none of them, as no pronominal verb's call had such a stem.
 
 The rule writes every compound tense on avere. These calls name another
 auxiliary, so the table would be on the wrong one, and the page shows none.
-Listed for Huey.
+Listed for Huey. Since #873 all 17 get a table, on the auxiliary their call
+names ([2026-10-18 report](2026-10-18-essere-regular-tables.md)).
 
 | Auxiliary in the call | Words |
 |---|---|

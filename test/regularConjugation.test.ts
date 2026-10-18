@@ -28,7 +28,9 @@ import {
   regularCells,
   regularClassOf,
   type ClassAnswer,
+  tableAuxiliaryOf,
   type ConjugationClass,
+  type PinnedTemplateCall,
   type SettledClass,
 } from "../src/italian/regularConjugation.js";
 
@@ -199,7 +201,9 @@ test("the pinned calls are It-conj calls of Appendice pages, each under its own 
   }
 });
 
-test("each class's cells are the ones a whole source table of that class holds, cell for cell, in the dev seed (#838)", () => {
+test("each class's cells, on each auxiliary, are the ones a whole source table of that class holds, cell for cell, in the dev seed (#838, #873)", () => {
+  // The auxiliary is the record's own, the call's third parameter as the record's table spells it:
+  // essere for slanciare, partire and rimbambire; avere and essere for finire and rinsavire.
   const cases: readonly [string, ConjugationClass, string][] = [
     ["parlare", "are", "parl"],
     ["unificare", "care", "unific"],
@@ -208,8 +212,12 @@ test("each class's cells are the ones a whole source table of that class holds, 
     ["mangiare", "giare", "mang"],
     ["studiare", "iare", "studi"],
     ["vestire", "ire", "vest"],
+    ["partire", "ire", "part"],
     ["rimbambire", "ire-b", "rimbamb"],
+    ["finire", "ire-b", "fin"],
+    ["rinsavire", "ire-b", "rinsav"],
   ];
+  const auxiliaries = new Set<string>();
   for (const [word, conjugationClass, stem] of cases) {
     const record = DEV_SEED.find((one) => one.word === word && one.pos === "verb" && one.lang_code === "it" && (one.forms ?? []).length > 0);
     assert.ok(record !== undefined, `the dev seed has ${word}'s table`);
@@ -218,23 +226,22 @@ test("each class's cells are the ones a whole source table of that class holds, 
       const key = slotKey({ tags: form.tags ?? [], rawTags: form.raw_tags ?? [] });
       if (key !== undefined) source.set(key, new Set([...(source.get(key) ?? []), ...form.form.split(", ")]));
     }
-    const cells = regularCells({ kind: "settled", conjugationClass, stem, base: word, evidence: { kind: "ending", base: word, ending: "-are" } });
+    const named = [...(source.get("ausiliare") ?? [])].join(", ");
+    const auxiliary = tableAuxiliaryOf(named);
+    assert.ok(auxiliary !== undefined, `${word}: ${named}`);
+    auxiliaries.add(auxiliary.kind);
+    const cells = regularCells({ kind: "settled", conjugationClass, stem, base: word, auxiliary, evidence: { kind: "ending", base: word, ending: "-are" } });
     const built = new Map<string, Set<string>>();
     for (const cell of cells) {
       const key = slotKey(cell);
       assert.ok(key !== undefined, `${word}: ${cell.spelling} has a cell`);
       built.set(key, new Set([...(built.get(key) ?? []), cell.spelling]));
     }
-    // The auxiliary is the verb's own, the call's third parameter; a pronominal table's is essere whatever it is.
-    // So a verb on essere (slanciare) is compared in its simple tenses only.
-    assert.deepEqual([...(built.get("ausiliare") ?? [])], ["avere"], word);
-    const onEssere = source.get("ausiliare")?.has("essere") === true;
-    const isCompound = (key: string) => !key.startsWith("imperativo") && [...(built.get(key) ?? [])].some((one) => one.includes(" "));
-    const compared = (keys: Iterable<string>) =>
-      [...keys].filter((key) => key !== "infinito" && key !== "ausiliare" && !(onEssere && isCompound(key))).sort();
+    const compared = (keys: Iterable<string>) => [...keys].filter((key) => key !== "infinito").sort();
     assert.deepEqual(compared(built.keys()), compared(source.keys()), word);
     for (const key of compared(built.keys())) assert.deepEqual([...(built.get(key) ?? [])].sort(), [...(source.get(key) ?? [])].sort(), `${word} ${key}`);
   }
+  assert.deepEqual([...auxiliaries].sort(), ["avere", "both", "essere"]);
 });
 
 /** What `ownClassOf` answers for a verb record of the base-verb fixture, read off its own glosses. */
@@ -287,11 +294,9 @@ test("each reason ownClassOf declines, on real words (#841)", () => {
     const answer = ownClassOfRecord(word);
     assert.ok(answer.kind === "declined" && answer.reason === "template-not-read" && answer.page?.title === conjugationPageOf(word), word);
   }
-  // A call naming essere, or both auxiliaries: the rule writes avere.
-  const affaticare = ownClassOfRecord("affaticare");
-  assert.ok(affaticare.kind === "declined" && affaticare.reason === "auxiliary-not-avere" && affaticare.page?.call === "{{It-conj|affatic|care|essere}}");
-  const scolare = ownClassOf("scolare", [], CONJUGATION_TEMPLATE_CALLS);
-  assert.ok(scolare.kind === "declined" && scolare.reason === "auxiliary-not-avere" && scolare.page?.call === "{{It-conj|scol|are|avere, come intr. essere}}");
+  // A call naming neither auxiliary: of the release's pinned calls none does, so the call here is made up.
+  const parlare: PinnedTemplateCall = { title: conjugationPageOf("parlare"), revisionId: 0, timestamp: "", call: "{{It-conj|parl|are}}" };
+  assert.deepEqual(ownClassOf("parlare", [], { [parlare.title]: parlare }), { kind: "declined", reason: "auxiliary-not-read", page: parlare });
   // No call pinned for its own page: the ending alone settles nothing for such a verb.
   assert.deepEqual(ownClassOf("parlottare", [], CONJUGATION_TEMPLATE_CALLS), { kind: "declined", reason: "no-own-call" });
   // A call on a base verb's page is no call of a pronominal verb's own.
@@ -301,4 +306,62 @@ test("each reason ownClassOf declines, on real words (#841)", () => {
     kind: "declined",
     reason: "form-of-another-word",
   });
+});
+
+test("a call naming essere, or both auxiliaries, settles the class with its compound tenses on what it names: affaticare, scolare, and the other fifteen (#873)", () => {
+  const affaticare = ownClassOfRecord("affaticare");
+  assert.ok(affaticare.kind === "settled" && affaticare.evidence.kind === "template" && affaticare.evidence.page.call === "{{It-conj|affatic|care|essere}}");
+  assert.deepEqual(affaticare.auxiliary, { kind: "essere" });
+  const affaticareCells = regularCells(affaticare);
+  assert.deepEqual(
+    affaticareCells.filter((cell) => slotKey(cell)?.startsWith("passato prossimo ") === true).map((cell) => cell.spelling),
+    ["sono affaticato", "sei affaticato", "è affaticato", "siamo affaticati", "siete affaticati", "sono affaticati"],
+  );
+  assert.deepEqual(affaticareCells.filter((cell) => slotKey(cell) === "ausiliare").map((cell) => cell.spelling), ["essere"]);
+
+  const scolare = ownClassOfRecord("scolare");
+  assert.ok(scolare.kind === "settled" && scolare.evidence.kind === "template" && scolare.evidence.page.call === "{{It-conj|scol|are|avere, come intr. essere}}");
+  assert.deepEqual(scolare.auxiliary, { kind: "both", named: "avere, come intr. essere" });
+  const scolareCells = regularCells(scolare);
+  // Each cell holds the avere spelling, then the essere one, as Modulo:It-conj writes them.
+  assert.deepEqual(
+    scolareCells.filter((cell) => slotKey(cell)?.startsWith("congiuntivo trapassato ") === true).map((cell) => cell.spelling),
+    [
+      "avessi scolato",
+      "fossi scolato",
+      "avessi scolato",
+      "fossi scolato",
+      "avesse scolato",
+      "fosse scolato",
+      "avessimo scolato",
+      "fossimo scolati",
+      "aveste scolato",
+      "foste scolati",
+      "avessero scolato",
+      "fossero scolati",
+    ],
+  );
+  assert.deepEqual(scolareCells.filter((cell) => slotKey(cell) === "ausiliare").map((cell) => cell.spelling), ["avere", "come intr. essere"]);
+  // Every cell has a place of its own in the table.
+  assert.equal(new Set(scolareCells.map((cell) => cell.index)).size, scolareCells.length);
+
+  // The seventeen words of reports/2026-10-17-base-verb-regular-tables.md whose calls name essere, or both.
+  const essere = ["affaticare", "cascare", "infradiciare", "insanguinare", "rifuggire", "rifugiare", "rintristire", "sbilanciare"];
+  const both = ["incocciare", "incrudelire", "inferocire", "insalvatichire", "insecchire", "insuperbire", "invelenire", "rifiorire", "scolare"];
+  for (const [words, kind] of [
+    [essere, "essere"],
+    [both, "both"],
+  ] as const) {
+    for (const word of words) {
+      const answer = ownClassOf(word, [], CONJUGATION_TEMPLATE_CALLS);
+      assert.ok(answer.kind === "settled" && answer.auxiliary.kind === kind, `${word}: ${JSON.stringify(answer)}`);
+    }
+  }
+});
+
+test("a pronominal verb's base cells stay on avere whatever its call names: pentirsi's names essere (#873)", () => {
+  const pentirsi = settledOf("pentirsi");
+  assert.ok(pentirsi.evidence.kind === "template" && pentirsi.evidence.page.call === "{{It-conj|pent|irsi|essere}}");
+  assert.deepEqual(pentirsi.auxiliary, { kind: "avere" });
+  assert.equal(column(builtTable("pentirsi"), "passato prossimo")[3], "ci siamo pentiti");
 });
