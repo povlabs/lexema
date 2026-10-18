@@ -189,7 +189,11 @@ test("a search finds the word's Italian records only, and a word with nothing el
     if (found.outcome !== "found") continue;
     assert.deepEqual(found.readings.map((reading) => reading.ref.lineNo), [lineOf(word, 0)], word);
   }
-  assert.equal((await lookup({ db, releaseId: RELEASE, query: "skirmish" })).outcome, "not-found");
+  // No served record heads `skirmish`, but `skirmishes` says it is its plural,
+  // so the lookup answers it as a declared lemma, as the page did (#453, #818).
+  const skirmish = await lookup({ db, releaseId: RELEASE, query: "skirmish" });
+  assert.ok(skirmish.outcome === "declared-lemma", skirmish.outcome);
+  assert.deepEqual(skirmish.readings.map((reading) => reading.forms.map((form) => form.surface)), [["skirmishes"]]);
   assert.equal((await lookup({ db, releaseId: RELEASE, query: "zapateros" })).outcome, "not-found");
   const zapateros = await suggest({ db, releaseId: RELEASE, prefix: "zapater" });
   assert.ok(!JSON.stringify(zapateros).includes('"zapateros"'), JSON.stringify(zapateros));

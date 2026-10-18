@@ -38,7 +38,8 @@ export interface DeclaredLemmaPage {
   source: WiktionarySource;
 }
 
-function tableOf(reading: DeclaredLemmaReading): DeclaredTable | undefined {
+/** A reading's table, or undefined when no form takes a cell. `/v1/lookup` lays a declared lemma's forms out by this too (#818). */
+export function declaredTableOf(reading: DeclaredLemmaReading): DeclaredTable | undefined {
   if (reading.pos === "verb") {
     const conjugation = declaredConjugationOf(reading.forms);
     return placesAny(conjugation) ? { shape: "conjugation", conjugation } : undefined;
@@ -73,7 +74,7 @@ function firstFormOf(table: DeclaredTable): string | undefined {
 /** The page, or undefined when no reading places a form in any cell. */
 export function declaredLemmaPage(result: DeclaredLemmaResult): DeclaredLemmaPage | undefined {
   const [first, ...rest] = result.readings.flatMap((reading): DeclaredPageReading[] => {
-    const table = tableOf(reading);
+    const table = declaredTableOf(reading);
     const firstForm = table === undefined ? undefined : firstFormOf(table);
     return table === undefined || firstForm === undefined ? [] : [{ reading, table, firstForm }];
   });

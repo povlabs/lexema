@@ -18,7 +18,6 @@ import { seedSql } from "../src/import/seedSql.js";
 import { POS_BY_TITLE } from "../src/italian/partOfSpeech.js";
 import { lookupBatch } from "../src/lookup/batch.js";
 import { fromNodeSqlite } from "../src/lookup/database.js";
-import { declaredLemma } from "../src/lookup/declaredLemma.js";
 import { exists, lookup } from "../src/lookup/lookup.js";
 import { entryKey, isWikidataWord, publicEntryId, type Reading } from "../src/lookup/types.js";
 import { WIKIDATA_WORD_HEADS_SQL, WIKIDATA_WORD_SQL } from "../src/lookup/wikidataWords.js";
@@ -377,12 +376,16 @@ test("a declared lemma's page stays: a Wikidata word does not take a spelling th
   const db = await loaded("fixtures/declared-lemmas.jsonl", glossed);
   try {
     const db2 = fromNodeSqlite(db);
+    // The lookup, `exists()` and a batch lookup each answer the declared lemma, never the Wikidata word (#818).
     const result = await lookup({ db: db2, releaseId: RELEASE, query: "verbalizzare" });
-    assert.equal(result.outcome, "not-found");
-    assert.ok(result.outcome === "not-found" && (await declaredLemma(db2, RELEASE, result)) !== undefined);
-    assert.equal((await exists({ db: db2, releaseId: RELEASE, query: "verbalizzare" })).outcome, "absent");
+    assert.equal(result.outcome, "declared-lemma");
+    const present = await exists({ db: db2, releaseId: RELEASE, query: "verbalizzare" });
+    assert.ok(present.outcome === "present", present.outcome);
+    assert.equal(present.lexeme, undefined);
     const { answers } = await lookupBatch({ db: db2, releaseId: RELEASE, queries: ["verbalizzare"] });
-    assert.equal(answers[0].outcome, "not-found");
+    const [answer] = answers;
+    assert.ok(answer.outcome === "found", answer.outcome);
+    assert.deepEqual(answer.candidates.map((candidate) => [candidate.declaredLemma?.word, candidate.lexeme]), [["verbalizzare", undefined]]);
   } finally {
     db.close();
   }

@@ -373,15 +373,18 @@ export const readGrammarNarrowing = (params: URLSearchParams): ParameterReading<
  * Whether `pos` and `match` keep a candidate of this part of speech, reached
  * this way. `exact` is the records `q` heads, so only `headword`; every other
  * route, a multi-word headword `q`'s words spell as their lemmas (`phrase`)
- * included, is a form of what `q` spells, so `form` keeps it.
+ * included, is a form of what `q` spells, so `form` keeps it. A declared
+ * lemma (`declared_lemma`, #818) is `q` itself, which no record heads, so
+ * `exact` keeps it and `form` does not.
  */
 export function admits(
   filters: LookupFilters,
-  candidate: { pos: string; via: "headword" | "form" | "form_of" | "phrase" },
+  candidate: { pos: string; via: "headword" | "form" | "form_of" | "phrase" | "declared_lemma" },
 ): boolean {
   if (filters.pos !== undefined && candidate.pos !== filters.pos) return false;
-  if (filters.match === "exact") return candidate.via === "headword";
-  if (filters.match === "form") return candidate.via !== "headword";
+  const exact = candidate.via === "headword" || candidate.via === "declared_lemma";
+  if (filters.match === "exact") return exact;
+  if (filters.match === "form") return !exact;
   return true;
 }
 

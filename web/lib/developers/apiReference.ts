@@ -620,7 +620,7 @@ export const ENDPOINT_REFERENCE: Readonly<Record<Endpoint, EndpointReference>> =
     title: "Look up a word",
     tagline: "Everything about a word",
     summary:
-      "Every candidate for q, in full: the record the word heads, the lemma it is a form of, and any record that lists it among its forms. When nothing spells q and it has several words, each word is read as its lemmas, and every multi-word headword those lemmas spell in order is a candidate with `match.via` `phrase`: `vado via` finds `andare via`.",
+      "Every candidate for q, in full: the record the word heads, the lemma it is a form of, and any record that lists it among its forms. When nothing spells q and it has several words, each word is read as its lemmas, and every multi-word headword those lemmas spell in order is a candidate with `match.via` `phrase`: `vado via` finds `andare via`. When nothing else answers q but records say they are its forms, q is a declared lemma: `fratellino` has no entry, and `fratellini` says it is its plural. Each part of speech of it is one result with `match.via` `declared_lemma`, its part of speech and the forms those records give, and no definition: `definitions` and the other sections are empty and `etymology` is `null`. Its `id` is built from the part of speech and the word, `it-0c432803:declared:noun:fratellino`, never a record's line, and its `attribution` is the page of its first form.",
     parameters: [
       Q,
       POS,
@@ -779,7 +779,7 @@ export const ENDPOINT_REFERENCE: Readonly<Record<Endpoint, EndpointReference>> =
     method: "POST",
     title: "Look up many words",
     tagline: "Many words at once",
-    summary: "Up to as many words at once as the key may make calls in a minute, each answered light: one entry per candidate with its lemma and part of speech, or one `found: false` entry for a word not in the release. With `fields=translations` in the query string, each candidate also carries its `translations`, as `/lookup` returns them.",
+    summary: "Up to as many words at once as the key may make calls in a minute, each answered light: one entry per candidate with its lemma and part of speech, or one `found: false` entry for a word not in the release. A declared lemma (see `/lookup`) is found, with one entry per part of speech and the same `id`, `lemma`, `pos`, `pos_title` and `attribution` as `/lookup`, and no translations. With `fields=translations` in the query string, each candidate also carries its `translations`, as `/lookup` returns them.",
     parameters: [
       {
         name: "q",
@@ -876,7 +876,7 @@ export const POS_TEXT = [
 
 /** What each `match` keeps: every value the API takes, and none it does not. */
 const MATCH_MEANING: Readonly<Record<Match, string>> = {
-  exact: "Only the records `q` heads.",
+  exact: "Only the records `q` heads, or `q` itself as a declared lemma (`match.via` `declared_lemma`).",
   form: "Only the lemma `q` is a form of, any record that lists `q` among its forms, and a multi-word headword `q`'s words spell (`match.via` `phrase`).",
   any: "Both. The default when `match` is absent.",
 };

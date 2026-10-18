@@ -15,6 +15,7 @@ import { nameEntriesOf } from "./names.js";
 import { unlessDeclaredLemma, wikidataWordsOf } from "./wikidataWords.js";
 import { cardinalReading, unansweredCardinal } from "./cardinal.js";
 import type { ItalianCardinal } from "../italian/cardinal.js";
+import { declaredLemma, declaredLemmaHeads } from "./declaredLemma.js";
 import { pageEntriesOf, type PageEntries } from "./pageEntry.js";
 import { readExpressions } from "./expressions.js";
 import { placeRecovered, type RecoveredOfRecord, type StoredRecovered } from "./recovered.js";
@@ -236,6 +237,10 @@ export async function exists({ db, releaseId, query }: LookupOptions): Promise<E
   const opened = (await openedHeadwords(db, releaseId, tables, [key])).get(key);
   const headword = opened === undefined ? undefined : await exists({ db, releaseId, query: opened.key });
   if (headword?.outcome === "present") return { ...headword, query: prepared.query };
+  // Nor a headword: it may be a declared lemma (#818), credited to the first
+  // record that declares itself its form, as a lookup credits it.
+  const [declared] = (await declaredLemmaHeads(db, releaseId, [key], tables)).get(key) ?? [];
+  if (declared !== undefined) return { ...found, word: declared.credit };
   // Nor that: it may be a cardinal rule `it-cardinal/v1` reads (ADR 0034, #804).
   const cardinal = await unansweredCardinal(db, releaseId, tables, key);
   if (cardinal !== undefined) return { ...found, word: key, cardinal };
@@ -349,12 +354,20 @@ export async function lookup({ db, releaseId, query }: LookupOptions): Promise<L
     if (headword.outcome === "found") return { ...headword, query: queryInfo, route: { kind: "accentless", headword: opened.surface } };
   }
 
-  // Nothing answers it, nor opens a headword. It may be a spelled cardinal up
-  // to 999.999, which rule `it-cardinal/v1` reads and gives one fixed Lexema
-  // definition: `duemilauno` (ADR 0034, #804).
+  // No reading of anything answers it. It may still be a declared lemma, a
+  // word no record heads that form-of records name: `fratellino`, whose
+  // plural record says "plurale di fratellino" (#453). It is answered with
+  // the forms those records place, and no definition (#818).
+  const notFound = { outcome: "not-found", query: queryInfo, release } as const;
+  const declared = await declaredLemma(db, releaseId, notFound, tables);
+  if (declared !== undefined) return declared;
+
+  // Nothing answers it, nor opens a headword, nor names it a lemma. It may be
+  // a spelled cardinal up to 999.999, which rule `it-cardinal/v1` reads and
+  // gives one fixed Lexema definition: `duemilauno` (ADR 0034, #804).
   const cardinal = await unansweredCardinal(db, releaseId, tables, key);
   if (cardinal !== undefined) return { outcome: "found", query: queryInfo, release, route: { kind: "surface" }, readings: [cardinalReading(releaseId, key, cardinal)] };
-  return { outcome: "not-found", query: queryInfo, release };
+  return notFound;
 }
 
 /**

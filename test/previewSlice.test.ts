@@ -222,9 +222,12 @@ test("on a slice with the pull request's changes, a word it adds or recovers is 
   try {
     const shared = fromNodeSqlite(db);
     const sliced = fromNodeSqlite(slice.db);
-    // Added and recovered: found on the slice, not in the shared dictionary.
+    // Added and recovered: found on the slice, not in the shared dictionary,
+    // where no record heads them; form records there declare `raccontare`
+    // and `fornire` lemmas, so the lookup answers those as such (#818).
+    const DECLARED_IN_SHARED = new Set(["raccontare", "fornire"]);
     for (const word of ["dismago", "raccontare", "fornire", "lungo"]) {
-      assert.equal(await outcomeOf(shared, word), "not-found", word);
+      assert.equal(await outcomeOf(shared, word), DECLARED_IN_SHARED.has(word) ? "declared-lemma" : "not-found", word);
       assert.equal(await outcomeOf(sliced, word), "found", word);
     }
     // Hidden: found in the shared dictionary, not on the slice. There only

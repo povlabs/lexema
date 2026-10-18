@@ -6,8 +6,12 @@
 // from those edges, with no definition and no note.
 //
 // The probe runs only after a lookup found nothing: it takes the `not-found`
-// itself, so it cannot run in place of the search or the phrase rule. The page
-// runs it (web/lib/dictionary/searchAttempt.ts); the developer API does not.
+// itself, so it cannot run in place of the search or the phrase rule.
+// `lookup()` runs it last, just before it answers `not-found` (#818), so the
+// page (web/lib/dictionary/searchAttempt.ts) and the developer API both
+// answer a declared lemma from this one read. A batch lookup and `exists()`
+// need only its readings' heads, which `declaredLemmaHeads` reads for many
+// words in one statement, placing forms by the same rules, so the three agree.
 //
 // A verb whose own record has no table reads the same edges (#799): `bellare`
 // has a record, with no conjugation, and some thirty form records say "… di
@@ -22,14 +26,15 @@
 // exactly as on a word's own page (`pluralDeclaration`, #470).
 
 import { POS_TITLE_BY_TEMPLATE } from "../italian/wikitext.js";
-import { readPluralGloss } from "../italian/pluralGloss.js";
-import { readVerbFormGloss } from "../italian/verbFormGloss.js";
+import { readPluralGloss, type PluralGloss } from "../italian/pluralGloss.js";
+import { readVerbFormGloss, type VerbFormGloss } from "../italian/verbFormGloss.js";
 import { correctionOf, correctionsByRecord, type CorrectionRow } from "./correctedClaim.js";
 import { correctedEdgeServed, sourceEdgeServed } from "./correctedEdge.js";
-import type { DictionaryRead, LookupDatabase } from "./database.js";
+import { keyedRead, readKeys, type DictionaryRead, type KeyedRead, type LookupDatabase } from "./database.js";
 import { dictionaryTables, servedBy, type DictionaryTables } from "./served.js";
 import { pluralDeclaration } from "./types.js";
 import type {
+  DeclaredLemmaHead,
   DeclaredLemmaReading,
   DeclaredLemmaResult,
   DeclaredPluralForm,
@@ -95,10 +100,21 @@ const DECLARED_GRAMMAR_JOINS = `
 const DECLARED_CORRECTION_JOINS = `
        JOIN corrected_claim k ON k.record_id = e.record_id`;
 
-/** `FROM` and `WHERE` of one arm: the edges of `arm` naming the key at `?2`, with the declaring record `d`. */
-const edgesNaming = (arm: CorrectedArm, joins: string): string => `FROM ${arm === "corrected_edge" ? "corrected_edge" : "form_of_edge"} e
+/**
+ * Which keys an arm reads the edges of: the one at `?2`, with the release at
+ * `?1`; or the keys at `?1`, as a `KeyedRead` binds them, with the release at
+ * `?2`.
+ */
+type Naming = "one key" | "keys";
+const NAMING: Record<Naming, { release: `?${number}`; key: string }> = {
+  "one key": { release: "?1", key: "e.target_word_key = ?2" },
+  keys: { release: "?2", key: "e.target_word_key IN (SELECT value FROM json_each(?1))" },
+};
+
+/** `FROM` and `WHERE` of one arm: the edges of `arm` naming the key or keys, with the declaring record `d`. */
+const edgesNaming = (arm: CorrectedArm, joins: string, naming: Naming = "one key"): string => `FROM ${arm === "corrected_edge" ? "corrected_edge" : "form_of_edge"} e
        JOIN source_record d ON d.record_id = e.record_id${joins}
-      WHERE e.release_id IN (${servedBy("?1")}) AND e.target_word_key = ?2 AND ${arm === "served form_of_edge" ? sourceEdgeServed("e") : correctedEdgeServed("e")}`;
+      WHERE e.release_id IN (${servedBy(NAMING[naming].release)}) AND ${NAMING[naming].key} AND ${arm === "served form_of_edge" ? sourceEdgeServed("e") : correctedEdgeServed("e")}`;
 
 /**
  * `DECLARED_LEMMA_SQL` on a master with corrected edges: a sense's corrected
@@ -131,22 +147,73 @@ export const CORRECTED_DECLARED_LEMMA_CORRECTION_SQL: DictionaryRead = `SELECT k
        ${edgesNaming("corrected_edge", DECLARED_CORRECTION_JOINS)}
       ORDER BY record_id, dimension`;
 
+/**
+ * `DECLARED_LEMMA_SQL` for many keys in one statement, with only what a
+ * reading's head needs: each edge's key, its declaring record's word and part
+ * of speech, the word it names and the first gloss of its sense, in the same
+ * order within each key. Exported so a test can hold the plan.
+ */
+export const DECLARED_LEMMA_HEAD_SQL: KeyedRead = keyedRead(`SELECT e.target_word_key AS set_key, d.word, d.pos, e.target_word, g.text AS gloss
+       FROM form_of_edge e
+       JOIN source_record d ON d.record_id = e.record_id
+       LEFT JOIN sense s ON s.record_id = e.record_id AND s.sense_index = e.sense_index
+       LEFT JOIN sense_gloss g ON g.sense_id = s.sense_id AND g.gloss_index = 0
+      WHERE e.release_id IN (${servedBy("?2")}) AND e.target_word_key IN (SELECT value FROM json_each(?1))
+      ORDER BY e.target_word_key, d.line_no, e.json_pointer`);
+
+/** `DECLARED_LEMMA_HEAD_SQL` off `CORRECTED_DECLARED_LEMMA_SQL`'s edges. Exported so a test can hold the plan. */
+export const CORRECTED_DECLARED_LEMMA_HEAD_SQL: KeyedRead = keyedRead(`SELECT e.target_word_key AS set_key, d.word, d.pos, d.line_no AS line_no, e.target_word, g.text AS gloss, e.json_pointer AS edge_pointer
+       ${edgesNaming("served form_of_edge", DECLARED_GLOSS_JOINS, "keys")}
+     UNION ALL
+     SELECT e.target_word_key, d.word, d.pos, d.line_no, e.target_word, g.text, e.json_pointer
+       ${edgesNaming("corrected_edge", DECLARED_GLOSS_JOINS, "keys")}
+      ORDER BY set_key, line_no, edge_pointer`);
+
 /** The declaring records' parts of speech a declared lemma reads, to their section template. */
 const TEMPLATE = { verb: "verb", noun: "sost", adj: "adj" } as const;
 type DeclaredPos = keyof typeof TEMPLATE;
 const isDeclaredPos = (pos: string): pos is DeclaredPos => Object.hasOwn(TEMPLATE, pos);
 
-interface EdgeRow {
+/** What decides whether an edge places a form: its declaring record's part of speech, the word it names and its gloss. */
+interface PlacingRow {
+  pos: string;
+  target_word: string;
+  gloss: string | null;
+}
+
+interface EdgeRow extends PlacingRow {
   record_id: number;
   release_id: string;
   line_no: number;
   line_sha256: string;
   word: string;
-  pos: string;
-  target_word: string;
-  gloss: string | null;
   gloss_pointer: string | null;
 }
+
+interface HeadRow extends PlacingRow {
+  set_key: string;
+  word: string;
+}
+
+/** Where an edge's gloss places its record, by the closed rules: a verb form's slot, or a plural's gender. */
+type Placement = { pos: "verb"; slot: VerbFormGloss } | { pos: "noun" | "adj"; plural: PluralGloss };
+
+/**
+ * The form an edge places, or undefined when its record's part of speech is
+ * none a declared lemma reads, it has no gloss, or the rule refuses the gloss.
+ * Both reads place by this alone, so a reading's head and its forms agree.
+ */
+function placement({ pos, target_word, gloss }: PlacingRow): Placement | undefined {
+  if (gloss === null || !isDeclaredPos(pos)) return undefined;
+  if (pos === "verb") {
+    const slot = readVerbFormGloss(gloss, target_word);
+    return slot === undefined ? undefined : { pos, slot };
+  }
+  const plural = readPluralGloss(gloss, target_word);
+  return plural === undefined ? undefined : { pos, plural };
+}
+
+const posTitleOf = (pos: DeclaredPos): string => POS_TITLE_BY_TEMPLATE[TEMPLATE[pos]];
 
 interface GrammarRow {
   record_id: number;
@@ -179,8 +246,9 @@ export async function declaredLemma(
   db: LookupDatabase,
   releaseId: string,
   notFound: NotFoundResult,
+  tables?: Pick<DictionaryTables, "corrections" | "edgeCorrections">,
 ): Promise<DeclaredLemmaResult | undefined> {
-  const [first, ...rest] = await declaredReadings(db, releaseId, notFound.query.key);
+  const [first, ...rest] = await declaredReadings(db, releaseId, notFound.query.key, tables);
   if (first === undefined) return undefined;
   return { outcome: "declared-lemma", query: notFound.query, release: notFound.release, readings: [first, ...rest] };
 }
@@ -199,9 +267,9 @@ export async function declaredVerbForms(
 }
 
 /**
- * Whether the page answers `key` as a declared lemma: some served edge names
+ * Whether the lookup answers `key` as a declared lemma: some served edge names
  * it and a gloss on one places a form. A Wikidata word (ADR 0033, #812) is
- * read for a key only when this is false, so a declared lemma's page stays.
+ * read for a key only when this is false, so a declared lemma's answer stays.
  */
 export async function isDeclaredLemma(
   db: LookupDatabase,
@@ -210,6 +278,34 @@ export async function isDeclaredLemma(
   tables: Pick<DictionaryTables, "corrections" | "edgeCorrections">,
 ): Promise<boolean> {
   return (await declaredReadings(db, releaseId, key, tables)).length > 0;
+}
+
+/**
+ * The heads of the readings `declaredLemma` answers each of `keys` with, in
+ * its order, in one statement however many keys there are; a key it does not
+ * answer is left out. A batch lookup and `exists()` read this (#818).
+ */
+export async function declaredLemmaHeads(
+  db: LookupDatabase,
+  releaseId: string,
+  keys: readonly string[],
+  tables: Pick<DictionaryTables, "edgeCorrections">,
+): Promise<Map<string, [DeclaredLemmaHead, ...DeclaredLemmaHead[]]>> {
+  const rows = await readKeys<HeadRow>(db, tables.edgeCorrections ? CORRECTED_DECLARED_LEMMA_HEAD_SQL : DECLARED_LEMMA_HEAD_SQL, keys, [releaseId]);
+  const byKey = new Map<string, Map<DeclaredPos, DeclaredLemmaHead>>();
+  for (const row of rows) {
+    const placed = placement(row);
+    if (placed === undefined) continue;
+    const heads = byKey.get(row.set_key) ?? new Map<DeclaredPos, DeclaredLemmaHead>();
+    if (!heads.has(placed.pos)) heads.set(placed.pos, { word: row.target_word, pos: placed.pos, posTitle: posTitleOf(placed.pos), credit: row.word });
+    byKey.set(row.set_key, heads);
+  }
+  return new Map(
+    [...byKey].flatMap(([key, heads]) => {
+      const [first, ...rest] = heads.values();
+      return first === undefined ? [] : [[key, [first, ...rest]] as const];
+    }),
+  );
 }
 
 /**
@@ -246,29 +342,26 @@ async function declaredReadings(
   const verbs: DeclaredVerbForm[] = [];
   const plurals: Record<"noun" | "adj", DeclaredPluralForm[]> = { noun: [], adj: [] };
   for (const row of edges) {
-    if (row.gloss === null || row.gloss_pointer === null || !isDeclaredPos(row.pos)) continue;
+    const placed = placement(row);
+    if (placed === undefined || row.gloss === null || row.gloss_pointer === null) continue;
     const gloss = { text: row.gloss, ref: lineRef(row, row.gloss_pointer) };
     const form = { surface: row.word, ref: lineRef(row, "/word") };
-    if (row.pos === "verb") {
-      const slot = readVerbFormGloss(row.gloss, row.target_word);
-      if (slot === undefined) continue;
-      verbs.push({ ...form, gloss, slot });
+    if (placed.pos === "verb") {
+      verbs.push({ ...form, gloss, slot: placed.slot });
     } else {
-      const plural = readPluralGloss(row.gloss, row.target_word);
-      if (plural === undefined) continue;
       const declaration = pluralDeclaration(
         gloss,
-        plural.gender,
+        placed.plural.gender,
         stated.get(row.record_id) ?? [],
         (corrections.get(row.record_id) ?? []).map(correctionOf),
       );
-      plurals[row.pos].push({ ...form, plural: declaration });
+      plurals[placed.pos].push({ ...form, plural: declaration });
     }
-    if (!words.has(row.pos)) words.set(row.pos, row.target_word);
+    if (!words.has(placed.pos)) words.set(placed.pos, row.target_word);
   }
 
   return [...words].flatMap(([pos, word]): DeclaredLemmaReading[] => {
-    const posTitle = POS_TITLE_BY_TEMPLATE[TEMPLATE[pos]];
+    const posTitle = posTitleOf(pos);
     if (pos === "verb") {
       const forms = nonEmpty(verbs);
       return forms === undefined ? [] : [{ pos, posTitle, word, forms }];
