@@ -2999,6 +2999,8 @@ test("the Licence page reads, section by section, Huey's approved text in Italia
       [
         "Il contenuto deriva dal Wikizionario (il Wiktionary in italiano), un progetto della Wikimedia Foundation scritto da collaboratori volontari. La maggior parte delle voci proviene dall’estrazione pubblicata da kaikki.org, prodotta con wiktextract da Tatu Ylonen. Dove quell’estrazione non è riuscita a leggere una pagina, Lexema legge la voce dal testo della pagina stessa nel dump di Wikimedia.",
         "Gli autori di ogni voce sono registrati nella cronologia delle versioni della sua pagina del Wikizionario. Ogni voce di Lexema rimanda a quella pagina.",
+        // Added by #877 (ADR 0009): the English Wiktionary credit for the hand-kept readings and tables (ADR 0031).
+        "Alcuni significati e tabelle di coniugazione che il Wikizionario non ha sono curati a mano a partire da versioni citate del Wiktionary in inglese.",
         // Added by #794 (ADR 0032): the Wikidata credit, extended by #812 (ADR 0033) to the Wikidata words,
         // in the wording Huey approved on 2026-10-12 (#802).
         "I nomi propri che il Wikizionario non spiega, come luoghi, organizzazioni, lingue, valute e festività, e le parole italiane che il Wikizionario non ha provengono da Wikidata, un altro progetto della Wikimedia Foundation, i cui dati sono rilasciati nel pubblico dominio con la dedicazione Creative Commons CC0 1.0 Universale. Quando una pagina mostra solo dati di Wikidata, il suo link Fonte rimanda all’elemento o al lessema da cui provengono. Questi dati restano nel pubblico dominio e si possono riutilizzare liberamente.",
@@ -3042,6 +3044,8 @@ test("the Licence page links each source and the licence where /attribution did,
       ["wiktextract", "https://github.com/tatuylonen/wiktextract"],
       // The dump's own page, as /attribution linked it: the served release's dump.
       ["dump di Wikimedia", "https://dumps.wikimedia.org/itwiktionary/20260901/"],
+      // The English Wiktionary credit for the hand-kept readings and tables (#877).
+      ["Wiktionary in inglese", "https://en.wiktionary.org/"],
       // The Wikidata credit (#794, ADR 0032).
       ["Wikidata", "https://www.wikidata.org/"],
       ["dedicazione Creative Commons CC0 1.0 Universale", "https://creativecommons.org/publicdomain/zero/1.0/deed.it"],
