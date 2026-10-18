@@ -41,6 +41,25 @@ export const HEADWORD_CANDIDATE_SQL: DictionaryRead = `SELECT t.record_id, t.rel
  WHERE lf.release_id IN (${servedBy("?1")}) AND lf.surface_key = ?2 AND lf.origin = 'headword'
  ORDER BY t.line_no, t.record_id`;
 
+/**
+ * The words an entry's definitions say it is a form of, as one column of a
+ * read that names the entry's `recovered_entry` row `entry`: a JSON array of
+ * `[fact_index, word]`, which `formOfWords` reads. Only for a dictionary with
+ * `entry_fact` (#439).
+ */
+export const formOfFactsOf = (entry: string): string =>
+  `(SELECT json_group_array(json_array(f.fact_index, f.value)) FROM entry_fact f WHERE f.entry_id = ${entry}.entry_id AND f.kind = 'form-of')`;
+
+/**
+ * The words `formOfFactsOf` read, in fact order, as `readEntryFacts` gives the
+ * entry lemma links to them: `amare` for `amano` (#854). None for an entry
+ * that names none, or for `null`, the column of a dictionary without `entry_fact`.
+ */
+export function formOfWords(facts: string | null): string[] {
+  if (facts === null) return [];
+  return (JSON.parse(facts) as [number, string][]).sort(([a], [b]) => a - b).map(([, word]) => word);
+}
+
 interface FactRow {
   kind: "gender" | "number" | "form" | "form-of" | "pronunciation" | "etymology" | RelatedKind | "expression";
   page_line: number;

@@ -31,7 +31,7 @@ import { SHAPE_READ_SQL } from "../../src/lookup/wordShape.js";
 import { BESIDE_SOURCE_HEADS_SQL } from "../../src/lookup/besideSource.js";
 import { OPTIONAL_TABLES_SQL } from "../../src/lookup/served.js";
 import { entryKey, publicEntryId, type LemmaTarget } from "../../src/lookup/types.js";
-import { loadFixturePages, rawPageSource } from "../../src/source/rawPage.js";
+import { loadFixturePages, rawPageSource, readSavedPage, type RawPage } from "../../src/source/rawPage.js";
 import { candidatesOf, idOf } from "@/worker/api/lookupAnswer.ts";
 import { atFixtureLines } from "../../test/correctionFixture.js";
 
@@ -96,13 +96,16 @@ const light = (answer: BatchAnswer): Light[] =>
       }))
     : ["not found"];
 
-/** A dictionary seeded from `lines` the way `pnpm run seed:dev` seeds D1, with the curated table cells `corrections`. */
-async function seededWith(lines: readonly string[], releaseId: string, corrections: readonly CellCorrection[]): Promise<DatabaseSync> {
+/** A dictionary seeded from `lines` the way `pnpm run seed:dev` seeds D1, with the curated table cells `corrections` and the raw pages `pages`. */
+async function seededWith(lines: readonly string[], releaseId: string, corrections: readonly CellCorrection[], pages: readonly RawPage[] = []): Promise<DatabaseSync> {
   const cellDir = await mkdtemp(join(tmpdir(), "lexema-batch-cells-"));
   try {
     const archive = join(cellDir, "fixture.jsonl.gz");
     await writeFile(archive, gzipSync(Buffer.from(`${lines.join("\n")}\n`, "utf8")));
-    const { parts } = await seedSql({ input: archive, outputDir: join(cellDir, "sql"), schema: join(REPO, "src/db/schema.sql"), releaseId, license: "CC-BY-SA-4.0", corrections });
+    const { parts } = await seedSql({
+      input: archive, outputDir: join(cellDir, "sql"), schema: join(REPO, "src/db/schema.sql"), releaseId, license: "CC-BY-SA-4.0", corrections,
+      ...(pages.length === 0 ? {} : { rawPages: rawPageSource(pages) }),
+    });
     const seededDb = new DatabaseSync(":memory:");
     for (const part of parts) seededDb.exec(await readFile(part, "utf8"));
     return seededDb;
@@ -489,7 +492,20 @@ async function namedByLookup(word: string, on: { db: LookupDatabase; releaseId: 
 /** Part of speech and identity, without the id. */
 const shapes = (candidates: readonly string[]): string[] => candidates.map((candidate) => candidate.split(" ").slice(1).join(" "));
 
-const HAND_KEPT_WORDS = ["si", "come", "Come", "qqqqqq"];
+// `eguaglianza` has no record; its hand-kept reading is another spelling of
+// uguaglianza, archive line 2 of the fixture (#830), so both lookups answer it with that record (#854).
+const HAND_KEPT_WORDS = ["si", "come", "Come", "qqqqqq", "eguaglianza"];
+
+/** How the single lookup answers `word`: each candidate's `via` and word. */
+async function viaByLookup(word: string, on: { db: LookupDatabase; releaseId: string }): Promise<string[]> {
+  const result = await lookup({ ...on, query: word });
+  assert.ok(result.outcome === "found", word);
+  const readLemma = async (target: LemmaTarget) => {
+    const lemma = await lookup({ ...on, query: target.word });
+    return lemma.outcome === "found" ? lemma.readings.find((reading) => entryKey(reading) === entryKey(target)) : undefined;
+  };
+  return (await candidatesOf(result, readLemma)).map(({ via, reading }) => `${via} ${reading.word}`);
+}
 
 test("the batch answers a word with its hand-kept readings after the source's, with the ids the single lookup gives them (#776)", async () => {
   const releaseId = "it-batch-hand-kept";
@@ -502,6 +518,11 @@ test("the batch answers a word with its hand-kept readings after the source's, w
     // The shapes the criteria name, so the comparison above is not vacuous.
     assert.deepEqual(shapes(named(answers[0])), ["noun record", "pron kept-si:pron"]);
     assert.deepEqual(shapes(named(answers[1])), ["adv record", "prep record", "conj kept-come:conj"]);
+    // A hand-kept reading of another spelling is answered with the word it leads to, as `lookup` answers it via form_of (#854).
+    const eguaglianza = answers[HAND_KEPT_WORDS.indexOf("eguaglianza")];
+    assert.ok(eguaglianza.outcome === "found");
+    assert.deepEqual(eguaglianza.candidates.map((candidate) => `${candidate.word} ${candidate.pos} ${candidate.recordId === undefined ? "other" : "record"}`), ["uguaglianza noun record"]);
+    assert.deepEqual(await viaByLookup("eguaglianza", on), ["form_of uguaglianza"]);
     // A hand-kept reading's id names the revision it cites and its section line there.
     assert.equal(named(answers[0])[1].split(" ")[0], `${releaseId}:page:93469502:952`);
   } finally {
@@ -543,6 +564,41 @@ test("a dictionary without hand_kept_definition is sent no statement naming it, 
   } finally {
     before.close();
     empty.close();
+  }
+});
+
+/**
+ * `amano`: a page-only form entry of release it-0c432803, which no archive
+ * record heads (reports/2026-10-03-unrecorded-page-layouts.md), revision
+ * 2822837 saved verbatim in fixtures/page-facts; its definition names
+ * `del verbo [[amare]]`. `amare` is the release's line 2338
+ * (fixtures/pronominal-pairs.jsonl), whose table lists `amano`.
+ */
+const AMANO = readSavedPage(await readFile(join(REPO, "fixtures/page-facts/amano.wikitext"), "utf8"), "amano.wikitext");
+const AMARE_LINE = (await readFile(join(REPO, "fixtures/pronominal-pairs.jsonl"), "utf8")).split("\n")[0];
+
+test("the batch answers a page-only form entry and a hand-kept reading of another spelling with their lemmas, as the single lookup does, in one links statement (#854)", async () => {
+  const releaseId = "it-batch-lineless-lemmas";
+  assert.ok(AMARE_LINE.startsWith('{"word": "amare", '));
+  const seeded = await seededWith([...HAND_KEPT_LINES, AMARE_LINE], releaseId, [], [AMANO]);
+  try {
+    const on = { db: fromNodeSqlite(seeded), releaseId };
+    assert.deepEqual(seeded.prepare("SELECT pos FROM recovered_entry WHERE word = 'amano'").all().map((row) => row.pos), ["verb"]);
+    const words = ["amano", "eguaglianza", "amare", "si", "qqqqqq"];
+    const asked = recording(on.db);
+    const { answers } = await lookupBatch({ db: asked.db, releaseId, queries: words });
+    for (const [at, word] of words.entries()) assert.deepEqual(named(answers[at]), await namedByLookup(word, on), word);
+
+    // amare's table spells amano, and the entry is a form of amare: one candidate, the verb, not the entry beside it.
+    assert.deepEqual(shapes(named(answers[0])), ["verb record"]);
+    assert.ok(answers[0].outcome === "found" && answers[0].candidates[0].word === "amare");
+    assert.deepEqual(await viaByLookup("amano", on), ["form amare"]);
+    assert.deepEqual(shapes(named(answers[1])), ["noun record"]);
+
+    // The records' edges, the entry's form-of word and the reading's other spelling: one statement for the batch.
+    assert.equal(asked.asked.filter((sql) => sql === CORRECTED_BATCH_LEMMA_LINK_SQL).length, 1, asked.asked.join("\n---\n"));
+  } finally {
+    seeded.close();
   }
 });
 

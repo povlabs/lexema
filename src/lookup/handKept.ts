@@ -40,14 +40,33 @@ export const HAND_KEPT_SQL: DictionaryRead = `SELECT reading_id, word, pos, pos_
   FROM hand_kept_definition WHERE word_key = ?1 ORDER BY reading_id, definition_index`;
 
 /**
+ * A reading's cited sense lines, as one column of a read grouped by reading:
+ * a JSON array of `[definition_index, wikitext]`, which `leadsToOf` reads.
+ */
+export const SENSE_LINES = "json_group_array(json_array(definition_index, wikitext)) AS sense_lines";
+
+/**
+ * The words a reading's cited sense lines name it another spelling of, in
+ * definition order, as `handKeptReadingsFrom` gives it lemma links to them:
+ * `uguaglianza` for `eguaglianza` (#830, #854). None for a reading that only
+ * defines.
+ */
+export function leadsToOf(senseLines: string): string[] {
+  return (JSON.parse(senseLines) as [number, string][])
+    .sort(([a], [b]) => a - b)
+    .flatMap(([, wikitext]) => alternativeOf({ wikitext }) ?? []);
+}
+
+/**
  * `HAND_KEPT_SQL` for many keys in one read, light (#776): each reading of
  * each key once, in reading order, with what names it and its part of speech.
  * A reading's first definition gives its revision and section line, as
  * `readingOf` takes them: SQLite reads the bare columns off the row `MIN`
- * picks. Exported so a test can assert the plan.
+ * picks. Its `sense_lines` give the words it leads to (`leadsToOf`).
+ * Exported so a test can assert the plan.
  */
 export const HAND_KEPT_HEADS_SQL: KeyedRead = keyedRead(`SELECT word_key AS set_key, reading_id, MIN(definition_index) AS first_definition,
-       word, pos, pos_title, section_line, evidence_url
+       word, pos, pos_title, section_line, evidence_url, ${SENSE_LINES}
   FROM hand_kept_definition WHERE word_key IN (SELECT value FROM json_each(?1))
  GROUP BY word_key, reading_id ORDER BY word_key, reading_id`);
 
@@ -60,6 +79,8 @@ export interface HandKeptHeadRow {
   pos_title: string;
   section_line: number;
   evidence_url: string;
+  /** The reading's cited sense lines (`SENSE_LINES`). */
+  sense_lines: string;
 }
 
 /**
@@ -77,6 +98,8 @@ export interface HandKeptHead {
   word: string;
   pos: string;
   posTitle: string;
+  /** The words it is another spelling of, as its reading's lemma links name them (`leadsToOf`): `uguaglianza` for `eguaglianza`. */
+  leadsTo: readonly string[];
 }
 
 /** The hand-kept readings of a dictionary. */
@@ -139,7 +162,7 @@ export const handKeptHeadOf = (releaseId: string, row: Omit<HandKeptHeadRow, "se
   const cites = citedRevisionOf(row.evidence_url);
   return {
     handKeptId: row.reading_id, releaseId, revisionId: cites.revisionId, cites, pageLine: row.section_line,
-    word: row.word, pos: row.pos, posTitle: row.pos_title,
+    word: row.word, pos: row.pos, posTitle: row.pos_title, leadsTo: leadsToOf(row.sense_lines),
   };
 };
 
