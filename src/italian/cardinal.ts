@@ -112,11 +112,20 @@ export function parseItalianCardinal(key: string): ItalianCardinal | undefined {
 }
 
 /**
- * The fixed Lexema definition of a cardinal the rule read, the reading's one
- * definition: "numero cardinale corrispondente a 2001". The value is written
- * in digits with no separator, as the ruling writes it.
+ * A cardinal's value in digits as the definition writes it: no separator below
+ * 10.000 (`2001`), a dot before the last three digits from 10.000 up (`12.345`,
+ * `123.000`). The limit keeps it to one dot. Huey approved this form on
+ * 2026-10-19 (https://github.com/povlabs/lexema/issues/804#issuecomment-6256099853).
  */
-export const cardinalDefinition = (read: ItalianCardinal): string => `numero cardinale corrispondente a ${read.value}`;
+const digitsOf = (value: CardinalValue): string =>
+  value < 10_000 ? String(value) : `${Math.floor(value / 1000)}.${String(value % 1000).padStart(3, "0")}`;
+
+/**
+ * The fixed Lexema definition of a cardinal the rule read, the reading's one
+ * definition: "numero cardinale corrispondente a 2001", the value in digits
+ * (`digitsOf`), in the wording Huey approved.
+ */
+export const cardinalDefinition = (read: ItalianCardinal): string => `numero cardinale corrispondente a ${digitsOf(read.value)}`;
 
 /** The part of speech a rule-built cardinal reads as, as the source files its own numerals (`cinquantanove`). */
 export const CARDINAL_POS = { pos: "adj", posTitle: "Aggettivo numerale" } as const;

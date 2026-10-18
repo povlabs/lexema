@@ -24,17 +24,23 @@ Asked where the page's one *Fonte* goes for such a reading, which has no source 
 
 > yes. On a page whose only reading is rule-built by it-cardinal/v1, the one Fonte opens /licence, and the API credits Lexema (not Wiktionary / CC BY-SA) for that reading. Accentless spellings (ventitre → 23) are accepted, matching #846.
 
+Asked to approve the wording and to name the licence, he ruled on 2026-10-19 ([ruling](https://github.com/povlabs/lexema/issues/804#issuecomment-6256099853)):
+
+> 1. Licence: rule-built it-cardinal/v1 readings are Lexema's own text, released under CC0 1.0 in the API. The /licence page gains one line about CC0 next to CC BY-SA 4.0.
+> 2. Wording approved: "numero cardinale corrispondente a N", N in digits with dots from 10.000 up (2001, 12.345, 123.000).
+
 ## Decision
 
-**A spelled Italian cardinal from 0 to 999.999 that no other reading answers gets one reading, built by rule `it-cardinal/v1`, defined as "numero cardinale corrispondente a N", with N its value in digits.**
+**A spelled Italian cardinal from 0 to 999.999 that no other reading answers gets one reading, built by rule `it-cardinal/v1`, defined as "numero cardinale corrispondente a N", with N its value in digits, a dot before the last three from 10.000 up.**
 
 - **The rule.** `parseItalianCardinal` in `src/italian/cardinal.ts` reads one written word into its value, and nothing else. A ten drops its final vowel before `uno` and `otto` (`ventuno`, `trentotto`) and only there. A hundred drops its `o` before `ottanta` (`centottanta`), and may keep or drop it before `uno` and `otto` (`centouno` and `centuno`). One thousand is `mille`; more are `-mila` (`duemila`), and a multiplier ending in `uno` may drop its `o` there (`ventunmila`, `ventunomila`). A space, a hyphen, an `e` between the parts, a digit, an ordinal, a fraction, and any number from a million up (`unmilione`) are not read. A malformed spelling (`centocento`, `ventiuno`) is not read.
 - **The accent.** A compound's final `tre` may carry its accent or not: `ventitré` and `ventitre` both read 23, as an accentless query already opens its headword ([#846](https://github.com/povlabs/lexema/issues/846)). `tre` alone, and a `tre` before more letters (`tremila`), carries none, so `tré` and `trémila` are not read.
 - **Last, and only where nothing answers.** The rule runs after every other route of `lookup()`: the source's records, curated cells, page-only entries, hand-kept readings, name entries, phrases, the essere agreement, word shapes, pronominal pairs, Wikidata words, and the headword an accentless query opens. A word a form-of record names as its lemma is a declared lemma ([#453](https://github.com/povlabs/lexema/issues/453)) and gets no rule-built reading. So a number word the source lists (`cinquantanove`) keeps exactly its source readings, and `ventitre` opens the source's `ventitré`. When a later release lists a cardinal, its rule-built reading stops showing, with no ruling and no deletion.
 - **One reading.** Its word is the query's key, its part of speech `adj`, *Aggettivo numerale*, as the source files its numerals, and its one definition the fixed text. It states no grammar, no form and no other fact. Its identity is the rule and the value (`CardinalIdentity` in `src/lookup/types.ts`); nothing is stored.
 - **Every route agrees.** `lookup()`, `exists()` and `lookupBatch()` read the rule in one place (`src/lookup/cardinal.ts`), and the word page shows what `lookup()` returns, so the four routes give one answer.
-- **No mark on the page.** The reading shows like any other reading, with no note that a rule made it or that the source lacks it ([ADR 0016](0016-page-shows-no-origin-marks.md)). The definition is fixed, deterministic Lexema text whose exact wording Huey approves on the pull request that builds the rule, so it is `lexema-deterministic` under ADR 0008, not generated text, and carries no label.
-- **Credit.** The page's one *Fonte* opens `/licence`, Lexema's Licenza page. The API's `attribution` for such a reading names `Lexema` as the source, `https://lexema.fyi/licence` as `source_url`, and CC0 1.0 as the licence, in `/lookup`, `/lookup/batch` and `/exists` alike; its id is `<release>:cardinal:<value>`. This amends ADR 0009's one-licence amendment for these readings only: no source text is in them, so they credit neither Wiktionary nor CC BY-SA. Every other result's field is unchanged.
+- **The wording.** The definition is "numero cardinale corrispondente a N", in the wording Huey approved ([ruling](https://github.com/povlabs/lexema/issues/804#issuecomment-6256099853)). N has no separator below 10.000 (`2001`) and a dot before its last three digits from 10.000 up (`12.345`, `123.000`); the limit keeps it to one dot.
+- **No mark on the page.** The reading shows like any other reading, with no note that a rule made it or that the source lacks it ([ADR 0016](0016-page-shows-no-origin-marks.md)). The definition is fixed, deterministic Lexema text whose exact wording Huey approved, so it is `lexema-deterministic` under ADR 0008, not generated text, and carries no label.
+- **Credit.** The page's one *Fonte* opens `/licence`, Lexema's Licenza page. The API's `attribution` for such a reading names `Lexema` as the source, `https://lexema.fyi/licence` as `source_url`, and CC0 1.0 as the licence, in `/lookup`, `/lookup/batch` and `/exists` alike; its id is `<release>:cardinal:<value>`. The licence is Huey's ruling: these readings are Lexema's own text, released under CC0 1.0 ([ruling](https://github.com/povlabs/lexema/issues/804#issuecomment-6256099853)). The Licenza page's *Licenza* section says so in one Italian line beside its CC BY-SA 4.0 line. This amends ADR 0009's one-licence amendment for these readings only: no source text is in them, so they credit neither Wiktionary nor CC BY-SA. Every other result's field is unchanged.
 
 **Binding constraints.**
 
@@ -48,9 +54,9 @@ Asked where the page's one *Fonte* goes for such a reading, which has no source 
 - `duemilauno`, `duemilaventi` and every other well-formed cardinal up to 999.999 get an entry, so a reader app can look up any year.
 - A cardinal's entry says only what number it is. It carries no grammar, pronunciation or example, because no source states them.
 - The rule is a parser beside the source, with its own tests (`test/cardinal.test.ts`); a spelling it reads wrongly is a bug in that one module.
-- This record changes no text of the Licenza page, whose text is Huey's approved wording; a sentence there about rule-built readings would need its own ruling.
+- The Licenza page gains one line, in its *Licenza* section, releasing these definitions under CC0 1.0, as Huey ruled. Its other text is unchanged.
 - [#803](https://github.com/povlabs/lexema/issues/803), number words the source has with no meaning, stays separate.
 
 ## Records
 
-New term **rule-built cardinal**, defined in [.glossary/TERMS.md](../.glossary/TERMS.md) in the same change. The design manifest's *Fonte* rows name the `/licence` link.
+New term **rule-built cardinal**, defined in [.glossary/TERMS.md](../.glossary/TERMS.md) in the same change. The design manifest's *Fonte* rows name the `/licence` link, and `web/components/dictionary/Licence.tsx` carries the CC0 line.

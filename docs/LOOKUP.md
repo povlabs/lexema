@@ -434,7 +434,8 @@ cardinal from 0 to 999.999, `lookup()` answers it with one reading rule
 [`src/lookup/cardinal.ts`](../src/lookup/cardinal.ts)). Its word is the key,
 its part of speech `adj`, `Aggettivo numerale`, as the source files its
 numerals, and its one definition the fixed text "numero cardinale
-corrispondente a N", N the value in digits. It states no grammar and no
+corrispondente a N", N the value in digits with a dot from 10.000 up
+(`2001`, `12.345`). It states no grammar and no
 form. A key a form-of record names as its lemma is a declared lemma (#453),
 answered as the section above says, and never gets such a reading.
 `route` is `{ kind: "surface" }`. `exists()` answers `present` with the

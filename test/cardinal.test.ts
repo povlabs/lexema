@@ -72,8 +72,16 @@ test("each value from 0 to 999.999 has a spelling the rule reads back to it", ()
   assert.equal(valueOf(spell(CARDINAL_LIMIT)), CARDINAL_LIMIT);
 });
 
-test("the definition is the fixed Lexema text, the value in digits", () => {
-  const read = parseItalianCardinal("duemilauno");
-  assert.ok(read !== undefined);
-  assert.equal(cardinalDefinition(read), "numero cardinale corrispondente a 2001");
+test("the definition is the fixed Lexema text, the value in digits with a dot from 10.000 up", () => {
+  const definitionOf = (spelling: string) => {
+    const read = parseItalianCardinal(spelling);
+    assert.ok(read !== undefined, spelling);
+    return cardinalDefinition(read);
+  };
+  assert.equal(definitionOf("duemilauno"), "numero cardinale corrispondente a 2001");
+  assert.equal(definitionOf("novemilanovecentonovantanove"), "numero cardinale corrispondente a 9999");
+  assert.equal(definitionOf("diecimila"), "numero cardinale corrispondente a 10.000");
+  assert.equal(definitionOf("dodicimilatrecentoquarantacinque"), "numero cardinale corrispondente a 12.345");
+  assert.equal(definitionOf("centoventitremila"), "numero cardinale corrispondente a 123.000");
+  assert.equal(definitionOf("centomilasette"), "numero cardinale corrispondente a 100.007");
 });

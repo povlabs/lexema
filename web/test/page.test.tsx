@@ -2986,7 +2986,11 @@ test("the Licence page reads, section by section, Huey's approved text in Italia
     [
       "licence",
       "1. Licenza",
-      ["Le definizioni e gli altri contenuti lessicali derivati dalle fonti indicate di seguito sono resi disponibili con la licenza Creative Commons Attribuzione - Condividi allo stesso modo 4.0 Internazionale (CC BY-SA 4.0)."],
+      [
+        "Le definizioni e gli altri contenuti lessicali derivati dalle fonti indicate di seguito sono resi disponibili con la licenza Creative Commons Attribuzione - Condividi allo stesso modo 4.0 Internazionale (CC BY-SA 4.0).",
+        // Added by #804 (ADR 0034): the rule-built cardinals are Lexema's own text, under CC0 (Huey, 2026-10-19).
+        "Le definizioni che Lexema costruisce secondo una regola per i numeri scritti in lettere che nessuna fonte spiega, come «duemilauno», sono testo di Lexema e sono rilasciate nel pubblico dominio con la dedicazione Creative Commons CC0 1.0 Universale.",
+      ],
     ],
     [
       "reuse",
@@ -3043,6 +3047,8 @@ test("the Licence page links each source and the licence where /attribution did,
     external.map((match) => [readOf(match[3]), match[2]]),
     [
       ["Creative Commons Attribuzione - Condividi allo stesso modo 4.0 Internazionale (CC BY-SA 4.0)", "https://creativecommons.org/licenses/by-sa/4.0/"],
+      // The CC0 release of the rule-built cardinals (#804, ADR 0034).
+      ["dedicazione Creative Commons CC0 1.0 Universale", "https://creativecommons.org/publicdomain/zero/1.0/deed.it"],
       ["Wikizionario", "https://it.wiktionary.org/"],
       ["Wikimedia Foundation", "https://wikimediafoundation.org/"],
       ["kaikki.org", "https://kaikki.org/itwiktionary/"],
