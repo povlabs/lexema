@@ -4,6 +4,7 @@
 // that throws, is a mismatch and turns the run red. Each declaration's own
 // `lookups` are looked up the same way and held to what it asks (#554).
 
+import { cardinalDefinition } from "../italian/cardinal.js";
 import { literal } from "../import/seedSql.js";
 import { readOnly, type LookupDatabase, type SqlValue } from "../lookup/database.js";
 import { lookup } from "../lookup/lookup.js";
@@ -69,7 +70,8 @@ export function lookupDatabaseOf(reader: MasterReader): LookupDatabase {
  * Why `result` is not what `declared` asks, or undefined when it is. A gloss
  * is held to every sense's glosses and every recovered definition, since a
  * page-only entry (ADR 0024) has no senses and states its definitions there,
- * to a name entry's description (ADR 0032), and to a Wikidata word's glosses (ADR 0033).
+ * to a name entry's description (ADR 0032), to a Wikidata word's glosses (ADR 0033),
+ * and to a rule-built cardinal's fixed definition (ADR 0034).
  */
 export function declaredMiss(declared: DeclaredLookup, result: LookupResult): string | undefined {
   if (declared.expect === "not-found") return result.outcome === "found" ? "found, declared not found" : undefined;
@@ -82,6 +84,7 @@ export function declaredMiss(declared: DeclaredLookup, result: LookupResult): st
     ...everyRecovered(reading).map(({ text }) => text),
     ...(reading.description === undefined ? [] : [reading.description]),
     ...(reading.lexemeGlosses ?? []).map(({ text }) => text),
+    ...(reading.cardinal === undefined ? [] : [cardinalDefinition(reading.cardinal)]),
   ]);
   return texts.some((text) => text.includes(gloss)) ? undefined : `found, but no definition holds ${JSON.stringify(gloss)}`;
 }

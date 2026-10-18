@@ -24,6 +24,9 @@
 // (https://github.com/povlabs/lexema/issues/877#issuecomment-6252861816). The
 // paragraph is the wording Huey approved on #887 the same day, widened to the
 // tables (https://github.com/povlabs/lexema/pull/887#issuecomment-6253205503).
+// Section 1's second paragraph releases the rule-built cardinals' definitions
+// (ADR 0034) under CC0 1.0, beside the CC BY-SA 4.0 line, on Huey's ruling of
+// 2026-10-19 (https://github.com/povlabs/lexema/issues/804#issuecomment-6256099853).
 
 import { ExternalLink } from "@/components/shared/ExternalLink";
 import { LEGAL_ITEMS, LEGAL_PARAGRAPH, LEGAL_UNBROKEN, LINK } from "@/components/shared/styles.ts";
@@ -55,14 +58,24 @@ export function Licence({ release }: { release: ServedRelease }) {
           id: "licence",
           title: "Licenza",
           body: (
-            <p className={LEGAL_PARAGRAPH}>
-              Le definizioni e gli altri contenuti lessicali derivati dalle fonti indicate di seguito sono resi
-              disponibili con la licenza{" "}
-              <ExternalLink language="it" className={LINK} href={LICENCE_URL}>
-                Creative Commons Attribuzione - Condividi allo stesso modo 4.0 Internazionale (CC BY-SA 4.0)
-              </ExternalLink>
-              .
-            </p>
+            <>
+              <p className={LEGAL_PARAGRAPH}>
+                Le definizioni e gli altri contenuti lessicali derivati dalle fonti indicate di seguito sono resi
+                disponibili con la licenza{" "}
+                <ExternalLink language="it" className={LINK} href={LICENCE_URL}>
+                  Creative Commons Attribuzione - Condividi allo stesso modo 4.0 Internazionale (CC BY-SA 4.0)
+                </ExternalLink>
+                .
+              </p>
+              <p className={LEGAL_PARAGRAPH}>
+                Le definizioni che Lexema costruisce secondo una regola per i numeri scritti in lettere che nessuna fonte
+                spiega, come &laquo;duemilauno&raquo;, sono testo di Lexema e sono rilasciate nel pubblico dominio con la{" "}
+                <ExternalLink language="it" className={LINK} href={CC0_URL}>
+                  dedicazione Creative Commons CC0 1.0 Universale
+                </ExternalLink>
+                .
+              </p>
+            </>
           ),
         },
         {

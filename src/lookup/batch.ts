@@ -41,6 +41,8 @@ import { correctedEdgeServed, sourceEdgeServed } from "./correctedEdge.js";
 import { dictionaryTables, servedBy, type DictionaryTables } from "./served.js";
 import { besideSourceOf } from "./besideSource.js";
 import { openedHeadwords } from "./accentless.js";
+import { unansweredCardinal } from "./cardinal.js";
+import { CARDINAL_POS, type ItalianCardinal } from "../italian/cardinal.js";
 import { unlessDeclaredLemma } from "./wikidataWords.js";
 import { declaredLemmaHeads } from "./declaredLemma.js";
 import { readTranslations } from "./sourceRecord.js";
@@ -58,18 +60,20 @@ import { normalizeItalianExact } from "../italian/normalize.js";
  * speech. Exactly one of a source record by its archive line, a page-only
  * entry by its page revision, a hand-kept reading (ADR 0031) by its reading
  * id, with the revision it cites and its section line there, a name entry
- * (ADR 0032) or a Wikidata word (ADR 0033) by its Wikidata id, or a declared
- * lemma's reading (#818) by its word and part of speech, which is all it has.
+ * (ADR 0032) or a Wikidata word (ADR 0033) by its Wikidata id, a declared
+ * lemma's reading (#818) by its word and part of speech, which is all it has,
+ * or a rule-built cardinal (ADR 0034) by its value.
  */
 export type CandidateRecord = (
-  | { recordId: number; entryId?: never; handKeptId?: never; nameItem?: never; lexeme?: never; lineNo: number; declaredLemma?: never }
-  | { entryId: number; revisionId: number; pageLine: number; recordId?: never; handKeptId?: never; nameItem?: never; lexeme?: never; lineNo?: never; declaredLemma?: never }
-  | { handKeptId: string; revisionId: number; cites: CitedRevision; pageLine: number; recordId?: never; entryId?: never; nameItem?: never; lexeme?: never; lineNo?: never; declaredLemma?: never }
-  | { nameItem: `Q${number}`; recordId?: never; entryId?: never; handKeptId?: never; lexeme?: never; lineNo?: never; revisionId?: never; pageLine?: never; declaredLemma?: never }
-  | { lexeme: `L${number}`; recordId?: never; entryId?: never; handKeptId?: never; nameItem?: never; lineNo?: never; revisionId?: never; pageLine?: never; declaredLemma?: never }
-  | { declaredLemma: DeclaredLemmaHead; recordId?: never; entryId?: never; handKeptId?: never; nameItem?: never; lexeme?: never; lineNo?: never; revisionId?: never; pageLine?: never }
+  | { recordId: number; entryId?: never; handKeptId?: never; nameItem?: never; lexeme?: never; declaredLemma?: never; cardinal?: never; lineNo: number }
+  | { entryId: number; revisionId: number; pageLine: number; recordId?: never; handKeptId?: never; nameItem?: never; lexeme?: never; declaredLemma?: never; cardinal?: never; lineNo?: never }
+  | { handKeptId: string; revisionId: number; cites: CitedRevision; pageLine: number; recordId?: never; entryId?: never; nameItem?: never; lexeme?: never; declaredLemma?: never; cardinal?: never; lineNo?: never }
+  | { nameItem: `Q${number}`; recordId?: never; entryId?: never; handKeptId?: never; lexeme?: never; declaredLemma?: never; cardinal?: never; lineNo?: never; revisionId?: never; pageLine?: never }
+  | { lexeme: `L${number}`; recordId?: never; entryId?: never; handKeptId?: never; nameItem?: never; declaredLemma?: never; cardinal?: never; lineNo?: never; revisionId?: never; pageLine?: never }
+  | { declaredLemma: DeclaredLemmaHead; recordId?: never; entryId?: never; handKeptId?: never; nameItem?: never; lexeme?: never; cardinal?: never; lineNo?: never; revisionId?: never; pageLine?: never }
+  | { cardinal: ItalianCardinal; recordId?: never; entryId?: never; handKeptId?: never; nameItem?: never; lexeme?: never; declaredLemma?: never; lineNo?: never; revisionId?: never; pageLine?: never }
 ) & {
-  /** The record's own release, which `lineNo` counts in: the master's, or a feed's (src/lookup/served.ts); the served one for a hand-kept reading, a name entry or a Wikidata word, which belongs to none. */
+  /** The record's own release, which `lineNo` counts in: the master's, or a feed's (src/lookup/served.ts); the served one for a hand-kept reading, a name entry, a Wikidata word or a rule-built cardinal, which belongs to none. */
   releaseId: string;
   word: string;
   pos: string;
@@ -584,6 +588,7 @@ const candidateKey = (record: CandidateRecord): string => {
   if (record.entryId !== undefined) return `page-${record.entryId}`;
   if (record.handKeptId !== undefined) return `kept-${record.handKeptId}`;
   if (record.declaredLemma !== undefined) return `declared-${record.declaredLemma.pos}-${record.declaredLemma.word}`;
+  if (record.cardinal !== undefined) return `cardinal-${record.cardinal.value}`;
   return record.nameItem !== undefined ? `name-${record.nameItem}` : `lexeme-${record.lexeme}`;
 };
 
@@ -695,7 +700,8 @@ function shapeCandidates({ spelled, kept }: { spelled: readonly Match[]; kept: r
  * `it-pronominal-pair/v2` (`answeringPairs`), then the lemma links of the
  * records they answer with (`candidatesByKey`). Then, for a word none of these
  * answers, the headword it lacks a final accent of (`openedHeadwords`, #846),
- * and those headwords answered the same way.
+ * and those headwords answered the same way. Last, for a word none of that
+ * answers, the cardinal rule `it-cardinal/v1` reads it as (ADR 0034, #804).
  */
 export async function lookupBatch({
   db,
@@ -722,17 +728,26 @@ export async function lookupBatch({
   // nothing for it.
   const opened = await openedHeadwords(db, releaseId, tables, keys.filter((key) => (answered.get(key) ?? []).length === 0));
   const headwords = opened.size === 0 ? new Map<string, CandidateRecord[]>() : await candidatesByKey(db, releaseId, tables, reads, [...new Set([...opened.values()].map(({ key }) => key))]);
-  const finalCandidates = (key: string): CandidateRecord[] => {
+  const reached = (key: string): CandidateRecord[] => {
     const headword = opened.get(key);
     return headword === undefined ? (answered.get(key) ?? []) : (headwords.get(headword.key) ?? []);
   };
-
   // Nor a headword: it may be a declared lemma (#818), one candidate per
   // reading, in one statement more; a batch with no such word sends nothing.
-  const declared = await declaredLemmaHeads(db, releaseId, keys.filter((key) => finalCandidates(key).length === 0), tables);
-  const candidatesOfKey = (key: string): CandidateRecord[] => {
-    const found = finalCandidates(key);
+  const declared = await declaredLemmaHeads(db, releaseId, keys.filter((key) => reached(key).length === 0), tables);
+  const sourced = (key: string): CandidateRecord[] => {
+    const found = reached(key);
     return found.length > 0 ? found : (declared.get(key) ?? []).map((head) => ({ declaredLemma: head, releaseId, word: head.word, pos: head.pos, posTitle: head.posTitle }));
+  };
+
+  // Nor that: it may be a spelled cardinal (ADR 0034, #804), read as
+  // `lookup()` reads it; a word that spells none sends nothing for it.
+  const cardinals = new Map(
+    await Promise.all(keys.filter((key) => sourced(key).length === 0).map(async (key) => [key, await unansweredCardinal(db, releaseId, tables, key)] as const)),
+  );
+  const candidatesOfKey = (key: string): CandidateRecord[] => {
+    const cardinal = cardinals.get(key);
+    return cardinal === undefined ? sourced(key) : [{ cardinal, releaseId, word: key, pos: CARDINAL_POS.pos, posTitle: CARDINAL_POS.posTitle }];
   };
 
   const answers = prepared.map((query): BatchAnswer => {
