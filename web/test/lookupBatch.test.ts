@@ -584,7 +584,7 @@ test("the batch answers a page-only form entry and a hand-kept reading of anothe
   try {
     const on = { db: fromNodeSqlite(seeded), releaseId };
     assert.deepEqual(seeded.prepare("SELECT pos FROM recovered_entry WHERE word = 'amano'").all().map((row) => row.pos), ["verb"]);
-    const words = ["amano", "eguaglianza", "amare", "si", "qqqqqq"];
+    const words = ["amano", "eguaglianza", "amare", "si", "qqqqqq", "eguaglianze"];
     const asked = recording(on.db);
     const { answers } = await lookupBatch({ db: asked.db, releaseId, queries: words });
     for (const [at, word] of words.entries()) assert.deepEqual(named(answers[at]), await namedByLookup(word, on), word);
@@ -594,6 +594,9 @@ test("the batch answers a page-only form entry and a hand-kept reading of anothe
     assert.ok(answers[0].outcome === "found" && answers[0].candidates[0].word === "amare");
     assert.deepEqual(await viaByLookup("amano", on), ["form amare"]);
     assert.deepEqual(shapes(named(answers[1])), ["noun record"]);
+    // Its plural, read by rule it-word-shape/v1 as a shape of eguaglianza, leads there too.
+    assert.deepEqual(await routesOf(["eguaglianze"], on.db, releaseId), ["shape"]);
+    assert.deepEqual(shapes(named(answers[5])), ["noun record"]);
 
     // The records' edges, the entry's form-of word and the reading's other spelling: one statement for the batch.
     assert.equal(asked.asked.filter((sql) => sql === CORRECTED_BATCH_LEMMA_LINK_SQL).length, 1, asked.asked.join("\n---\n"));
