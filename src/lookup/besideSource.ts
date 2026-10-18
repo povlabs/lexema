@@ -11,7 +11,7 @@
 // statement, or one table's own statement; one with none is sent none.
 
 import { keyedRead, readKeys, type DictionaryRead, type KeyedRead, type LookupDatabase } from "./database.js";
-import { handKeptHeadOf, handKeptReadingsFrom, handKeptReadingsOf, type HandKeptDefinitionRow, type HandKeptHead, type HandKeptHeadRow } from "./handKept.js";
+import { handKeptHeadOf, handKeptReadingsFrom, handKeptReadingsOf, SENSE_LINES, type HandKeptDefinitionRow, type HandKeptHead, type HandKeptHeadRow } from "./handKept.js";
 import { inShownOrder, nameEntriesOf, nameHeadOf, nameReading, type NameHead, type NameRow } from "./names.js";
 import type { DictionaryTables } from "./served.js";
 import type { Reading } from "./types.js";
@@ -39,14 +39,14 @@ const readingArms = (genders: string) => ({
 /** One arm per layer of the read of many keys' heads. */
 const HEAD_ARMS = {
   kept: `SELECT word_key AS set_key, 'kept' AS layer, reading_id, MIN(definition_index) AS first_definition,
-       word, pos, pos_title, section_line, evidence_url, NULL AS item, NULL AS category
+       word, pos, pos_title, section_line, evidence_url, NULL AS item, NULL AS category, ${SENSE_LINES}
   FROM hand_kept_definition WHERE word_key IN (SELECT value FROM json_each(?1))
  GROUP BY word_key, reading_id`,
   name: `SELECT label_key AS set_key, 'name' AS layer, NULL AS reading_id, NULL AS first_definition,
-       label AS word, NULL AS pos, NULL AS pos_title, NULL AS section_line, NULL AS evidence_url, item, category
+       label AS word, NULL AS pos, NULL AS pos_title, NULL AS section_line, NULL AS evidence_url, item, category, NULL AS sense_lines
   FROM name_entry WHERE label_key IN (SELECT value FROM json_each(?1))`,
   lexeme: `SELECT k.word_key AS set_key, 'lexeme' AS layer, NULL AS reading_id, NULL AS first_definition,
-       w.lemma AS word, NULL AS pos, NULL AS pos_title, NULL AS section_line, NULL AS evidence_url, w.lexeme AS item, w.category AS category
+       w.lemma AS word, NULL AS pos, NULL AS pos_title, NULL AS section_line, NULL AS evidence_url, w.lexeme AS item, w.category AS category, NULL AS sense_lines
   FROM wikidata_word_key k JOIN wikidata_word w ON w.lexeme = k.lexeme AND w.snapshot = k.snapshot
  WHERE k.word_key IN (SELECT value FROM json_each(?1)) AND ${NEWEST}`,
 } as const;
@@ -74,11 +74,11 @@ SELECT 'name', NULL, NULL, label, NULL, NULL, description, NULL, NULL, NULL, NUL
   FROM name_entry WHERE label_key = ?1
  ORDER BY layer, reading_id, definition_index`;
 const KEPT_AND_NAMES_HEADS_SQL: KeyedRead = keyedRead(`SELECT word_key AS set_key, 'kept' AS layer, reading_id, MIN(definition_index) AS first_definition,
-       word, pos, pos_title, section_line, evidence_url, NULL AS item, NULL AS category
+       word, pos, pos_title, section_line, evidence_url, NULL AS item, NULL AS category, ${SENSE_LINES}
   FROM hand_kept_definition WHERE word_key IN (SELECT value FROM json_each(?1))
  GROUP BY word_key, reading_id
  UNION ALL
-SELECT label_key, 'name', NULL, NULL, label, NULL, NULL, NULL, NULL, item, category
+SELECT label_key, 'name', NULL, NULL, label, NULL, NULL, NULL, NULL, item, category, NULL
   FROM name_entry WHERE label_key IN (SELECT value FROM json_each(?1))
  ORDER BY set_key, layer, reading_id`);
 

@@ -26,7 +26,8 @@
 // The answer is the full lookup's, made the same way: records grouped and put
 // in source order, a lemma the query also matched folded into the reading that
 // names it, a form-of reading answered with its lemmas of its own part of
-// speech (`lemmasOfPartOfSpeech`), then the word's hand-kept readings, each
+// speech (`lemmasOfPartOfSpeech`), whether it is an archive record, a
+// page-only entry or a hand-kept reading (#854), then the word's hand-kept readings, each
 // record once; and a word no Wiktionary reading answers with its Wikidata
 // words (ADR 0033, #812), read in the statement beside the search.
 
@@ -45,6 +46,10 @@ import { lemmasOfPartOfSpeech, sourceTagsAt, type CitedRevision, type QueryInfo,
 import { agreeingQuery, agreementProbes, namesCell, type AgreeingQuery } from "../italian/essereAgreement.js";
 import { personOfItalianVerbForm } from "../italian/moods.js";
 import { prefixUpperBound } from "./keyRange.js";
+import { formOfFactsOf, formOfWords } from "./pageFacts.js";
+import type { HandKeptHead } from "./handKept.js";
+import type { NameHead } from "./names.js";
+import { normalizeItalianExact } from "../italian/normalize.js";
 
 /**
  * One entry a word is answered with: where it is, its headword and its part of
@@ -100,21 +105,34 @@ const NOT_AUXILIARY = `NOT EXISTS (
  * without the page-entry tables. Exported so a test can assert the plan.
  */
 export const BATCH_ARCHIVE_SEARCH_SQL: DictionaryRead = `SELECT lf.surface_key, r.record_id, NULL AS entry_id, NULL AS revision_id, NULL AS page_line, r.release_id, r.line_no, r.word, r.pos, r.pos_title,
-            MAX(lf.origin = 'headword') AS is_about
+            MAX(lf.origin = 'headword') AS is_about, NULL AS form_of_facts
        FROM lookup_form lf
        JOIN source_record r ON r.record_id = lf.record_id
       WHERE lf.release_id IN (${servedBy("?1")}) AND lf.surface_key IN (SELECT value FROM json_each(?2))
         AND ${NOT_AUXILIARY}
       GROUP BY lf.surface_key, r.record_id`;
 
-/** `BATCH_ARCHIVE_SEARCH_SQL`, and the page-only entries each key heads. */
-export const BATCH_SEARCH_SQL: DictionaryRead = `${BATCH_ARCHIVE_SEARCH_SQL}
-      UNION ALL
-     SELECT e.word_key, NULL, e.entry_id, p.revision_id, e.page_line, e.release_id, NULL, e.word, e.pos, e.pos_title, 1
+/**
+ * The page-only entries each key heads, with the words each says it is a form
+ * of where the dictionary has `entry_fact` (`formOfFactsOf`, #854), which
+ * `linksOf` reads its lemma links by.
+ */
+const pageSearchArm = (pageFacts: boolean): string => `SELECT e.word_key, NULL, e.entry_id, p.revision_id, e.page_line, e.release_id, NULL, e.word, e.pos, e.pos_title, 1,
+            ${pageFacts ? formOfFactsOf("e") : "NULL"}
        FROM recovered_entry e JOIN raw_page p ON p.page_id = e.page_id
       WHERE e.release_id IN (${servedBy("?1")}) AND e.word_key IN (SELECT value FROM json_each(?2))
         AND NOT EXISTS (SELECT 1 FROM lookup_form lf WHERE lf.release_id IN (${servedBy("?1")})
                         AND lf.surface_key = e.word_key AND lf.origin = 'headword')`;
+
+/** `BATCH_ARCHIVE_SEARCH_SQL`, and the page-only entries each key heads, read with their facts. */
+export const BATCH_SEARCH_SQL: DictionaryRead = `${BATCH_ARCHIVE_SEARCH_SQL}
+      UNION ALL
+     ${pageSearchArm(true)}`;
+
+/** `BATCH_SEARCH_SQL` for a dictionary with the page-only entries and no `entry_fact` (#439). */
+const BATCH_FACTLESS_SEARCH_SQL: DictionaryRead = `${BATCH_ARCHIVE_SEARCH_SQL}
+      UNION ALL
+     ${pageSearchArm(false)}`;
 
 /**
  * `CORRECTED_CELL_SEARCH_SQL` (src/lookup/lookup.ts) for many keys, as a
@@ -123,7 +141,7 @@ export const BATCH_SEARCH_SQL: DictionaryRead = `${BATCH_ARCHIVE_SEARCH_SQL}
  * spelling in the record's table, never its headword. `lookup_form` keeps the
  * source's spelling, so the arm it is read beside still finds that one.
  */
-const CORRECTED_CELL_ARM = `SELECT c.surface_key, r.record_id, NULL, NULL, NULL, r.release_id, r.line_no, r.word, r.pos, r.pos_title, 0
+const CORRECTED_CELL_ARM = `SELECT c.surface_key, r.record_id, NULL, NULL, NULL, r.release_id, r.line_no, r.word, r.pos, r.pos_title, 0, NULL
        FROM corrected_form c
        JOIN lookup_form lf ON lf.record_id = c.record_id AND lf.form_index = c.form_index
        JOIN source_record r ON r.record_id = c.record_id
@@ -142,6 +160,11 @@ export const CORRECTED_CELL_BATCH_ARCHIVE_SEARCH_SQL: DictionaryRead = `${BATCH_
 
 /** `BATCH_SEARCH_SQL` on a master that keys its corrected cells, as above. Exported so a test can assert the plan. */
 export const CORRECTED_CELL_BATCH_SEARCH_SQL: DictionaryRead = `${BATCH_SEARCH_SQL}
+      UNION ALL
+     ${CORRECTED_CELL_ARM}`;
+
+/** `BATCH_FACTLESS_SEARCH_SQL` on a master that keys its corrected cells, as above. */
+const CORRECTED_CELL_BATCH_FACTLESS_SEARCH_SQL: DictionaryRead = `${BATCH_FACTLESS_SEARCH_SQL}
       UNION ALL
      ${CORRECTED_CELL_ARM}`;
 
@@ -205,20 +228,27 @@ export const CORRECTED_CELL_BATCH_AGREEMENT_SQL: DictionaryRead = `${BATCH_AGREE
 
 /**
  * `LEMMA_LINK_SQL` (src/lookup/lookup.ts) for many records in one read, with
- * each candidate's title: every `form_of` edge the records declare, in edge
- * order, each with every headword record its target word names, or none when
- * it dangles. This one names archive records alone, for a dictionary without
- * the page-entry tables. Exported so a test can assert the plan.
+ * each candidate's title: every `form_of` edge the records at `?1` declare,
+ * in edge order, each with every headword record its target word names, or
+ * none when it dangles. Beside them, in the same statement, each word key at
+ * `?3` with every headword record it names, as `lemmaLink`
+ * (src/lookup/pageFacts.ts) reads the lemma a page-only entry or a hand-kept
+ * reading names (#854). This one names archive records alone, for a
+ * dictionary without the page-entry tables. Exported so a test can assert the plan.
  */
 export const BATCH_ARCHIVE_LEMMA_LINK_SQL: DictionaryRead = `${batchLinks(false, "form_of_edge")}
-      ORDER BY e.record_id, e.edge_id, t.line_no`;
+     UNION ALL
+     ${wordLinks(false)}
+      ORDER BY record_id, edge_id, target_key, candidate_line_no, candidate_record_id`;
 
 /**
  * `BATCH_ARCHIVE_LEMMA_LINK_SQL`, with the page-only entries a dangling target
- * names, in `entry_id` order as `PAGE_ENTRY_SQL` (src/lookup/pageEntry.ts) reads them.
+ * or a word key names, in `entry_id` order as `PAGE_ENTRY_SQL` (src/lookup/pageEntry.ts) reads them.
  */
 export const BATCH_LEMMA_LINK_SQL: DictionaryRead = `${batchLinks(true, "form_of_edge")}
-      ORDER BY e.record_id, e.edge_id, t.line_no, p.entry_id`;
+     UNION ALL
+     ${wordLinks(true)}
+      ORDER BY record_id, edge_id, target_key, candidate_line_no, candidate_entry_id, candidate_record_id`;
 
 /**
  * `BATCH_ARCHIVE_LEMMA_LINK_SQL` on a master with corrected edges: a sense's
@@ -227,22 +257,30 @@ export const BATCH_LEMMA_LINK_SQL: DictionaryRead = `${batchLinks(true, "form_of
 export const CORRECTED_BATCH_ARCHIVE_LEMMA_LINK_SQL: DictionaryRead = `${batchLinks(false, "served form_of_edge")}
      UNION ALL
      ${batchLinks(false, "corrected_edge")}
-      ORDER BY record_id, sense_index, edge_id, candidate_line_no`;
+     UNION ALL
+     ${wordLinks(false)}
+      ORDER BY record_id, sense_index, edge_id, target_key, candidate_line_no, candidate_record_id`;
 
 /** `BATCH_LEMMA_LINK_SQL` on a master with corrected edges, as above. Exported so a test can assert the plan. */
 export const CORRECTED_BATCH_LEMMA_LINK_SQL: DictionaryRead = `${batchLinks(true, "served form_of_edge")}
      UNION ALL
      ${batchLinks(true, "corrected_edge")}
-      ORDER BY record_id, sense_index, edge_id, candidate_line_no, candidate_entry_id`;
+     UNION ALL
+     ${wordLinks(true)}
+      ORDER BY record_id, sense_index, edge_id, target_key, candidate_line_no, candidate_entry_id, candidate_record_id`;
 
 /**
- * One read of the batch's links, without its order: every edge of `edges` the
- * records at `?1` declare, each with every headword record its target names
- * and, with `pageEntries`, every page-only entry a dangling target names. A
- * corrected edge has no `edge_id`; it is the only edge of its sense, so
- * `-1 - sense_index` names it apart from the record's source edges.
+ * The candidate columns of a link read and the joins they need: the headword
+ * records `t` the target key `key` names and, with `pageEntries`, the
+ * page-only entries `p` it names where no record heads it.
  */
-function batchLinks(pageEntries: boolean, edges: "form_of_edge" | "served form_of_edge" | "corrected_edge"): DictionaryRead {
+function linkCandidates(pageEntries: boolean, key: string): { columns: string; joins: string } {
+  const records = `
+       LEFT JOIN lookup_form lf
+         ON lf.release_id IN (${servedBy("?2")})
+        AND lf.surface_key = ${key}
+        AND lf.origin = 'headword'
+       LEFT JOIN source_record t ON t.record_id = lf.record_id`;
   const pages = pageEntries
     ? {
         entry: `p.entry_id AS candidate_entry_id,
@@ -254,7 +292,7 @@ function batchLinks(pageEntries: boolean, edges: "form_of_edge" | "served form_o
             COALESCE(t.pos, p.pos) AS candidate_pos,
             COALESCE(t.pos_title, p.pos_title) AS candidate_pos_title`,
         joins: `
-       LEFT JOIN recovered_entry p ON p.word_key = e.target_word_key
+       LEFT JOIN recovered_entry p ON p.word_key = ${key}
         AND p.release_id IN (${servedBy("?2")})
         AND NOT EXISTS (SELECT 1 FROM lookup_form present WHERE present.release_id IN (${servedBy("?2")})
                         AND present.surface_key = p.word_key AND present.origin = 'headword')
@@ -271,18 +309,37 @@ function batchLinks(pageEntries: boolean, edges: "form_of_edge" | "served form_o
             t.pos_title   AS candidate_pos_title`,
         joins: "",
       };
+  return {
+    columns: `t.record_id   AS candidate_record_id,
+            ${pages.entry}`,
+    joins: `${records}${pages.joins}`,
+  };
+}
+
+/**
+ * One read of the batch's links, without its order: every edge of `edges` the
+ * records at `?1` declare, each with the candidates its target names
+ * (`linkCandidates`). A corrected edge has no `edge_id`; it is the only edge
+ * of its sense, so `-1 - sense_index` names it apart from the record's source
+ * edges.
+ */
+function batchLinks(pageEntries: boolean, edges: "form_of_edge" | "served form_of_edge" | "corrected_edge"): DictionaryRead {
+  const { columns, joins } = linkCandidates(pageEntries, "e.target_word_key");
   return `SELECT e.record_id AS record_id, ${edges === "corrected_edge" ? "-1 - e.sense_index" : "e.edge_id"} AS edge_id, e.sense_index AS sense_index,
-            t.record_id   AS candidate_record_id,
-            ${pages.entry}
-       FROM ${edges === "corrected_edge" ? "corrected_edge" : "form_of_edge"} e
-       LEFT JOIN lookup_form lf
-         ON lf.release_id IN (${servedBy("?2")})
-        AND lf.surface_key = e.target_word_key
-        AND lf.origin = 'headword'
-       LEFT JOIN source_record t ON t.record_id = lf.record_id${pages.joins}
+            NULL AS target_key,
+            ${columns}
+       FROM ${edges === "corrected_edge" ? "corrected_edge" : "form_of_edge"} e${joins}
       WHERE e.record_id IN (SELECT value FROM json_each(?1)) AND e.release_id IN (${servedBy("?2")})${
         edges === "served form_of_edge" ? ` AND ${sourceEdgeServed("e")}` : edges === "corrected_edge" ? ` AND ${correctedEdgeServed("e")}` : ""
       }`;
+}
+
+/** Each word key at `?3` with the candidates it names (`linkCandidates`), or one row of none when it names none. */
+function wordLinks(pageEntries: boolean): string {
+  const { columns, joins } = linkCandidates(pageEntries, "w.value");
+  return `SELECT NULL, NULL, NULL, w.value,
+            ${columns}
+       FROM json_each(?3) w${joins}`;
 }
 
 interface HitRow {
@@ -297,11 +354,15 @@ interface HitRow {
   pos: string;
   pos_title: string;
   is_about: number;
+  /** A page-only entry's form-of facts (`formOfFactsOf`); null for a record, or where the dictionary has no `entry_fact`. */
+  form_of_facts: string | null;
 }
 
+/** A row of the links read: an edge of the record `record_id`, or, with `target_key`, a word key a reading names. */
 interface LinkRow {
-  record_id: number;
-  edge_id: number;
+  record_id: number | null;
+  edge_id: number | null;
+  target_key: string | null;
   candidate_record_id: number | null;
   candidate_entry_id: number | null;
   candidate_revision_id: number | null;
@@ -313,13 +374,30 @@ interface LinkRow {
   candidate_pos_title: string | null;
 }
 
-/** A record one key matched, and whether the key is its headword rather than only a form in its table. */
+/**
+ * The words a page-only entry or a hand-kept reading names as its lemma, as
+ * its reading's `lemmaLinks` name them (#854): a page-only entry's form-of
+ * facts, which a page-only entry may answer too, and a hand-kept reading's
+ * other spellings, which only an archive record answers (`NO_PAGE_CANDIDATES`,
+ * src/lookup/handKept.ts). An archive record names its lemmas by its edges.
+ */
+interface LemmaWords {
+  words: readonly string[];
+  pageEntries: boolean;
+}
+
+/**
+ * A record one key matched, whether the key is its headword rather than only
+ * a form in its table, and for a page-only entry or a hand-kept reading, the
+ * words it names as its lemma.
+ */
 interface Match {
   record: CandidateRecord;
   about: boolean;
+  lemmaWords?: LemmaWords;
 }
 
-/** A `form_of` edge a record declares, light: the records its word names, or none. */
+/** A lemma link of a reading, light: the records its word names, or none. */
 type LightLink = { kind: "dangling" } | { kind: "candidates"; candidates: CandidateRecord[] };
 
 const recordOf = (row: HitRow): CandidateRecord => ({
@@ -329,6 +407,19 @@ const recordOf = (row: HitRow): CandidateRecord => ({
   pos: row.pos,
   posTitle: row.pos_title,
 });
+
+/** A row of the search as a match: a page-only entry with the words it says it is a form of. */
+const matchOf = (row: HitRow, about: boolean): Match => {
+  const record = recordOf(row);
+  return record.entryId === undefined ? { record, about } : { record, about, lemmaWords: { words: formOfWords(row.form_of_facts), pageEntries: true } };
+};
+
+/** A head read beside the source as a reading about its key: a hand-kept reading with the words it leads to (#830). */
+const besideMatch = (head: HandKeptHead | NameHead): Match => {
+  if (!("leadsTo" in head)) return { record: head, about: true };
+  const { leadsTo, ...record } = head;
+  return { record, about: true, lemmaWords: { words: leadsTo, pageEntries: false } };
+};
 
 /** One verb table cell an agreement probe found, as `BATCH_AGREEMENT_SQL` returns it. */
 interface AgreementRow {
@@ -358,7 +449,9 @@ interface BatchReads {
 const readsFor = (tables: DictionaryTables): BatchReads => ({
   ...(tables.pageEntries
     ? {
-        search: tables.cellSearch ? CORRECTED_CELL_BATCH_SEARCH_SQL : BATCH_SEARCH_SQL,
+        search: tables.pageFacts
+          ? tables.cellSearch ? CORRECTED_CELL_BATCH_SEARCH_SQL : BATCH_SEARCH_SQL
+          : tables.cellSearch ? CORRECTED_CELL_BATCH_FACTLESS_SEARCH_SQL : BATCH_FACTLESS_SEARCH_SQL,
         links: tables.edgeCorrections ? CORRECTED_BATCH_LEMMA_LINK_SQL : BATCH_LEMMA_LINK_SQL,
       }
     : {
@@ -374,40 +467,70 @@ async function search(db: LookupDatabase, reads: BatchReads, releaseId: string, 
   if (keys.length === 0) return byKey;
   for (const row of await db.all<HitRow>(reads.search, [releaseId, JSON.stringify(keys)])) {
     const matches = byKey.get(row.surface_key) ?? new Map<string, Match>();
-    const record = recordOf(row);
+    const key = candidateKey(recordOf(row));
     // A record a key heads and also spells in a corrected cell comes twice; it is about the key.
-    const about = row.is_about === 1 || matches.get(candidateKey(record))?.about === true;
-    matches.set(candidateKey(record), { record, about });
+    matches.set(key, matchOf(row, row.is_about === 1 || matches.get(key)?.about === true));
     byKey.set(row.surface_key, matches);
   }
   return byKey;
 }
 
-/** Every `form_of` edge the records declare, by record, in one read. */
-async function linksOf(db: LookupDatabase, reads: BatchReads, releaseId: string, recordIds: readonly number[]): Promise<Map<number, LightLink[]>> {
-  const byRecord = new Map<number, LightLink[]>();
-  if (recordIds.length === 0) return byRecord;
-  // A corrected edge's id is its record's own (`batchLinks`), so a link is keyed by both.
-  const byEdge = new Map<string, LightLink>();
-  for (const row of await db.all<LinkRow>(reads.links, [JSON.stringify(recordIds), releaseId])) {
-    const edge = `${row.record_id}:${row.edge_id}`;
-    let link = byEdge.get(edge);
-    if (link === undefined) {
-      link = row.candidate_record_id === null && row.candidate_entry_id === null ? { kind: "dangling" } : { kind: "candidates", candidates: [] };
-      byEdge.set(edge, link);
-      byRecord.set(row.record_id, [...(byRecord.get(row.record_id) ?? []), link]);
-    }
-    if (link.kind === "candidates" && (row.candidate_record_id !== null || row.candidate_entry_id !== null)) {
-      link.candidates.push({
+/** The candidate a row of the links read names, if any. */
+const linkCandidateOf = (row: LinkRow): CandidateRecord | undefined =>
+  row.candidate_record_id === null && row.candidate_entry_id === null
+    ? undefined
+    : {
         ...(row.candidate_record_id === null ? { entryId: row.candidate_entry_id as number, revisionId: row.candidate_revision_id as number, pageLine: row.candidate_page_line as number } : { recordId: row.candidate_record_id, lineNo: row.candidate_line_no as number }),
         releaseId: row.candidate_release_id as string,
         word: row.candidate_word as string,
         pos: row.candidate_pos as string,
         posTitle: row.candidate_pos_title as string,
-      });
+      };
+
+/**
+ * The lemma links of every match about its key, by `candidateKey`, in one
+ * read: each archive record's `form_of` edges, and each word a page-only entry
+ * or a hand-kept reading names (`LemmaWords`), as `lookup()` gives their
+ * readings `lemmaLinks`. Every match about its key has an entry, empty when it
+ * names no lemma; nothing is sent when none names one.
+ */
+async function linksOf(db: LookupDatabase, reads: BatchReads, releaseId: string, matches: readonly Match[]): Promise<Map<string, LightLink[]>> {
+  const about = eachMatchOnce(matches.filter((match) => match.about));
+  const links = new Map(about.map((match) => [candidateKey(match.record), [] as LightLink[]] as const));
+  const recordIds = about.flatMap((match) => (match.record.recordId === undefined ? [] : [match.record.recordId]));
+  const named = about.flatMap((match) => (match.lemmaWords === undefined ? [] : [{ key: candidateKey(match.record), ...match.lemmaWords }]));
+  const targetKeys = [...new Set(named.flatMap(({ words }) => words.map(normalizeItalianExact)))];
+  if (recordIds.length === 0 && targetKeys.length === 0) return links;
+
+  // A corrected edge's id is its record's own (`batchLinks`), so a link is keyed by both.
+  const byEdge = new Map<string, LightLink>();
+  const byTarget = new Map<string, CandidateRecord[]>();
+  for (const row of await db.all<LinkRow>(reads.links, [JSON.stringify(recordIds), releaseId, JSON.stringify(targetKeys)])) {
+    const candidate = linkCandidateOf(row);
+    if (row.target_key !== null) {
+      byTarget.set(row.target_key, [...(byTarget.get(row.target_key) ?? []), ...(candidate === undefined ? [] : [candidate])]);
+      continue;
     }
+    const edge = `${row.record_id}:${row.edge_id}`;
+    let link = byEdge.get(edge);
+    if (link === undefined) {
+      link = candidate === undefined ? { kind: "dangling" } : { kind: "candidates", candidates: [] };
+      byEdge.set(edge, link);
+      const owner = String(row.record_id);
+      links.set(owner, [...(links.get(owner) ?? []), link]);
+    }
+    if (link.kind === "candidates" && candidate !== undefined) link.candidates.push(candidate);
   }
-  return byRecord;
+  for (const { key, words, pageEntries } of named) {
+    links.set(
+      key,
+      words.map((word): LightLink => {
+        const candidates = (byTarget.get(normalizeItalianExact(word)) ?? []).filter((candidate) => pageEntries || candidate.recordId !== undefined);
+        return candidates.length === 0 ? { kind: "dangling" } : { kind: "candidates", candidates };
+      }),
+    );
+  }
+  return links;
 }
 
 /**
@@ -476,29 +599,40 @@ const inSourceOrder = (matches: Iterable<Match>): Match[] =>
       (a.record.entryId ?? 0) - (b.record.entryId ?? 0),
   );
 
-/** The links a match is answered through: a record about the word's own, and none of a record matched through its table. */
-const linksOn = (match: Match, links: ReadonlyMap<number, readonly LightLink[]>): readonly LightLink[] =>
-  match.about && match.record.recordId !== undefined ? (links.get(match.record.recordId) ?? []) : [];
+/** Each match once, the first time its record comes. */
+function eachMatchOnce(matches: readonly Match[]): Match[] {
+  const seen = new Set<string>();
+  return matches.filter((match) => !seen.has(candidateKey(match.record)) && seen.add(candidateKey(match.record)));
+}
+
+/** The links a match is answered through: a reading about the word's own, and none of a record matched through its table. */
+const linksOn = (match: Match, links: ReadonlyMap<string, readonly LightLink[]>): readonly LightLink[] =>
+  match.about ? (links.get(candidateKey(match.record)) ?? []) : [];
 
 /**
  * The readings of a word something spells, as `found` makes them: in source
  * order, and a record the word matched only through its table, and that a
  * record about the word names as its lemma, is that reading's lemma and not a
- * reading of its own.
+ * reading of its own. Only an archive record's links take a record out, as in
+ * `found`: a page-only entry's never do.
  */
-function readingsOf(matches: Iterable<Match>, links: ReadonlyMap<number, readonly LightLink[]>): Match[] {
+function readingsOf(matches: Iterable<Match>, links: ReadonlyMap<string, readonly LightLink[]>): Match[] {
   const ordered = inSourceOrder(matches);
   const lemmaIds = new Set(
-    ordered.flatMap((match) => linksOn(match, links).flatMap((link) => (link.kind === "candidates" ? link.candidates.map((lemma) => candidateKey(lemma)) : []))),
+    ordered
+      .filter((match) => match.record.recordId !== undefined)
+      .flatMap((match) => linksOn(match, links).flatMap((link) => (link.kind === "candidates" ? link.candidates.map((lemma) => candidateKey(lemma)) : []))),
   );
   return ordered.filter((match) => match.about || !lemmaIds.has(candidateKey(match.record)));
 }
 
 /**
- * The candidates of readings, as `candidatesOf` makes them: a record about the
- * word that declares itself a form of another is answered with its lemmas.
+ * The candidates of readings, as `candidatesOf` makes them: a reading about
+ * the word that declares itself a form of another is answered with its
+ * lemmas, whether it is an archive record, a page-only entry or a hand-kept
+ * reading (#854).
  */
-function candidatesOfReadings(readings: readonly Match[], links: ReadonlyMap<number, readonly LightLink[]>): CandidateRecord[] {
+function candidatesOfReadings(readings: readonly Match[], links: ReadonlyMap<string, readonly LightLink[]>): CandidateRecord[] {
   return eachOnce(
     readings.flatMap((match) => {
       const lemmas = lemmasOfPartOfSpeech(match.record.pos, linksOn(match, links));
@@ -508,29 +642,39 @@ function candidatesOfReadings(readings: readonly Match[], links: ReadonlyMap<num
 }
 
 /**
- * The candidates of a word rule `it-word-shape/v1` reads as a shape of
+ * The matches of the rows a word rule `it-word-shape/v1` reads as a shape of
  * words the dictionary has (#809), or rule `it-pronominal-pair/v2` as a
- * pronominal verb (#810, #834), as `lookup()` and `candidatesOf` make them from the
- * same rows (`readShapeRows`): the source's records and page-only entries the
- * rows reach, as `readingsOf` orders and folds them, then the hand-kept
- * readings.
+ * pronominal verb (#810, #834), from the same rows `lookup()` reads
+ * (`readShapeRows`): the source's records and page-only entries the rows
+ * reach, each once, then the hand-kept readings.
  */
-function shapeCandidates(answered: readonly ShapeRow[], links: ReadonlyMap<number, readonly LightLink[]>): CandidateRecord[] {
+function shapeMatchesOf(answered: readonly ShapeRow[]): { spelled: Match[]; kept: Match[] } {
   const matches = new Map<string, Match>();
   const kept: Match[] = [];
   for (const row of answered) {
     if (row.from === "kept") {
-      kept.push({ record: row.head, about: true });
+      kept.push(besideMatch(row.head));
       continue;
     }
-    const record: CandidateRecord =
-      row.from === "source"
-        ? { recordId: row.hit.record_id, lineNo: row.hit.line_no, releaseId: row.hit.release_id, word: row.hit.record_word, pos: row.hit.record_pos, posTitle: row.hit.record_pos_title }
-        : { entryId: row.entry.entry_id, revisionId: row.entry.revision_id, pageLine: row.entry.page_line, releaseId: row.entry.release_id, word: row.entry.word, pos: row.entry.pos, posTitle: row.entry.pos_title };
-    const about = row.from === "page" || row.hit.origin === "headword";
-    matches.set(candidateKey(record), { record, about: about || matches.get(candidateKey(record))?.about === true });
+    if (row.from === "page") {
+      const { entry } = row;
+      const record: CandidateRecord = { entryId: entry.entry_id, revisionId: entry.revision_id, pageLine: entry.page_line, releaseId: entry.release_id, word: entry.word, pos: entry.pos, posTitle: entry.pos_title };
+      matches.set(candidateKey(record), { record, about: true, lemmaWords: { words: entry.lemma_words, pageEntries: true } });
+      continue;
+    }
+    const record: CandidateRecord = { recordId: row.hit.record_id, lineNo: row.hit.line_no, releaseId: row.hit.release_id, word: row.hit.record_word, pos: row.hit.record_pos, posTitle: row.hit.record_pos_title };
+    matches.set(candidateKey(record), { record, about: row.hit.origin === "headword" || matches.get(candidateKey(record))?.about === true });
   }
-  return candidatesOfReadings([...readingsOf(matches.values(), links), ...kept], links);
+  return { spelled: [...matches.values()], kept };
+}
+
+/**
+ * The candidates of a shaped word's matches (`shapeMatchesOf`), as `lookup()`
+ * and `candidatesOf` make them: the source's records and page-only entries as
+ * `readingsOf` orders and folds them, then the hand-kept readings.
+ */
+function shapeCandidates({ spelled, kept }: { spelled: readonly Match[]; kept: readonly Match[] }, links: ReadonlyMap<string, readonly LightLink[]>): CandidateRecord[] {
+  return candidatesOfReadings([...readingsOf(spelled, links), ...kept], links);
 }
 
 /**
@@ -604,13 +748,14 @@ async function candidatesByKey(
   // for the same keys, in one statement (src/lookup/besideSource.ts); a
   // dictionary without their tables is sent none.
   const [spelled, beside] = await Promise.all([search(db, reads, releaseId, keys), besideSourceOf(db, releaseId, tables).heads(keys)]);
-  const kept = beside.heads;
-  const aboutIds = [...new Set([...spelled.values()].flatMap((matches) => [...matches.values()].filter((match) => match.about).flatMap((match) => match.record.recordId === undefined ? [] : [match.record.recordId])))];
+  const kept = new Map([...beside.heads].map(([key, heads]) => [key, heads.map(besideMatch)] as const));
+  // The lemma links of every reading about its word, records, page-only entries and hand-kept readings alike (#854).
+  const spelledMatches = [...[...spelled.values()].flatMap((matches) => [...matches.values()]), ...[...kept.values()].flat()];
 
   // A word nothing spells may still be a multi-word headword said the way a
   // speaker says it (#214). Each headword it reaches is a candidate as it is.
   const unspelled = keys.filter((key) => !spelled.has(key) && !kept.has(key));
-  const [links, phrases] = await Promise.all([linksOf(db, reads, releaseId, aboutIds), phraseMatchesOf(db, releaseId, tables, unspelled)]);
+  const [links, phrases] = await Promise.all([linksOf(db, reads, releaseId, spelledMatches), phraseMatchesOf(db, releaseId, tables, unspelled)]);
   const probeKeys = [...new Set([...phrases.values()].flatMap((probes) => probes.map((probe) => probe.key)))];
   // Nor a phrase: it may be a compound form of an essere verb the source
   // lists only as the masculine, or only beside a later spelling (#676, #756).
@@ -634,13 +779,11 @@ async function candidatesByKey(
       .filter((key) => (agreements.get(key) ?? []).length === 0)
       .map((key) => [key, answeringShapes(key, shapeRows).flatMap(({ rows }) => rows)] as const),
   );
-  const shapes = new Map([...shaped].map(([key, rows]) => [key, rows.length > 0 ? rows : (pairs.get(key) ?? []).flatMap((answering) => answering.rows)] as const));
-  const shapeAboutIds = [
-    ...new Set(
-      [...shapes.values()].flatMap((rows) => rows.flatMap((row) => (row.from === "source" && row.hit.origin === "headword" ? [row.hit.record_id] : []))),
-    ),
-  ].filter((recordId) => !aboutIds.includes(recordId));
-  const shapeLinks = await linksOf(db, reads, releaseId, shapeAboutIds);
+  const shapes = new Map(
+    [...shaped].map(([key, rows]) => [key, shapeMatchesOf(rows.length > 0 ? rows : (pairs.get(key) ?? []).flatMap((answering) => answering.rows))] as const),
+  );
+  const shapeMatches = [...shapes.values()].flatMap(({ spelled: matches, kept: heads }) => [...matches, ...heads]).filter((match) => !links.has(candidateKey(match.record)));
+  const shapeLinks = await linksOf(db, reads, releaseId, shapeMatches);
   const allLinks = new Map([...links, ...shapeLinks]);
 
   /**
@@ -651,9 +794,9 @@ async function candidatesByKey(
    */
   const spelledReadings = (key: string): Match[] | undefined => {
     const matches = spelled.get(key);
-    const heads: CandidateRecord[] = kept.get(key) ?? [];
+    const heads = kept.get(key) ?? [];
     if (matches === undefined && heads.length === 0) return undefined;
-    return [...(matches === undefined ? [] : readingsOf(matches.values(), links)), ...heads.map((head): Match => ({ record: head, about: true }))];
+    return [...(matches === undefined ? [] : readingsOf(matches.values(), links)), ...heads];
   };
 
   const candidatesOf = (key: string): CandidateRecord[] => {
@@ -667,7 +810,7 @@ async function candidatesByKey(
     });
     if (reached.length > 0) return eachOnce(inSourceOrder(reached).map((match) => match.record));
     const agreed = agreements.get(key) ?? [];
-    return agreed.length > 0 ? agreed : shapeCandidates(shapes.get(key) ?? [], allLinks);
+    return agreed.length > 0 ? agreed : shapeCandidates(shapes.get(key) ?? { spelled: [], kept: [] }, allLinks);
   };
 
   // A word no Wiktionary reading answers, nothing or only name entries, may be
