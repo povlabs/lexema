@@ -13,14 +13,17 @@ import { after, before, test } from "node:test";
 import { gzipSync } from "node:zlib";
 import { seedSql } from "../src/import/seedSql.js";
 import { fromNodeSqlite } from "../src/lookup/database.js";
-import { DECLARED_LEMMA_CORRECTION_SQL, DECLARED_LEMMA_GENDER_SQL, DECLARED_LEMMA_SQL, declaredLemma } from "../src/lookup/declaredLemma.js";
+import { CORRECTED_DECLARED_LEMMA_HEAD_SQL, DECLARED_LEMMA_CORRECTION_SQL, DECLARED_LEMMA_GENDER_SQL, DECLARED_LEMMA_HEAD_SQL, DECLARED_LEMMA_SQL, declaredLemma } from "../src/lookup/declaredLemma.js";
 import type { LookupDatabase } from "../src/lookup/database.js";
 import { DECLARED_CORRECTION_LINES, declaredCorrections } from "./declaredCorrectionFixture.js";
 import { exists, lookup } from "../src/lookup/lookup.js";
 import { lookupBatch } from "../src/lookup/batch.js";
-import type { DeclaredLemmaResult, NotFoundResult, PluralDeclaration } from "../src/lookup/types.js";
+import { declaredLemmaHead, type DeclaredLemmaResult, type NotFoundResult, type PluralDeclaration } from "../src/lookup/types.js";
 
 const RELEASE = "it-declared-test";
+
+/** The batch's declared-lemma read, on a master with corrected edges or without. */
+const HEAD_READS = new Set<string>([DECLARED_LEMMA_HEAD_SQL, CORRECTED_DECLARED_LEMMA_HEAD_SQL]);
 
 const verb = (word: string, gloss: string, lemma: string): string =>
   JSON.stringify({ word, lang_code: "it", lang: "Italiano", pos: "verb", pos_title: "Voce verbale", senses: [{ glosses: [gloss], tags: ["form-of"], form_of: [{ word: lemma }] }], tags: ["form-of"] });
@@ -57,24 +60,59 @@ after(async () => {
   await rm(dir, { recursive: true, force: true });
 });
 
-async function notFound(query: string): Promise<NotFoundResult> {
-  const result = await lookup({ db: fromNodeSqlite(sqlite), releaseId: RELEASE, query });
-  assert.ok(result.outcome === "not-found", `${query}: ${result.outcome}`);
-  return result;
+/** What the lookup answers `query` with when nothing heads it: the declared lemma, or undefined for `not-found`. */
+async function declaredIn(db: LookupDatabase, releaseId: string, query: string): Promise<DeclaredLemmaResult | undefined> {
+  const result = await lookup({ db, releaseId, query });
+  assert.ok(result.outcome === "declared-lemma" || result.outcome === "not-found", `${query}: ${result.outcome}`);
+  return result.outcome === "declared-lemma" ? result : undefined;
 }
 
-async function declared(query: string): Promise<DeclaredLemmaResult | undefined> {
-  return declaredLemma(fromNodeSqlite(sqlite), RELEASE, await notFound(query));
-}
+const declared = (query: string): Promise<DeclaredLemmaResult | undefined> => declaredIn(fromNodeSqlite(sqlite), RELEASE, query);
 
-test("the lookup and the developer API still find no lemma no record heads: the probe is the page's alone", async () => {
+test("the lookup answers a lemma no record heads as a declared lemma, and so do a batch lookup and exists (#818)", async () => {
   const db = fromNodeSqlite(sqlite);
-  for (const query of ["verbalizzare", "videoregistrare", "aggrapparsi", "fratellino", "calabro"]) {
-    await notFound(query);
-    assert.equal((await exists({ db, releaseId: RELEASE, query })).outcome, "absent", query);
+  const queries = ["verbalizzare", "videoregistrare", "aggrapparsi", "fratellino", "calabro"];
+  const batch = await lookupBatch({ db, releaseId: RELEASE, queries: [...queries, "parolanessuna"] });
+  for (const [at, query] of queries.entries()) {
+    const result = await declared(query);
+    assert.ok(result !== undefined, query);
+    const answer = batch.answers[at];
+    assert.ok(answer.outcome === "found", `${query}: ${answer.outcome}`);
+    // One candidate per reading, named by its word and part of speech, crediting the first record that declares a form.
+    assert.deepEqual(
+      answer.candidates.map(({ declaredLemma, word, pos, posTitle }) => ({ declaredLemma, word, pos, posTitle })),
+      result.readings.map((reading) => ({ declaredLemma: declaredLemmaHead(reading), word: reading.word, pos: reading.pos, posTitle: reading.posTitle })),
+      query,
+    );
+    const present = await exists({ db, releaseId: RELEASE, query });
+    assert.ok(present.outcome === "present", `${query}: ${present.outcome}`);
+    assert.equal(present.word, declaredLemmaHead(result.readings[0]).credit, query);
   }
-  const batch = await lookupBatch({ db, releaseId: RELEASE, queries: ["verbalizzare", "verbalizzo"] });
-  assert.deepEqual(batch.answers.map((answer) => answer.outcome), ["not-found", "found"]);
+  assert.equal(batch.answers[queries.length].outcome, "not-found");
+  assert.equal((await exists({ db, releaseId: RELEASE, query: "parolanessuna" })).outcome, "absent");
+});
+
+test("the page's own probe, run on a not-found, reads what the lookup answers", async () => {
+  const result = await declared("verbalizzare");
+  assert.ok(result !== undefined);
+  const notFound: NotFoundResult = { outcome: "not-found", query: result.query, release: result.release };
+  assert.deepEqual(await declaredLemma(fromNodeSqlite(sqlite), RELEASE, notFound), result);
+});
+
+test("a batch lookup reads every declared lemma of the batch in one statement, and none for a batch that has none (#818)", async () => {
+  const read = fromNodeSqlite(sqlite);
+  const statements: string[] = [];
+  const db: LookupDatabase = {
+    all: (sql, params) => {
+      statements.push(sql);
+      return read.all(sql, params);
+    },
+  };
+  await lookupBatch({ db, releaseId: RELEASE, queries: ["verbalizzare", "fratellino", "calabro", "parolanessuna"] });
+  assert.equal(statements.filter((sql) => HEAD_READS.has(sql)).length, 1);
+  statements.length = 0;
+  await lookupBatch({ db, releaseId: RELEASE, queries: ["verbalizzo"] });
+  assert.equal(statements.filter((sql) => HEAD_READS.has(sql)).length, 0);
 });
 
 test("a verb lemma's forms are its declaring records, each where its gloss puts it, pointing at the record's own line", async () => {
@@ -182,9 +220,7 @@ async function seededCorrections(corrected: boolean): Promise<DatabaseSync> {
 
 /** The one plural a made-up lemma's one reading places. */
 async function onlyPlural(db: LookupDatabase, query: string): Promise<PluralDeclaration> {
-  const result = await lookup({ db, releaseId: CORRECTION_RELEASE, query });
-  assert.ok(result.outcome === "not-found", `${query}: ${result.outcome}`);
-  const declared = await declaredLemma(db, CORRECTION_RELEASE, result);
+  const declared = await declaredIn(db, CORRECTION_RELEASE, query);
   assert.ok(declared !== undefined, query);
   const [reading, ...rest] = declared.readings;
   assert.ok(reading.pos === "noun" && rest.length === 0, query);

@@ -263,7 +263,9 @@ stored.
 The word page keeps a declared lemma's page (#453) for a query the rule reads
 as a shape: `aggrapparsi` is a declared lemma, so its page stays
 `aggrapparsi`, not `aggrappare` with a clitic
-([`searchAttempt.ts`](../web/lib/dictionary/searchAttempt.ts)).
+([`searchAttempt.ts`](../web/lib/dictionary/searchAttempt.ts)). `lookup()` and
+the developer API keep the shape's answer: a record answers it, so it is no
+`declared-lemma` there ([below](#a-word-only-form-of-records-name)).
 
 ### A `si` + verb pair, and the other reflexive pronouns
 
@@ -362,6 +364,64 @@ one statement more. The word page shows the headword's own page, with no line
 about the accent ([`searchAttempt.ts`](../web/lib/dictionary/searchAttempt.ts)).
 Nothing derived is stored.
 
+### A word only form-of records name
+
+A declared lemma is a word no served record heads, lists or spells as a
+phrase, that `form_of` edges of served records name
+([glossary](../.glossary/TERMS.md)): `fratellino` has no record, and
+`fratellini` says "plurale di fratellino" (#453). When every route above
+misses, the accentless one too, `lookup()` reads those edges
+(`declaredLemma` in [`src/lookup/declaredLemma.ts`](../src/lookup/declaredLemma.ts))
+and answers `declared-lemma` instead of `not-found` (#818, Huey's
+[ruling](https://github.com/povlabs/lexema/issues/818#issuecomment-6254740211)).
+It never takes the place of another answer: a word a record, a page-only
+entry, a hand-kept reading, a name entry or a Wikidata word answers keeps that
+answer, and a Wikidata word is never read for a declared lemma's spelling.
+
+The result is `DeclaredLemmaResult`: `query`, `release` and `readings`, one per
+part of speech whose edges place a form, in the order the source first places
+one, never empty. A reading is `{ pos, posTitle, word, forms }`: `pos` is the
+declaring records' `verb`, `noun` or `adj`; `posTitle` is Wikizionario's section
+title for it (`Verbo`, `Sostantivo`, `Aggettivo`); `word` is the lemma as the
+first placing edge spells it; `forms` are the declaring records, in source
+order, each with its `/word` ref. A verb form carries its gloss and the slot
+`it-verb-form-gloss/v1` reads from it; a plural carries the declaration
+`it-plural-gloss/v1` and the record's stated or corrected gender give it. A
+reading has no `recordId`, no definition, no pronunciation and no grammar of
+its own: there is no record to hold them, and none is made up.
+
+`exists()` answers `present` for the same words, crediting the first record in
+source order that declares a form of the first reading. `lookupBatch` answers
+each such word with one candidate per reading, `{ declaredLemma: { word, pos,
+posTitle, credit }, word, pos, posTitle }`, reading the edges of every
+unanswered word of the batch in one statement (`DECLARED_LEMMA_HEAD_SQL`). The
+three place forms by the same rules, so they answer the same words.
+
+In the developer API a reading is one result with `match.via` set to
+`declared_lemma`:
+
+- `id` is `<release>:declared:<pos>:<word>`, built from the part of speech and
+  the word: `it-0c432803:declared:noun:fratellino`. There is one per part of
+  speech, and it is never a record's `<release>:<lineNo>`. The part of speech
+  comes first because a word may hold a colon.
+- `forms` is the table the word page draws from the same readings
+  ([`declaredLemmaPage.ts`](../web/lib/dictionary/declaredLemmaPage.ts)): a
+  conjugation for a verb, a `gender_number` grid for a noun or adjective with
+  the lemma in the singolare cells its plurals give it, or `null` when no form
+  takes a cell. `match.grammar` names those singolare cells, and is empty for a
+  verb, whose lemma no cell holds.
+- `definitions`, `examples`, `pronunciations`, `synonyms`, `antonyms`,
+  `derived`, `expressions` and `translations` are empty and `etymology` is
+  `null`. There is no definition.
+- `attribution` is the Wiktionary page of the reading's first declaring
+  record, where what the result shows comes from.
+- `match=exact` keeps it, since it is the query itself, and `match=form` does
+  not. `/lemmatize` answers each reading as its own lemma; `/inflect` does not
+  answer it, since no record heads it.
+
+`/v1/lookup/batch` answers each reading with the same `id`, `lemma`, `pos`,
+`pos_title` and `attribution` as `/v1/lookup`.
+
 ## Outcomes
 
 | `outcome` | When | Carries |
@@ -369,6 +429,7 @@ Nothing derived is stored.
 | `rejected` | the query never reached the index | `query.raw`, `rejection` |
 | `not-found` | the index was probed, nothing matched | `query`, `release` |
 | `found` | at least one record matched | `query`, `release`, `route`, `readings` |
+| `declared-lemma` | nothing matched, and form-of records name the key ([above](#a-word-only-form-of-records-name)) | `query`, `release`, `readings` (declared readings, not `Reading`s) |
 
 `found` and `not-found` are separate types, not one type with a flag. A
 `not-found` has no reading it can carry, and a `found`'s `readings` is

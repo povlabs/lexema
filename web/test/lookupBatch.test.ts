@@ -26,6 +26,7 @@ import {
 import { CURATED_CORRECTIONS, cellCorrections, type CellCorrection } from "../../src/italian/curatedCorrections.js";
 import { fromNodeSqlite, type DictionaryRead, type LookupDatabase } from "../../src/lookup/database.js";
 import { lookup } from "../../src/lookup/lookup.js";
+import { CORRECTED_DECLARED_LEMMA_HEAD_SQL } from "../../src/lookup/declaredLemma.js";
 import { HAND_KEPT_HEADS_SQL } from "../../src/lookup/handKept.js";
 import { SHAPE_READ_SQL } from "../../src/lookup/wordShape.js";
 import { BESIDE_SOURCE_HEADS_SQL } from "../../src/lookup/besideSource.js";
@@ -195,11 +196,14 @@ test("a batch reads the release once and runs the same few statements for one wo
       assert.equal(asked.filter((sql) => sql === OPTIONAL_TABLES_SQL).length, 1, asked.join("\n---\n"));
       // A schema.sql seed has `hand_kept_definition` and `name_entry`, read beside the search for every word at once, in one statement (#776, #794).
       assert.equal(asked.filter((sql) => sql === BESIDE_SOURCE_HEADS_SQL).length, 1, asked.join("\n---\n"));
-      // The release and the optional tables (one D1 call), the search and the
-      // hand-kept readings, and the lemma links: a single word nothing spells
-      // is never read word by word.
-      assert.equal(asked.length, 5, asked.join("\n---\n"));
     }
+    // The release and the optional tables (one D1 call), the search and the
+    // hand-kept readings, and the lemma links: a single word nothing spells
+    // is never read word by word. A batch with such a word (`qqqqqq`) reads
+    // the declared lemmas of every one of them in one statement more (#818).
+    assert.equal(one.asked.length, 5, one.asked.join("\n---\n"));
+    assert.equal(many.asked.length, 6, many.asked.join("\n---\n"));
+    assert.equal(many.asked.filter((sql) => sql === CORRECTED_DECLARED_LEMMA_HEAD_SQL).length, 1, many.asked.join("\n---\n"));
   }
 });
 
@@ -410,7 +414,7 @@ test("a batch with agreement-route words runs the same statements for a few word
   // The few send every statement a batch can: the search and its links, the
   // multi-word reading's words, participles and headwords, and the agreement read.
   const one = recording();
-  await lookupBatch({ db: one.db, releaseId: RELEASE, queries: ["andavano", "sono andata", "è andata"] });
+  await lookupBatch({ db: one.db, releaseId: RELEASE, queries: ["andavano", "sono andata", "è andata", "qqqqqq"] });
   // Compound forms of many verbs: each verb's participle is not a statement of its own.
   const compounds = ["sono vissuta", "sono finita", "sono partita", "sono venuta", "sono morta", "sono salita", "siamo andate", "è andata", "eravamo partite", "ho mangiata"];
   const many = recording();
@@ -425,8 +429,8 @@ test("a batch with agreement-route words runs the same statements for a few word
   }
   // The same statements, whatever order the concurrent reads went out in.
   assert.deepEqual([...many.asked].sort(), [...one.asked].sort());
-  // The release and the optional tables, the search, the hand-kept readings, the links, the words, the participles, the headwords, the agreement.
-  assert.equal(one.asked.length, 9, one.asked.join("\n---\n"));
+  // The release and the optional tables, the search, the hand-kept readings, the links, the words, the participles, the headwords, the agreement, and the declared lemmas of the word nothing answers (#818).
+  assert.equal(one.asked.length, 10, one.asked.join("\n---\n"));
 });
 
 test("the batch's agreement read stays on indexes rather than scanning (#756)", () => {

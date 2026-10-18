@@ -839,14 +839,35 @@ export type DeclaredLemmaReading =
   | { pos: "noun" | "adj"; posTitle: string; word: string; forms: [DeclaredPluralForm, ...DeclaredPluralForm[]] };
 
 /**
+ * One reading of a declared lemma without its forms (#818): the word as its
+ * edges spell it and the part of speech, which name it, its section title,
+ * and `credit`, the first record in source order that declares itself a form
+ * of this reading. That record's Wiktionary page holds what the reading
+ * shows; the lemma's own spelling almost never has a page. A full lookup, a
+ * batch lookup and `exists()` each reach it, so the three name and credit one
+ * reading alike.
+ */
+export interface DeclaredLemmaHead {
+  word: string;
+  pos: DeclaredLemmaReading["pos"];
+  posTitle: string;
+  credit: string;
+}
+
+/** A declared lemma's reading without its forms: they are in source order, so the first is the first record that declares one. */
+export const declaredLemmaHead = ({ word, pos, posTitle, forms }: DeclaredLemmaReading): DeclaredLemmaHead => ({ word, pos, posTitle, credit: forms[0].surface });
+
+/**
  * A query that no record heads, lists or spells as a phrase, but that
  * `form_of` edges of served records name (#453): `verbalizzare` has no record,
  * and fifty records say they are its forms. The readings are a non-empty
  * tuple, one per part of speech whose glosses place a form, so a declared
  * lemma with nothing to show is not a value this type can hold.
  *
- * The page's search reaches it after a `not-found` (web/lib/dictionary/searchAttempt.ts).
- * The developer API's lookup does not, so it is not a `LookupResult`.
+ * `lookup()` answers it when nothing else does, after every other route and
+ * just before `not-found` (#818), so the page and the developer API reach it
+ * the same way: the page shows its forms table, and `/v1/lookup` answers one
+ * result per reading, with no definition (docs/LOOKUP.md).
  */
 export interface DeclaredLemmaResult {
   outcome: "declared-lemma";
@@ -1013,19 +1034,24 @@ export function entryKey(entry: EntryIdentity): string {
  * the entries one page gives (`lungo`, ADR 0028).
  */
 export type PublicEntryKey = { releaseId: string } & (
-  | { lineNo: number; revisionId?: never; pageLine?: never; nameItem?: never; lexeme?: never }
-  | { revisionId: number; pageLine: number; lineNo?: never; nameItem?: never; lexeme?: never }
-  | { nameItem: `Q${number}`; lineNo?: never; revisionId?: never; pageLine?: never; lexeme?: never }
-  | { lexeme: `L${number}`; lineNo?: never; revisionId?: never; pageLine?: never; nameItem?: never }
+  | { lineNo: number; revisionId?: never; pageLine?: never; nameItem?: never; lexeme?: never; declaredLemma?: never }
+  | { revisionId: number; pageLine: number; lineNo?: never; nameItem?: never; lexeme?: never; declaredLemma?: never }
+  | { nameItem: `Q${number}`; lineNo?: never; revisionId?: never; pageLine?: never; lexeme?: never; declaredLemma?: never }
+  | { lexeme: `L${number}`; lineNo?: never; revisionId?: never; pageLine?: never; nameItem?: never; declaredLemma?: never }
+  | { declaredLemma: Pick<DeclaredLemmaHead, "word" | "pos">; lineNo?: never; revisionId?: never; pageLine?: never; nameItem?: never; lexeme?: never }
 );
 
 /**
  * The id the API names an entry by: `<release>:<lineNo>`,
  * `<release>:page:<revisionId>:<pageLine>`, or, for a name entry (ADR 0032),
  * `<release>:wikidata:<item>`, and for a Wikidata word (ADR 0033),
- * `<release>:wikidata:<lexeme>`.
+ * `<release>:wikidata:<lexeme>`. A declared lemma's reading has no line, page
+ * or item, so its id is its part of speech and its word (#818):
+ * `<release>:declared:<pos>:<word>`, one per part of speech, and never a
+ * record's. The part of speech goes first because a word may hold a colon.
  */
 export function publicEntryId(key: PublicEntryKey): string {
+  if (key.declaredLemma !== undefined) return `${key.releaseId}:declared:${key.declaredLemma.pos}:${key.declaredLemma.word}`;
   if (key.nameItem !== undefined) return `${key.releaseId}:wikidata:${key.nameItem}`;
   if (key.lexeme !== undefined) return `${key.releaseId}:wikidata:${key.lexeme}`;
   return key.lineNo === undefined ? `${key.releaseId}:page:${key.revisionId}:${key.pageLine}` : `${key.releaseId}:${key.lineNo}`;
@@ -1457,6 +1483,6 @@ export interface NotFoundResult {
 }
 
 /** The index was probed, either way. */
-export type SearchResult = FoundResult | NotFoundResult;
+export type SearchResult = FoundResult | DeclaredLemmaResult | NotFoundResult;
 
 export type LookupResult = RejectedResult | SearchResult;
