@@ -1,0 +1,20 @@
+==Italian==
+{{wp|it:+ (nome)}}
+
+===Etymology===
+{{ety|it|:inh|la:Iūlia}}
+{{inh+|it|la|Iūlia}}.
+
+===Pronunciation===
+{{it-pr|Giùlia}}
+
+===Proper noun===
+{{it-proper noun|f}}
+
+# {{given name|it|female|eq=Julia}}
+
+====Related terms====
+* {{l|it|Giuliana}}
+* {{l|it|Giuliano}}
+* {{l|it|Giulietta}}
+* {{l|it|Giulio}}

@@ -1,0 +1,20 @@
+==Italian==
+
+===Etymology===
+Akin to {{cog|scn|in ritardu}}.
+
+===Pronunciation===
+* {{audio|it|LL-Q652 (ita)-Happypheasant-in ritardo.wav}}
+
+===Adverb===
+{{it-adv}}
+
+# [[late]], [[behind]], [[after]], [[overdue]], [[belated]], [[slow]] {{q|of time}}
+#: {{ant|it|in orario|in anticipo}}
+#: {{uxi|it|essere in ritardo|to be late, to be behind schedule}}
+
+===Anagrams===
+* {{anagrams|it|a=adiinorrt|irritando|ritardino|ritirando|ritodrina}}
+
+{{C|it|Time}}
+{{cln|it|adverbs}}

@@ -264,6 +264,11 @@ test("every declaration already in dictionary-changes parses as before, with no 
       assert.deepEqual(parseDeclaration(path, text).lookups?.map((item) => item.word), ["sig.", "Sig.", "cosette", "cosetta", "dr."]);
       continue;
     }
+    // The readings #803 fills name each word whose record now shows a hand-kept definition.
+    if (name === "2026-10-18-hand-kept-empty-readings.json") {
+      assert.deepEqual(parseDeclaration(path, text).lookups?.map((item) => item.word), ["in ritardo", "scorso", "quindici", "Giulia"]);
+      continue;
+    }
     // The label punctuation rule (#712) names words whose page text it rewrites.
     // It deployed before the rule for the labels `{{Fig}}` printed (#800), before
     // that rule read the master's dump (#814), and before the web address rule

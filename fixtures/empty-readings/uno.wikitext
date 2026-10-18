@@ -1,0 +1,326 @@
+== {{-it-}} ==
+[[File:uno.svg|200px|thumb|[[rappresentazione]] del [[numero]] {{Pn}}]]
+{{-agg num-|it}} 
+{{-card-|it}}
+{{Pn|w=1 (numero)}} '''1'''    {{Linkp|inv}}
+# {{Term|matematica|it|aritmetica}} [[numero naturale]] che segue lo [[zero]] e precede il [[due]]; è il [[primo]] [[numero]] [[dispari]]
+
+{{-art-|it}}
+{{Pn}} ''m sing''
+: <small>nota</small> vale la stessa nota d'uso dell'aggettivo numerale.
+
+{{-pronome-|it}}
+{{Pn}} ''m'' {{Linkf|una}} {{Linkp|uni|une}}
+# pronome [[indefinito]]: indica una [[persona]] non meglio specificata:
+#* ''ieri ho incontrato '''uno''' al bar che mi ha detto di venire da te'';
+# come correlativo di [[altro]]: 
+#* ''ci hanno messo gli '''uni''' contro gli altri'';
+[[File:Olimpiadi 1960 podio fioretto femminile.jpg|thumb| il gradino più alto del podio, che è destinato al vincitore della gara, raffigura il [[numero]] 1 ]]
+{{-sost-|it}}
+{{Pn}} {{Linkf|una}} ''m'' ''inv''
+# [[numero]] dopo [[zero]] e prima di [[due]]
+#* ''[[w:Parmenide|Parmenide]] fu il filosofo dell'uno:" L'Essere è Uno perché non possono esserci due Esseri: se uno è l'essere, l'altro non sarebbe il primo, e sarebbe quindi non-essere. Allo stesso modo per cui, se A è l'essere, e B è diverso da A, allora B non è: qualcosa che non sia Essere non può essere, per definizione".''
+# la [[cifra]] corrispondente alla quantità unitaria:
+#* ''nel numero 18 l''''uno''' ha un valore di una sola decina'';
+# {{Term|scuola|it}}  [[voto]] di molto inferiore alla [[sufficienza]] (in scala da 1 a 10):
+#* ''Quella strega mi ha dato un altro '''uno'''!''
+# {{Fig}} "primo senza pari"
+#* ''sei il numero '''uno'''!''
+
+{{-sill-}}
+; ù | no
+
+{{-pron-}}
+{{IPA|/ˈuːno/}}
+/ˈuːno/ (tonico come sostantivo o pronome) /u.no‿/ (generalmente atono come aggettivo numerale o articolo, si lega alla parola seguente)
+{{Audio|it-uno.ogg}}
+
+{{-etim-}}
+dal {{la}} ''[[unus|ūnus]]'', aggettivo numerale
+
+{{-quote-}}
+{{Quote
+|'''Uno''' dei malfattori appesi alla croce lo insultava: «Non sei tu il Cristo? Salva te stesso e anche noi!». Ma l'altro lo rimproverava: «Neanche tu hai timore di Dio e sei dannato alla stessa pena? Noi giustamente, perché riceviamo il giusto per le nostre azioni, egli invece non ha fatto nulla di male». E aggiunse: «Gesù, ricordati di me quando entrerai nel tuo regno». Gli rispose: «In verità ti dico, oggi sarai con me nel paradiso».
+|[[w:Vangelo secondo Luca|Vangelo secondo Luca]] {{passo biblico|Lc|23,39-43}}, testo CEI 2008}}
+
+{{-sin-}}
+*'''(aggettivo)''' [[inscindibile]], [[singolo]], [[unico]], [[imitario]]
+*'''(pronome)''' [[qualcuno]], un tale, [[nessuno]]
+* {{Glossa|unico esemplare}}  [[solo]]
+* {{Glossa|numero}} [[unità]]
+* {{Glossa|persona generica}}  uno qualunque, [[qualsivoglia]]
+
+{{-ant-}}
+*'''(aggettivo)''' [[diviso]], [[disunito]], [[numeroso]]
+
+{{-der-}}
+*[[cadauno]]
+
+{{-rel-}}
+* [[due]], [[numero uno]], [[a uno a uno]]
+*{{Glossa|numero}} [[zero]], [[due]], [[tre]], [[quattro]], [[cinque]], [[sei]], [[sette]], [[otto]], [[nove]]
+
+{{-var-}}
+* {{Glossa|aggettivo numerale}} {{Glossa|articolo}} [[un]]
+
+{{-decl-}}
+;aggettivo numerale o articolo (vedi anche [[un]])
+{| {{prettytable}}
+|-
+! 
+! ''sing''
+|-
+! ''m''
+| '''uno''' o [[un]]
+|-
+! ''f''
+| [[una]] o [[un']]
+|}
+;pronome indefinito
+{| {{prettytable}}
+|-
+! 
+! ''sing''
+! ''pl''
+|-
+! ''m''
+| '''uno'''
+| [[uni]]
+|-
+! ''f''
+| [[una]]
+| [[une]]
+|}
+{{-iperon-}}
+* [[numero]], [[cifra]]
+
+{{-prov-}}
+*''essere tutt'uno'': essere la medesima cosa''
+* ''mettersi nei panni di uno'':  immaginare di essere nella condizione di un altro''
+* ''a uno a uno''
+* ''avercela con uno'': portare livore  verso qualcuno
+
+{{-trad-}}
+{{Trad1|numero cardinale}}
+:*{{akz}}: [[cháffàaka]]
+:*{{sq}}: [[një]]
+:*{{ang}}: [[an]]
+:*{{apw}} :[[dałaá]]
+:*{{ar}}: [[واحد|وَاحِد]] 
+:*{{ay}}: [[maya]]
+:*{{eu}}: [[bat]]
+:*{{bs}}: [[jedan]]
+:*{{br}}: [[unan]]
+:*{{ca}}: [[u]]
+:*{{cs}}: [[jedna]]
+:*{{cic}}: [[chaffa]]
+:*{{cho}}: [[achafa]]
+:*{{zh}}: [[一]] ([[pinyin]]: yī)
+:*{{ko}}: [[일]] (il)
+:*{{kw}}: [[onan]]
+:*{{co}}: [[unu]]
+:*{{cr}}: [[peyak]]
+:*{{cro}}: [[hawáte]]
+:*{{da}}: [[en]]
+:*{{he}}: [[אחת]] (A'khat)
+:*{{eo}}: [[unu]]
+:*{{et}}: [[üks]]
+:*{{etr}}: [[thu]]
+:*{{fj}}: [[dua]]
+:*{{fi}}: [[yksi]]
+:*{{fy}}: [[ien]]
+:*{{fur}}: [[un]]
+:*{{gd}}: [[aon]]
+:*{{cy}}: [[un]]
+:*{{jw}}: [[siji]], [[setunggal]]
+:*{{ja}}: [[一]] ([[いち]], ichi), [[一つ]] ([[ひとつ]], hitotsu)
+:*{{el}}: [[ένας]] (enas)
+:*{{grc}}: [[εἷς]]
+:*{{gn}}: [[peteĩ]]
+:*{{hi}}: [[एक]]
+:*{{hop}}: [[suukya']]
+:*{{ia}}: [[un]]
+:*{{io}}: [[un]]
+:*{{id}}: [[satu]]
+:*{{ia}}: [[#Interlingua|uno]]
+:*{{ga}}: [[aon]]
+{{mid}}
+:*{{ka}}: [[ერთი]]
+:*{{kl}}: [[ataasiq]]
+:*{{is}}: [[einn]]
+:*{{pml}}: [[un]]
+:*{{jbo}}: [[pa]]
+:*{{mg}}: [[iray]]
+:*{{mi}}: [[tahi]]
+:*{{mnc}}: [[emu]]
+:*{{arn}}: [[kiñe]]
+:*{{mh}}: [[juon]]
+:*{{min}}: [[Ciek]]
+:*{{mov}}: [[seto]]
+:*{{mrc}}: [[shenthik]]
+:*{{nah}}: [[ce]]
+:*{{nap}}: [[ùno]]
+:*{{no}}: [[en]]
+:*{{nn}}: [[ein]]
+:*{{nl}}: [[een]]
+:*{{ood}}: [[hemako]]
+:*{{fa}}: [[يک|يِک]] (yek)
+:*{{pl}}: [[jeden]]
+:*{{pt}}: [[um]]
+:*{{qu}}: [[huk]]
+:*{{rhg}}: [[ek]]
+:*{{ro}}: [[unu]]
+:*{{ru}}: [[один]] (odin)
+:*{{sc}}: [[unu]]
+:*{{scn}}: [[unu]]
+:*{{sl}}: [[ena]]
+:*{{sun}}: [[hiji]]
+:*{{es}}: [[uno#Italiano|uno]]
+:*{{tl}}: [[isa]]
+:*{{th}}: [[หนึ่ง]]
+:*{{de}}: [[eins]]
+:*{{tpi}}: [[wan]]
+:*{{tpn}}: [[îepé]], [[oîepé]]
+:*{{tr}}: [[bir]]
+:*{{uk}}: [[один]] (odyn)
+:*{{hu}}: [[egy]]
+:*{{ur}}: [[ایک]]
+:*{{vi}}: [[một]]
+{{Trad2}}
+
+{{Trad1|l'articolo uno}}
+:*{{fr}}: [[un]]
+:*{{en}}: [[a]]/[[an]]
+:*{{pt}}: [[um]]
+{{mid}}
+:*{{nl}}: [[een]]
+:*{{es}}: [[un]]
+:*{{de}}: [[ein]]
+{{Trad2}}
+
+{{Trad1|la cifra uno}}
+:*{{ca}}: [[u]] ''m''
+:*{{cs}}: [[jednička]] ''f''
+:*{{fr}}: [[un]] ''m''
+:*{{en}}: [[one]]
+{{mid}}
+:*{{ia}}: [[un]]
+:*{{es}}: [[#Spagnolo|uno]] ''m''
+:*{{de}}: [[Eins]] ''f''
+:*{{vec}}: [[een]] ''m''
+{{Trad2}}
+
+{{Trad1|pronome indefinito}}
+:*{{ca}}: [[un]]
+:*{{fr}}: [[un]]
+:*{{en}}: [[one]]
+{{mid}}
+:*{{es}}: [[#Spagnolo|uno]]
+:*{{de}}: [[ein]]
+:*{{vec}}: [[#Veneto|uno]]
+{{Trad2}}
+
+=={{-la-}}==
+{{-agg form-|la}}
+{{Pn}}
+# ablativo maschile singolare di [[unus#Latino|ūnus]]
+# ablativo neutro singolare di [[unus#Latino|ūnus]]
+
+{{-sill-}}
+; ū | nō
+
+{{-pron-}}
+* {{La-pronclass|nocat}} {{IPA|/ˈuː.noː/}}
+* {{La-proneccl|nocat}} {{IPA|/ˈu.no/}}
+
+{{-etim-}}
+vedi [[unus#Latino|ūnus]]
+
+== {{-pt-}} ==
+{{-agg-|pt}}
+{{Pn}}
+#[[unico]]
+
+#[[indivisibile]]
+
+{{-sill-}}
+lemma non sillababile
+{{-pron-}}
+{{IPA|/ˈunu/}}
+{{-etim-}}
+dal {{la}} ''[[unus|ūnus]]''
+
+== {{-es-}} ==
+{{-agg num-|es}}
+{{-card-|es}}
+{{Pn}}
+#il [[numero naturale]] [[uno#Italiano|uno]], '''1'''
+{{-sost-|es}}
+{{Pn}} ''m''
+#il cifro 1
+{{-sill-}}
+lemma non sillababile
+{{-pron-}}
+{{IPA|/ˈuno/}}
+{{Audio|LL-Q1321 (spa)-Rodelar-dos.wav}}
+{{-etim-}}
+dal {{la}} ''[[unus|ūnus]]''
+
+== {{-vec-}} ==
+{{-pronome-|vec}}
+{{Pn}} ''m'' {{Tabs|uno|una|uni|une}}
+# pronome indefinito: [[#Italiano|uno]];
+#* ''ghe xera '''uno''' che 'l dixéa cusì'': c'era uno che diceva così;
+
+{{-var-}}
+:* [[on]] (''regionale'')
+:* [[un]] (''regionale, ortografia classica'')
+
+{{-sill-}}
+; uno
+
+{{-pron-}}
+/ˈu.no/ o /un/ o /ʊn/
+
+{{-etim-}}
+dal {{la}} ''[[unus|ūnus]]''
+
+{{-decl-}}
+{| {{prettytable}}
+|-
+! 
+! ''sing''
+! ''pl''
+|-
+! ''m''
+| '''uno'''
+| [[uni]]
+|-
+! ''f''
+| [[una]]
+| [[une]]
+|}
+
+{{-Varie lingue-|ia}}
+
+{{-ref-}}
+*italiano
+** {{Fonte|trec}}
+** {{Fonte|hoep}}
+** {{Fonte|dizit}}
+**AA.VV., ''Dizionario sinonimi e contrari'', Mariotti, 2006, pagina 598
+* latino
+** {{Ref-link|unus}}
+* portoghese
+** {{Fonte|ptfd}}
+*spagnolo
+** {{Fonte|hoes}}
+*veneto
+** {{Noref|vec}}
+*traduzioni
+** {{Fonte|opera=Dizionario Greco Antico|link=https://www.grecoantico.com/dizionario-greco-antico-numeri-greci.php|testo=Numeri greci|altro=, su [http://www.grecoantico.com www.grecoantico.com]}}
+** {{Fonte|opera=Pinhok languages|link=https://www.pinhok.com/it/kb/lucraino/45/numeri-in-ucraino/|testo=numeri in ucraino|altro=, su [https://pinhok.com pinhok.com]}}
+** {{Fonte|opera=Pinhok languages|link=https://www.pinhok.com/it/kb/il-russo/36/numeri-in-russo/|testo=numeri in russo|altro=, su [https://pinhok.com pinhok.com]}}
+
+== Altri progetti ==
+{{Interprogetto|w|commons=1 (number)}}

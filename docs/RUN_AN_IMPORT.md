@@ -410,7 +410,10 @@ from another revision, or the definition differs. The plan's counts name its
 
 The same run also writes the hand-kept readings: whole readings the source
 lacks, `si` as a pronoun, `come` as a conjunction and `eguaglianza`, another
-spelling of `uguaglianza` ([#830](https://github.com/povlabs/lexema/issues/830)), each citing the
+spelling of `uguaglianza` ([#830](https://github.com/povlabs/lexema/issues/830)), and the
+definitions of readings whose source section is empty, `in ritardo`, `scorso`'s
+adjective, `quindici`'s noun and `Giulia`, which their records show as their own
+([#803](https://github.com/povlabs/lexema/issues/803)), each citing the
 en.wiktionary revision that shows it
 ([ADR 0031](../.decisions/0031-hand-kept-readings-fill-source-gaps.md),
 [#745](https://github.com/povlabs/lexema/issues/745)). The committed list is

@@ -1,0 +1,35 @@
+==Italian==
+
+===Etymology===
+{{ety|it|:inh|la:excursus}}
+From {{inh|it|la|excursus}}.
+
+===Pronunciation===
+{{it-pr|scórso}}
+
+===Adjective===
+{{it-adj}}
+
+# [[last]], [[previous]]
+#: {{syn|it|passato|precedente}}
+
+===Noun===
+{{it-noun|m}}
+
+# [[past]]
+
+===Noun===
+{{it-noun|m}}
+
+# [[misprint]]
+# [[slip of the tongue]]
+
+===Participle===
+{{it-pp}}
+
+# {{past participle of|it|scorrere}}
+
+===Anagrams===
+* {{anagrams|it|a=coorss|crosso|crossò}}
+
+{{C|it|Talking}}

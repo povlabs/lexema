@@ -1,0 +1,15 @@
+{
+  "command": "correct:records",
+  "inputs": {},
+  "lookups": [
+    { "word": "in ritardo", "gloss": "dopo il momento stabilito o previsto" },
+    { "word": "scorso", "gloss": "appena passato, immediatamente precedente" },
+    { "word": "quindici", "gloss": "il numero quindici" },
+    { "word": "Giulia", "gloss": "nome proprio di persona femminile" }
+  ],
+  "expected": {
+    "records": { "added": 0, "changed": 0, "removed": 0 },
+    "written": { "hand_kept_definition": 5, "correction_version": 1 },
+    "deleted": {}
+  }
+}

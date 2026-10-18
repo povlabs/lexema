@@ -329,9 +329,10 @@ test("the fifty-word dev seed is one part with the same rows", async () => {
       entry_fact: 367,
       corrected_definition: 2,
       // The committed hand-kept readings, whatever the fixture holds (ADR
-      // 0031, #745, #819, #830): si's pronoun's four definitions, and one each
-      // for come's conjunction, Sig., cosetta and eguaglianza's noun.
-      hand_kept_definition: 8,
+      // 0031, #745, #819, #830, #803): si's pronoun's four definitions, and one
+      // each for come's conjunction, Sig., cosetta, eguaglianza's noun, in
+      // ritardo's two readings, scorso's adjective, quindici's noun and Giulia.
+      hand_kept_definition: 13,
       release_table_rows: 28,
     });
     // 36 of the fixture's records have a raw page under fixtures/. Three pages

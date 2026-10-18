@@ -27,7 +27,9 @@
 // in source order, a lemma the query also matched folded into the reading that
 // names it, a form-of reading answered with its lemmas of its own part of
 // speech (`lemmasOfPartOfSpeech`), whether it is an archive record, a
-// page-only entry or a hand-kept reading (#854), then the word's hand-kept readings, each
+// page-only entry or a hand-kept reading (#854), or an empty record rule
+// `it-empty-reading-variant/v1` leads to its variant (#803), then the word's
+// hand-kept readings that fill no record (#803), each
 // record once; and a word no Wiktionary reading answers with its Wikidata
 // words (ADR 0033, #812), read in the statement beside the search.
 
@@ -47,7 +49,8 @@ import { agreeingQuery, agreementProbes, namesCell, type AgreeingQuery } from ".
 import { personOfItalianVerbForm } from "../italian/moods.js";
 import { prefixUpperBound } from "./keyRange.js";
 import { formOfFactsOf, formOfWords } from "./pageFacts.js";
-import type { HandKeptHead } from "./handKept.js";
+import { fills, type HandKeptHead } from "./handKept.js";
+import { variantLinksOf } from "./variantLinks.js";
 import type { NameHead } from "./names.js";
 import { normalizeItalianExact } from "../italian/normalize.js";
 
@@ -105,7 +108,7 @@ const NOT_AUXILIARY = `NOT EXISTS (
  * without the page-entry tables. Exported so a test can assert the plan.
  */
 export const BATCH_ARCHIVE_SEARCH_SQL: DictionaryRead = `SELECT lf.surface_key, r.record_id, NULL AS entry_id, NULL AS revision_id, NULL AS page_line, r.release_id, r.line_no, r.word, r.pos, r.pos_title,
-            MAX(lf.origin = 'headword') AS is_about, NULL AS form_of_facts
+            MAX(lf.origin = 'headword') AS is_about, NULL AS form_of_facts, r.line_sha256
        FROM lookup_form lf
        JOIN source_record r ON r.record_id = lf.record_id
       WHERE lf.release_id IN (${servedBy("?1")}) AND lf.surface_key IN (SELECT value FROM json_each(?2))
@@ -118,7 +121,7 @@ export const BATCH_ARCHIVE_SEARCH_SQL: DictionaryRead = `SELECT lf.surface_key, 
  * `linksOf` reads its lemma links by.
  */
 const pageSearchArm = (pageFacts: boolean): string => `SELECT e.word_key, NULL, e.entry_id, p.revision_id, e.page_line, e.release_id, NULL, e.word, e.pos, e.pos_title, 1,
-            ${pageFacts ? formOfFactsOf("e") : "NULL"}
+            ${pageFacts ? formOfFactsOf("e") : "NULL"}, NULL
        FROM recovered_entry e JOIN raw_page p ON p.page_id = e.page_id
       WHERE e.release_id IN (${servedBy("?1")}) AND e.word_key IN (SELECT value FROM json_each(?2))
         AND NOT EXISTS (SELECT 1 FROM lookup_form lf WHERE lf.release_id IN (${servedBy("?1")})
@@ -141,7 +144,7 @@ const BATCH_FACTLESS_SEARCH_SQL: DictionaryRead = `${BATCH_ARCHIVE_SEARCH_SQL}
  * spelling in the record's table, never its headword. `lookup_form` keeps the
  * source's spelling, so the arm it is read beside still finds that one.
  */
-const CORRECTED_CELL_ARM = `SELECT c.surface_key, r.record_id, NULL, NULL, NULL, r.release_id, r.line_no, r.word, r.pos, r.pos_title, 0, NULL
+const CORRECTED_CELL_ARM = `SELECT c.surface_key, r.record_id, NULL, NULL, NULL, r.release_id, r.line_no, r.word, r.pos, r.pos_title, 0, NULL, r.line_sha256
        FROM corrected_form c
        JOIN lookup_form lf ON lf.record_id = c.record_id AND lf.form_index = c.form_index
        JOIN source_record r ON r.record_id = c.record_id
@@ -356,6 +359,8 @@ interface HitRow {
   is_about: number;
   /** A page-only entry's form-of facts (`formOfFactsOf`); null for a record, or where the dictionary has no `entry_fact`. */
   form_of_facts: string | null;
+  /** A record's archive line digest, by which rule `it-empty-reading-variant/v1` names it (#803); null for a page-only entry. */
+  line_sha256: string | null;
 }
 
 /** A row of the links read: an edge of the record `record_id`, or, with `target_key`, a word key a reading names. */
@@ -408,11 +413,24 @@ const recordOf = (row: HitRow): CandidateRecord => ({
   posTitle: row.pos_title,
 });
 
-/** A row of the search as a match: a page-only entry with the words it says it is a form of. */
+/** A row of the search as a match: a page-only entry with the words it says it is a form of, and an empty record with the variants it leads to. */
 const matchOf = (row: HitRow, about: boolean): Match => {
   const record = recordOf(row);
-  return record.entryId === undefined ? { record, about } : { record, about, lemmaWords: { words: formOfWords(row.form_of_facts), pageEntries: true } };
+  if (record.entryId !== undefined) return { record, about, lemmaWords: { words: formOfWords(row.form_of_facts), pageEntries: true } };
+  return withVariants({ record, about }, row.line_sha256);
 };
+
+/**
+ * A record's match with the variants rule `it-empty-reading-variant/v1` leads
+ * it to (src/lookup/variantLinks.ts, #803), as `lookup()` gives its reading
+ * lemma links to them: `uno`'s article leads to `un`. A record off the list,
+ * or one with no digest, is as it was. The rule lists only records with no
+ * `form_of` edge, so these words are its only lemmas.
+ */
+function withVariants(match: Match, lineSha256: string | null): Match {
+  const words = lineSha256 === null ? [] : variantLinksOf(lineSha256).map((variant) => variant.word);
+  return words.length === 0 ? match : { ...match, lemmaWords: { words, pageEntries: false } };
+}
 
 /** A head read beside the source as a reading about its key: a hand-kept reading with the words it leads to (#830). */
 const besideMatch = (head: HandKeptHead | NameHead): Match => {
@@ -663,7 +681,7 @@ function shapeMatchesOf(answered: readonly ShapeRow[]): { spelled: Match[]; kept
       continue;
     }
     const record: CandidateRecord = { recordId: row.hit.record_id, lineNo: row.hit.line_no, releaseId: row.hit.release_id, word: row.hit.record_word, pos: row.hit.record_pos, posTitle: row.hit.record_pos_title };
-    matches.set(candidateKey(record), { record, about: row.hit.origin === "headword" || matches.get(candidateKey(record))?.about === true });
+    matches.set(candidateKey(record), withVariants({ record, about: row.hit.origin === "headword" || matches.get(candidateKey(record))?.about === true }, row.hit.line_sha256));
   }
   return { spelled: [...matches.values()], kept };
 }
@@ -674,8 +692,19 @@ function shapeMatchesOf(answered: readonly ShapeRow[]): { spelled: Match[]; kept
  * `readingsOf` orders and folds them, then the hand-kept readings.
  */
 function shapeCandidates({ spelled, kept }: { spelled: readonly Match[]; kept: readonly Match[] }, links: ReadonlyMap<string, readonly LightLink[]>): CandidateRecord[] {
-  return candidatesOfReadings([...readingsOf(spelled, links), ...kept], links);
+  return candidatesOfReadings([...readingsOf(spelled, links), ...unfilled(kept, spelled)], links);
 }
+
+/**
+ * The hand-kept readings among `kept` that fill no record `spelled` holds
+ * about the word (`fills`, src/lookup/handKept.ts): one that does is that
+ * record's definitions, as `withoutFillingReadings` leaves it in `lookup()`, and
+ * no candidate of its own (#803).
+ */
+const unfilled = (kept: readonly Match[], spelled: Iterable<Match>): Match[] => {
+  const records = [...spelled].filter((match) => match.about && match.record.recordId !== undefined).map((match) => match.record);
+  return kept.filter((match) => match.record.handKeptId === undefined || !records.some((record) => fills(match.record, record)));
+};
 
 /**
  * The words of a batch, each answered as `lookup()` and `candidatesOf` answer
@@ -789,14 +818,14 @@ async function candidatesByKey(
   /**
    * The readings of everything that spells `key`, as `spelledResult`
    * (src/lookup/lookup.ts) orders them: the source's records and page entries
-   * in source order, then the hand-kept readings, then the name entries.
-   * Undefined when none does.
+   * in source order, then the hand-kept readings that fill none of those
+   * records (`unfilled`, #803), then the name entries. Undefined when none does.
    */
   const spelledReadings = (key: string): Match[] | undefined => {
     const matches = spelled.get(key);
     const heads = kept.get(key) ?? [];
     if (matches === undefined && heads.length === 0) return undefined;
-    return [...(matches === undefined ? [] : readingsOf(matches.values(), links)), ...heads];
+    return [...(matches === undefined ? [] : readingsOf(matches.values(), links)), ...unfilled(heads, matches?.values() ?? [])];
   };
 
   const candidatesOf = (key: string): CandidateRecord[] => {

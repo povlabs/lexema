@@ -1,0 +1,38 @@
+== {{-it-}} ==
+{{-nome-|it}}
+{{Pn|w}}  ''f''
+
+{{-etim-}}
+Probabilmente dal latino Iulia, che era il nome [[gentilizio]] di una antica e nobile famiglia romana, la [[Gens]] Iulia  (il cui più illustre rappresentante fu Giulio Cesare ), che si vantava di discendere da Giulio o Iulus (Iulo) altro nome di Ascanio , figlio di  Enea.
+
+{{-rel-}}
+* [[Giuliana]]
+* [[Giuliano]]
+* [[Giulio]]
+
+{{-trad-}}
+{{Trad1|}}
+:*{{de}}: [[Julia]]
+:*{{en}}: [[Julia]], [[Julie]], [[July]] 
+:*{{es}}: [[Julia]]
+:*{{fr}}: [[Julie]]
+:*[[latino]]: [[julia]]
+:*{{pl}}: [[Julia]]
+:*{{pt}}: [[Julia]]
+:*{{hu}}: [[Júlia]]
+{{Trad2}}
+
+{{-ref-}}
+{{Pn}} wikipedia.it
+ 
+[[Categoria:Antroponimi femminili-IT]]
+
+[[en:Giulia]]
+[[es:Giulia]]
+[[fr:Giulia]]
+[[hu:Giulia]]
+[[ko:Giulia]]
+[[pl:Giulia]]
+[[ru:Giulia]]
+[[sh:Giulia]]
+[[sr:Giulia]]
