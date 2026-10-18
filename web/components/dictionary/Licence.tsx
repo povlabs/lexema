@@ -20,9 +20,10 @@
 // since #827 a name on a mixed page links none
 // (https://github.com/povlabs/lexema/issues/802#issuecomment-6133207273).
 // Section 3's third paragraph credits the English Wiktionary for the hand-kept
-// readings (ADR 0031), on Huey's ruling of 2026-10-18
-// (https://github.com/povlabs/lexema/issues/877#issuecomment-6252861816), its
-// wording for Huey to approve on that pull request.
+// readings and conjugation tables (ADR 0031), on Huey's ruling of 2026-10-18
+// (https://github.com/povlabs/lexema/issues/877#issuecomment-6252861816). The
+// paragraph is the wording Huey approved on #887 the same day, widened to the
+// tables (https://github.com/povlabs/lexema/pull/887#issuecomment-6253205503).
 
 import { ExternalLink } from "@/components/shared/ExternalLink";
 import { LEGAL_ITEMS, LEGAL_PARAGRAPH, LEGAL_UNBROKEN, LINK } from "@/components/shared/styles.ts";
@@ -35,7 +36,7 @@ const LICENCE_URL = "https://creativecommons.org/licenses/by-sa/4.0/";
 const LICENCE_TEXT_URL = "https://creativecommons.org/licenses/by-sa/4.0/legalcode";
 /** Wikidata's own data licence (ADR 0032). */
 const CC0_URL = "https://creativecommons.org/publicdomain/zero/1.0/deed.it";
-/** The English Wiktionary, whose cited revisions the hand-kept readings paraphrase (ADR 0031, #877). */
+/** The English Wiktionary, whose cited revisions the hand-kept readings and tables come from (ADR 0031, #877). */
 const EN_WIKTIONARY_URL = "https://en.wiktionary.org/";
 
 /** A dump's `YYYY-MM-DD` date, as a reader would say it. */
@@ -118,7 +119,7 @@ export function Licence({ release }: { release: ServedRelease }) {
                 Wikizionario. Ogni voce di Lexema rimanda a quella pagina.
               </p>
               <p className={LEGAL_PARAGRAPH}>
-                Alcuni significati che il Wikizionario non ha sono curati a mano a partire da versioni citate del{" "}
+                Alcuni significati e tabelle di coniugazione che il Wikizionario non ha sono curati a mano a partire da versioni citate del{" "}
                 <ExternalLink language="it" className={LINK} href={EN_WIKTIONARY_URL}>
                   Wiktionary in inglese
                 </ExternalLink>
