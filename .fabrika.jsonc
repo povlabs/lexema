@@ -27,7 +27,7 @@
   // Epic runs: count machinery laps apart from the repair budget. Read when a
   // lane is emitted, so lanes already on disk keep the old count.
   "machineryLaps": { "onEmit": "on" },
-  // If CODEOWNERS cannot be read, refuse. Nothing in Fabrika 0.9.0 reads this
+  // If CODEOWNERS cannot be read, refuse. Nothing in Fabrika 0.10.0 reads this
   // key; it is set strict so it cannot drift if it is wired up again.
   "unreadableCodeowners": "refuse",
   "uiSurfaces": [
