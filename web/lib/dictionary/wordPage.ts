@@ -129,6 +129,7 @@ import {
   isFromWikidata,
   isNameEntry,
   isNounReading,
+  isReachedOnlyByCorrection,
   isVerbReading,
   isWikidataWord,
   lemmasOfPartOfSpeech,
@@ -1533,15 +1534,28 @@ export function wordPage(
       derived: relatedItems(placed.rest.derived),
     },
     expressions: expressions === undefined ? undefined : { expressions },
-    source: footerSourceOf(readings, shown, about[0] ?? headword),
+    source: footerSourceOf(readings, shown, about[0] ?? correctedFormSourceReading(readings) ?? headword),
   };
+}
+
+/**
+ * The record a page credits when no record is about the query and every
+ * record the search reached, it reached only through cells a curated
+ * correction spells (`isReachedOnlyByCorrection`): `eguali` credits `eguale`.
+ * The searched spelling has no page of its own, and that record's page holds
+ * what the page shows, as a word shape's base word's does (#802; Huey's
+ * ruling of 2026-10-18 on #875). None on any other page.
+ */
+function correctedFormSourceReading(found: readonly [Reading, ...Reading[]]): Reading | undefined {
+  return found.every(isReachedOnlyByCorrection) ? pageOrder(found)[0] : undefined;
 }
 
 /**
  * What the footer's one *Fonte* credits; no reading credits its own (#827).
  * `title` is the reading the title is from (the first about the spelling
- * the page is about, or on a shape's page its base word's, `shapeSourceReading`),
- * or the bare spelling where none is. A hand-kept reading there credits the
+ * the page is about, on a shape's page its base word's, `shapeSourceReading`,
+ * or on a page of a form only a correction spells its record,
+ * `correctedFormSourceReading`), or the bare spelling where none is. A hand-kept reading there credits the
  * en.wiktionary revision it cites, since it.wiktionary has no page it was read
  * from (ADR 0031; Huey's ruling of 2026-10-17 on #856). Otherwise the
  * Wiktionary page of the title's word whenever the lookup found a Wiktionary
