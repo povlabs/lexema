@@ -19,6 +19,7 @@ A data fix is never an edit of rows by hand. It is a rule
      personOrdinalGloss: "gloss-person-ordinal/v1",
      pluralPlaceholderForm: "form-plural-placeholder/v1",
      headwordLeadGloss: "gloss-headword-lead/v1",
+     webAddressGloss: "gloss-web-address/v1",
    } as const;
    ```
 

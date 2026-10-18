@@ -11,7 +11,7 @@ import { open, type FileHandle } from "node:fs/promises";
 import { createInterface } from "node:readline";
 import { createGunzip } from "node:zlib";
 import { IT_NORMALIZER_VERSION, normalizeItalianExact } from "../italian/normalize.js";
-import { normalizeFormSurface, normalizeGloss, withoutHeadwordLead } from "../italian/sourceTextNormalization.js";
+import { normalizeFormSurface, normalizeGloss, withoutHeadwordLead, withoutWebAddresses } from "../italian/sourceTextNormalization.js";
 import {
   expectedFormDimensions,
   expectedRecordDimensions,
@@ -331,7 +331,7 @@ export function stampedGlossRows(lift: GlossStampLift, word: string): { pointer:
 }
 
 const asStored = (word: string, kept: string | undefined): string | undefined =>
-  kept === undefined ? undefined : normalizeGloss(withoutHeadwordLead(word, kept));
+  kept === undefined ? undefined : normalizeGloss(withoutHeadwordLead(word, withoutWebAddresses(kept)));
 
 /** One `sense_gloss` row: the gloss's index and pointer in the source, and the text stored for it. */
 interface StoredGloss {

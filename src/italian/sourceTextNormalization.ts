@@ -2,7 +2,8 @@
 // so one meaning reads one way across the dictionary. The seed applies them to
 // the structured rows, and a one-off update applies the same function to a
 // database seeded before a rule existed (src/import/normalizeGlosses.ts,
-// src/import/normalizeForms.ts, src/import/headwordLeadUpdate.ts). The
+// src/import/normalizeForms.ts, src/import/headwordLeadUpdate.ts,
+// src/import/webAddressUpdate.ts). The
 // raw line in `source_record_json` never passes through here. This is not the
 // search normalization in normalize.ts, which only builds lookup keys.
 
@@ -21,6 +22,8 @@ export const SOURCE_TEXT_RULES = {
   pluralPlaceholderForm: "form-plural-placeholder/v1",
   /** #325: `withoutHeadwordLead`. */
   headwordLeadGloss: "gloss-headword-lead/v1",
+  /** #872: `withoutWebAddresses`. */
+  webAddressGloss: "gloss-web-address/v1",
 } as const;
 
 export type SourceTextRuleId = (typeof SOURCE_TEXT_RULES)[keyof typeof SOURCE_TEXT_RULES];
@@ -64,6 +67,39 @@ export function withoutHeadwordLead(word: string, text: string): string {
  * decide.
  */
 export const HEADWORD_LEAD_GLOSS_GLOB = "* ( approfondimento)*";
+
+/**
+ * A web address in a gloss, with the spaces beside it: a bracketed external
+ * link `[https://… [1]]` whole, or a bare `http://` or `https://` address up
+ * to the next space. A bare address takes every character up to that space,
+ * so two addresses glued together (`…html?amp=1https://…`) go as one.
+ */
+const WEB_ADDRESS = /(\s*)(?:\[https?:\/\/[^\s\]]+(?: \[\d+\])?\]|https?:\/\/\S+)(\s*)/gu;
+
+/**
+ * A gloss as Lexema stores it. #872: a web address an editor left in a
+ * definition, often glued to its last word (`nel 1970https://…`), is no part
+ * of the meaning, so it goes, and the text either side keeps one space between
+ * it and none at either end; 14 glosses of release `it-0c432803`, listed in
+ * reports/2026-10-18-gloss-web-addresses.md. Every other space in the gloss
+ * stays as written. A gloss that is nothing but an address stays as written,
+ * since no definition would be left.
+ */
+export function withoutWebAddresses(text: string): string {
+  const stripped = text.replace(WEB_ADDRESS, (match, before: string, after: string, offset: number) => {
+    const atStart = offset === 0;
+    const atEnd = offset + match.length === text.length;
+    return atStart || atEnd || (before === "" && after === "") ? "" : " ";
+  });
+  return stripped === "" ? text : stripped;
+}
+
+/**
+ * A SQLite GLOB that matches every stored gloss `withoutWebAddresses` would
+ * change, and more. The one-off update reads only these rows and lets the rule
+ * decide.
+ */
+export const WEB_ADDRESS_GLOSS_GLOB = "*http*://*";
 
 /**
  * Wikizionario's empty plural template: where an editor never filled in a

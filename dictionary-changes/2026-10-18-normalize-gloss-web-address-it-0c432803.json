@@ -1,0 +1,17 @@
+{
+  "command": "normalize:source-text",
+  "inputs": {
+    "archive": "it-0c432803",
+    "rules": ["gloss-web-address/v1", "gloss-headword-lead/v1", "gloss-person-ordinal/v1", "form-plural-placeholder/v1", "it-gloss-stamp/v1", "rendered-label-punctuation/v1", "rendered-fig-label/v1"]
+  },
+  "lookups": [
+    { "word": "ciortone", "gloss": "sgombro (pesce)" },
+    { "word": "funk", "gloss": "nata negli Stati Uniti nel 1970" },
+    { "word": "nobiltà", "gloss": "condizione sociale di persone" }
+  ],
+  "expected": {
+    "records": { "added": 0, "changed": 14, "removed": 0 },
+    "written": { "sense_gloss": 14 },
+    "deleted": {}
+  }
+}

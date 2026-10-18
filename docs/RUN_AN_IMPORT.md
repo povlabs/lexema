@@ -176,7 +176,11 @@ usage labels (`{{Term|matematica|it}}, {{Term|aritmetica|it}} [[numero]]…` is
 ([wikitext.ts](../src/italian/wikitext.ts), `renderInline`). A sixth, rule
 `rendered-fig-label/v1` ([#800](https://github.com/povlabs/lexema/issues/800)),
 stores the label `{{Fig}}` prints, `senso figurato`, where the renderer printed
-`figurato` before. A database seeded
+`figurato` before. A seventh, rule `gloss-web-address/v1`
+([#872](https://github.com/povlabs/lexema/issues/872)), takes a web address
+out of a gloss with the spaces beside it (`nel 1970https://…` is `nel 1970`),
+in 14 glosses of release `it-0c432803`
+([the count](../reports/2026-10-18-gloss-web-addresses.md)). A database seeded
 before a rule existed gets it from a one-off update, with no reseed:
 
 ```sh
@@ -211,13 +215,14 @@ does not hold at that revision, or whose lines do not say which template
 printed it, stays and is counted as undecided. It never touches
 `source_record_json`. It reads the rows back and fails if any still needs a
 rule. It prints one line per rule, led by the rule's name and version:
+`gloss-web-address/v1: sense_gloss: <n> row(s) changed`,
 `gloss-headword-lead/v1: sense_gloss: <n> row(s) changed`,
 `gloss-person-ordinal/v1: sense_gloss: <n> row(s) changed`,
 `form-plural-placeholder/v1: lookup_form: <n> row(s) removed, grammar_claim: <n> row(s) removed`,
 `it-gloss-stamp/v1: sense_gloss: <n> row(s) changed, grammar_claim: <n> row(s) changed`,
 `rendered-label-punctuation/v1: recovered_definition: <n> row(s) changed, …`
 and `rendered-fig-label/v1: recovered_label: <n> row(s) changed, entry_label: <n> row(s) changed, …`.
-The seed prints the first three ids on its `source text rules:` line; the stamp
+The seed prints the first four ids on its `source text rules:` line; the stamp
 rule is the importer's grammar policy
 ([grammarPolicy.ts](../src/import/grammarPolicy.ts)). A second run changes 0
 rows. `pnpm run normalize:source-text --plan-only` is a plan-only run: it
