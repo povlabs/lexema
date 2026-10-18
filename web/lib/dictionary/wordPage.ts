@@ -519,17 +519,20 @@ const drawsNoTable = (candidate: Extract<LemmaLink, { kind: "candidates" }>["can
  * The verbs whose records a page needs read to draw, under a form of them,
  * the table built for them (#852): each verb a verb form record about the
  * query names, none of whose records the lookup returned draws a table
- * (`verificare` for `verifico`, `pentirsi` for `pentiti`). Empty for any
- * other page, so a search reads nothing more.
+ * (`verificare` for `verifico`, `pentirsi` for `pentiti`). A record the
+ * query's own page already holds is not read again: `sfocato`'s verb record
+ * names itself. Empty for any other page, so a search reads nothing more.
  */
 export function builtTableVerbWords(readings: readonly Reading[]): string[] {
+  const own = ownKeysOf(readings);
   const words = readings
     .filter((reading) => reading.isAboutQuery && isVerbReading(reading) && isFormOfReading(reading))
     .flatMap((reading) =>
       reading.lemmaLinks.flatMap((link) => {
         if (link.kind !== "candidates") return [];
         const verbs = link.candidates.filter((candidate) => candidate.pos === "verb");
-        return verbs.length > 0 && verbs.every(drawsNoTable) ? verbs.map((candidate) => candidate.word) : [];
+        const read = verbs.length > 0 && verbs.every(drawsNoTable) && !verbs.some((candidate) => own.has(entryKey(candidate)));
+        return read ? verbs.map((candidate) => candidate.word) : [];
       }),
     );
   return [...new Set(words)];
