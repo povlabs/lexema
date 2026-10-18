@@ -199,7 +199,7 @@ function tablesOf(page: WordPage): string[] {
       }
       if (part.kind === "lemma-forms") {
         for (const table of part.tables) {
-          names.push(table.kind === "conjugation" ? `conjugation ${table.lemma.word}` : `grid ${table.lemma.word} ${JSON.stringify(table.agreement.grid)}`);
+          names.push(table.kind !== "grid" ? `conjugation ${table.lemma.word}` : `grid ${table.lemma.word} ${JSON.stringify(table.agreement.grid)}`);
         }
       }
     }

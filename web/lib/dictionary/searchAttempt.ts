@@ -6,7 +6,8 @@
 // whose grids its noun and adjective forms show (#626), the definitions of
 // the verbs its verb forms name (#686), and, for a verb whose records draw no
 // conjugation, the verb forms its form records declare (#799) and, for a
-// pronominal one, its base verb's records (#837), all in one wait. Free of the Workers runtime, so the page test runs the
+// pronominal one, its base verb's records (#837), and, for a verb form whose
+// verb's records draw no table, that verb's records (#852), all in one wait. Free of the Workers runtime, so the page test runs the
 // same code over a local database.
 
 import { normalizeItalianExact } from "@lexema/italian/normalize.ts";
@@ -18,7 +19,7 @@ import { findNearby, writtenSpellings } from "@lexema/lookup/nearby.ts";
 import { dictionaryTables } from "@lexema/lookup/served.ts";
 import type { Attempt } from "./attempt.ts";
 import { declaredLemmaPage } from "./declaredLemmaPage.ts";
-import { gridLemmaWords, pronominalBaseWords, wantsDeclaredConjugation } from "./wordPage.ts";
+import { builtTableVerbWords, gridLemmaWords, pronominalBaseWords, wantsDeclaredConjugation, type VerbRecords } from "./wordPage.ts";
 
 export async function searchAttempt(db: LookupDatabase, releaseId: string, query: string): Promise<Attempt> {
   // The tables are read beside the lookup, which reads them too: one statement in its first call.
@@ -29,12 +30,13 @@ export async function searchAttempt(db: LookupDatabase, releaseId: string, query
   const word = result.outcome === "found" && result.route.kind === "accentless" ? result.route.headword : result.query.raw;
   const written = () => writtenSpellings({ db, releaseId, query: word });
   if (result.outcome === "found") {
-    const [spellings, lemmas, readings, declared, bases, shapedLemma] = await Promise.all([
+    const [spellings, lemmas, readings, declared, bases, verbs, shapedLemma] = await Promise.all([
       written(),
       lemmaRecords(db, releaseId, result.readings),
       withVerbDefinitions(db, result.readings, tables),
       wantsDeclaredConjugation(result.readings) ? declaredVerbForms(db, releaseId, normalizeItalianExact(word)) : undefined,
       baseRecords(db, releaseId, pronominalBaseWords(result.readings)),
+      verbRecords(db, releaseId, builtTableVerbWords(result.readings)),
       // A word the page answers as a declared lemma keeps that page: rule
       // `it-word-shape/v1` answers only what nothing else does (#809), so
       // `aggrapparsi` stays itself, not a clitic form of `aggrappare`.
@@ -42,7 +44,7 @@ export async function searchAttempt(db: LookupDatabase, releaseId: string, query
     ]);
     const shapedPage = shapedLemma === undefined ? undefined : declaredLemmaPage(shapedLemma);
     if (shapedLemma !== undefined && shapedPage !== undefined) return { ...shapedLemma, page: shapedPage, written: spellings };
-    return { ...result, readings, written: spellings, lemmas, declared: declared ?? [], bases };
+    return { ...result, readings, written: spellings, lemmas, declared: declared ?? [], bases, verbs };
   }
   if (result.outcome !== "not-found") return result;
   const declared = await declaredLemma(db, releaseId, result);
@@ -60,6 +62,21 @@ export async function searchAttempt(db: LookupDatabase, releaseId: string, query
 async function baseRecords(db: LookupDatabase, releaseId: string, words: readonly string[]): Promise<Reading[]> {
   const found = await Promise.all(words.map((word) => lookup({ db, releaseId, query: word })));
   return found.flatMap((result) => (result.outcome === "found" ? result.readings.filter((reading) => reading.isAboutQuery) : []));
+}
+
+/**
+ * The records of each of `words`, verbs a verb form names, as a search of the
+ * verb reads them, with its base verbs' (`baseRecords`): what the verb's own
+ * page builds its table from, so a form of it draws the same one (#852).
+ * Nothing is read when `words` is empty.
+ */
+async function verbRecords(db: LookupDatabase, releaseId: string, words: readonly string[]): Promise<VerbRecords[]> {
+  return Promise.all(
+    words.map(async (word) => {
+      const readings = await baseRecords(db, releaseId, [word]);
+      return { word, readings, bases: await baseRecords(db, releaseId, pronominalBaseWords(readings)) };
+    }),
+  );
 }
 
 /** How many rounds of reads a chain of forms may take: `bellissima` reads `bellissimo`, then `bello`. */

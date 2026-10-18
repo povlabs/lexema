@@ -404,8 +404,10 @@ function LemmaConjugation({ table }: { table: ConjugationTable }) {
 
 /**
  * *Forme di andare*, the lemma's whole conjugation opened where the searched
- * form sits, or with nothing marked when it does not list it (#666); or *Forms
- * of bello*, the lemma's grid with nothing marked (#626).
+ * form sits, or with nothing marked when it does not list it (#666); the table
+ * built for a verb whose records have none, opened where the form's records
+ * say it sits (#852); or *Forms of bello*, the lemma's grid with nothing
+ * marked (#626).
  */
 function LemmaForms({ owner, tables }: { owner: string; tables: readonly LemmaTable[] }) {
   return (
@@ -427,6 +429,8 @@ function LemmaForms({ owner, tables }: { owner: string; tables: readonly LemmaTa
           >
             {table.kind === "conjugation" ? (
               <LemmaConjugation table={table} />
+            ) : table.kind === "built-conjugation" ? (
+              <ConjugationView conjugation={table.built.conjugation} searchedSpellings={NOTHING_SEARCHED} word={lemma.word} />
             ) : (
               <>
                 {table.agreement.grid !== undefined && <GridView grid={table.agreement.grid} label={formsOf(lemma.word)} />}
