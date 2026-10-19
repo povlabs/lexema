@@ -3075,7 +3075,7 @@ test("the Licence page reads, section by section, Huey's approved text in Italia
     [
       "changed",
       "4. Modifiche",
-      ["Lexema ha adattato il materiale di origine: è ristrutturato e indicizzato per la ricerca, alcune informazioni grammaticali sono aggiunte secondo regole, alcune formulazioni sono rese uniformi e singoli errori sono corretti. Lexema non scrive né genera definizioni."],
+      ["Lexema ha adattato il materiale di origine: è ristrutturato e indicizzato per la ricerca, alcune informazioni grammaticali sono aggiunte secondo regole, alcune formulazioni sono rese uniformi e singoli errori sono corretti. Lexema scrive definizioni solo in due casi: secondo una regola fissa, per i numeri scritti in lettere, e a mano, per i significati che il Wikizionario non ha o lascia vuoti, ciascuno tratto da una versione citata del Wiktionary in inglese."],
     ],
     [
       "version",
