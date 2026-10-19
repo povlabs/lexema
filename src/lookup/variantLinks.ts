@@ -1,4 +1,4 @@
-// The variants rule `it-empty-reading-variant/v1` links an empty reading to
+// The variants rule `it-empty-reading-variant/v2` links an empty reading to
 // (src/italian/emptyReadingVariant.ts, #803), as a lookup reads them: the
 // pinned list names each reading by its archive line's digest, and a record
 // the lookup reads with that digest gets a lemma link to each variant, at the

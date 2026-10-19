@@ -12,9 +12,11 @@
 //    nothing, and on it the lines of the Italian `{{-var-}}` section that link
 //    a word. A record the recovered layer reads a definition for off that page
 //    defines something on the word page, so the rule leaves it alone.
-// 3. It names each remaining reading's variants (`variantsOf`), writes every
-//    reading that has one to src/italian/emptyReadingVariantEvidence.ts, and
-//    prints the readings as Markdown for the pull request.
+// 3. It names each remaining reading's variants (`variantsOf`), split into
+//    those the rule links (a close spelling) and those it leaves. It writes
+//    every reading with a linked variant to
+//    src/italian/emptyReadingVariantEvidence.ts, and prints the linked and
+//    the left links as Markdown for the pull request.
 //
 // It reads nothing but the archive and its dump, so a second run on the same
 // two files writes the same file.
@@ -27,7 +29,11 @@ import { parseArgs } from "node:util";
 import { createGunzip } from "node:zlib";
 import {
   EMPTY_READING_VARIANT_RULE,
+  foldedSpelling,
+  MAX_SPELLING_EDITS,
   sensesDefineNothing,
+  spellingEdits,
+  type NamedVariant,
   variantLines,
   variantsOf,
   type EmptyReadingVariant,
@@ -68,7 +74,8 @@ interface EmptyRecord {
 
 /** What the rule found for one record that defines nothing. */
 type Verdict =
-  | { kind: "linked"; reading: EmptyReadingVariant }
+  | { kind: "linked"; reading: EmptyReadingVariant; far: NamedVariant[] }
+  | { kind: "far-variants"; empty: EmptyRecord; revisionId: number; far: [NamedVariant, ...NamedVariant[]] }
   | { kind: "not-in-dump" | "no-variant-line" | "recovered" | "no-variant-reading"; empty: EmptyRecord };
 
 async function scan(path: string, dumpPath: string): Promise<{ releaseId: string; verdicts: Verdict[] }> {
@@ -109,19 +116,24 @@ async function scan(path: string, dumpPath: string): Promise<{ releaseId: string
           verdicts.set(one.lineNo, { kind: "recovered", empty: one });
           continue;
         }
-        const [first, ...rest] = variantsOf(record.word, record.pos_title, lines, (word) => records.get(word) ?? []);
+        const { linked, far } = variantsOf(record.word, record.pos_title, lines, (word) => records.get(word) ?? []);
+        const [first, ...rest] = linked;
+        const [farFirst, ...farRest] = far;
         verdicts.set(
           one.lineNo,
-          first === undefined
-            ? { kind: "no-variant-reading", empty: one }
-            : {
+          first !== undefined
+            ? {
                 kind: "linked",
                 reading: {
                   record: { lineNo: one.lineNo, lineSha256: one.lineSha256, word: record.word, pos: record.pos, posTitle: record.pos_title },
                   revisionId: page.revisionId,
                   variants: [first, ...rest],
                 },
-              },
+                far,
+              }
+            : farFirst !== undefined
+              ? { kind: "far-variants", empty: one, revisionId: page.revisionId, far: [farFirst, ...farRest] }
+              : { kind: "no-variant-reading", empty: one },
         );
       }
     }
@@ -158,26 +170,63 @@ const LEFT: Record<Exclude<Verdict["kind"], "linked">, string> = {
   "no-variant-line": "its page's Italian `{{-var-}}` section links no word, or it has none",
   recovered: "the recovered layer reads a definition for it off its page",
   "no-variant-reading": "no word the section links has a reading of its section title that defines something",
+  "far-variants": `every such word is more than ${MAX_SPELLING_EDITS} edits from its spelling`,
 };
+
+/** One link the closeness test leaves: the reading, its page revision, and the variant. */
+interface FarLink {
+  record: { lineNo: number; word: string; posTitle: string };
+  revisionId: number;
+  variant: NamedVariant;
+  /** Whether the reading still leads to another variant. */
+  readingLinked: boolean;
+}
+
+const farLinks = (verdicts: readonly Verdict[]): FarLink[] =>
+  verdicts.flatMap((verdict): FarLink[] => {
+    if (verdict.kind === "linked") {
+      const { record, revisionId } = verdict.reading;
+      return verdict.far.map((variant) => ({ record, revisionId, variant, readingLinked: true }));
+    }
+    if (verdict.kind === "far-variants") {
+      const { lineNo, record } = verdict.empty;
+      return verdict.far.map((variant) => ({ record: { lineNo, word: record.word, posTitle: record.pos_title }, revisionId: verdict.revisionId, variant, readingLinked: false }));
+    }
+    return [];
+  });
+
+const edits = (word: string, variant: string): number => spellingEdits(foldedSpelling(word), foldedSpelling(variant));
 
 const cell = (text: string): string => text.replaceAll("|", "\\|").replaceAll("\n", " ");
 const pageUrl = (title: string, revisionId: number): string => `https://it.wiktionary.org/w/index.php?title=${encodeURIComponent(title)}&oldid=${revisionId}`;
 
 function report(releaseId: string, verdicts: readonly Verdict[]): string {
   const linked = verdicts.flatMap((verdict) => (verdict.kind === "linked" ? [verdict.reading] : []));
+  const far = farLinks(verdicts);
   const reasons = Object.keys(LEFT) as (keyof typeof LEFT)[];
   return [
-    `Rule \`${EMPTY_READING_VARIANT_RULE}\` on \`${releaseId}\` reads ${verdicts.length} Italian readings that define nothing. It links ${linked.length} of them to a variant.`,
+    `Rule \`${EMPTY_READING_VARIANT_RULE}\` on \`${releaseId}\` reads ${verdicts.length} Italian readings that define nothing. It links ${linked.length} of them to a variant, and leaves ${far.length} links to a variant that is no close spelling.`,
     "",
     "| Left alone because | Readings |",
     "|---|---|",
     ...reasons.map((reason) => `| ${LEFT[reason]} (\`${reason}\`) | ${verdicts.filter((verdict) => verdict.kind === reason).length} |`),
     "",
-    "| Line | Word | Section | Leads to | `{{-var-}}` line |",
-    "|---|---|---|---|---|",
+    "### Kept: the readings the rule links",
+    "",
+    "| Line | Word | Section | Leads to | Edits | `{{-var-}}` line |",
+    "|---|---|---|---|---|---|",
     ...linked.map(
       ({ record, revisionId, variants }) =>
-        `| ${record.lineNo} | [${cell(record.word)}](${pageUrl(record.word, revisionId)}) | ${record.posTitle} | ${variants.map((variant) => `\`${cell(variant.word)}\``).join(", ")} | ${[...new Set(variants.map((variant) => `${variant.line.line}: \`${cell(variant.line.wikitext.trim())}\``))].join("; ")} |`,
+        `| ${record.lineNo} | [${cell(record.word)}](${pageUrl(record.word, revisionId)}) | ${record.posTitle} | ${variants.map((variant) => `\`${cell(variant.word)}\``).join(", ")} | ${variants.map((variant) => edits(record.word, variant.word)).join(", ")} | ${[...new Set(variants.map((variant) => `${variant.line.line}: \`${cell(variant.line.wikitext.trim())}\``))].join("; ")} |`,
+    ),
+    "",
+    "### Dropped: the links the closeness test leaves",
+    "",
+    "| Line | Word | Section | Variant left | Edits | Reading still linked | `{{-var-}}` line |",
+    "|---|---|---|---|---|---|---|",
+    ...far.map(
+      ({ record, revisionId, variant, readingLinked }) =>
+        `| ${record.lineNo} | [${cell(record.word)}](${pageUrl(record.word, revisionId)}) | ${record.posTitle} | \`${cell(variant.word)}\` | ${edits(record.word, variant.word)} | ${readingLinked ? "yes" : "no"} | ${variant.line.line}: \`${cell(variant.line.wikitext.trim())}\` |`,
     ),
     "",
   ].join("\n");

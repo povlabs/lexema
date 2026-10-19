@@ -29,7 +29,7 @@
 // names it, a form-of reading answered with its lemmas of its own part of
 // speech (`lemmasOfPartOfSpeech`), whether it is an archive record, a
 // page-only entry or a hand-kept reading (#854), or an empty record rule
-// `it-empty-reading-variant/v1` leads to its variant (#803), then the word's
+// `it-empty-reading-variant/v2` leads to its variant (#803), then the word's
 // hand-kept readings that fill no record (#803), each
 // record once; and a word no Wiktionary reading answers with its Wikidata
 // words (ADR 0033, #812), read in the statement beside the search.
@@ -367,7 +367,7 @@ interface HitRow {
   is_about: number;
   /** A page-only entry's form-of facts (`formOfFactsOf`); null for a record, or where the dictionary has no `entry_fact`. */
   form_of_facts: string | null;
-  /** A record's archive line digest, by which rule `it-empty-reading-variant/v1` names it (#803); null for a page-only entry. */
+  /** A record's archive line digest, by which rule `it-empty-reading-variant/v2` names it (#803); null for a page-only entry. */
   line_sha256: string | null;
 }
 
@@ -429,7 +429,7 @@ const matchOf = (row: HitRow, about: boolean): Match => {
 };
 
 /**
- * A record's match with the variants rule `it-empty-reading-variant/v1` leads
+ * A record's match with the variants rule `it-empty-reading-variant/v2` leads
  * it to (src/lookup/variantLinks.ts, #803), as `lookup()` gives its reading
  * lemma links to them: `uno`'s article leads to `un`. A record off the list,
  * or one with no digest, is as it was. The rule lists only records with no

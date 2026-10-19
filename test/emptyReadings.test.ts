@@ -1,7 +1,7 @@
 // Readings whose own source section defines nothing (#803, ADR 0031's
 // amendment of 2026-10-18). A: `in ritardo`'s two readings, `scorso`'s
 // adjective, `quindici`'s noun and `Giulia` show hand-kept definitions as
-// their records' own. C: rule `it-empty-reading-variant/v1` leads `uno`'s
+// their records' own. C: rule `it-empty-reading-variant/v2` leads `uno`'s
 // article to `un`, the variant its page's `{{-var-}}` names. Inputs are
 // verbatim (fixtures/empty-readings/PROVENANCE.md): their archive lines of
 // it-0c432803, and the dump revisions of their it.wiktionary pages.
@@ -14,7 +14,18 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { gzipSync } from "node:zlib";
-import { linkedWords, sensesDefineNothing, variantLines, variantsOf, type VariantRecord } from "../src/italian/emptyReadingVariant.js";
+import {
+  foldedSpelling,
+  isCloseSpelling,
+  linkedWords,
+  MAX_SPELLING_EDITS,
+  sensesDefineNothing,
+  spellingEdits,
+  variantLines,
+  variantsOf,
+  type VariantLine,
+  type VariantRecord,
+} from "../src/italian/emptyReadingVariant.js";
 import { EMPTY_READING_VARIANT_EVIDENCE } from "../src/italian/emptyReadingVariantEvidence.js";
 import { HAND_KEPT_READINGS, handKeptReading, InvalidHandKeptReading, type HandKeptReading } from "../src/italian/handKeptReadings.js";
 import { seedSql } from "../src/import/seedSql.js";
@@ -165,7 +176,7 @@ test("a lookup shows each filled reading's hand-kept definitions as its record's
   );
 });
 
-test("rule it-empty-reading-variant/v1 reads uno's {{-var-}} line, and links its empty article to un (C)", async () => {
+test("rule it-empty-reading-variant/v2 reads uno's {{-var-}} line, and links its empty article to un (C)", async () => {
   const uno = await pageOf("uno");
   assert.deepEqual(variantLines({ wikitext: uno }), [{ line: 64, wikitext: "* {{Glossa|aggettivo numerale}} {{Glossa|articolo}} [[un]]" }]);
   // A label template links nothing; a link into another namespace names no word; each word once.
@@ -185,11 +196,12 @@ test("rule it-empty-reading-variant/v1 reads uno's {{-var-}} line, and links its
   assert.ok(article);
   const unArticle = records.find((record) => record.word === "un" && record.posTitle === "Articolo");
   assert.ok(unArticle);
-  assert.deepEqual(variantsOf("uno", "Articolo", variantLines({ wikitext: uno }), recordsOf), [
-    { word: "un", line: { line: 64, wikitext: "* {{Glossa|aggettivo numerale}} {{Glossa|articolo}} [[un]]" }, record: { lineNo: unArticle.lineNo, lineSha256: unArticle.lineSha256 } },
-  ]);
+  assert.deepEqual(variantsOf("uno", "Articolo", variantLines({ wikitext: uno }), recordsOf), {
+    linked: [{ word: "un", line: { line: 64, wikitext: "* {{Glossa|aggettivo numerale}} {{Glossa|articolo}} [[un]]" }, record: { lineNo: unArticle.lineNo, lineSha256: unArticle.lineSha256 } }],
+    far: [],
+  });
   // A variant with no reading of the section's title that defines something is none: un has no Pronome.
-  assert.deepEqual(variantsOf("uno", "Pronome", variantLines({ wikitext: uno }), recordsOf), []);
+  assert.deepEqual(variantsOf("uno", "Pronome", variantLines({ wikitext: uno }), recordsOf), { linked: [], far: [] });
 
   // The pinned list holds uno's article as the archive's line 2324, these bytes, leading to un's article at line 25470.
   const pinned = EMPTY_READING_VARIANT_EVIDENCE.readings.find((reading) => reading.record.word === "uno");
@@ -201,6 +213,43 @@ test("rule it-empty-reading-variant/v1 reads uno's {{-var-}} line, and links its
   assert.equal(EMPTY_READING_VARIANT_EVIDENCE.releaseId, "it-0c432803");
   // No reading #803 fills by hand is one the rule links.
   for (const reading of FILLED) assert.ok(!EMPTY_READING_VARIANT_EVIDENCE.readings.some(({ record }) => record.word === reading.word && record.pos === reading.partOfSpeech.pos), reading.word);
+});
+
+test("rule it-empty-reading-variant/v2 links a close spelling only: uno → un and noto → nuoto stay, stecco → spina and three more go (C, 2026-10-19)", () => {
+  // The folded spellings: lower case, no accents, no hyphens, spaces or apostrophes.
+  assert.equal(foldedSpelling("Poc'anzi"), "pocanzi");
+  assert.equal(foldedSpelling("anglo-americano"), foldedSpelling("angloamericano"));
+  assert.equal(foldedSpelling("tè"), "te");
+  assert.equal(spellingEdits("uno", "un"), 1);
+  assert.equal(spellingEdits("stecco", "spina"), 5);
+  assert.equal(MAX_SPELLING_EDITS, 2);
+
+  // The `{{-var-}}` lines below are the pages' own at their dump revisions, as rule v1 pinned them; each variant's record defines something.
+  const cases: [word: string, line: VariantLine, variant: VariantRecord, linked: boolean][] = [
+    ["noto", { line: 48, wikitext: "* [[nuoto]]" }, { lineNo: 52018, lineSha256: "c9ec0522a9e52ac13efcb746f498ad11cb629696e3dcb82c90c578956aefd244", word: "nuoto", posTitle: "Sostantivo", definesSomething: true }, true],
+    ["stecco", { line: 17, wikitext: "* {{Term|antico|it}}  [[spina]]" }, { lineNo: 116522, lineSha256: "1b8fd21cb6fb914d5c3506577628e81c15d2ecbf59c0da6d94effed7504d87bc", word: "spina", posTitle: "Sostantivo", definesSomething: true }, false],
+    ["xiloteca", { line: 13, wikitext: "* [[silografia]]" }, { lineNo: 115339, lineSha256: "984227e49c6397980cc18d6347fedcdf4143d6ef5432146205772e32855d2366", word: "silografia", posTitle: "Sostantivo", definesSomething: true }, false],
+    ["piezomagnetismo", { line: 16, wikitext: "* [[magnetostrizione]]" }, { lineNo: 454841, lineSha256: "4c1565e4720954d3a14db3e59a5d0130f183c842fc7f78115de61c3d950a4ed5", word: "magnetostrizione", posTitle: "Sostantivo", definesSomething: true }, false],
+    ["Labridi", { line: 20, wikitext: "*[[pesci]],  [[labroidei]]" }, { lineNo: 64521, lineSha256: "925c521f88e967940fff7b717c64435076fa94e89e1e7e52d0fa73f5b5689253", word: "pesci", posTitle: "Sostantivo", definesSomething: true }, false],
+  ];
+  for (const [word, line, variant, linked] of cases) {
+    const named = { word: variant.word, line, record: { lineNo: variant.lineNo, lineSha256: variant.lineSha256 } };
+    assert.equal(isCloseSpelling(word, variant.word), linked, word);
+    assert.deepEqual(
+      variantsOf(word, "Sostantivo", [line], (one) => (one === variant.word ? [variant] : [])),
+      linked ? { linked: [named], far: [] } : { linked: [], far: [named] },
+      word,
+    );
+  }
+
+  // The pinned list, measured off the real archive and dump, agrees: uno and noto lead to their variants, and the four lead nowhere.
+  const pinnedWords = EMPTY_READING_VARIANT_EVIDENCE.readings.map(({ record, variants }) => [record.word, variants.map((variant) => variant.word)] as const);
+  const leadsTo = new Map(pinnedWords);
+  assert.deepEqual(leadsTo.get("uno"), ["un"]);
+  assert.deepEqual(leadsTo.get("noto"), ["nuoto"]);
+  for (const word of ["stecco", "xiloteca", "piezomagnetismo", "Labridi"]) assert.equal(leadsTo.get(word), undefined, word);
+  // Every pinned link passes the test.
+  for (const [word, variants] of pinnedWords) for (const variant of variants) assert.ok(isCloseSpelling(word, variant), `${word} → ${variant}`);
 });
 
 test("a lookup of uno reads its article as a form of un, at the {{-var-}} line, and a batch answers it with un's article (C)", async () => {

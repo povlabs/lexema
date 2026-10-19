@@ -1,6 +1,6 @@
-// Rule `it-empty-reading-variant/v1`: an empty reading leads to the variant
-// its page names (Huey's ruling of 2026-10-18 on #803, C; ADR 0031's
-// amendment of that day).
+// Rule `it-empty-reading-variant/v2`: an empty reading leads to the variant
+// its page names, when that variant is a close spelling of its word (Huey's
+// rulings of 2026-10-18 and 2026-10-19 on #803, C; ADR 0031's amendment).
 //
 // `uno`'s article record has one sense and no gloss: its it.wiktionary page
 // (revision 4012236) heads `{{-art-|it}}` and gives only a usage note. The
@@ -12,6 +12,15 @@
 // > C: a rule for uno-shaped readings: an empty reading whose page's
 // > {{-var-}} names a variant with the same part of speech links to that
 // > variant (uno article → un).
+//
+// Version 1 linked every such variant. Some `{{-var-}}` lines name a
+// different word, `stecco` → `spina`, so Huey tightened it on 2026-10-19:
+//
+// > tighten it-empty-reading-variant/v1 so it links only when the variant is
+// > a close spelling of the empty reading's headword (a spelling variant, not
+// > a different word). Keeps e.g. uno → un and noto → nuoto; drops stecco →
+// > spina, xiloteca → silografia, piezomagnetismo → magnetostrizione,
+// > Labridi → pesci. The closeness test must be a fixed, stated rule
 //
 // A reading has the shape when all of these hold, read off the archive and
 // the dump the archive was built from:
@@ -30,6 +39,12 @@
 //   something.** An Italian record of the variant with the reading's own
 //   section title (`Articolo`), with a gloss a page shows. A form record
 //   (`Sostantivo, forma flessa`) has another title, so it is no such reading.
+// - **The variant is a close spelling of the word (v2).** Fold both words:
+//   lower case, accents dropped, and hyphens, spaces and apostrophes taken
+//   out (`poc'anzi` and `pocanzi` fold alike). The folded variant is at most
+//   `MAX_SPELLING_EDITS` (two) edits from the folded word, an edit being one
+//   letter added, dropped or changed (Levenshtein distance). `uno` → `un` and
+//   `noto` → `nuoto` are one edit; `stecco` → `spina` is five.
 //
 // The lookup gives each such reading a lemma link to each variant, at the
 // `{{-var-}}` line that names it (src/lookup/variantLinks.ts), so the page
@@ -44,12 +59,12 @@ import { LANGUAGE_HEADING } from "./wikitext.js";
 import type { RawPage } from "../source/rawPage.js";
 
 /** Every version of the rule, oldest first. A change to what it links is a new version and a new ruling. */
-export const EMPTY_READING_VARIANT_RULES = ["it-empty-reading-variant/v1"] as const;
+export const EMPTY_READING_VARIANT_RULES = ["it-empty-reading-variant/v1", "it-empty-reading-variant/v2"] as const;
 
 export type EmptyReadingVariantRule = (typeof EMPTY_READING_VARIANT_RULES)[number];
 
 /** The version the list is made with. */
-export const EMPTY_READING_VARIANT_RULE = "it-empty-reading-variant/v1" satisfies EmptyReadingVariantRule;
+export const EMPTY_READING_VARIANT_RULE = "it-empty-reading-variant/v2" satisfies EmptyReadingVariantRule;
 
 /** One line of the page's Italian `{{-var-}}` section: its 1-based place and its wikitext, verbatim. */
 export interface VariantLine {
@@ -143,18 +158,50 @@ export interface VariantRecord {
   definesSomething: boolean;
 }
 
+/** The most edits a variant's folded spelling may be from the word's (v2). */
+export const MAX_SPELLING_EDITS = 2;
+
+/** A word as the closeness test compares it: lower case, no accents, and no hyphens, spaces or apostrophes. */
+export function foldedSpelling(word: string): string {
+  return word.normalize("NFD").replace(/\p{M}/gu, "").toLocaleLowerCase("it-IT").replace(/[-\s'’]/gu, "");
+}
+
+/** The Levenshtein distance between two strings: the fewest letters added, dropped or changed that turn one into the other. */
+export function spellingEdits(a: string, b: string): number {
+  const target = [...b];
+  let previous = Array.from({ length: target.length + 1 }, (_, j) => j);
+  [...a].forEach((letter, i) => {
+    const current = [i + 1];
+    target.forEach((other, j) => current.push(Math.min(previous[j + 1] + 1, current[j] + 1, previous[j] + (letter === other ? 0 : 1))));
+    previous = current;
+  });
+  return previous[target.length];
+}
+
+/** Whether `variant` is a close spelling of `word` (v2): their folded spellings are at most `MAX_SPELLING_EDITS` edits apart. */
+export function isCloseSpelling(word: string, variant: string): boolean {
+  return spellingEdits(foldedSpelling(word), foldedSpelling(variant)) <= MAX_SPELLING_EDITS;
+}
+
+/** The variants a page names for an empty reading, split by the closeness test: the rule links `linked` and leaves `far`. */
+export interface NamedVariants {
+  linked: NamedVariant[];
+  far: NamedVariant[];
+}
+
 /**
- * The variants an empty reading of section title `posTitle`, on the page
- * whose `{{-var-}}` lines are `lines`, links to: each word a line links,
+ * The variants named for an empty reading of section title `posTitle`, on
+ * the page whose `{{-var-}}` lines are `lines`: each word a line links,
  * other than `word`, whose records (`recordsOf`) include one of that title
- * that defines something. Each once, at the first line that links it.
+ * that defines something, each once, at the first line that links it. The
+ * rule links those that are a close spelling of `word` and leaves the rest.
  */
 export function variantsOf(
   word: string,
   posTitle: string,
   lines: readonly VariantLine[],
   recordsOf: (word: string) => readonly VariantRecord[],
-): NamedVariant[] {
+): NamedVariants {
   const named = new Map<string, NamedVariant>();
   for (const line of lines) {
     for (const variant of linkedWords(line.wikitext)) {
@@ -163,5 +210,6 @@ export function variantsOf(
       if (record !== undefined) named.set(variant, { word: variant, line, record: { lineNo: record.lineNo, lineSha256: record.lineSha256 } });
     }
   }
-  return [...named.values()];
+  const all = [...named.values()];
+  return { linked: all.filter((variant) => isCloseSpelling(word, variant.word)), far: all.filter((variant) => !isCloseSpelling(word, variant.word)) };
 }

@@ -652,7 +652,7 @@ async function found(
   for (const group of groups) if (isAbout(group) || !anyAbout) readsOf(group);
 
   // A record's `form_of` edges, and the variants rule
-  // `it-empty-reading-variant/v1` leads it to when its section is empty (#803).
+  // `it-empty-reading-variant/v2` leads it to when its section is empty (#803).
   const declared = new Map(
     await Promise.all(
       groups.map(async (group) => {
@@ -936,7 +936,7 @@ interface RecordTable {
 
 /**
  * A `form_of` edge as the record declares it, or a variant rule
- * `it-empty-reading-variant/v1` leads it to at a line of its page (#803),
+ * `it-empty-reading-variant/v2` leads it to at a line of its page (#803),
  * before this lookup's listings are attached.
  */
 type DeclaredLink =
@@ -944,7 +944,7 @@ type DeclaredLink =
   | { kind: "candidates"; targetWord: string; candidates: LemmaCandidate[]; ref: SourceRef | RecoveredRef };
 
 /**
- * The variants rule `it-empty-reading-variant/v1` leads the record of `first`
+ * The variants rule `it-empty-reading-variant/v2` leads the record of `first`
  * to (src/lookup/variantLinks.ts, #803), each a link to the variant's headword
  * records at the `{{-var-}}` line that names it, as a form-of edge names its
  * target's. The rule names only a variant with such a record, so none dangles
