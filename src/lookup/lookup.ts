@@ -13,6 +13,9 @@ import { besideSourceOf, type BesideReadings } from "./besideSource.js";
 import { filledDefinitions, handKeptReadingsOf, withoutFillingReadings } from "./handKept.js";
 import { nameEntriesOf } from "./names.js";
 import { unlessDeclaredLemma, wikidataWordsOf } from "./wikidataWords.js";
+import { cardinalReading, unansweredCardinal } from "./cardinal.js";
+import type { ItalianCardinal } from "../italian/cardinal.js";
+import { declaredLemma, declaredLemmaHeads } from "./declaredLemma.js";
 import { pageEntriesOf, type PageEntries } from "./pageEntry.js";
 import { readExpressions } from "./expressions.js";
 import { HEADWORD_CANDIDATE_SQL } from "./pageFacts.js";
@@ -200,13 +203,15 @@ const keyOf = (query: string): string => normalizeItalianExact(query.trim());
 export type ExistsResult =
   | RejectedResult
   | { outcome: "absent"; query: QueryInfo; release: ReleaseInfo }
-  | { outcome: "present"; query: QueryInfo; release: ReleaseInfo; word: string; nameItem?: never; lexeme?: never; cites?: never }
+  | { outcome: "present"; query: QueryInfo; release: ReleaseInfo; word: string; nameItem?: never; lexeme?: never; cites?: never; cardinal?: never }
   /** Found first as a hand-kept reading (ADR 0031): its credit is the en.wiktionary revision it cites, not a Wiktionary page (#856). */
-  | { outcome: "present"; query: QueryInfo; release: ReleaseInfo; word: string; cites: CitedRevision; nameItem?: never; lexeme?: never }
+  | { outcome: "present"; query: QueryInfo; release: ReleaseInfo; word: string; cites: CitedRevision; nameItem?: never; lexeme?: never; cardinal?: never }
   /** Found only as a name entry (ADR 0032): its credit is its Wikidata item, not a Wiktionary page. */
-  | { outcome: "present"; query: QueryInfo; release: ReleaseInfo; word: string; nameItem: `Q${number}`; lexeme?: never; cites?: never }
+  | { outcome: "present"; query: QueryInfo; release: ReleaseInfo; word: string; nameItem: `Q${number}`; lexeme?: never; cites?: never; cardinal?: never }
   /** Found only as a Wikidata word (ADR 0033): its credit is its lexeme, not a Wiktionary page. */
-  | { outcome: "present"; query: QueryInfo; release: ReleaseInfo; word: string; lexeme: `L${number}`; nameItem?: never; cites?: never };
+  | { outcome: "present"; query: QueryInfo; release: ReleaseInfo; word: string; lexeme: `L${number}`; nameItem?: never; cites?: never; cardinal?: never }
+  /** Found only as a cardinal rule `it-cardinal/v1` builds (ADR 0034): its credit is Lexema, not a Wiktionary page. */
+  | { outcome: "present"; query: QueryInfo; release: ReleaseInfo; word: string; cardinal: ItalianCardinal; lexeme?: never; nameItem?: never; cites?: never };
 
 export async function exists({ db, releaseId, query }: LookupOptions): Promise<ExistsResult> {
   const [prepared, pages, tables] = await probeWithPages(db, releaseId, query, (key) => queryAll<HitRow>(db, `${SEARCH_SQL}\n      LIMIT 1`, releaseId, key));
@@ -235,6 +240,13 @@ export async function exists({ db, releaseId, query }: LookupOptions): Promise<E
   const opened = (await openedHeadwords(db, releaseId, tables, [key])).get(key);
   const headword = opened === undefined ? undefined : await exists({ db, releaseId, query: opened.key });
   if (headword?.outcome === "present") return { ...headword, query: prepared.query };
+  // Nor a headword: it may be a declared lemma (#818), credited to the first
+  // record that declares itself its form, as a lookup credits it.
+  const [declared] = (await declaredLemmaHeads(db, releaseId, [key], tables)).get(key) ?? [];
+  if (declared !== undefined) return { ...found, word: declared.credit };
+  // Nor that: it may be a cardinal rule `it-cardinal/v1` reads (ADR 0034, #804).
+  const cardinal = await unansweredCardinal(db, releaseId, tables, key);
+  if (cardinal !== undefined) return { ...found, word: key, cardinal };
   return { outcome: "absent", query: prepared.query, release: prepared.release };
 }
 
@@ -344,7 +356,21 @@ export async function lookup({ db, releaseId, query }: LookupOptions): Promise<L
     const headword = await lookup({ db, releaseId, query: opened.key });
     if (headword.outcome === "found") return { ...headword, query: queryInfo, route: { kind: "accentless", headword: opened.surface } };
   }
-  return { outcome: "not-found", query: queryInfo, release };
+
+  // No reading of anything answers it. It may still be a declared lemma, a
+  // word no record heads that form-of records name: `fratellino`, whose
+  // plural record says "plurale di fratellino" (#453). It is answered with
+  // the forms those records place, and no definition (#818).
+  const notFound = { outcome: "not-found", query: queryInfo, release } as const;
+  const declared = await declaredLemma(db, releaseId, notFound, tables);
+  if (declared !== undefined) return declared;
+
+  // Nothing answers it, nor opens a headword, nor names it a lemma. It may be
+  // a spelled cardinal up to 999.999, which rule `it-cardinal/v1` reads and
+  // gives one fixed Lexema definition: `duemilauno` (ADR 0034, #804).
+  const cardinal = await unansweredCardinal(db, releaseId, tables, key);
+  if (cardinal !== undefined) return { outcome: "found", query: queryInfo, release, route: { kind: "surface" }, readings: [cardinalReading(releaseId, key, cardinal)] };
+  return notFound;
 }
 
 /**

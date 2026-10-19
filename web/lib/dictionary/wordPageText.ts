@@ -52,6 +52,9 @@ export const citedRevisionLinkName = (word: string): string =>
 /** The footer *Fonte*'s accessible name on a page of name entries alone: the first one's Wikidata item (ADR 0032, #827). */
 export const nameSourceLinkName = (label: string): string => `Voce di Wikidata per ${label}, la fonte di questa voce (si apre in una nuova scheda)`;
 
+/** The footer *Fonte*'s accessible name on a page of a rule-built cardinal alone: Lexema's Licenza page (ADR 0034, #804). */
+export const licenceSourceLinkName = (word: string): string => `Pagina Licenza di Lexema per ${word}, la fonte di questa voce (si apre in una nuova scheda)`;
+
 /** An expressions list's filter, past thirty rows. */
 export const FIND_EXPRESSION = "Cerca un’espressione";
 

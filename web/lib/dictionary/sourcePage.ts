@@ -16,3 +16,10 @@ const WIKTIONARY_PAGE = "https://it.wiktionary.org/wiki/";
 export function sourcePageUrl(word: string): string {
   return WIKTIONARY_PAGE + encodeURIComponent(word.replace(/ /g, "_"));
 }
+
+/**
+ * Where a cardinal rule `it-cardinal/v1` built (ADR 0034) is credited: the
+ * Licenza page, since no source states it and Lexema made it (Huey's ruling
+ * of 2026-10-18 on #804). The page's *Fonte* opens it on the site it is on.
+ */
+export const LICENCE_PAGE_PATH = "/licence";

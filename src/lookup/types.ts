@@ -9,6 +9,7 @@ import type { ShapedSpelling } from "../italian/wordShape.js";
 import type { AgreeingSpelling } from "../italian/essereAgreement.js";
 import type { PhraseGloss } from "../italian/phrase.js";
 import type { VerbFormGloss } from "../italian/verbFormGloss.js";
+import type { ItalianCardinal } from "../italian/cardinal.js";
 
 /** One article as `it-articles/v3` produced it, re-exported for the page. */
 export type { ArticleDisplay };
@@ -407,7 +408,7 @@ export interface RecoveredRef {
 export type FactRef = SourceRef | RecoveredRef | LexemeRef | LexemeFormRef;
 
 /** Whether a fact was read from the archive rather than from a raw page, or from a name entry's Wikidata item or a Wikidata word's lexeme. */
-export const isSourceRef = (ref: FactRef | NameRef | LexemeRef): ref is SourceRef => "jsonPointer" in ref;
+export const isSourceRef = (ref: FactRef | NameRef | LexemeRef | CardinalRef): ref is SourceRef => "jsonPointer" in ref;
 
 /** The archive pointer a fact was read at; undefined for a raw page's line, which no query hits. */
 export const sourcePointerOf = (ref: FactRef): string | undefined => (isSourceRef(ref) ? ref.jsonPointer : undefined);
@@ -515,21 +516,71 @@ export interface CitedRevision {
  * page-only entry (ADR 0024, #403), pointed at by its page revision; a
  * hand-kept reading (ADR 0031, #745), pointed at by the en.wiktionary revision
  * it cites; a name entry (ADR 0032, #794), pointed at by its Wikidata item; or
- * a Wikidata word (ADR 0033, #812), pointed at by its lexeme. Exactly one of
- * the five.
+ * a Wikidata word (ADR 0033, #812), pointed at by its lexeme; or a cardinal
+ * rule `it-cardinal/v1` built (ADR 0034, #804), pointed at by the rule and
+ * its value. Exactly one of the six.
  */
 export type EntryIdentity =
-  | ({ recordId: number; entryId?: never; handKeptId?: never; nameItem?: never; description?: never; ref: SourceRef } & NotLexeme)
-  | ({ entryId: number; recordId?: never; handKeptId?: never; nameItem?: never; description?: never; ref: PageEntryRef } & NotLexeme)
-  | ({ handKeptId: string; recordId?: never; entryId?: never; nameItem?: never; description?: never; ref: PageEntryRef; cites: CitedRevision } & NotLexeme)
-  | (NameIdentity & NotLexeme)
-  | LexemeIdentity;
+  | ({ recordId: number; entryId?: never; handKeptId?: never; nameItem?: never; description?: never; ref: SourceRef } & NotLexeme & NotCardinal)
+  | ({ entryId: number; recordId?: never; handKeptId?: never; nameItem?: never; description?: never; ref: PageEntryRef } & NotLexeme & NotCardinal)
+  | ({ handKeptId: string; recordId?: never; entryId?: never; nameItem?: never; description?: never; ref: PageEntryRef; cites: CitedRevision } & NotLexeme & NotCardinal)
+  | (NameIdentity & NotLexeme & NotCardinal)
+  | (LexemeIdentity & NotCardinal)
+  | CardinalIdentity;
 
 /** What every entry but a Wikidata word lacks. */
 interface NotLexeme {
   lexeme?: never;
   lexemeGlosses?: never;
 }
+
+/** What every entry but a rule-built cardinal lacks. */
+interface NotCardinal {
+  cardinal?: never;
+}
+
+/**
+ * A cardinal rule `it-cardinal/v1` built (ADR 0034, #804): a spelled Italian
+ * number up to 999.999 that no source reading and no reading beside the
+ * source answers (`duemilauno`). Its one definition is the fixed Lexema text
+ * `cardinalDefinition` writes (src/italian/cardinal.ts); it states no other
+ * fact.
+ */
+export interface CardinalIdentity {
+  cardinal: ItalianCardinal;
+  recordId?: never;
+  entryId?: never;
+  handKeptId?: never;
+  nameItem?: never;
+  description?: never;
+  lexeme?: never;
+  lexemeGlosses?: never;
+  ref: CardinalRef;
+}
+
+/**
+ * Where a rule-built cardinal was made: by its rule, from its value, under the
+ * release the lookup serves, since it belongs to none. The page's *Fonte* for
+ * it opens `/licence` (Huey's ruling of 2026-10-18 on #804).
+ */
+export interface CardinalRef {
+  releaseId: string;
+  rule: ItalianCardinal["rule"];
+  value: ItalianCardinal["value"];
+  wiki?: never;
+  item?: never;
+  lexeme?: never;
+  snapshot?: never;
+  title?: never;
+  revisionId?: never;
+  line?: never;
+  lineNo?: never;
+  lineSha256?: never;
+  jsonPointer?: never;
+}
+
+/** Whether an entry is a cardinal rule `it-cardinal/v1` built, rather than a reading any source states. */
+export const isRuleBuiltCardinal = (entry: EntryIdentity): entry is CardinalIdentity => entry.cardinal !== undefined;
 
 /**
  * A name entry (ADR 0032, #794): a proper name from Wikidata, pointed at by
@@ -848,14 +899,35 @@ export type DeclaredLemmaReading =
   | { pos: "noun" | "adj"; posTitle: string; word: string; forms: [DeclaredPluralForm, ...DeclaredPluralForm[]] };
 
 /**
+ * One reading of a declared lemma without its forms (#818): the word as its
+ * edges spell it and the part of speech, which name it, its section title,
+ * and `credit`, the first record in source order that declares itself a form
+ * of this reading. That record's Wiktionary page holds what the reading
+ * shows; the lemma's own spelling almost never has a page. A full lookup, a
+ * batch lookup and `exists()` each reach it, so the three name and credit one
+ * reading alike.
+ */
+export interface DeclaredLemmaHead {
+  word: string;
+  pos: DeclaredLemmaReading["pos"];
+  posTitle: string;
+  credit: string;
+}
+
+/** A declared lemma's reading without its forms: they are in source order, so the first is the first record that declares one. */
+export const declaredLemmaHead = ({ word, pos, posTitle, forms }: DeclaredLemmaReading): DeclaredLemmaHead => ({ word, pos, posTitle, credit: forms[0].surface });
+
+/**
  * A query that no record heads, lists or spells as a phrase, but that
  * `form_of` edges of served records name (#453): `verbalizzare` has no record,
  * and fifty records say they are its forms. The readings are a non-empty
  * tuple, one per part of speech whose glosses place a form, so a declared
  * lemma with nothing to show is not a value this type can hold.
  *
- * The page's search reaches it after a `not-found` (web/lib/dictionary/searchAttempt.ts).
- * The developer API's lookup does not, so it is not a `LookupResult`.
+ * `lookup()` answers it when nothing else does, after every other route and
+ * just before `not-found` (#818), so the page and the developer API reach it
+ * the same way: the page shows its forms table, and `/v1/lookup` answers one
+ * result per reading, with no definition (docs/LOOKUP.md).
  */
 export interface DeclaredLemmaResult {
   outcome: "declared-lemma";
@@ -1012,6 +1084,7 @@ export function entryKey(entry: EntryIdentity): string {
   if (entry.recordId !== undefined) return String(entry.recordId);
   if (entry.entryId !== undefined) return `page-${entry.entryId}`;
   if (entry.handKeptId !== undefined) return `kept-${entry.handKeptId}`;
+  if (entry.cardinal !== undefined) return `cardinal-${entry.cardinal.value}`;
   return entry.nameItem !== undefined ? `name-${entry.nameItem}` : `lexeme-${entry.lexeme}`;
 }
 
@@ -1022,19 +1095,27 @@ export function entryKey(entry: EntryIdentity): string {
  * the entries one page gives (`lungo`, ADR 0028).
  */
 export type PublicEntryKey = { releaseId: string } & (
-  | { lineNo: number; revisionId?: never; pageLine?: never; nameItem?: never; lexeme?: never }
-  | { revisionId: number; pageLine: number; lineNo?: never; nameItem?: never; lexeme?: never }
-  | { nameItem: `Q${number}`; lineNo?: never; revisionId?: never; pageLine?: never; lexeme?: never }
-  | { lexeme: `L${number}`; lineNo?: never; revisionId?: never; pageLine?: never; nameItem?: never }
+  | { lineNo: number; revisionId?: never; pageLine?: never; nameItem?: never; lexeme?: never; declaredLemma?: never; cardinal?: never }
+  | { revisionId: number; pageLine: number; lineNo?: never; nameItem?: never; lexeme?: never; declaredLemma?: never; cardinal?: never }
+  | { nameItem: `Q${number}`; lineNo?: never; revisionId?: never; pageLine?: never; lexeme?: never; declaredLemma?: never; cardinal?: never }
+  | { lexeme: `L${number}`; lineNo?: never; revisionId?: never; pageLine?: never; nameItem?: never; declaredLemma?: never; cardinal?: never }
+  | { declaredLemma: Pick<DeclaredLemmaHead, "word" | "pos">; lineNo?: never; revisionId?: never; pageLine?: never; nameItem?: never; lexeme?: never; cardinal?: never }
+  | { cardinal: ItalianCardinal; lineNo?: never; revisionId?: never; pageLine?: never; nameItem?: never; lexeme?: never; declaredLemma?: never }
 );
 
 /**
  * The id the API names an entry by: `<release>:<lineNo>`,
  * `<release>:page:<revisionId>:<pageLine>`, or, for a name entry (ADR 0032),
  * `<release>:wikidata:<item>`, and for a Wikidata word (ADR 0033),
- * `<release>:wikidata:<lexeme>`.
+ * `<release>:wikidata:<lexeme>`. A declared lemma's reading has no line, page
+ * or item, so its id is its part of speech and its word (#818):
+ * `<release>:declared:<pos>:<word>`, one per part of speech, and never a
+ * record's. The part of speech goes first because a word may hold a colon.
+ * A rule-built cardinal (ADR 0034) is `<release>:cardinal:<value>`.
  */
 export function publicEntryId(key: PublicEntryKey): string {
+  if (key.declaredLemma !== undefined) return `${key.releaseId}:declared:${key.declaredLemma.pos}:${key.declaredLemma.word}`;
+  if (key.cardinal !== undefined) return `${key.releaseId}:cardinal:${key.cardinal.value}`;
   if (key.nameItem !== undefined) return `${key.releaseId}:wikidata:${key.nameItem}`;
   if (key.lexeme !== undefined) return `${key.releaseId}:wikidata:${key.lexeme}`;
   return key.lineNo === undefined ? `${key.releaseId}:page:${key.revisionId}:${key.pageLine}` : `${key.releaseId}:${key.lineNo}`;
@@ -1466,6 +1547,6 @@ export interface NotFoundResult {
 }
 
 /** The index was probed, either way. */
-export type SearchResult = FoundResult | NotFoundResult;
+export type SearchResult = FoundResult | DeclaredLemmaResult | NotFoundResult;
 
 export type LookupResult = RejectedResult | SearchResult;

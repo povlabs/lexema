@@ -234,8 +234,13 @@ function classOfCall(bases: readonly string[], page: PinnedTemplateCall): ClassA
 /** Whether a gloss says what it is a form of: "seconda persona singolare dell'indicativo presente di traversare". */
 const isFormGloss = (gloss: string): boolean => glossBase(gloss.replace(/,/g, ""))?.formOpening === true;
 
-/** Whether a record's glosses all say it is a form of another word. */
-const isFormOfAnotherWord = (glosses: readonly string[]): boolean => glosses.length > 0 && glosses.every(isFormGloss);
+/**
+ * Whether a record's every gloss says it is a form of another word. False for
+ * no gloss. `regularClassOf` and `ownClassOf` decline on it
+ * (`form-of-another-word`), and `isPronominalVerb` in
+ * src/italian/pronominalPair.ts reads it to drop a form record (#860).
+ */
+export const isFormOfAnotherWord = (glosses: readonly string[]): boolean => glosses.length > 0 && glosses.every(isFormGloss);
 
 /** The verbs that do not follow their conjugation, and the prefixes their compounds take that a regular verb's ending can share. */
 function irregularFamily(base: string): boolean {

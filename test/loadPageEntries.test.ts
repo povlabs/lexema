@@ -174,7 +174,8 @@ test("a dictionary seeded before the tables, with a feed applied and records hid
     const reader = readerOf(db);
     const before = snapshot(db);
     const versionBefore = await servedVersion(fromNodeSqlite(db), RELEASE);
-    assert.equal((await lookup({ db: fromNodeSqlite(db), releaseId: RELEASE, query: "raccontare" })).outcome, "not-found");
+    // No record heads `raccontare` before the load; its form records declare it a lemma (#818).
+    assert.equal((await lookup({ db: fromNodeSqlite(db), releaseId: RELEASE, query: "raccontare" })).outcome, "declared-lemma");
 
     // `dipendere` is spelled by a record a hide took out of search: the seed reads no page for it, and nor does the load.
     const spelled = await archiveWords(archive);

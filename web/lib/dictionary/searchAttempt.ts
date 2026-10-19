@@ -1,7 +1,7 @@
-// One search, as the page runs it: the exact lookup; when it finds nothing, or
-// finds only a shape of another word (#809), a word only form-of records name
-// (#453); and when that has no table either,
-// what to offer instead. A word found also carries the headwords that write it
+// One search, as the page runs it: the exact lookup, which itself answers a
+// word only form-of records name (a declared lemma, #453, #818); when it finds
+// only a shape of another word (#809), a declared lemma of the query before
+// that shape; and when nothing has a table, what to offer instead. A word found also carries the headwords that write it
 // with an accent or apostrophe it lacks (#478), the records of the lemmas
 // whose grids its noun and adjective forms show (#626), the definitions of
 // the verbs its verb forms name (#686), and, for a verb whose records draw no
@@ -46,11 +46,12 @@ export async function searchAttempt(db: LookupDatabase, releaseId: string, query
     if (shapedLemma !== undefined && shapedPage !== undefined) return { ...shapedLemma, page: shapedPage, written: spellings };
     return { ...result, readings, written: spellings, lemmas, declared: declared ?? [], bases, verbs };
   }
-  if (result.outcome !== "not-found") return result;
-  const declared = await declaredLemma(db, releaseId, result);
-  const page = declared === undefined ? undefined : declaredLemmaPage(declared);
-  if (declared !== undefined && page !== undefined) return { ...declared, page, written: await written() };
-  return { ...result, nearby: await findNearby({ db, release: result.release, query: result.query.raw }) };
+  if (result.outcome === "rejected") return result;
+  // The lookup answers a declared lemma itself (#818); one whose forms take
+  // no cell has no page, so the search shows what it would for nothing found.
+  const page = result.outcome === "declared-lemma" ? declaredLemmaPage(result) : undefined;
+  if (result.outcome === "declared-lemma" && page !== undefined) return { ...result, page, written: await written() };
+  return { outcome: "not-found", query: result.query, release: result.release, nearby: await findNearby({ db, release: result.release, query: result.query.raw }) };
 }
 
 /**

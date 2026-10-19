@@ -16,9 +16,10 @@
 //
 // Each word goes through the real lookup twice, `lookup()` alone and
 // `lookupBatch()` with every other word; a word is missing when the single
-// lookup does not find it. A missing word is then sorted: our bug when an
-// archive record heads or lists it, when the word page's declared-lemma
-// search answers it, or when Morph-it! names a lemma the lookup finds; else a
+// lookup does not find it. Since #818 the lookup answers a declared lemma
+// itself, so one is found and never missing. A missing word is then sorted:
+// our bug when an archive record heads or lists it, when the lookup answers
+// it as a declared lemma, or when Morph-it! names a lemma the lookup finds; else a
 // Wikidata word when an Italian lexeme has it (query.wikidata.org); else
 // neither.
 //
@@ -39,7 +40,6 @@ import { DatabaseSync } from "node:sqlite";
 import { isMain } from "../commandLine.js";
 import { lookupBatch } from "./batch.js";
 import { fromNodeSqlite, type LookupDatabase } from "./database.js";
-import { declaredLemma } from "./declaredLemma.js";
 import { dictionaryFile, masterOf } from "./localDictionary.js";
 import { lookup } from "./lookup.js";
 import { findNearby } from "./nearby.js";
@@ -229,7 +229,8 @@ async function measure(file: string, named: string | undefined, top: number, log
   const single = async (word: string) => {
     let result = found.get(word);
     if (result === undefined) {
-      result = (await lookup({ db, releaseId, query: word })).outcome === "found";
+      const { outcome } = await lookup({ db, releaseId, query: word });
+      result = outcome === "found" || outcome === "declared-lemma";
       found.set(word, result);
     }
     return result;
@@ -250,8 +251,8 @@ async function measure(file: string, named: string | undefined, top: number, log
 
   const evidence = new Map<string, MissingWordEvidence>();
   for (const word of missing) {
-    const notFound = await lookup({ db, releaseId, query: word });
-    const declared = notFound.outcome === "not-found" ? (await declaredLemma(db, releaseId, notFound)) !== undefined : false;
+    const answer = await lookup({ db, releaseId, query: word });
+    const declared = answer.outcome === "declared-lemma";
     const nearby = await findNearby({ db, releaseId, query: word });
     const accentVariant = nearby.kind === "accent" ? nearby.best : undefined;
     const verbPart = /^si (\S+)$/.exec(word)?.[1];

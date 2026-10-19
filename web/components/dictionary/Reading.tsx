@@ -95,7 +95,7 @@ const nestedExamples = (items: readonly RecoveredDefinition[]): boolean =>
   items.some((item) => item.examples.length > 0 || nestedExamples(item.items));
 
 const nestedItemsOf = (item: DefinitionItem): readonly RecoveredDefinition[] => {
-  if (item.from === "name" || item.from === "lexeme") return [];
+  if (item.from === "name" || item.from === "lexeme" || item.from === "cardinal") return [];
   return item.from === "record" ? item.sense.recoveredItems : item.definition.items;
 };
 
@@ -155,6 +155,13 @@ function DefinitionText({ item, reading, gloss = GLOSS }: { item: DefinitionItem
       </p>
     );
   }
+  if (item.from === "cardinal") {
+    return (
+      <p className={gloss} lang="it">
+        {item.text}
+      </p>
+    );
+  }
   if (item.from === "page") {
     const { definition } = item;
     return (
@@ -186,6 +193,7 @@ function DefinitionText({ item, reading, gloss = GLOSS }: { item: DefinitionItem
 export const definitionKey = (item: DefinitionItem): string => {
   if (item.from === "name") return "description";
   if (item.from === "lexeme") return `lexeme-${item.gloss.sense}`;
+  if (item.from === "cardinal") return "cardinal";
   return item.from === "record" ? `sense-${item.sense.index}` : `page-${item.definition.ref.line}`;
 };
 

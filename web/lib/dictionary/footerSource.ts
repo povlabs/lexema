@@ -2,12 +2,13 @@
 // the Wiktionary page of a word; on a page a hand-kept reading heads, the
 // en.wiktionary revision it cites (ADR 0031, #856); or, on a page of Wikidata
 // entries alone, the Wikidata page of the first: a name entry's item, or a
-// Wikidata word's lexeme. One value, so a page cannot credit two or none.
+// Wikidata word's lexeme; or, on a page of a rule-built cardinal alone, Lexema's
+// Licenza page (ADR 0034, #804). One value, so a page cannot credit two or none.
 
 import { wikidataItemUrl } from "@lexema/lookup/names.ts";
 import type { CitedRevision } from "@lexema/lookup/types.ts";
-import { citedRevisionUrl, lexemePageUrl, sourcePageUrl } from "./sourcePage.ts";
-import { citedRevisionLinkName, nameSourceLinkName, sourceLinkName } from "./wordPageText.ts";
+import { citedRevisionUrl, lexemePageUrl, LICENCE_PAGE_PATH, sourcePageUrl } from "./sourcePage.ts";
+import { citedRevisionLinkName, licenceSourceLinkName, nameSourceLinkName, sourceLinkName } from "./wordPageText.ts";
 
 /** The Wiktionary page of `word`: every page with a Wiktionary reading. */
 export interface WiktionarySource {
@@ -40,7 +41,18 @@ export interface LexemeSource {
   word: string;
 }
 
-export type FooterSource = WiktionarySource | CitedRevisionSource | WikidataSource | LexemeSource;
+/**
+ * Lexema's Licenza page, on a page whose one reading is a cardinal rule
+ * `it-cardinal/v1` built (`duemilauno`): no source states it, so no source
+ * page holds it (ADR 0034; Huey's ruling of 2026-10-18 on #804). `word` is
+ * the reading's.
+ */
+export interface LicenceSource {
+  kind: "licence";
+  word: string;
+}
+
+export type FooterSource = WiktionarySource | CitedRevisionSource | WikidataSource | LexemeSource | LicenceSource;
 
 export const wiktionarySource = (word: string): WiktionarySource => ({ kind: "wiktionary", word });
 
@@ -55,5 +67,7 @@ export function footerSourceLink(source: FooterSource): { href: string; name: st
       return { href: wikidataItemUrl(source.item), name: nameSourceLinkName(source.word) };
     case "lexeme":
       return { href: lexemePageUrl(source.lexeme), name: nameSourceLinkName(source.word) };
+    case "licence":
+      return { href: LICENCE_PAGE_PATH, name: licenceSourceLinkName(source.word) };
   }
 }

@@ -6,6 +6,7 @@ import { splitSenses, type SenseShape } from "@lexema/italian/furniture.ts";
 import { italianSenseLabels } from "@lexema/italian/senseTagLabels.ts";
 import { everyRecovered, isSourceRef } from "@lexema/lookup/types.ts";
 import type { FactRef, LexemeGloss, Reading, RecoveredDefinition, Sense } from "@lexema/lookup/types.ts";
+import { cardinalDefinition, type ItalianCardinal } from "@lexema/italian/cardinal.ts";
 
 /**
  * Two source glosses for `casa` are page furniture, not definitions (#28, #61).
@@ -21,26 +22,30 @@ const shapeOf = (sense: Sense): SenseShape => ({
 /**
  * One numbered definition: a sense of the record, one read back from the raw
  * page, a name entry's Wikidata description (ADR 0032), or the Italian gloss
- * of a Wikidata word's sense (ADR 0033); Lexema reads no example for either of
- * the last two.
+ * of a Wikidata word's sense (ADR 0033), or the fixed Lexema definition of a
+ * cardinal rule `it-cardinal/v1` built (ADR 0034); Lexema reads no example
+ * for any of the last three.
  */
 export type DefinitionItem =
   | { from: "record"; sense: Sense; examples: string[] }
   | { from: "page"; definition: RecoveredDefinition; examples: string[] }
   | { from: "name"; description: string; examples: string[] }
-  | { from: "lexeme"; gloss: LexemeGloss; examples: string[] };
+  | { from: "lexeme"; gloss: LexemeGloss; examples: string[] }
+  | { from: "cardinal"; text: string; examples: string[] };
 
 /**
  * Where a definition sits: a sense of the record, by its index, a line of the
  * raw page a page-only entry was read from (ADR 0026), a name entry's
- * description, its only one, or a Wikidata word's sense, by its id.
+ * description, its only one, a Wikidata word's sense, by its id, or a
+ * rule-built cardinal's one definition.
  */
-export type DefinitionPlace = { sense: number } | { line: number } | { description: true } | { lexemeSense: LexemeGloss["sense"] };
+export type DefinitionPlace = { sense: number } | { line: number } | { description: true } | { lexemeSense: LexemeGloss["sense"] } | { cardinal: true };
 
 /** Where `item` sits. */
 export const placeOf = (item: DefinitionItem): DefinitionPlace => {
   if (item.from === "record") return { sense: item.sense.index };
   if (item.from === "lexeme") return { lexemeSense: item.gloss.sense };
+  if (item.from === "cardinal") return { cardinal: true };
   return item.from === "page" ? { line: item.definition.ref.line } : { description: true };
 };
 
@@ -58,8 +63,10 @@ export const readAt = (ref: FactRef, place: DefinitionPlace): boolean => {
  * recovered definition is shown once, as that definition.
  */
 export function definitionsOf(
-  reading: Pick<Reading, "word" | "senses" | "recovered"> & { description?: string; lexemeGlosses?: readonly LexemeGloss[] },
+  reading: Pick<Reading, "word" | "senses" | "recovered"> & { description?: string; lexemeGlosses?: readonly LexemeGloss[]; cardinal?: ItalianCardinal },
 ): { items: DefinitionItem[]; looseExamples: string[] } {
+  // A rule-built cardinal (ADR 0034) has no senses: its one definition is the rule's fixed text.
+  if (reading.cardinal !== undefined) return { items: [{ from: "cardinal", text: cardinalDefinition(reading.cardinal), examples: [] }], looseExamples: [] };
   // A name entry (ADR 0032) has no senses: its Wikidata description is its one definition.
   if (reading.description !== undefined) return { items: [{ from: "name", description: reading.description, examples: [] }], looseExamples: [] };
   // Nor has a Wikidata word (ADR 0033): its Italian glosses are its definitions, and it may have none.
@@ -120,6 +127,7 @@ export const shownSenseLabels = (sense: Pick<Sense, "labels">): string[] => ital
 export function definitionTextKey(item: DefinitionItem): string {
   if (item.from === "name") return JSON.stringify(["name", item.description]);
   if (item.from === "lexeme") return JSON.stringify(["lexeme", item.gloss.text]);
+  if (item.from === "cardinal") return JSON.stringify(["cardinal", item.text]);
   return item.from === "record"
     ? JSON.stringify(["record", senseLabels(item.sense.labels.map((label) => label.label)), item.sense.glosses.map((gloss) => gloss.text), item.sense.recoveredItems])
     : JSON.stringify(["page", item.definition.labels, item.definition.text, item.definition.items]);

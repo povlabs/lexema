@@ -479,11 +479,17 @@ test("api.lexema.fyi answers a JSON 503 when the Worker has no D1 binding", asyn
 test("on a Preview with a dictionary slice, the API reads the slice for a word it serves and the shared dictionary for any other (#447)", async () => {
   const { key } = await newKey(1_000, "slice");
   // A slice serving `casa`, built from the shared dictionary with a change that takes `casa` out of search, as a hide does.
+  // It drops the edges naming `casa` too, as a hide does, or `case` would still declare it a lemma (#818).
   const slice = PreviewSlice.build({
     reader: { query: <Row>(sql: string) => dictionarySqlite.prepare(sql).all() as Row[] },
     words: ["casa"],
     schema: await readFile(join(REPO, "src/db/schema.sql"), "utf8"),
-    changes: [{ file: "dictionary-changes/hide-casa.json", sql: "DELETE FROM lookup_form WHERE record_id IN (SELECT record_id FROM source_record WHERE word = 'casa');" }],
+    changes: [
+      {
+        file: "dictionary-changes/hide-casa.json",
+        sql: "DELETE FROM lookup_form WHERE record_id IN (SELECT record_id FROM source_record WHERE word = 'casa'); DELETE FROM form_of_edge WHERE target_word_key = 'casa';",
+      },
+    ],
     fingerprint: "f".repeat(64),
   });
   const d1Over = (over: DatabaseSync) => {
