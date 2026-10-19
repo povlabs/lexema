@@ -1,0 +1,33 @@
+== {{-it-}} ==
+{{-loc agg-|it}}
+{{Pn}}
+#{{Nodef|it}}
+
+{{-loc avv-|it}}
+{{Pn}}
+#{{Nodef|it}}
+
+{{-sill-}}
+; in - ri | tàr | do
+
+
+{{-etim-}}
+{{Etim-link|ritardo}}
+
+
+{{-ant-}}
+* [[in orario]] 
+* [[in anticipo]]
+
+
+{{-prov-}}
+*''essere in ritardo ''
+
+
+{{-trad-}}
+{{Trad1|}}
+:*{{en}}: [[late]], [[behind]], [[after]], [[overdue]], [[belated]], [[slow]]
+{{Trad2}}
+
+{{-ref-}}
+*{{Fonte|dem}}

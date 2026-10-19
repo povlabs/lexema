@@ -1,0 +1,55 @@
+== {{-it-}} ==
+{{-agg num-|it}} 
+{{-card-|it}}
+{{Pn|w=15 (numero)}} '''15'''    ''inv''
+# {{Term|matematica|it}}, {{Term|aritmetica|it}} numero naturale che segue il [[quattordici]] e precede il [[sedici]]; [[tre]] volte [[cinque]]
+[[File:Bundesstrasse 15 Oesterreich.png|thumb|15]]
+{{-sost-|it}}
+{{Pn}}
+
+{{-sill-}}
+; quìn | di | ci
+
+{{-pron-}}
+{{IPA|/ˈkwindit͡ʃi/}}
+
+{{-etim-}}
+dal [[latino]] ''[[quīndĕcim]]'', composto da ''[[quinque]]'' ossia "[[cinque]]" e ''[[decem]]'' cioè "[[dieci]]"
+
+{{-der-}}
+* [[quindicesimo]], [[quindicina]]
+
+{{-rel-}}
+* [[quattordici]], [[sedici]]
+
+{{-iperon-}}
+* [[numero]]
+
+{{-trad-}}
+{{Trad1| {{Term|matematica|it}}, {{Term|aritmetica|it}} numero cardinale}}
+:*{{af}}: [[vyftien]]
+:*{{br}}: [[pemzek]]
+:*{{hr}}: [[petnaest]]
+:*{{fr}}: [[quinze]]
+:*{{fur}}: [[cuindis]]
+:*{{en}}: [[fifteen]]
+:*{{nap}}: [[quinnece]]
+{{mid}}
+:*{{no}}: [[femten]]
+:*{{pl}}: [[piętnaście]]
+:*{{ru}}: [[пятнадцать]]
+:*{{es}}: [[quince]]
+:*{{sv}}: [[femton]]
+:*{{de}}: [[fünfzehn]]
+:*{{hu}}: [[tizenöt]]
+{{Trad2}}
+
+{{-ref-}}
+* {{Fonte|gar}}
+* {{Fonte|dizit}}
+* {{Fonte|trec}}
+* {{Fonte|eti}}
+* {{Fonte|itfd}}
+
+== Altri progetti ==
+{{Interprogetto|w|commons=Category:15 (number)}}

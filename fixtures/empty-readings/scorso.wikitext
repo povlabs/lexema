@@ -1,0 +1,41 @@
+== {{-it-}} ==
+{{-agg-|it}}
+{{Pn}} ''m sing'' {{Tabs|scorso|scorsi|scorsa|scorse}}
+# {{Nodef|it}}
+#* ''il primo giubileo del secolo scorso fu indetto nel 1900 da [[w:Leone XIII|Leone XIII]]
+
+{{-verb form-|it}}
+{{Pn}}
+# [[participio passato]] di [[scorrere]]
+{{-sill-}}
+
+; scór | so
+
+{{-etim-}}
+deriva da [[scorrere]]
+
+{{-sin-}}
+*'''aggettivo)'''''(di tempo)'' [[passato]], [[trascorso]], [[precedente]]
+*ultimo, recente
+*''(di liquido)'' [[sceso]], [[colato]], [[scolato]], [[fuoriuscito]], [[fluito]], [[defluito]]
+*[[mosso]], [[andato]]
+*[[scivolato]], [[slittato]], [[strisciato]]
+*letto rapidamente, [[consultato]], [[leggiucchiato]], [[scartabellato]]
+*'''(sostantivo)'''[[errore]], [[sbaglio]], [[svista]], [[inavvertenza]], [[lapsus ]], [[refuso]]
+
+{{-ant-}}
+*''(di tempo)'' [[futuro]], [[prossimo]], [[venturo]]
+*[[fermato]], [[bloccato]]
+*[[approfondito]], [[analizzato]], [[esaminato]]
+
+{{-trad-}}
+{{Trad1|}}
+:*{{en}}: [[last]], [[previous]]
+{{mid}}
+:*{{pt}}: [[passado]], [[prévio]]
+
+{{Trad2}}
+
+{{-ref-}}
+* {{Fonte|trec}}
+*{{Fonte|sin-co}}

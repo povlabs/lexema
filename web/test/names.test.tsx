@@ -52,6 +52,9 @@ before(async () => {
     schema: join(REPO, "src/db/schema.sql"),
     releaseId: RELEASE,
     license: "CC-BY-SA-4.0",
+    // No hand-kept reading: Giulia's record stands here for one with no meaning,
+    // which the list fills since #803 (web/test/page.test.tsx).
+    handKeptReadings: [],
     onRejection: (rejection) => {
       throw new Error(`fixture line rejected: ${JSON.stringify(rejection)}`);
     },

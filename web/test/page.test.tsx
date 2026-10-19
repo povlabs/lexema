@@ -1245,10 +1245,62 @@ test("the Constitution's old spellings read: eguale's grid shows eguali, eguagli
 const fonteLinks = (html: string): string[] =>
   [...html.matchAll(/<a [^>]*href="([^"]+)"[^>]*>Fonte</g)].map((match) => match[1].replaceAll("&amp;", "&"));
 
-/** The source records of `fixtures/hand-kept-readings/`: si, come and uguaglianza, Cosetta and Dr. */
-const HAND_KEPT_SOURCE_LINES = (
-  await Promise.all(["archive-lines.jsonl", "lookup-lines.jsonl"].map((file) => readFile(join(REPO, "fixtures/hand-kept-readings", file), "utf8")))
-).flatMap((text) => text.trimEnd().split("\n"));
+/** `fixtures/empty-readings/`: the records of quindici, uno, un, Giulia, in ritardo and scorso, as release it-0c432803 has them (#803). */
+const EMPTY_READING_LINES = (await readFile(join(REPO, "fixtures/empty-readings/archive-lines.jsonl"), "utf8")).trimEnd().split("\n");
+
+/** The source records of `fixtures/hand-kept-readings/`: si, come and uguaglianza, Cosetta and Dr.; and those #803 fills. */
+const HAND_KEPT_SOURCE_LINES = [
+  ...(await Promise.all(["archive-lines.jsonl", "lookup-lines.jsonl"].map((file) => readFile(join(REPO, "fixtures/hand-kept-readings", file), "utf8")))).flatMap((text) =>
+    text.trimEnd().split("\n"),
+  ),
+  ...EMPTY_READING_LINES,
+];
+
+test("a reading whose source section is empty shows its hand-kept definitions, its forms' pages too, or leads to the variant its page names, with no note and no mark (#803)", async () => {
+  await withLines([...(await devSeedLines()), ...EMPTY_READING_LINES], async ({ db }) => {
+    /** A page's text and markup carry nothing that says a definition was missing, added or read elsewhere (ADR 0016). */
+    const unmarked = (html: string, word: string) => {
+      assert.doesNotMatch(html, /en\.wiktionary/, word);
+      assert.doesNotMatch(textOf(html), /mancant|aggiungil|Wiktionary inglese|English Wiktionary/i, word);
+      assert.deepEqual(fonteLinks(html), [`https://it.wiktionary.org/wiki/${word.replaceAll(" ", "_")}`], word);
+    };
+
+    // A: each record shows the hand-kept definitions as its own, numbered as any.
+    const inRitardo = await render(db, "in ritardo");
+    assert.deepEqual(headingsOf(inRitardo), ["1·Locuzione aggettivale", "2·Locuzione avverbiale"]);
+    assert.deepEqual(definitionLines(inRitardo), ["che arriva o avviene dopo il momento stabilito o previsto", "dopo il momento stabilito o previsto"]);
+    unmarked(inRitardo, "in ritardo");
+    const scorso = await render(db, "scorso");
+    assert.deepEqual(headingsOf(scorso), ["1·Aggettivo·maschile, singolare", "2·Voce verbale"]);
+    // The adjective keeps its own example, which its record files under no gloss.
+    assert.deepEqual(definitionLines(scorso), ["appena passato, immediatamente precedente"]);
+    assert.match(textOf(nth(scorso, 1)), /il primo giubileo del secolo scorso fu indetto nel 1900 da Leone XIII/);
+    assert.deepEqual(formLines(scorso), ["participio passato di scorrere"]);
+    unmarked(scorso, "scorso");
+    // Its forms' pages show the adjective's definition as its base word's: "le scorse settimane".
+    for (const form of ["scorse", "scorsa", "scorsi"]) {
+      const page = await render(db, form);
+      assert.deepEqual(lemmaDefinitions(page), [{ lemma: "scorso", all: ["appena passato, immediatamente precedente"], closed: ["appena passato, immediatamente precedente"] }], form);
+      unmarked(page, form);
+    }
+    const quindici = await render(db, "quindici");
+    assert.deepEqual(headingsOf(quindici), ["1·Aggettivo numerale·invariabile", "2·Sostantivo"]);
+    assert.deepEqual(definitionLines(quindici), ["numero naturale che segue il quattordici e precede il sedici; tre volte cinque", "il numero quindici"]);
+    unmarked(quindici, "quindici");
+    const giulia = await render(db, "Giulia");
+    assert.deepEqual(headingsOf(giulia), ["1·Nome proprio"]);
+    assert.deepEqual(definitionLines(giulia), ["nome proprio di persona femminile"]);
+    unmarked(giulia, "Giulia");
+
+    // C: uno's article, empty in the source, is a form of un, linked to its page; uno's other readings are as they were.
+    const uno = await render(db, "uno");
+    assert.deepEqual(headingsOf(uno), ["1·Aggettivo numerale", "2·Articolo", "3·Pronome", "4·Sostantivo·maschile, invariabile"]);
+    assert.match(nth(uno, 2), /Forma di <a class="[^"]*" href="\/\?q=un" lang="it">un<\/a>\./);
+    assert.doesNotMatch(nth(uno, 2), /data-definition=/);
+    for (const n of [1, 3, 4]) assert.doesNotMatch(nth(uno, n), /Forma di/);
+    unmarked(uno, "uno");
+  });
+});
 
 test("a page a hand-kept reading heads opens the en.wiktionary revision it cites; one a source record heads keeps its Wiktionary page (#856)", async () => {
   await withLines([...(await devSeedLines()), ...HAND_KEPT_SOURCE_LINES], async ({ db }) => {
@@ -1259,6 +1311,11 @@ test("a page a hand-kept reading heads opens the en.wiktionary revision it cites
       si: ["https://it.wiktionary.org/wiki/si"],
       come: ["https://it.wiktionary.org/wiki/come"],
       cosetta: ["https://it.wiktionary.org/wiki/Cosetta"],
+      // The readings #803 fills are records' own, and their records head their pages.
+      "in ritardo": ["https://it.wiktionary.org/wiki/in_ritardo"],
+      scorso: ["https://it.wiktionary.org/wiki/scorso"],
+      quindici: ["https://it.wiktionary.org/wiki/quindici"],
+      Giulia: ["https://it.wiktionary.org/wiki/Giulia"],
       // it.wiktionary has no page Sig., cosetta or eguaglianza; cosette is cosetta's plural, which no record heads.
       "Sig.": ["https://en.wiktionary.org/w/index.php?title=Sig.&oldid=89865273"],
       cosette: ["https://en.wiktionary.org/w/index.php?title=cosetta&oldid=63388291"],

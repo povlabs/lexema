@@ -6,10 +6,15 @@
 // paraphrases; the reading points at that revision's section heading. The page
 // shows it like any reading, with no mark (ADR 0016). A reading of another
 // spelling leads to its word, as a form record leads to its lemma:
-// `eguaglianza` to uguaglianza (#830).
+// `eguaglianza` to uguaglianza (#830). A reading of a part of speech its word
+// has a record of fills that record's empty section instead: `in ritardo`'s
+// two records show its hand-kept definitions as their own (#803,
+// `filledDefinitions`), and the hand-kept reading is no reading beside them
+// (`withoutFillingReadings`).
 
 import { evidenceUrl } from "../italian/curatedCorrections.js";
 import { alternativeOf } from "../italian/handKeptReadings.js";
+import { normalizeItalianExact } from "../italian/normalize.js";
 import { keyedRead, readKeys, type DictionaryRead, type KeyedRead, type LookupDatabase } from "./database.js";
 import { readingPartOfSpeech } from "./articles.js";
 import { lemmaLink, NO_ENTRY_FACTS } from "./pageFacts.js";
@@ -154,6 +159,50 @@ export async function handKeptReadingsFrom(db: LookupDatabase, releaseId: string
   );
 }
 
+/**
+ * Whether a hand-kept reading is of the word and part of speech of a source
+ * record: a reading that fills that record's empty section (#803), `in
+ * ritardo`'s Locuzione avverbiale, and not a reading of its own.
+ */
+export const fills = (kept: { readonly word: string; readonly pos: string }, record: { readonly word: string; readonly pos: string }): boolean =>
+  kept.word === record.word && kept.pos === record.pos;
+
+/**
+ * The definitions the hand-kept readings give a record whose own section
+ * defines nothing (#803): the definitions of its word's hand-kept reading of
+ * its part of speech, `fills`, in order, each pointing at the en.wiktionary
+ * sense line it paraphrases. `in ritardo`'s Locuzione avverbiale reads "dopo
+ * il momento stabilito o previsto". The record keeps its forms, examples and
+ * identity, so every page that reads it, its forms' included, shows them as
+ * its own. None for a word no hand-kept reading fills, or on a dictionary
+ * seeded before their table, which is sent no statement.
+ */
+export async function filledDefinitions(
+  db: LookupDatabase,
+  tables: Pick<DictionaryTables, "handKeptReadings">,
+  record: { readonly word: string; readonly pos: string },
+): Promise<RecoveredDefinition[]> {
+  if (!tables.handKeptReadings) return [];
+  const rows = await db.all<HandKeptDefinitionRow>(HAND_KEPT_SQL, [normalizeItalianExact(record.word)]);
+  return rows.filter((row) => fills(row, record)).map(definitionOf);
+}
+
+/**
+ * `readings` without the hand-kept readings that fill a record about the
+ * query among them (#803): that record shows their definitions as its own
+ * where its section defines nothing (`filledDefinitions`), and its own where
+ * it defines something, the source's reading being the newer word (ADR
+ * 0025). Either way the hand-kept reading is no reading beside it.
+ */
+export function withoutFillingReadings(readings: readonly [Reading, ...Reading[]]): [Reading, ...Reading[]] {
+  const records = readings.filter((reading) => reading.recordId !== undefined && reading.isAboutQuery);
+  const shown = readings.filter((reading) => reading.handKeptId === undefined || !records.some((record) => fills(reading, record)));
+  const [first, ...rest] = shown;
+  // A hand-kept reading leaves only where a record stays, so one reading is left.
+  if (first === undefined) throw new Error("a lookup's readings all filled one another");
+  return [first, ...rest];
+}
+
 /** A hand-kept reading's other spelling is an archive record's word; it names no page-only entry. */
 const NO_PAGE_CANDIDATES = async (): Promise<LemmaCandidate[]> => [];
 
@@ -184,15 +233,18 @@ function citedRevisionOf(url: string): CitedRevision {
   return { title, revisionId };
 }
 
+/** A hand-kept definition, pointing at the cited revision's sense line it paraphrases; plain data, with nothing that marks it (ADR 0016). */
+const definitionOf = (row: HandKeptDefinitionRow): RecoveredDefinition => ({
+  route: "hand-kept", text: row.text, correction: null, labels: [], ref: { ...revisionOf(row.evidence_url), line: row.page_line },
+  examples: [], heldAsExample: null, items: [],
+});
+
 function readingOf(releaseId: string, [first, ...rest]: readonly [HandKeptDefinitionRow, ...HandKeptDefinitionRow[]]): Reading {
   const revision = revisionOf(first.evidence_url);
   const ref: PageEntryRef = {
     releaseId, ...revision, timestamp: first.revision_timestamp, line: first.section_line, wikitext: first.section_wikitext,
   };
-  const recovered = [first, ...rest].map((row): RecoveredDefinition => ({
-    route: "hand-kept", text: row.text, correction: null, labels: [], ref: { ...revision, line: row.page_line },
-    examples: [], heldAsExample: null, items: [],
-  }));
+  const recovered = [first, ...rest].map(definitionOf);
   const { claims, forms, wordFacts, lemmaLinks } = NO_ENTRY_FACTS;
   return {
     handKeptId: first.reading_id, ref, cites: citedRevisionOf(first.evidence_url), word: first.word,

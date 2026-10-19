@@ -19,6 +19,14 @@
 // lookup gives the reading a lemma link to it, so its page leads there as a
 // form record's leads to its lemma (`alternativeOf`).
 //
+// A reading may also fill a reading the source has but leaves empty (Huey's
+// ruling of 2026-10-18 on #803, ADR 0031's amendment of that day). Italian
+// Wiktionary's `in ritardo` has a section for each of its two readings, and
+// under each only `{{Nodef|it}}`; `quindici`'s noun section has its headword
+// line and nothing below. Each such reading names the empty section it fills
+// (`source`), and a lookup shows its definitions as the record's own
+// (src/lookup/handKept.ts), not as a reading of their own.
+//
 // A hand-kept reading keys to nothing in the source: no archive line, no raw
 // page, no `recovered_entry` row. The seed writes it as `hand_kept_definition`
 // rows (src/import/handKeptRows.ts), `pnpm run correct:records` writes it into a
@@ -54,11 +62,34 @@ export interface HandKeptDefinition {
   paraphrases: CitedLine;
 }
 
+/**
+ * The it.wiktionary section a hand-kept reading fills (#803): the dump's
+ * revision of the word's page, and the heading of the section of the
+ * reading's part of speech, under which no line defines anything.
+ */
+export interface EmptySection {
+  kind: "empty";
+  wiki: "it.wiktionary.org";
+  title: string;
+  revisionId: number;
+  /** The section's heading, verbatim: `{{-loc agg-|it}}`. */
+  heading: CitedLine;
+}
+
+/**
+ * What Italian Wiktionary has of a hand-kept reading: no section of its part
+ * of speech, so no record (`si`'s pronoun, ADR 0031), or a section, with its
+ * record, that defines nothing (`in ritardo`, #803).
+ */
+export type SourceSection = { kind: "none" } | EmptySection;
+
 /** What a hand-kept reading is made from; `handKeptReading` checks it. */
 export interface HandKeptReadingSpec {
   word: string;
   /** A title and its part of speech from the closed set (`POS_BY_TITLE`): a mismatched pair cannot be written. */
   partOfSpeech: StatedPartOfSpeech;
+  /** What the source has of the reading: nothing, or a section it fills. */
+  source: SourceSection;
   /** The heading of the first cited revision's section that states the part of speech: `====Pronoun====`. */
   section: CitedLine;
   /** At least one, each paraphrasing its own sense line. */
@@ -117,9 +148,10 @@ function writes(text: string, word: string): boolean {
  * The only way to make a `HandKeptReading`. It refuses a spec without a word,
  * with a part of speech outside the closed set, with a blank definition, with
  * two definitions of one sense line, with a definition of another spelling
- * that does not write the word it leads to, or with evidence that is not a
- * permanent link to an en.wiktionary revision, so none of these is a value a
- * list can hold.
+ * that does not write the word it leads to, with evidence that is not a
+ * permanent link to an en.wiktionary revision, or with an empty section it
+ * fills that is not a heading on its own word's page, so none of these is a
+ * value a list can hold.
  */
 export function handKeptReading(spec: HandKeptReadingSpec): HandKeptReading {
   const refuse = (why: string): never => {
@@ -129,6 +161,11 @@ export function handKeptReading(spec: HandKeptReadingSpec): HandKeptReading {
   const { posTitle, pos } = spec.partOfSpeech;
   if (!Object.hasOwn(POS_BY_TITLE, posTitle) || POS_BY_TITLE[posTitle] !== pos) refuse(`${posTitle} is not the title of ${pos}`);
   if (!isLine(spec.section)) refuse("its section heading is not a line of the revision");
+  const { source } = spec;
+  if (source.kind === "empty") {
+    if (source.wiki !== "it.wiktionary.org" || source.title !== spec.word) refuse(`the section it fills is not on its own it.wiktionary page: ${source.title}`);
+    if (!Number.isInteger(source.revisionId) || source.revisionId <= 0 || !isLine(source.heading)) refuse("the section it fills names no revision or heading line");
+  }
   if (spec.definitions.length === 0) refuse("it has no definition");
   for (const { text, paraphrases } of spec.definitions) {
     if (text.trim() === "" || text.trim() !== text) refuse("a definition is blank or has surrounding spaces");
@@ -163,6 +200,8 @@ function handKeptList(readings: readonly HandKeptReading[]): readonly HandKeptRe
 const RULING_745 = "https://github.com/povlabs/lexema/issues/745#issuecomment-6080245573";
 /** Huey's ruling of 2026-10-11 that `sig.` and `cosette` resolve (#819, which folds in #817). */
 const RULING_809 = "https://github.com/povlabs/lexema/issues/809#issuecomment-6110591219";
+/** Huey's ruling of 2026-10-18 that a reading the source leaves empty may get hand-kept definitions (#803, A). */
+const RULING_803 = "https://github.com/povlabs/lexema/issues/803#issuecomment-6254975552";
 
 /**
  * The committed list. Add a reading only with its evidence, and only on a
@@ -175,6 +214,7 @@ export const HAND_KEPT_READINGS: readonly HandKeptReading[] = handKeptList([
   handKeptReading({
     word: "si",
     partOfSpeech: statedPartOfSpeech("Pronome"),
+    source: { kind: "none" },
     section: { line: 952, wikitext: "====Pronoun====" },
     definitions: [
       {
@@ -202,6 +242,7 @@ export const HAND_KEPT_READINGS: readonly HandKeptReading[] = handKeptList([
   handKeptReading({
     word: "come",
     partOfSpeech: statedPartOfSpeech("Congiunzione"),
+    source: { kind: "none" },
     section: { line: 1058, wikitext: "===Conjunction===" },
     definitions: [
       {
@@ -219,6 +260,7 @@ export const HAND_KEPT_READINGS: readonly HandKeptReading[] = handKeptList([
   handKeptReading({
     word: "Sig.",
     partOfSpeech: statedPartOfSpeech("Acronimo / Abbreviazione"),
+    source: { kind: "none" },
     section: { line: 4, wikitext: "===Noun===" },
     definitions: [
       {
@@ -236,6 +278,7 @@ export const HAND_KEPT_READINGS: readonly HandKeptReading[] = handKeptList([
   handKeptReading({
     word: "cosetta",
     partOfSpeech: statedPartOfSpeech("Sostantivo"),
+    source: { kind: "none" },
     section: { line: 4, wikitext: "===Noun===" },
     definitions: [
       {
@@ -253,6 +296,7 @@ export const HAND_KEPT_READINGS: readonly HandKeptReading[] = handKeptList([
   handKeptReading({
     word: "eguaglianza",
     partOfSpeech: statedPartOfSpeech("Sostantivo"),
+    source: { kind: "none" },
     section: { line: 6, wikitext: "===Noun===" },
     definitions: [
       {
@@ -262,5 +306,86 @@ export const HAND_KEPT_READINGS: readonly HandKeptReading[] = handKeptList([
     ],
     evidence: [{ wiki: "en.wiktionary.org", title: "eguaglianza", revisionId: 71378670, timestamp: "2023-02-23T01:13:31Z", shows: "{{it-noun|f}}" }],
     ruling: "https://github.com/povlabs/lexema/issues/830#issuecomment-6233334459",
+  }),
+  // it.wiktionary's `in ritardo` (revision 4053044) heads a Locuzione
+  // aggettivale and a Locuzione avverbiale, each with only `{{Nodef|it}}`.
+  // en.wiktionary heads one Adverb, whose one sense line glosses both uses:
+  // `late`, `behind` of an action, `overdue`, `belated` of a thing.
+  handKeptReading({
+    word: "in ritardo",
+    partOfSpeech: statedPartOfSpeech("Locuzione aggettivale"),
+    source: { kind: "empty", wiki: "it.wiktionary.org", title: "in ritardo", revisionId: 4053044, heading: { line: 2, wikitext: "{{-loc agg-|it}}" } },
+    section: { line: 9, wikitext: "===Adverb===" },
+    definitions: [
+      {
+        text: "che arriva o avviene dopo il momento stabilito o previsto",
+        paraphrases: { line: 12, wikitext: "# [[late]], [[behind]], [[after]], [[overdue]], [[belated]], [[slow]] {{q|of time}}" },
+      },
+    ],
+    evidence: [{ wiki: "en.wiktionary.org", title: "in ritardo", revisionId: 80039828, timestamp: "2024-06-02T22:59:05Z", shows: "{{it-adv}}" }],
+    ruling: RULING_803,
+  }),
+  handKeptReading({
+    word: "in ritardo",
+    partOfSpeech: statedPartOfSpeech("Locuzione avverbiale"),
+    source: { kind: "empty", wiki: "it.wiktionary.org", title: "in ritardo", revisionId: 4053044, heading: { line: 6, wikitext: "{{-loc avv-|it}}" } },
+    section: { line: 9, wikitext: "===Adverb===" },
+    definitions: [
+      {
+        text: "dopo il momento stabilito o previsto",
+        paraphrases: { line: 12, wikitext: "# [[late]], [[behind]], [[after]], [[overdue]], [[belated]], [[slow]] {{q|of time}}" },
+      },
+    ],
+    evidence: [{ wiki: "en.wiktionary.org", title: "in ritardo", revisionId: 80039828, timestamp: "2024-06-02T22:59:05Z", shows: "{{it-adv}}" }],
+    ruling: RULING_803,
+  }),
+  // it.wiktionary's `scorso` (revision 3920837) heads its adjective with
+  // `# {{Nodef|it}}` and one example; its verb form defines itself.
+  handKeptReading({
+    word: "scorso",
+    partOfSpeech: statedPartOfSpeech("Aggettivo"),
+    source: { kind: "empty", wiki: "it.wiktionary.org", title: "scorso", revisionId: 3920837, heading: { line: 2, wikitext: "{{-agg-|it}}" } },
+    section: { line: 10, wikitext: "===Adjective===" },
+    definitions: [
+      {
+        text: "appena passato, immediatamente precedente",
+        paraphrases: { line: 13, wikitext: "# [[last]], [[previous]]" },
+      },
+    ],
+    evidence: [{ wiki: "en.wiktionary.org", title: "scorso", revisionId: 90562962, timestamp: "2026-05-09T11:16:46Z", shows: "{{it-adj}}" }],
+    ruling: RULING_803,
+  }),
+  // it.wiktionary's `quindici` (revision 4070131) heads a noun with its
+  // headword line alone; its numeral adjective defines itself. en.wiktionary
+  // heads the word a Numeral, whose one sense is the number.
+  handKeptReading({
+    word: "quindici",
+    partOfSpeech: statedPartOfSpeech("Sostantivo"),
+    source: { kind: "empty", wiki: "it.wiktionary.org", title: "quindici", revisionId: 4070131, heading: { line: 7, wikitext: "{{-sost-|it}}" } },
+    section: { line: 29, wikitext: "===Numeral===" },
+    definitions: [
+      {
+        text: "il numero quindici",
+        paraphrases: { line: 32, wikitext: "# [[fifteen]]" },
+      },
+    ],
+    evidence: [{ wiki: "en.wiktionary.org", title: "quindici", revisionId: 90558905, timestamp: "2026-05-09T08:29:35Z", shows: "{{it-card-inv}}" }],
+    ruling: RULING_803,
+  }),
+  // it.wiktionary's `Giulia` (revision 3863404) heads a Nome proprio with its
+  // headword line alone.
+  handKeptReading({
+    word: "Giulia",
+    partOfSpeech: statedPartOfSpeech("Nome proprio"),
+    source: { kind: "empty", wiki: "it.wiktionary.org", title: "Giulia", revisionId: 3863404, heading: { line: 2, wikitext: "{{-nome-|it}}" } },
+    section: { line: 11, wikitext: "===Proper noun===" },
+    definitions: [
+      {
+        text: "nome proprio di persona femminile",
+        paraphrases: { line: 14, wikitext: "# {{given name|it|female|eq=Julia}}" },
+      },
+    ],
+    evidence: [{ wiki: "en.wiktionary.org", title: "Giulia", revisionId: 90576577, timestamp: "2026-05-09T15:43:32Z", shows: "{{it-proper noun|f}}" }],
+    ruling: RULING_803,
   }),
 ]);

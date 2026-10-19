@@ -492,6 +492,15 @@ export function everyRecovered(reading: Pick<Reading, "senses" | "recovered">): 
 }
 
 /**
+ * Whether a reading defines nothing: no sense with a gloss or a recovered
+ * item, no recovered definition, and no word it is a form of. Its section on
+ * the source page says nothing below its headword line: `{{Nodef}}` under
+ * `in ritardo`'s two headings, nothing under `quindici`'s noun (#803).
+ */
+export const definesNothing = (reading: Pick<Reading, "senses" | "recovered" | "lemmaLinks">): boolean =>
+  reading.lemmaLinks.length === 0 && everyRecovered(reading).length === 0 && reading.senses.every((sense) => sense.glosses.length === 0);
+
+/**
  * The en.wiktionary revision a hand-kept reading cites (ADR 0031): where its
  * text came from, so what the page's *Fonte* and the API's credit open for
  * it, since it.wiktionary has no page it was read from (Huey's ruling of

@@ -1,0 +1,39 @@
+{{also|Quindici}}
+==Corsican==
+
+===Pronunciation===
+* {{IPA|co|/ˈkwindit͡ʃi/}}
+* {{hyph|co|quin|di|ci}}
+
+===Numeral===
+{{head|co|numeral}}
+
+# {{alternative form of|co|quindeci|from=Ultramontane}}
+
+====References====
+* {{R:INFCOR|quindeci|quindeci, quindici}}
+
+==Italian==
+{{number box|it}}
+
+===Alternative forms===
+* {{alt|it|quindeci||archaic}}
+
+===Etymology===
+{{ety|it|:inh|la:quīndecim}}
+From {{inh|it|la|quīndecim}}.
+
+===Pronunciation===
+{{it-pr|quìndici<audio:LL-Q652 (ita)-Happypheasant-quindici.wav>}}
+
+===Numeral===
+{{it-card-inv}}
+
+# [[fifteen]]
+
+====Related terms====
+* {{l|it|cinque}}
+* {{l|it|dieci}}
+
+====Related terms====
+* {{l|it|quindicenne}}

@@ -1,7 +1,7 @@
 # Hand-kept readings fixtures
 
 The inputs of [test/handKeptReadings.test.ts](../../test/handKeptReadings.test.ts)
-(#745, #830, ADR 0031). Every file is verbatim.
+(#745, #830, #803, ADR 0031). Every file is verbatim.
 
 - `archive-lines.jsonl`: lines 963 (`si`, noun), 55329 (`uguaglianza`, noun),
   113594 (`come`, adverb) and 113595 (`come`, preposition) of
@@ -32,6 +32,18 @@ The inputs of [test/handKeptReadings.test.ts](../../test/handKeptReadings.test.t
   [revision 63388291](https://en.wiktionary.org/w/index.php?title=cosetta&oldid=63388291)
   (2021-07-25T12:22:57Z, SHA-1 `686397025e45ac1dbca8eee827f3583ac178a47d`),
   read on 2026-10-17 (#819).
+- `in ritardo.wikitext`, `scorso.wikitext`, `quindici.wikitext` and
+  `Giulia.wikitext`: en.wiktionary's pages the readings #803 fills cite,
+  [in ritardo revision 80039828](https://en.wiktionary.org/w/index.php?title=in%20ritardo&oldid=80039828)
+  (2024-06-02T22:59:05Z, SHA-1 `602e20266c8b0f8880a822b5463c54c7124ea0c5`),
+  [scorso revision 90562962](https://en.wiktionary.org/w/index.php?title=scorso&oldid=90562962)
+  (2026-05-09T11:16:46Z, SHA-1 `37d4d2c8a488637cdd122603c1da8725e683b014`),
+  [quindici revision 90558905](https://en.wiktionary.org/w/index.php?title=quindici&oldid=90558905)
+  (2026-05-09T08:29:35Z, SHA-1 `5776ca48ff39baf082adda77d95a08624b3900ee`) and
+  [Giulia revision 90576577](https://en.wiktionary.org/w/index.php?title=Giulia&oldid=90576577)
+  (2026-05-09T15:43:32Z, SHA-1 `0376571092f96b8f1934fe668fad9dff3208fdbe`),
+  read on 2026-10-18. Their records and it.wiktionary pages are in
+  [`../empty-readings/`](../empty-readings/PROVENANCE.md).
 - `lookup-lines.jsonl`, the inputs of
   [test/handKeptWords.test.ts](../../test/handKeptWords.test.ts) (#819): line
   36245 (`Cosetta`, proper name) of `it-extract.jsonl.gz`, release

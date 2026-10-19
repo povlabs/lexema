@@ -218,6 +218,9 @@ async function seeded(): Promise<DatabaseSync> {
       schema: SCHEMA,
       releaseId: RELEASE,
       license: "CC-BY-SA-4.0",
+      // No hand-kept reading: Giulia's record stands here for one with no meaning,
+      // which the list fills since #803 (test/emptyReadings.test.ts).
+      handKeptReadings: [],
       onRejection: (rejection) => {
         throw new Error(`fixture line rejected: ${JSON.stringify(rejection)}`);
       },
@@ -444,7 +447,7 @@ test("load:names leaves out a label the lookup answers as a multi-word headword 
     const archive = join(dir, "dev-seed.jsonl.gz");
     const lines = `${(await readFile("fixtures/dev-seed.jsonl", "utf8")).trimEnd()}\n${await readFile("fixtures/essere-compound-cells.jsonl", "utf8")}`;
     await writeFile(archive, gzipSync(lines));
-    const { parts } = await seedSql({ input: archive, outputDir: join(dir, "sql"), schema: SCHEMA, releaseId: RELEASE, license: "CC-BY-SA-4.0", onRejection: (rejection) => {
+    const { parts } = await seedSql({ input: archive, outputDir: join(dir, "sql"), schema: SCHEMA, releaseId: RELEASE, license: "CC-BY-SA-4.0", handKeptReadings: [], onRejection: (rejection) => {
       throw new Error(`fixture line rejected: ${JSON.stringify(rejection)}`);
     } });
     for (const part of parts) db.exec(await readFile(part, "utf8"));

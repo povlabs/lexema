@@ -10,7 +10,7 @@ import { readingPartOfSpeech } from "./articles.js";
 import { keyedRead, readKeys, type DictionaryRead, type KeyedRead, type LookupDatabase } from "./database.js";
 import { phraseForms, phraseMatches } from "./phrase.js";
 import { besideSourceOf, type BesideReadings } from "./besideSource.js";
-import { handKeptReadingsOf } from "./handKept.js";
+import { filledDefinitions, handKeptReadingsOf, withoutFillingReadings } from "./handKept.js";
 import { nameEntriesOf } from "./names.js";
 import { unlessDeclaredLemma, wikidataWordsOf } from "./wikidataWords.js";
 import { cardinalReading, unansweredCardinal } from "./cardinal.js";
@@ -18,6 +18,8 @@ import type { ItalianCardinal } from "../italian/cardinal.js";
 import { declaredLemma, declaredLemmaHeads } from "./declaredLemma.js";
 import { pageEntriesOf, type PageEntries } from "./pageEntry.js";
 import { readExpressions } from "./expressions.js";
+import { HEADWORD_CANDIDATE_SQL } from "./pageFacts.js";
+import { variantLinksOf } from "./variantLinks.js";
 import { placeRecovered, type RecoveredOfRecord, type StoredRecovered } from "./recovered.js";
 import { dictionaryTables, lineagesOf, servedBy, type DictionaryTables } from "./served.js";
 import { readSourceRecord, type SourceRecordFields } from "./sourceRecord.js";
@@ -31,7 +33,7 @@ import { answeringPairs, type AnsweringPair } from "./pronominalPair.js";
 import { openedHeadwords } from "./accentless.js";
 import { prefixUpperBound } from "./keyRange.js";
 import { personOfItalianVerbForm } from "../italian/moods.js";
-import { correctRecordClaims, isNameEntry, pluralDeclaration, sourcePointerOf, sourceTagsOf, type CitedRevision } from "./types.js";
+import { correctRecordClaims, definesNothing, isNameEntry, pluralDeclaration, sourcePointerOf, sourceTagsOf, type CitedRevision } from "./types.js";
 import type {
   ArchiveClaim,
   Evidence,
@@ -51,6 +53,7 @@ import type {
   QueryInfo,
   Reading,
   RecoveredDefinition,
+  RecoveredRef,
   RecoveredRoute,
   ReleaseDump,
   ReleaseInfo,
@@ -424,7 +427,8 @@ async function pairResult(spelled: Spelled, answering: readonly AnsweringPair[])
 /**
  * The readings of `answered`, rows of the shape read, as `spelledResult`
  * makes a typed word's: the source's records in source order, then the
- * page-only entries, then the hand-kept readings. Only the records the rows
+ * page-only entries, then the hand-kept readings that fill no record among
+ * them (`withoutFillingReadings`, #803). Only the records the rows
  * reach are read. Undefined when no row gives a reading.
  */
 async function rowsResult({ db, releaseId, pages, query, release, tables }: Spelled, route: FoundRoute, answered: readonly ShapeRow[]): Promise<FoundResult | undefined> {
@@ -446,7 +450,7 @@ async function rowsResult({ db, releaseId, pages, query, release, tables }: Spel
     hits.length > 0 ? found(db, releaseId, pages, query, release, hits, route, tables, tables.edgeCorrections) : undefined,
     handled(others),
   ]);
-  if (result !== undefined) return { ...result, readings: [...result.readings, ...read] };
+  if (result !== undefined) return { ...result, readings: withoutFillingReadings([...result.readings, ...read]) };
   const [reading, ...more] = read;
   return reading === undefined ? undefined : { outcome: "found", query, release, route, readings: [reading, ...more] };
 }
@@ -466,8 +470,10 @@ interface Spelled {
  * source's rows `hits`, `SEARCH_SQL`'s answer for `key`, the curated table
  * cells that spell it (#743), the page entries, the hand-kept readings
  * (ADR 0031, #745), and the name entries (ADR 0032, #794), last; `beside`
- * is the read of the last two, with the key's Wikidata words. Undefined when
- * none does.
+ * is the read of the last two, with the key's Wikidata words. A hand-kept
+ * reading that fills a record among them is not one of its own
+ * (`withoutFillingReadings`, #803).
+ * Undefined when none does.
  */
 async function spelledResult(
   { db, releaseId, pages, query, release, tables }: Spelled,
@@ -489,7 +495,7 @@ async function spelledResult(
     const result = await (sourceOnly !== undefined && cellRows.length === 0
       ? sourceOnly
       : found(db, releaseId, pages, query, release, withCells(hits, cellRows), { kind: "surface" }, corrected, edges));
-    return { ...result, readings: [...result.readings, ...read] };
+    return { ...result, readings: withoutFillingReadings([...result.readings, ...read]) };
   }
   // A spelling only name entries answer has no Wiktionary reading, so its
   // Wikidata words show after them (ADR 0033, #812).
@@ -645,11 +651,15 @@ async function found(
   const anyAbout = groups.some(isAbout);
   for (const group of groups) if (isAbout(group) || !anyAbout) readsOf(group);
 
+  // A record's `form_of` edges, and the variants rule
+  // `it-empty-reading-variant/v2` leads it to when its section is empty (#803).
   const declared = new Map(
     await Promise.all(
       groups.map(async (group) => {
         const recordId = group[0].record_id;
-        return [recordId, await readLemmaLinks(db, releaseId, recordId, refOn(group[0]), edges)] as const;
+        const [edgeLinks, variants] = await Promise.all([readLemmaLinks(db, releaseId, recordId, refOn(group[0]), edges), readVariantLinks(db, releaseId, group[0])]);
+        const links: DeclaredLink[] = [...edgeLinks, ...variants];
+        return [recordId, links] as const;
       }),
     ),
   );
@@ -717,7 +727,7 @@ async function found(
 
   const kept = groups.filter((group) => isAbout(group) || !lemmaIds.has(group[0].record_id));
   const build = (group: HitRow[]): Promise<Reading> =>
-    buildReading(db, releaseId, group, {
+    buildReading(db, releaseId, group, corrected, {
       table: tableOf(group),
       record: recordOf(group[0].record_id),
       lemmaLinks: resolve(declared.get(group[0].record_id) ?? [], isAbout(group) && group[0].record_pos === "verb"),
@@ -911,7 +921,8 @@ function releaseDump(row: {
 }
 
 /** Which curated-correction tables the dictionary has, so a lookup reads none that is absent. */
-type Corrected = Pick<DictionaryTables, "corrections" | "cellCorrections" | "recoveredHides" | "senseHides" | "adjectiveFormCorrections">;
+/** What a record's reads depend on beyond its own rows: its curated corrections, and the hand-kept definitions that fill an empty section (#803). */
+type Corrected = Pick<DictionaryTables, "corrections" | "cellCorrections" | "recoveredHides" | "senseHides" | "adjectiveFormCorrections" | "handKeptReadings">;
 
 /** Whether the dictionary has `hidden_recovered_definition` (#773) and `hidden_sense` (#857), so each read names one only where it is. */
 export type Hides = Pick<DictionaryTables, "recoveredHides" | "senseHides">;
@@ -923,10 +934,37 @@ interface RecordTable {
   formCorrection?: FormCorrection;
 }
 
-/** A `form_of` edge as the record declares it, before this lookup's listings are attached. */
+/**
+ * A `form_of` edge as the record declares it, or a variant rule
+ * `it-empty-reading-variant/v2` leads it to at a line of its page (#803),
+ * before this lookup's listings are attached.
+ */
 type DeclaredLink =
-  | { kind: "dangling"; targetWord: string; ref: SourceRef }
-  | { kind: "candidates"; targetWord: string; candidates: LemmaCandidate[]; ref: SourceRef };
+  | { kind: "dangling"; targetWord: string; ref: SourceRef | RecoveredRef }
+  | { kind: "candidates"; targetWord: string; candidates: LemmaCandidate[]; ref: SourceRef | RecoveredRef };
+
+/**
+ * The variants rule `it-empty-reading-variant/v2` leads the record of `first`
+ * to (src/lookup/variantLinks.ts, #803), each a link to the variant's headword
+ * records at the `{{-var-}}` line that names it, as a form-of edge names its
+ * target's. The rule names only a variant with such a record, so none dangles
+ * while the release it was measured on is served. A record off the list sends
+ * nothing.
+ */
+async function readVariantLinks(db: LookupDatabase, releaseId: string, first: HitRow): Promise<DeclaredLink[]> {
+  return Promise.all(
+    variantLinksOf(first.line_sha256).map(async ({ word, ref }): Promise<DeclaredLink> => {
+      const rows = await db.all<{ record_id: number; release_id: string; line_no: number; line_sha256: string; pos: string; word: string }>(
+        HEADWORD_CANDIDATE_SQL, [releaseId, normalizeItalianExact(word)],
+      );
+      const candidates = rows.map((row): LemmaCandidate => ({
+        recordId: row.record_id, word: row.word, pos: row.pos,
+        ref: { releaseId: row.release_id, lineNo: row.line_no, jsonPointer: "/word", lineSha256: row.line_sha256 },
+      }));
+      return candidates.length === 0 ? { kind: "dangling", targetWord: word, ref } : { kind: "candidates", targetWord: word, candidates, ref };
+    }),
+  );
+}
 
 const isAbout = (group: readonly HitRow[]): boolean => group.some((hit) => hit.origin === "headword");
 
@@ -1020,6 +1058,7 @@ async function buildReading(
   db: LookupDatabase,
   releaseId: string,
   group: HitRow[],
+  tables: Pick<DictionaryTables, "handKeptReadings">,
   inputs: ReadingInputs,
 ): Promise<Reading> {
   const first = group[0];
@@ -1041,6 +1080,11 @@ async function buildReading(
       inputs.reads.reviews,
     ]);
 
+  const senses = sensesOf(senseRows, first.record_word, ref, fields, recovered.underSense);
+  // A record whose section defines nothing shows the hand-kept definitions
+  // that fill it (#803): one statement more, sent only for such a record.
+  const own = { senses, recovered: recovered.topLevel, lemmaLinks };
+  const definitions = definesNothing(own) ? await filledDefinitions(db, tables, { word: first.record_word, pos: first.record_pos }) : [];
   return {
     recordId,
     ref: ref(""),
@@ -1050,14 +1094,14 @@ async function buildReading(
     translations: fields.translations,
     isAboutQuery: isAbout(group),
     evidence: evidenceOf(group),
-    senses: sensesOf(senseRows, first.record_word, ref, fields, recovered.underSense),
+    senses,
     forms,
     ...(formCorrection === undefined ? {} : { formCorrection }),
     grammar,
     lemmaLinks,
     inflections,
     reviews,
-    recovered: recovered.topLevel,
+    recovered: definitions.length > 0 ? definitions : recovered.topLevel,
     // Derived, not read: the release carries no article field. The headword, the
     // grammar the source stated about the record and the record's own IPA are
     // the only inputs, and a reading that is not a noun comes back carrying no
