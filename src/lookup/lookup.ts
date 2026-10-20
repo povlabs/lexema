@@ -354,7 +354,8 @@ export async function lookup({ db, releaseId, query }: LookupOptions): Promise<L
   // opens `più`, whose variant `piú` it also lacks the final accent of (#846,
   // Huey's rulings of 2026-10-17; #900, Huey's ruling of 2026-10-20). Failing
   // that, one typed with an accent a plain headword lacks opens it: `dò`
-  // opens `do` (#902, Huey's ruling of 2026-10-20).
+  // opens `do` (#902, Huey's ruling of 2026-10-20). A spelled number never
+  // opens one that way, so `centotré` reaches the cardinal step below.
   const opened = (await accentless)?.get(key);
   if (opened !== undefined) {
     const headword = await lookup({ db, releaseId, query: opened.key });

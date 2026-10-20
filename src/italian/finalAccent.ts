@@ -17,9 +17,14 @@
 // widens it once more, to an accent typed on the vowels a word ends in that
 // its headword lacks: `dò` for `do`, `dài` for `dai`, under the same guards
 // and tie-break, and only where no headword with a final mark answers it, so
-// `é` still opens `è`, never `e`. What the lookup does with it is
-// src/lookup/accentless.ts.
+// `é` still opens `è`, never `e`. A spelled number is not read that way:
+// Huey asked on 2026-10-20 that `centotré` keep its rule-built number reading
+// rather than open the source's `centotre`
+// (https://github.com/povlabs/lexema/pull/907#issuecomment-6289786349), so
+// the spelled-number step comes first for it (`addedAccentOff`). What the
+// lookup does with it is src/lookup/accentless.ts.
 
+import { parseItalianCardinal } from "./cardinal.js";
 import { glossBase } from "./formOfGlossEdge.js";
 import { normalizeItalianExact } from "./normalize.js";
 
@@ -80,7 +85,7 @@ export function accentlessSpelling(key: string): string | undefined {
  * #900). A headword with a final apostrophe opens only for an accent typed in
  * its place (`pò` for `po'`, #900), never for the apostrophe left off (`po`,
  * `dall`). A headword with neither mark never opens by its mark: one the
- * query adds an accent to opens only as `endingAccentOff` reads it (#902).
+ * query adds an accent to opens only as `addedAccentOff` reads it (#902).
  */
 export function marksOpen(typed: FinalMark, written: FinalMark): boolean {
   switch (written) {
@@ -113,6 +118,19 @@ export function endingAccentOff(key: string): string | undefined {
 }
 
 /**
+ * The plain headword key a query may add an accent to (`endingAccentOff`), or
+ * none when the query spells a cardinal (`parseItalianCardinal`), whose
+ * rule-built number reading (`it-cardinal/v1`, ADR 0034) answers it first:
+ * `dò` → `do`, but `centotré`, `seicentotré` and `trecentoquarantatré` →
+ * none, so they never open `centotre` and its kind (Huey's ask of 2026-10-20,
+ * https://github.com/povlabs/lexema/pull/907#issuecomment-6289786349). A
+ * missing or wrong final mark is untouched: `ventitre` still opens `ventitré`.
+ */
+export function addedAccentOff(key: string): string | undefined {
+  return parseItalianCardinal(key) === undefined ? endingAccentOff(key) : undefined;
+}
+
+/**
  * What a query that may open a headword is probed under, or none for a query
  * that is more than one word or ends in no vowel (`finalVowel`), which opens
  * no headword. `fold`: its letters with every accent and the final apostrophe
@@ -121,8 +139,8 @@ export function endingAccentOff(key: string): string | undefined {
  * `spelled`: the keys that carry no accent it may open, which `accent_fold`
  * does not hold: for a query whose final vowel carries an accent, the key
  * that writes an apostrophe in its place (#900), and for one with an accent
- * on the vowels it ends in, the key without it (`endingAccentOff`, #902):
- * `pò` → `po'` and `po`, `dài` → `dai`.
+ * on the vowels it ends in, the key without it (`addedAccentOff`, #902):
+ * `pò` → `po'` and `po`, `dài` → `dai`; `centotré` → none of that kind.
  */
 export interface AccentProbe {
   fold: string;
@@ -134,7 +152,7 @@ export function accentlessProbe(key: string): AccentProbe | undefined {
   const end = finalVowel(key);
   if (end === undefined) return undefined;
   const fold = end.plain.normalize("NFD").replace(/\p{M}/gu, "").normalize("NFC");
-  const bare = endingAccentOff(key);
+  const bare = addedAccentOff(key);
   return { fold, spelled: [...(end.mark === "accent" ? [`${end.plain}'`] : []), ...(bare === undefined ? [] : [bare])] };
 }
 
@@ -164,7 +182,7 @@ export interface AccentedHeadword {
  * the same (`finalVowel`). `perche` opens `perché` (#846), and so do `perchè`
  * and `perchê` (#900); `caffé` opens `caffè`, `sè` opens `sé`, `citta'` opens
  * `città` and `pò` opens `po'`. Only when no headword with a final mark is a
- * match does the one the query adds an accent to count (`endingAccentOff`,
+ * match does the one the query adds an accent to count (`addedAccentOff`,
  * #902): `dò` opens `do` and `dài` opens `dai`, but `é` opens `è` and `sè`
  * opens `sé`, never `e` or `se`. When
  * several are, it opens the main word: the one no variant of another, each
@@ -178,7 +196,7 @@ export interface AccentedHeadword {
 export function openedHeadword(key: string, headwords: Iterable<AccentedHeadword>): string | undefined {
   const typed = finalVowel(key);
   if (typed === undefined) return undefined;
-  const bare = endingAccentOff(key);
+  const bare = addedAccentOff(key);
   const marked = new Map<string, Set<string>>();
   const unmarked = new Map<string, Set<string>>();
   for (const headword of headwords) {

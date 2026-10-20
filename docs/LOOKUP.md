@@ -366,8 +366,15 @@ and [tie-break](https://github.com/povlabs/lexema/issues/846#issuecomment-624067
    accent inside the word must match as typed.
 4. Only when no headword counts by step 3 does a headword with neither mark
    count: the key with the one accent on the vowels it ends in taken off
-   (`endingAccentOff`): `do` for `dò`, `dai` for `dài`. So `é` opens `è` and
-   `sè` opens `sé`, never `e` or `se`, and `pò` opens `po'`, never `po`.
+   (`addedAccentOff`): `do` for `dò`, `dai` for `dài`. So `é` opens `è` and
+   `sè` opens `sé`, never `e` or `se`, and `pò` opens `po'`, never `po`. A
+   key that spells a cardinal never counts this way, so the
+   [spelled cardinal](#a-spelled-cardinal-the-source-does-not-list) step
+   answers it first: `centotré` gets the number reading and never opens the
+   source's `centotre`, a numeral record with no gloss (line 42990), and so do
+   `seicentotré` (42983) and `trecentoquarantatré` (423609), as Huey
+   [asked](https://github.com/povlabs/lexema/pull/907#issuecomment-6289786349).
+   A missing final accent still counts by step 3: `ventitre` opens `ventitré`.
 5. One headword counts, and the step opens it. When several count, it opens
    the main word: the one that is no variant of another, where every other
    one has a sense whose first gloss opens with "variante" and names it after
@@ -463,7 +470,9 @@ its part of speech `adj`, `Aggettivo numerale`, as the source files its
 numerals, and its one definition the fixed text "numero cardinale
 corrispondente a N", N the value in digits with a dot from 10.000 up
 (`2001`, `12.345`). It states no grammar and no
-form. A key a form-of record names as its lemma is a declared lemma (#453),
+form. The accentless step never opens a plain headword for such a key, so
+`centotré` reaches this step rather than opening `centotre` (#902). A key a
+form-of record names as its lemma is a declared lemma (#453),
 answered as the section above says, and never gets such a reading.
 `route` is `{ kind: "surface" }`. `exists()` answers `present` with the
 cardinal, and `lookupBatch` gives one candidate for it, so the three agree.

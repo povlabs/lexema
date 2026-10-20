@@ -190,7 +190,10 @@ headword with a final mark matches, a query with one accent on the vowels it
 ends in opens the plain headword that lacks it: `dò` opens `do`, with the
 note and the verb form of `dare` alike, and `dài` opens `dai`, with its
 interjection, preposition and verb form. A headword with a final mark comes
-first, so `é` opens `è` and `sè` opens `sé`, never `e` or `se`. The step
+first, so `é` opens `è` and `sè` opens `sé`, never `e` or `se`. A spelled
+number is not read that way: `centotré` keeps its rule-built number reading
+and never opens the source's no-gloss `centotre`, as Huey
+[asked](https://github.com/povlabs/lexema/pull/907#issuecomment-6289786349). The step
 never runs for a query that is a word of its own, so `papa` stays `papa` and
 never `papà`, `e` stays the conjunction and never `è`, `se` stays `se`, `do`
 and `dai` stay themselves, and `è`, `dà`, `là`, `sì` and `né` are never read

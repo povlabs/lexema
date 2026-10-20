@@ -11,7 +11,7 @@ import { DatabaseSync } from "node:sqlite";
 import test from "node:test";
 import { gzipSync } from "node:zlib";
 import { seedSql } from "../src/import/seedSql.js";
-import { accentlessProbe, accentlessSpelling, endingAccentOff, finalVowel, marksOpen, openedHeadword, variantNamed } from "../src/italian/finalAccent.js";
+import { accentlessProbe, accentlessSpelling, addedAccentOff, endingAccentOff, finalVowel, marksOpen, openedHeadword, variantNamed } from "../src/italian/finalAccent.js";
 import { bareSpelling, bareSpellingOutcome, type BareSpellingAnswer } from "../src/lookup/bareSpelling.js";
 import { lookupBatch, type CandidateRecord } from "../src/lookup/batch.js";
 import type { LookupDatabase } from "../src/lookup/database.js";
@@ -84,6 +84,16 @@ test("an accent on the vowels a word ends in comes off when it is the only one t
   assert.equal(endingAccentOff("caffè latte"), undefined, "two words");
 });
 
+// Huey's ask of 2026-10-20 (https://github.com/povlabs/lexema/pull/907#issuecomment-6289786349):
+// a spelled number keeps its rule-built reading, so its final accent is never
+// read as one added to a plain headword.
+test("a spelled number is never read as an accent added to a plain headword (#902)", () => {
+  for (const key of ["centotré", "seicentotré", "trecentoquarantatré", "ventitré"]) assert.equal(addedAccentOff(key), undefined, key);
+  assert.deepEqual(accentlessProbe("centotré"), { fold: "centotre", spelled: ["centotre'"] }, "centotre is never probed as a plain headword");
+  assert.equal(addedAccentOff("dò"), "do");
+  assert.equal(addedAccentOff("dài"), "dai");
+});
+
 /** Headword keys with no variant link. */
 const plain = (...keys: string[]) => keys.map((key) => ({ key, variantOf: [] }));
 
@@ -110,6 +120,8 @@ test("a query opens the one headword it lacks or mis-marks the final accent of, 
   assert.equal(openedHeadword("càffe", plain("caffè")), undefined, "an accent inside the word must match");
   assert.equal(openedHeadword("caffe", plain("caffè", "càffe")), "caffè", "an accent inside the word is not the final accent");
   assert.equal(openedHeadword("perche", []), undefined);
+  assert.equal(openedHeadword("centotré", plain("centotre")), undefined, "a spelled number opens no plain headword");
+  assert.equal(openedHeadword("ventitre", plain("ventitré")), "ventitré", "but a missing final accent still opens one that has it");
 });
 
 test("of several headwords a query lacks the final accent of, it opens the main word the others are recorded as variants of (#846)", () => {
@@ -207,7 +219,10 @@ async function found(db: LookupDatabase, query: string): Promise<FoundResult> {
 }
 
 /** A batch candidate named as `entryKey` names an entry. */
-const candidateKey = (record: CandidateRecord): string => (record.recordId !== undefined ? String(record.recordId) : `page-${record.entryId}`);
+const candidateKey = (record: CandidateRecord): string => {
+  if (record.recordId !== undefined) return String(record.recordId);
+  return record.cardinal !== undefined ? `cardinal-${record.cardinal.value}` : `page-${record.entryId}`;
+};
 
 /** The entries `/v1/lookup` answers with, as `candidatesOf` (web/worker/api/lookupAnswer.ts) makes them. */
 const candidateKeys = (result: FoundResult): string[] => [
@@ -346,6 +361,44 @@ test("a word typed with an accent its headword lacks opens the plain headword, w
       await assertAgree(db, ["dò", "dó", "dài", "do", "dai", "é", "è", "e", "sè", "sé", "se", "pò", "po", "po'", "dall", "qqqq"]);
     },
     "fixtures/se-reflexive.jsonl",
+    "fixtures/do-dai.jsonl",
+  );
+});
+
+// Huey's ask of 2026-10-20 (https://github.com/povlabs/lexema/pull/907#issuecomment-6289786349):
+// the spelled-number step comes before the extra-accent step.
+// fixtures/cardinal-accent.jsonl holds seicentotre (line 42983), centotre
+// (42990) and trecentoquarantatre (423609) of it-0c432803, each a numeral
+// record with no gloss; fixtures/cardinals.jsonl holds ventitré.
+test("centotré, seicentotré and trecentoquarantatré keep the built number reading, never the source's plain numeral record (#902)", async () => {
+  await withBareSpellings(
+    async (db) => {
+      for (const [query, value] of [
+        ["centotré", 103],
+        ["seicentotré", 603],
+        ["trecentoquarantatré", 343],
+      ] as const) {
+        const answer = await found(db, query);
+        assert.deepEqual(answer.route, { kind: "surface" }, `${query} opens no plain headword`);
+        assert.deepEqual(
+          answer.readings.map((reading) => reading.cardinal?.value),
+          [value],
+          `${query} is the number reading`,
+        );
+        const present = await exists({ db, releaseId: RELEASE, query });
+        assert.ok(present.outcome === "present" && present.cardinal?.value === value, `${query}: exists() credits the number reading`);
+      }
+      for (const query of ["centotre", "seicentotre", "trecentoquarantatre"]) {
+        const own = await found(db, query);
+        assert.equal(own.route.kind, "surface", `${query} keeps its own answer`);
+        assert.deepEqual(own.readings.map((reading) => reading.cardinal), [undefined], `${query} is the source's record`);
+      }
+      assert.deepEqual((await found(db, "ventitre")).route, { kind: "accentless", headword: "ventitré" }, "a missing final accent still opens ventitré");
+      assert.deepEqual((await found(db, "dò")).route, { kind: "accentless", headword: "do" }, "dò still opens do");
+      await assertAgree(db, ["centotré", "seicentotré", "trecentoquarantatré", "centotre", "seicentotre", "trecentoquarantatre", "ventitre", "dò", "dài"]);
+    },
+    "fixtures/cardinal-accent.jsonl",
+    "fixtures/cardinals.jsonl",
     "fixtures/do-dai.jsonl",
   );
 });
