@@ -610,7 +610,8 @@ test("the batch answers a page-only form entry and a hand-kept reading of anothe
 });
 
 test("the batch reads a form the source lists nowhere as a shape of a word it has, by rule it-word-shape/v1, as the single lookup does (#809)", async () => {
-  // Real words of the missing-word count the dev seed has the word of, and one it has none for.
+  // Real words of the missing-word count the dev seed has the word of, one it has none for, and
+  // one no shape reads, an apostrophe for an accent, which opens città (#900).
   const words = ["dirlo", "fammi", "vederti", "andartene", "vattene", "aver", "far", "esser", "bell'", "qqqqqq", "citta'"];
   const asked = recording();
   const { answers } = await lookupBatch({ db: asked.db, releaseId: RELEASE, queries: words });
@@ -619,7 +620,8 @@ test("the batch reads a form the source lists nowhere as a shape of a word it ha
     light(answers[words.indexOf("dirlo")]).map((candidate) => candidate !== "not found" && candidate.lemma),
     ["dire"],
   );
-  assert.deepEqual(light(answers[words.indexOf("citta'")]), ["not found"]);
+  assert.deepEqual(light(answers[words.indexOf("qqqqqq")]), ["not found"]);
+  assert.deepEqual(light(answers[words.indexOf("citta'")]), await throughCandidatesOf("città"));
   // Every word's spellings in one statement, beside the agreement read.
   assert.equal(asked.asked.filter((sql) => sql === SHAPE_READ_SQL).length, 1, asked.asked.join("\n---\n"));
 });

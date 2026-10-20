@@ -728,7 +728,8 @@ const unfilled = (kept: readonly Match[], spelled: Iterable<Match>): Match[] => 
  * word that is a reflexive pronoun and a verb form, the two waits of rule
  * `it-pronominal-pair/v2` (`answeringPairs`), then the lemma links of the
  * records they answer with (`candidatesByKey`). Then, for a word none of these
- * answers, the headword it lacks a final accent of (`openedHeadwords`, #846),
+ * answers, the headword it lacks or mis-marks a final accent of
+ * (`openedHeadwords`, #846, #900),
  * and those headwords answered the same way. Last, for a word none of that
  * answers, the cardinal rule `it-cardinal/v1` reads it as (ADR 0034, #804).
  */
@@ -752,7 +753,8 @@ export async function lookupBatch({
   const answered = await candidatesByKey(db, releaseId, tables, reads, keys);
 
   // A word nothing answers may be typed without the final accent of a
-  // headword, and is answered as that headword is (#846), in one statement
+  // headword, or with the wrong mark on it, and is answered as that headword
+  // is (#846, #900), in one statement
   // more and the headwords' own reads; a batch with no such word sends
   // nothing for it.
   const opened = await openedHeadwords(db, releaseId, tables, keys.filter((key) => (answered.get(key) ?? []).length === 0));

@@ -179,13 +179,20 @@ U+2018, U+02BC, all to U+0027), but keeps accents:
 entries.
 
 Normalization still keeps accents, and so do the stored keys. One step reads a
-missing accent, and only on the query side, after every other route has
-missed: a one-word query nothing else answers opens the one headword that
-writes it with a final accent. `perche` opens `perché`. The step never runs
-for a query that is a word of its own, so `papa` stays `papa` and never
-`papà`, and `e` stays the conjunction and never `è`. It covers a missing final
-accent only, not a wrong one (`perchè`) or an apostrophe written for one
-(`citta'`), so those cases keep the not-found answer and its offer. When
+missing or wrong final mark, and only on the query side, after every other
+route has missed: a one-word query nothing else answers opens the one
+headword that differs from it only in the mark on its final vowel, where the
+headword writes that vowel with an accent, or with an apostrophe after it in
+place of the accent the query typed. `perche` opens `perché`, and so does
+`perchè`; `caffé` opens `caffè`, `sè` opens `sé`, `é` opens `è`, `citta'`
+opens `città`, `liberta'` opens `libertà` and `pò` opens `po'`. The step
+never runs for a query that is a word of its own, so `papa` stays `papa` and
+never `papà`, `e` stays the conjunction and never `è`, `se` stays `se`, and
+`po'`, `be'` and `de'` stay themselves. An accent inside the word must match
+as typed. A final apostrophe left off (`po` for `po'`, `dall` for `dall'`)
+opens nothing, and an accent on a word that has none (`dò` for `do`) is the
+work of #902 and opens nothing yet, so those cases keep the not-found answer
+and its offer. When
 several headwords match, the source settles it or nothing does: if the others
 are recorded in the source as variants of one of them, the step opens that
 main word, so `piu` opens `più`, since `piú` reads "variante ricercata di
@@ -193,8 +200,11 @@ più". With no such variant link it opens nothing, and the offer stays. These
 are Huey's rulings of 2026-10-17
 ([#846](https://github.com/povlabs/lexema/issues/846#issuecomment-6233340944),
 and the
-[tie-break](https://github.com/povlabs/lexema/issues/846#issuecomment-6240679313));
-the rule is in [LOOKUP.md](LOOKUP.md#a-word-typed-without-its-final-accent).
+[tie-break](https://github.com/povlabs/lexema/issues/846#issuecomment-6240679313)),
+widened to a wrong final mark and to an apostrophe and an accent swapped by
+Huey's ruling of 2026-10-20
+([#900](https://github.com/povlabs/lexema/issues/900#issuecomment-6286828410)),
+under the same guards and tie-break; the rule is in [LOOKUP.md](LOOKUP.md#a-word-typed-without-its-final-accent).
 
 The 128-character bound is well past the longest headword in this release: the
 longest is 51 characters and none reaches 128, measured over the archive in

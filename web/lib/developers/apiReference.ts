@@ -608,9 +608,9 @@ export const LOOKUP_TRANSLATIONS_EXAMPLE: GetExample = {
 
 /** The not-found answer of `/lookup`, which is a result, not an error. */
 export const NOT_FOUND_EXAMPLE: GetExample = {
-  path: "lookup?q=cittá",
+  path: "lookup?q=cìtta",
   status: 404,
-  response: { query: "cittá", release_id: RELEASE, results: [], suggestions: [{ word: "città", kind: "accent" }] },
+  response: { query: "cìtta", release_id: RELEASE, results: [], suggestions: [{ word: "città", kind: "accent" }] },
 };
 
 /** Every endpoint, keyed as src/api/calls.ts names it, so none goes undocumented. */

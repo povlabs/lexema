@@ -11,7 +11,7 @@ import { DatabaseSync } from "node:sqlite";
 import test from "node:test";
 import { gzipSync } from "node:zlib";
 import { seedSql } from "../src/import/seedSql.js";
-import { accentlessProbe, accentlessSpelling, openedHeadword, variantNamed } from "../src/italian/finalAccent.js";
+import { accentlessProbe, accentlessSpelling, finalVowel, marksOpen, openedHeadword, variantNamed } from "../src/italian/finalAccent.js";
 import { bareSpelling, bareSpellingOutcome, type BareSpellingAnswer } from "../src/lookup/bareSpelling.js";
 import { lookupBatch, type CandidateRecord } from "../src/lookup/batch.js";
 import type { LookupDatabase } from "../src/lookup/database.js";
@@ -40,20 +40,52 @@ test("an accentless spelling takes off a final accent only: a final apostrophe i
   assert.equal(accentlessSpelling("po'"), undefined);
   assert.equal(accentlessSpelling("casa"), undefined);
   assert.equal(accentlessSpelling("caffè latte"), undefined, "two words");
-  assert.equal(accentlessProbe("perche"), "perche");
-  assert.equal(accentlessProbe("ùltima"), "ultima", "probed under its letters, as accent_fold keys a headword");
-  assert.equal(accentlessProbe("caffé"), undefined, "ends in no plain vowel");
-  assert.equal(accentlessProbe("citta'"), undefined, "ends in an apostrophe");
+  assert.deepEqual(accentlessProbe("perche"), { fold: "perche", elided: undefined });
+  assert.deepEqual(accentlessProbe("ùltima"), { fold: "ultima", elided: undefined }, "probed under its letters, as accent_fold keys a headword");
+  assert.deepEqual(accentlessProbe("caffé"), { fold: "caffe", elided: "caffe'" }, "a final vowel with a mark is probed under an apostrophe too (#900)");
+  assert.deepEqual(accentlessProbe("pò"), { fold: "po", elided: "po'" });
+  assert.deepEqual(accentlessProbe("citta'"), { fold: "citta", elided: undefined }, "an apostrophe for an accent is probed under its letters (#900)");
+  assert.equal(accentlessProbe("bar"), undefined, "ends in no vowel");
+  assert.equal(accentlessProbe("d'"), undefined, "an apostrophe after no vowel");
   assert.equal(accentlessProbe("vado via"), undefined, "two words");
+});
+
+test("a final vowel is plain, accented, or followed by an apostrophe, and only its mark goes", () => {
+  assert.deepEqual(finalVowel("perché"), { plain: "perche", mark: "accent" });
+  assert.deepEqual(finalVowel("perchè"), { plain: "perche", mark: "accent" });
+  assert.deepEqual(finalVowel("perche"), { plain: "perche", mark: "none" });
+  assert.deepEqual(finalVowel("é"), { plain: "e", mark: "accent" });
+  assert.deepEqual(finalVowel("citta'"), { plain: "citta", mark: "apostrophe" });
+  assert.deepEqual(finalVowel("po'"), { plain: "po", mark: "apostrophe" });
+  assert.deepEqual(finalVowel("ùltimà"), { plain: "ùltima", mark: "accent" }, "only the final mark goes");
+  assert.equal(finalVowel("pò'"), undefined, "an apostrophe after an accented vowel");
+  assert.equal(finalVowel("bar"), undefined, "ends in no vowel");
+  assert.equal(finalVowel("caffè latte"), undefined, "two words");
+});
+
+test("a final accent opens for any mark typed on its vowel, a final apostrophe only for an accent typed in its place (#846, #900)", () => {
+  const marks = ["none", "accent", "apostrophe"] as const;
+  const opens = marks.flatMap((typed) => marks.filter((written) => marksOpen(typed, written)).map((written) => `${typed} → ${written}`));
+  assert.deepEqual(opens, ["none → accent", "accent → accent", "accent → apostrophe", "apostrophe → accent"]);
 });
 
 /** Headword keys with no variant link. */
 const plain = (...keys: string[]) => keys.map((key) => ({ key, variantOf: [] }));
 
-test("a query opens the one headword it is the accentless spelling of, and none when two are with no variant link or none is", () => {
+test("a query opens the one headword it lacks or mis-marks the final accent of, and none when two are with no variant link or none is", () => {
   assert.equal(openedHeadword("perche", plain("perché")), "perché");
   assert.equal(openedHeadword("piu", plain("più", "piú")), undefined, "two headwords share it, and neither is the other's variant");
-  assert.equal(openedHeadword("perchè", plain("perché")), undefined, "a wrong accent is no accentless spelling");
+  assert.equal(openedHeadword("perchè", plain("perché")), "perché", "a wrong final mark opens the headword with the right one (#900)");
+  assert.equal(openedHeadword("caffé", plain("caffè")), "caffè");
+  assert.equal(openedHeadword("é", plain("è", "e")), "è", "a headword with no final accent is no match");
+  assert.equal(openedHeadword("perché", plain("perché")), undefined, "a query never opens itself");
+  assert.equal(openedHeadword("perchè", plain("perché", "perchè")), "perché", "nor counts itself as a match");
+  assert.equal(openedHeadword("pò", plain("po'", "po")), "po'", "an accent for an apostrophe opens the apostrophe headword, never the word with no mark (#900)");
+  assert.equal(openedHeadword("citta'", plain("città")), "città", "an apostrophe for an accent opens the accented headword (#900)");
+  assert.equal(openedHeadword("liberta'", plain("libertà")), "libertà");
+  assert.equal(openedHeadword("po", plain("po'")), undefined, "a final apostrophe left off is no mark to open");
+  assert.equal(openedHeadword("dò", plain("do")), undefined, "an accent on a word that has none opens nothing");
+  assert.equal(openedHeadword("càffe", plain("caffè")), undefined, "an accent inside the word must match");
   assert.equal(openedHeadword("caffe", plain("caffè", "càffe")), "caffè", "an accent inside the word is not the final accent");
   assert.equal(openedHeadword("perche", []), undefined);
 });
@@ -109,7 +141,8 @@ test("the outcome is opened, found, the best offer, offered later, or not offere
 // #846, papa (17770) and papà (52197). `extra` adds lines of other fixtures:
 // fixtures/citto.jsonl holds citto (119981), whose table spells `citta`, and
 // fixtures/piu-acute.jsonl holds piú (125475), a second headword `piu` lacks
-// a final accent of.
+// a final accent of, and fixtures/se-reflexive.jsonl holds se (21877 and
+// 21878) and sé (120512 and 120513), added for #900.
 async function withBareSpellings(run: (db: LookupDatabase) => Promise<void>, ...extra: string[]): Promise<void> {
   const dir = await mkdtemp(join(tmpdir(), "lexema-bare-spellings-"));
   const archive = join(dir, "fixture.jsonl.gz");
@@ -210,20 +243,57 @@ test("a word of its own keeps its answer: papa is papa, e is the conjunction, po
   });
 });
 
-test("a wrong accent, an apostrophe, or a final apostrophe left off stays not found and offers the written word first (#468, #846)", async () => {
+// Huey's ruling of 2026-10-20 (https://github.com/povlabs/lexema/issues/900#issuecomment-6286828410):
+// a final vowel typed with the wrong mark, or with an apostrophe and an accent
+// swapped, opens the headword with the right one, under the #846 guards.
+// perché is lines 33262 to 33264, caffè 2886, sé 120512 and 120513, città
+// 31998, è 2673 and po' 31245 and 31246.
+test("a word typed with the wrong mark on its final vowel opens the headword with the right one, with that headword's own readings (#900)", async () => {
   await withBareSpellings(async (db) => {
-    for (const [query, written] of [
+    for (const [query, headword] of [
       ["perchè", "perché"],
       ["caffé", "caffè"],
+      ["sè", "sé"],
       ["cittá", "città"],
-      // The apostrophe case: before #468, `dall` led with `dalla`, one edit away.
-      ["dall", "dall'"],
+      ["é", "è"],
+      ["Perchè", "perché"],
+      ["citta'", "città"],
+      ["Citta’", "città"],
+      ["pò", "po'"],
     ] as const) {
-      const answer = await search(db, query);
-      assert.ok(!answer.found && answer.nearby.kind === "accent", `${query} is not found and offers a spelling with the same letters`);
-      assert.equal(bareSpellingOutcome(written, answer), "best", `${query} offers ${written} first`);
+      const opened = await found(db, query);
+      assert.deepEqual(opened.route, { kind: "accentless", headword }, `${query} opens ${headword}`);
+      assert.equal(opened.query.raw, query, "the query stays as typed");
+      assert.deepEqual(opened.readings, (await found(db, headword)).readings, `${query} answers with ${headword}'s own readings`);
+      const present = await exists({ db, releaseId: RELEASE, query });
+      assert.ok(present.outcome === "present" && present.word === headword, `${query}: exists() credits ${headword}`);
     }
-    assert.equal((await lookup({ db, releaseId: RELEASE, query: "citta'" })).outcome, "not-found", "an accent written as an apostrophe opens nothing");
+    await assertAgree(db, ["perchè", "caffé", "sè", "cittá", "é", "citta'", "pò", "se", "sé", "e", "è", "perche", "perché", "po", "po'"]);
+  }, "fixtures/se-reflexive.jsonl");
+});
+
+test("se, e, po' and perche keep their answers beside the wrong-mark step (#846, #900)", async () => {
+  await withBareSpellings(async (db) => {
+    const se = await found(db, "se");
+    assert.equal(se.route.kind, "surface");
+    assert.deepEqual([...new Set(se.readings.map((reading) => reading.word))], ["se"], "never sé");
+    const e = await found(db, "e");
+    assert.equal(e.route.kind, "surface");
+    assert.deepEqual(e.readings.map((reading) => `${reading.word} ${reading.pos}`), ["e conj", "e character"], "never è");
+    assert.equal((await found(db, "po'")).route.kind, "surface", "po' is a word of its own");
+    assert.deepEqual((await found(db, "perche")).route, { kind: "accentless", headword: "perché" });
+  }, "fixtures/se-reflexive.jsonl");
+});
+
+test("a final apostrophe left off stays not found and offers the written word (#468, #900)", async () => {
+  await withBareSpellings(async (db) => {
+    // The apostrophe case: before #468, `dall` led with `dalla`, one edit away.
+    const dall = await search(db, "dall");
+    assert.ok(!dall.found && dall.nearby.kind === "accent", "dall is not found and offers a spelling with the same letters");
+    assert.equal(bareSpellingOutcome("dall'", dall), "best", "dall offers dall' first");
+    // Only an accent typed for the apostrophe opens po' (#900); dall, with no
+    // mark at all, does not open dall'.
+    assert.equal(bareSpellingOutcome("po'", await search(db, "pò")), "opened");
   });
 });
 

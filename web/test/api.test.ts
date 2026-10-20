@@ -198,8 +198,9 @@ function offeredBy(nearby: Nearby): string[] {
 test("a word not in the release is a 404 offering findNearby's spellings in its order, typo called edit", async () => {
   const { key } = await newKey();
   const cases: [string, string[]][] = [
-    // Not `citta`, which opens città since #846: `cittá` has a wrong accent.
-    [encodeURIComponent("cittá"), ["accent"]],
+    // Not `citta`, which opens città since #846, nor `cittá`, which opens it
+    // since #900: `cìtta` has an accent inside the word.
+    [encodeURIComponent("cìtta"), ["accent"]],
     ["mangare", ["edit"]],
     // Not `sal`, which is now sale cut short (rule it-word-shape/v1, #809).
     ["stud", ["prefix"]],
@@ -1629,7 +1630,7 @@ test("/v1/lookup leaves out Wikizionario's missing-field placeholders, as the pa
   }
 });
 
-test("/v1/lookup, /v1/lookup/batch and /v1/exists answer perche and piu with the readings of perché and più, via headword as any search of them (#846)", async () => {
+test("/v1/lookup, /v1/lookup/batch and /v1/exists answer perche, piu, perchè, citta' and pò with the readings of perché, più, città and po', via headword as any search of them (#846, #900)", async () => {
   // The real archive lines in fixtures/bare-spellings.jsonl
   // (test/bareSpelling.test.ts names each), seeded apart as above.
   const bareDir = await mkdtemp(join(tmpdir(), "lexema-api-bare-spellings-"));
@@ -1657,23 +1658,37 @@ test("/v1/lookup, /v1/lookup/batch and /v1/exists answer perche and piu with the
       assert.equal(response.status, status, path);
       return response.json();
     };
-    for (const [typed, headword] of [["perche", "perché"], ["piu", "più"]] as const) {
-      const opened = await body(`lookup?q=${typed}`);
+    // perchè and caffé, a wrong mark on the final vowel, and citta' and pò, an
+    // apostrophe and an accent swapped, open perché, caffè, città and po' the
+    // same way (#900, https://github.com/povlabs/lexema/issues/900#issuecomment-6286828410).
+    for (const [typed, headword] of [
+      ["perche", "perché"],
+      ["piu", "più"],
+      ["perchè", "perché"],
+      ["caffé", "caffè"],
+      ["citta'", "città"],
+      ["pò", "po'"],
+    ] as const) {
+      const opened = await body(`lookup?q=${encodeURIComponent(typed)}`);
       const own = await body(`lookup?q=${encodeURIComponent(headword)}`);
       assert.equal(opened.query, typed);
       assert.ok(opened.results.length > 0, typed);
       assert.deepEqual(opened.results, own.results, `${typed} answers with ${headword}'s results`);
       assert.ok(opened.results.every((result: Json) => result.word === headword && result.match.via === "headword"), typed);
-      assert.equal((await body(`exists?q=${typed}`)).exists, true, typed);
+      assert.equal((await body(`exists?q=${encodeURIComponent(typed)}`)).exists, true, typed);
     }
-    const batch = await body("lookup/batch", 200, JSON.stringify({ q: ["perche", "perché", "piu", "più", "papa", "perchè"] }));
+    const batch = await body("lookup/batch", 200, JSON.stringify({ q: ["perche", "perché", "piu", "più", "papa", "perchè", "caffé", "caffè", "e", "pò", "po'", "citta'", "città"] }));
     const answered = (query: string) => batch.results.filter((result: Json) => result.query === query).map(({ found, lemma, pos }: Json) => [found, lemma ?? null, pos ?? null]);
     assert.deepEqual(answered("perche"), answered("perché"));
     assert.deepEqual(answered("piu"), answered("più"));
     assert.ok(answered("perche").length > 0 && answered("piu").length > 0);
     assert.deepEqual(answered("papa"), [[true, "papa", "noun"]], "papa stays papa");
-    assert.deepEqual(answered("perchè"), [[false, null, null]], "a wrong accent opens nothing");
-    await body("lookup?q=perch%C3%A8", 404);
+    assert.deepEqual(answered("perchè"), answered("perché"), "a wrong final mark opens perché");
+    assert.deepEqual(answered("caffé"), answered("caffè"));
+    assert.ok(answered("e").every(([, lemma]: Json[]) => lemma === "e"), "e stays e");
+    assert.deepEqual(answered("pò"), answered("po'"), "an accent for an apostrophe opens po'");
+    assert.deepEqual(answered("citta'"), answered("città"), "an apostrophe for an accent opens città");
+    assert.ok(answered("pò").length > 0 && answered("citta'").length > 0);
   } finally {
     bareSqlite.close();
     await rm(bareDir, { recursive: true, force: true });

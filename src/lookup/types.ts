@@ -1488,8 +1488,9 @@ export interface PhraseForm {
  * #810, #834); `pairs` are the pairs that answered, and the readings are
  * those verbs. `accentless`: nothing answers it, not even a Wikidata word,
  * and it is one word typed without the final accent of one served headword,
- * or of several where the others are recorded as its variants (`perche` of
- * `perché`, `piu` of `più` beside `piú`, #846, src/lookup/accentless.ts);
+ * or with the wrong mark on it, or so of several where the others are
+ * recorded as its variants (`perche` and `perchè` of `perché`, `piu` of `più`
+ * beside `piú`, #846, #900, src/lookup/accentless.ts);
  * `headword` is that headword as the source writes it, and the readings are
  * its own, as a search for it answers them.
  */

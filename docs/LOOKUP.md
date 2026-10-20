@@ -245,7 +245,7 @@ record when read with `i`: `troja` (`troia`), the forms of `abbujare`
 (`abbuiare`) and the name `Aja` (`aia`). An accent written as an apostrophe
 (`citta'`) is no elision, and a word with an accent missing (`perche`) is no
 shape: accents are meaning ([LOOKUP_DESIGN.md](LOOKUP_DESIGN.md#accents-are-meaning)).
-A word with its final accent missing is read by the last step instead,
+A word with its final accent missing, wrong or written as an apostrophe is read by the last step instead,
 [below](#a-word-typed-without-its-final-accent).
 
 Every spelling is read in one statement, `shapeReadOf` (`SHAPE_READ_SQL` on a
@@ -328,25 +328,39 @@ of its words in the same two waits. Nothing derived is stored.
 ### A word typed without its final accent
 
 A reader often types a word without its final accent: `perche` for `perché`,
-`piu` for `più`. When every route above misses, a Wikidata word too, and the
-key is one word, `lookup()` opens the served headword that writes the key
-with a final accent (#846, Huey's
+`piu` for `più`; with the wrong mark on it: `perchè` for `perché`, `caffé`
+for `caffè`, `sè` for `sé`; or with an apostrophe and an accent swapped:
+`citta'` for `città`, `pò` for `po'`. When every route above misses, a
+Wikidata word too, and the key is one word, `lookup()` opens the served
+headword that writes the key's final vowel with the mark it lacks or
+mis-marks (#846,
+Huey's
 [ruling](https://github.com/povlabs/lexema/issues/846#issuecomment-6233340944)
 and [tie-break](https://github.com/povlabs/lexema/issues/846#issuecomment-6240679313);
+#900, Huey's [ruling](https://github.com/povlabs/lexema/issues/900#issuecomment-6286828410);
 [`src/italian/finalAccent.ts`](../src/italian/finalAccent.ts), read in
 [`src/lookup/accentless.ts`](../src/lookup/accentless.ts)):
 
-1. The key must be one word ending in a plain vowel. Anything else sends
-   nothing more.
+1. The key must be one word ending in a vowel, plain or accented, or in a
+   plain vowel and an apostrophe (`finalVowel`). Anything else sends nothing
+   more, so `bar` and `d'` send nothing.
 2. `ACCENTED_HEADWORD_SQL` reads the keys `accent_fold` holds under the key's
-   letters, and keeps those some record heads (`lookup_form.origin =
-   'headword'`), each with the first gloss of every sense of its record but
-   a hidden one (#857). It is sent in the call that reads the page-only
-   entries, as soon as the source spells nothing as typed, so it costs one
-   statement and no call.
-3. A headword counts when taking off its final accent gives the key
-   (`accentlessSpelling`): `perché` for `perche`. An accent inside the word
-   must match as typed, and a final apostrophe is no accent.
+   letters with the final apostrophe taken off, and, for a key whose final
+   vowel has an accent, the key that writes an apostrophe in its place
+   (`accentlessProbe`: `pò` → `po'`), which `accent_fold` does not hold. It
+   keeps those some record heads (`lookup_form.origin = 'headword'`), each
+   with the first gloss of every sense of its record but a hidden one
+   (#857). It is sent in the call that reads the page-only entries, as soon
+   as the source spells nothing as typed, so it costs one statement and no
+   call.
+3. A headword other than the key counts when the two are the same with the
+   final mark taken off (`finalVowel`), and that mark may open it
+   (`marksOpen`). A final accent opens for the vowel typed plain, with the
+   wrong mark or with an apostrophe after it: `perché` for `perche`, for
+   `perchè` and for `perchê`; `città` for `citta'`. A final apostrophe opens
+   only for an accent typed in its place: `po'` for `pò`, never for `po`. A
+   headword with neither never counts, so `dò` does not open `do`, and an
+   accent inside the word must match as typed.
 4. One headword counts, and the step opens it. When several count, it opens
    the main word: the one that is no variant of another, where every other
    one has a sense whose first gloss opens with "variante" and names it after
@@ -358,7 +372,11 @@ The readings are the headword's own, as a search for it answers them;
 `route` is `{ kind: "accentless", headword }`, the headword as its first
 headword row writes it. The step runs only where nothing else answers, so a
 key that is a word of its own keeps its answer: `papa` stays `papa`, `e` stays
-the conjunction, and `citta` stays the form in `citto`'s table. `exists()` and
+the conjunction, `se` stays `se`, `po'` stays `po'`, and `citta` stays the
+form in `citto`'s table. On release it-0c432803 `perchè` opens `perché`
+(lines 33262 to 33264), `caffé` opens `caffè` (2886), `sè` opens `sé` (120512
+and 120513), `citta'` opens `città` (31998) and `pò` opens `po'` (31245 and
+31246), while `se` (21877 and 21878) keeps its own page. `exists()` and
 `lookupBatch` answer the same way, the batch reading every word's headword in
 one statement more. The word page shows the headword's own page, with no line
 about the accent ([`searchAttempt.ts`](../web/lib/dictionary/searchAttempt.ts)).
@@ -788,15 +806,17 @@ and 3):
 1. **Exact lookup**, which already failed.
 2. **Accent.** The query's key with its accents taken off (`foldKey`: NFD,
    combining marks removed) is probed in `accent_fold`, which holds every
-   `surface_key` whose folded spelling differs from it. `cittá` → `città`.
+   `surface_key` whose folded spelling differs from it. `cìtta` → `città`.
    Since #846 a word typed without the final accent of a headword opens
-   that headword instead ([above](#a-word-typed-without-its-final-accent)), so
-   this offer remains for the cases that rule leaves out: a wrong accent
-   (`perchè` → `perché`), a missing final apostrophe (`dall` → `dall'`), and
-   a key several headwords lack a final accent of with no variant link to
-   settle which (`piu` opens `più`, since `piú` is its variant). An
-   accent written as an apostrophe (`citta'`) is not found either, and gets
-   whatever the later steps offer. An
+   that headword instead, and since #900 so does one typed with the wrong
+   mark on it or with an apostrophe and an accent swapped (`perchè` opens
+   `perché`, `citta'` opens `città`, `pò` opens `po'`,
+   [above](#a-word-typed-without-its-final-accent)), so this offer remains
+   for the cases those rules leave out: an accent inside the word that
+   differs (`cìtta` → `città`), a missing final apostrophe (`dall` →
+   `dall'`), and a key several headwords lack or mis-mark a final accent of
+   with no variant link to settle which (`piu` opens `più`, since `piú` is
+   its variant). An
    accented query also tries its unaccented spelling. A query that does not
    end in an apostrophe also tries its folded key with one added, as a key of
    its own and in `accent_fold` (#468): `dall` → `dall'`, offered in the same

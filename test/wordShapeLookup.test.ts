@@ -210,12 +210,10 @@ test("the batch answers every shaped word with the records /v1/lookup answers it
     assert.equal(present.outcome === "present", single.outcome === "found", word);
   }
   assert.equal(answers[words.indexOf("qqqqqq")].outcome, "not-found");
-  // An accent written as an apostrophe is no shape and opens no headword: it
-  // stays the not-found page's accent offer. The accent left off opens città,
-  // which this fixture has without citto (#846).
-  assert.equal(answers[words.indexOf("citta'")].outcome, "not-found");
-  const citta = await found("citta");
-  assert.deepEqual(citta.route, { kind: "accentless", headword: "città" });
+  // An accent written as an apostrophe is no shape, and opens città as the
+  // accent left off does, since this fixture has città without citto (#846,
+  // #900).
+  for (const query of ["citta'", "citta"]) assert.deepEqual((await found(query)).route, { kind: "accentless", headword: "città" }, query);
 });
 
 test("a word the dictionary spells keeps its answer, and a query of none of the rule's shapes sends it no read (#809)", async () => {
