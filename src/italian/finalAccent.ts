@@ -11,8 +11,14 @@
 // with the wrong mark, or with an apostrophe and an accent swapped (#900,
 // https://github.com/povlabs/lexema/issues/900#issuecomment-6286828410):
 // `perchè` for `perché`, `caffé` for `caffè`, `sè` for `sé`, `citta'` for
-// `città`, `pò` for `po'`, under the same guards and tie-break. What the
-// lookup does with it is src/lookup/accentless.ts.
+// `città`, `pò` for `po'`, under the same guards and tie-break. Huey's ruling
+// of 2026-10-20 on #902
+// (https://github.com/povlabs/lexema/issues/902#issuecomment-6286868165)
+// widens it once more, to an accent typed on the vowels a word ends in that
+// its headword lacks: `dò` for `do`, `dài` for `dai`, under the same guards
+// and tie-break, and only where no headword with a final mark answers it, so
+// `é` still opens `è`, never `e`. What the lookup does with it is
+// src/lookup/accentless.ts.
 
 import { glossBase } from "./formOfGlossEdge.js";
 import { normalizeItalianExact } from "./normalize.js";
@@ -73,7 +79,8 @@ export function accentlessSpelling(key: string): string | undefined {
  * the wrong mark (`perchè`) or with an apostrophe for the accent (`citta'`,
  * #900). A headword with a final apostrophe opens only for an accent typed in
  * its place (`pò` for `po'`, #900), never for the apostrophe left off (`po`,
- * `dall`). A headword with neither mark never opens, so `dò` opens no `do`.
+ * `dall`). A headword with neither mark never opens by its mark: one the
+ * query adds an accent to opens only as `endingAccentOff` reads it (#902).
  */
 export function marksOpen(typed: FinalMark, written: FinalMark): boolean {
   switch (written) {
@@ -86,19 +93,40 @@ export function marksOpen(typed: FinalMark, written: FinalMark): boolean {
   }
 }
 
+const baseLetter = (char: string): string => char.normalize("NFD").replace(/\p{M}/gu, "");
+
+/**
+ * A one-word key with the one accent on the vowels it ends in taken off, or
+ * none when it is more than one word, ends in no vowel, or carries no accent
+ * or more than one there: `dò` → `do`, `dài` → `dai`, `è` → `e`, `ùltimà` →
+ * `ùltima`; `do`, `po'`, `ùltima`, `dàì` and `caffè latte` → none. The headword
+ * a query adds such an accent to (#902).
+ */
+export function endingAccentOff(key: string): string | undefined {
+  if (/\s/u.test(key)) return undefined;
+  const letters = [...key];
+  let start = letters.length;
+  while (start > 0 && isPlainVowel(baseLetter(letters[start - 1]))) start -= 1;
+  const marked = letters.flatMap((letter, at) => (at >= start && baseLetter(letter) !== letter ? [at] : []));
+  if (marked.length !== 1) return undefined;
+  return letters.map((letter, at) => (at === marked[0] ? baseLetter(letter) : letter)).join("");
+}
+
 /**
  * What a query that may open a headword is probed under, or none for a query
  * that is more than one word or ends in no vowel (`finalVowel`), which opens
  * no headword. `fold`: its letters with every accent and the final apostrophe
  * taken off, as `accent_fold` keys a headword with an accent
  * (src/import/seedSql.ts): `perchè` and `citta'` → `perche` and `citta`.
- * `elided`: for a query whose final vowel carries an accent, the key that
- * writes an apostrophe in its place, since `accent_fold` holds no key with
- * no accent: `pò` → `po'`.
+ * `spelled`: the keys that carry no accent it may open, which `accent_fold`
+ * does not hold: for a query whose final vowel carries an accent, the key
+ * that writes an apostrophe in its place (#900), and for one with an accent
+ * on the vowels it ends in, the key without it (`endingAccentOff`, #902):
+ * `pò` → `po'` and `po`, `dài` → `dai`.
  */
 export interface AccentProbe {
   fold: string;
-  elided: string | undefined;
+  spelled: readonly string[];
 }
 
 /** The probe a key is read under (`AccentProbe`), or none when it opens no headword. */
@@ -106,7 +134,8 @@ export function accentlessProbe(key: string): AccentProbe | undefined {
   const end = finalVowel(key);
   if (end === undefined) return undefined;
   const fold = end.plain.normalize("NFD").replace(/\p{M}/gu, "").normalize("NFC");
-  return { fold, elided: end.mark === "accent" ? `${end.plain}'` : undefined };
+  const bare = endingAccentOff(key);
+  return { fold, spelled: [...(end.mark === "accent" ? [`${end.plain}'`] : []), ...(bare === undefined ? [] : [bare])] };
 }
 
 /**
@@ -134,26 +163,43 @@ export interface AccentedHeadword {
  * query writes with a mark it may open (`marksOpen`), the letters before it
  * the same (`finalVowel`). `perche` opens `perché` (#846), and so do `perchè`
  * and `perchê` (#900); `caffé` opens `caffè`, `sè` opens `sé`, `citta'` opens
- * `città` and `pò` opens `po'`. When several are, it opens the main word: the
- * one no variant of another, each other one being recorded as its variant.
- * `piu` opens `più`, since `piú` is "variante ricercata di più". None when no
- * headword is, or when several are and no such variant link settles which,
- * so the not-found answer offers them instead. A query that differs from a
- * headword by an accent the headword lacks (`dò` of `do`), by a final
- * apostrophe it leaves off (`po` of `po'`) or by an accent inside the word
- * opens none.
+ * `città` and `pò` opens `po'`. Only when no headword with a final mark is a
+ * match does the one the query adds an accent to count (`endingAccentOff`,
+ * #902): `dò` opens `do` and `dài` opens `dai`, but `é` opens `è` and `sè`
+ * opens `sé`, never `e` or `se`. When
+ * several are, it opens the main word: the one no variant of another, each
+ * other one being recorded as its variant. `piu` opens `più`, since `piú` is
+ * "variante ricercata di più". None when no headword is, or when several are
+ * and no such variant link settles which, so the not-found answer offers
+ * them instead. A query that differs from a headword by a final apostrophe
+ * it leaves off (`po` of `po'`), adds (`citta'` of `citta`) or by an accent
+ * inside the word opens none.
  */
 export function openedHeadword(key: string, headwords: Iterable<AccentedHeadword>): string | undefined {
   const typed = finalVowel(key);
   if (typed === undefined) return undefined;
-  const matches = new Map<string, Set<string>>();
+  const bare = endingAccentOff(key);
+  const marked = new Map<string, Set<string>>();
+  const unmarked = new Map<string, Set<string>>();
   for (const headword of headwords) {
+    if (headword.key === key) continue;
     const written = finalVowel(headword.key);
-    if (headword.key === key || written === undefined || written.plain !== typed.plain || !marksOpen(typed.mark, written.mark)) continue;
+    const matches =
+      written !== undefined && written.plain === typed.plain && marksOpen(typed.mark, written.mark) ? marked : headword.key === bare ? unmarked : undefined;
+    if (matches === undefined) continue;
     const variantOf = matches.get(headword.key) ?? new Set<string>();
     for (const word of headword.variantOf) variantOf.add(word);
     matches.set(headword.key, variantOf);
   }
+  return mainWord(marked.size > 0 ? marked : unmarked);
+}
+
+/**
+ * The one of `matches`, each headword key with the keys it is recorded a
+ * variant of, that is no variant of another while each other one is its
+ * variant, or none when no such word settles which.
+ */
+function mainWord(matches: ReadonlyMap<string, ReadonlySet<string>>): string | undefined {
   const isMain = (candidate: string): boolean =>
     [...matches].every(([other, variantOf]) => other === candidate || (variantOf.has(candidate) && !matches.get(candidate)?.has(other)));
   const [main, ...more] = [...matches.keys()].filter(isMain);

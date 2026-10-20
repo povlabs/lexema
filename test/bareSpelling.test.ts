@@ -11,7 +11,7 @@ import { DatabaseSync } from "node:sqlite";
 import test from "node:test";
 import { gzipSync } from "node:zlib";
 import { seedSql } from "../src/import/seedSql.js";
-import { accentlessProbe, accentlessSpelling, finalVowel, marksOpen, openedHeadword, variantNamed } from "../src/italian/finalAccent.js";
+import { accentlessProbe, accentlessSpelling, endingAccentOff, finalVowel, marksOpen, openedHeadword, variantNamed } from "../src/italian/finalAccent.js";
 import { bareSpelling, bareSpellingOutcome, type BareSpellingAnswer } from "../src/lookup/bareSpelling.js";
 import { lookupBatch, type CandidateRecord } from "../src/lookup/batch.js";
 import type { LookupDatabase } from "../src/lookup/database.js";
@@ -40,11 +40,13 @@ test("an accentless spelling takes off a final accent only: a final apostrophe i
   assert.equal(accentlessSpelling("po'"), undefined);
   assert.equal(accentlessSpelling("casa"), undefined);
   assert.equal(accentlessSpelling("caffè latte"), undefined, "two words");
-  assert.deepEqual(accentlessProbe("perche"), { fold: "perche", elided: undefined });
-  assert.deepEqual(accentlessProbe("ùltima"), { fold: "ultima", elided: undefined }, "probed under its letters, as accent_fold keys a headword");
-  assert.deepEqual(accentlessProbe("caffé"), { fold: "caffe", elided: "caffe'" }, "a final vowel with a mark is probed under an apostrophe too (#900)");
-  assert.deepEqual(accentlessProbe("pò"), { fold: "po", elided: "po'" });
-  assert.deepEqual(accentlessProbe("citta'"), { fold: "citta", elided: undefined }, "an apostrophe for an accent is probed under its letters (#900)");
+  assert.deepEqual(accentlessProbe("perche"), { fold: "perche", spelled: [] });
+  assert.deepEqual(accentlessProbe("ùltima"), { fold: "ultima", spelled: [] }, "probed under its letters, as accent_fold keys a headword");
+  assert.deepEqual(accentlessProbe("caffé"), { fold: "caffe", spelled: ["caffe'", "caffe"] }, "a final vowel with a mark is probed under an apostrophe (#900) and under none (#902) too");
+  assert.deepEqual(accentlessProbe("dài"), { fold: "dai", spelled: ["dai"] }, "an accent on the vowels it ends in is probed under none (#902)");
+  assert.deepEqual(accentlessProbe("pò"), { fold: "po", spelled: ["po'", "po"] });
+  assert.deepEqual(accentlessProbe("ùltimà"), { fold: "ultima", spelled: ["ùltima'", "ùltima"] }, "only the final mark goes");
+  assert.deepEqual(accentlessProbe("citta'"), { fold: "citta", spelled: [] }, "an apostrophe for an accent is probed under its letters (#900)");
   assert.equal(accentlessProbe("bar"), undefined, "ends in no vowel");
   assert.equal(accentlessProbe("d'"), undefined, "an apostrophe after no vowel");
   assert.equal(accentlessProbe("vado via"), undefined, "two words");
@@ -69,6 +71,19 @@ test("a final accent opens for any mark typed on its vowel, a final apostrophe o
   assert.deepEqual(opens, ["none → accent", "accent → accent", "accent → apostrophe", "apostrophe → accent"]);
 });
 
+test("an accent on the vowels a word ends in comes off when it is the only one there (#902)", () => {
+  assert.equal(endingAccentOff("dò"), "do");
+  assert.equal(endingAccentOff("dài"), "dai", "the vowels it ends in, not only the last letter");
+  assert.equal(endingAccentOff("è"), "e");
+  assert.equal(endingAccentOff("ùltimà"), "ùltima", "an accent before them stays");
+  assert.equal(endingAccentOff("do"), undefined, "no accent");
+  assert.equal(endingAccentOff("ùltima"), undefined, "no accent on the vowels it ends in");
+  assert.equal(endingAccentOff("dàì"), undefined, "more than one");
+  assert.equal(endingAccentOff("po'"), undefined, "ends in no vowel");
+  assert.equal(endingAccentOff("bàr"), undefined);
+  assert.equal(endingAccentOff("caffè latte"), undefined, "two words");
+});
+
 /** Headword keys with no variant link. */
 const plain = (...keys: string[]) => keys.map((key) => ({ key, variantOf: [] }));
 
@@ -84,7 +99,14 @@ test("a query opens the one headword it lacks or mis-marks the final accent of, 
   assert.equal(openedHeadword("citta'", plain("città")), "città", "an apostrophe for an accent opens the accented headword (#900)");
   assert.equal(openedHeadword("liberta'", plain("libertà")), "libertà");
   assert.equal(openedHeadword("po", plain("po'")), undefined, "a final apostrophe left off is no mark to open");
-  assert.equal(openedHeadword("dò", plain("do")), undefined, "an accent on a word that has none opens nothing");
+  assert.equal(openedHeadword("dò", plain("do")), "do", "an accent on a word that has none opens the word (#902)");
+  assert.equal(openedHeadword("dài", plain("dai")), "dai");
+  assert.equal(openedHeadword("sè", plain("se", "sé")), "sé", "a headword with a final mark comes before one with none");
+  assert.equal(openedHeadword("é", plain("e", "è", "é")), "è", "whatever the order");
+  assert.equal(openedHeadword("piú", plain("piu", "più")), "più");
+  assert.equal(openedHeadword("pò", plain("po", "pò", "po'")), "po'");
+  assert.equal(openedHeadword("citta'", plain("citta")), undefined, "an apostrophe on a word that has none opens nothing");
+  assert.equal(openedHeadword("do", plain("do")), undefined, "a word with no mark opens no word with none");
   assert.equal(openedHeadword("càffe", plain("caffè")), undefined, "an accent inside the word must match");
   assert.equal(openedHeadword("caffe", plain("caffè", "càffe")), "caffè", "an accent inside the word is not the final accent");
   assert.equal(openedHeadword("perche", []), undefined);
@@ -142,7 +164,8 @@ test("the outcome is opened, found, the best offer, offered later, or not offere
 // fixtures/citto.jsonl holds citto (119981), whose table spells `citta`, and
 // fixtures/piu-acute.jsonl holds piú (125475), a second headword `piu` lacks
 // a final accent of, and fixtures/se-reflexive.jsonl holds se (21877 and
-// 21878) and sé (120512 and 120513), added for #900.
+// 21878) and sé (120512 and 120513), added for #900, and fixtures/do-dai.jsonl
+// holds do (10367 and 10368) and dai (37983 to 37985), added for #902.
 async function withBareSpellings(run: (db: LookupDatabase) => Promise<void>, ...extra: string[]): Promise<void> {
   const dir = await mkdtemp(join(tmpdir(), "lexema-bare-spellings-"));
   const archive = join(dir, "fixture.jsonl.gz");
@@ -283,6 +306,48 @@ test("se, e, po' and perche keep their answers beside the wrong-mark step (#846,
     assert.equal((await found(db, "po'")).route.kind, "surface", "po' is a word of its own");
     assert.deepEqual((await found(db, "perche")).route, { kind: "accentless", headword: "perché" });
   }, "fixtures/se-reflexive.jsonl");
+});
+
+// Huey's ruling of 2026-10-20 on #902 (https://github.com/povlabs/lexema/issues/902#issuecomment-6286868165):
+// a final vowel typed with an accent its headword lacks opens the plain
+// headword, under the #846 guards and tie-break. do is lines 10367 and 10368
+// (the note and the verb form of dare), dai 37983 to 37985 (interjection,
+// preposition and verb form of dare), è 2673, e 15951 and 15952, se 21877 and
+// 21878, sé 120512 and 120513.
+test("a word typed with an accent its headword lacks opens the plain headword, with every reading of it (#902)", async () => {
+  await withBareSpellings(
+    async (db) => {
+      for (const [query, headword] of [
+        ["dò", "do"],
+        ["dó", "do"],
+        ["dài", "dai"],
+        ["Dài", "dai"],
+      ] as const) {
+        const opened = await found(db, query);
+        assert.deepEqual(opened.route, { kind: "accentless", headword }, `${query} opens ${headword}`);
+        assert.equal(opened.query.raw, query, "the query stays as typed");
+        assert.deepEqual(opened.readings, (await found(db, headword)).readings, `${query} answers with ${headword}'s own readings`);
+        const present = await exists({ db, releaseId: RELEASE, query });
+        assert.ok(present.outcome === "present" && present.word === headword, `${query}: exists() credits ${headword}`);
+      }
+      assert.deepEqual(
+        (await found(db, "dò")).readings.map((reading) => reading.pos),
+        ["noun", "verb"],
+        "the note and the verb form alike",
+      );
+      assert.deepEqual(
+        (await found(db, "dài")).readings.map((reading) => reading.pos),
+        ["intj", "prep", "verb"],
+      );
+      for (const query of ["do", "dai", "e", "se"]) assert.equal((await found(db, query)).route.kind, "surface", `${query} keeps its own answer`);
+      assert.deepEqual((await found(db, "é")).route, { kind: "accentless", headword: "è" }, "a headword with a final mark comes first: é opens è, never e");
+      assert.deepEqual((await found(db, "sè")).route, { kind: "accentless", headword: "sé" }, "sè opens sé, never se");
+      assert.deepEqual((await found(db, "pò")).route, { kind: "accentless", headword: "po'" }, "pò opens po', never po");
+      await assertAgree(db, ["dò", "dó", "dài", "do", "dai", "é", "è", "e", "sè", "sé", "se", "pò", "po", "po'", "dall", "qqqq"]);
+    },
+    "fixtures/se-reflexive.jsonl",
+    "fixtures/do-dai.jsonl",
+  );
 });
 
 test("a final apostrophe left off stays not found and offers the written word (#468, #900)", async () => {

@@ -330,14 +330,16 @@ of its words in the same two waits. Nothing derived is stored.
 A reader often types a word without its final accent: `perche` for `perché`,
 `piu` for `più`; with the wrong mark on it: `perchè` for `perché`, `caffé`
 for `caffè`, `sè` for `sé`; or with an apostrophe and an accent swapped:
-`citta'` for `città`, `pò` for `po'`. When every route above misses, a
+`citta'` for `città`, `pò` for `po'`; or with an accent the word lacks:
+`dò` for `do`, `dài` for `dai`. When every route above misses, a
 Wikidata word too, and the key is one word, `lookup()` opens the served
 headword that writes the key's final vowel with the mark it lacks or
-mis-marks (#846,
+mis-marks, or, failing that, the plain headword it adds an accent to (#846,
 Huey's
 [ruling](https://github.com/povlabs/lexema/issues/846#issuecomment-6233340944)
 and [tie-break](https://github.com/povlabs/lexema/issues/846#issuecomment-6240679313);
 #900, Huey's [ruling](https://github.com/povlabs/lexema/issues/900#issuecomment-6286828410);
+#902, Huey's [ruling](https://github.com/povlabs/lexema/issues/902#issuecomment-6286868165);
 [`src/italian/finalAccent.ts`](../src/italian/finalAccent.ts), read in
 [`src/lookup/accentless.ts`](../src/lookup/accentless.ts)):
 
@@ -346,8 +348,10 @@ and [tie-break](https://github.com/povlabs/lexema/issues/846#issuecomment-624067
    more, so `bar` and `d'` send nothing.
 2. `ACCENTED_HEADWORD_SQL` reads the keys `accent_fold` holds under the key's
    letters with the final apostrophe taken off, and, for a key whose final
-   vowel has an accent, the key that writes an apostrophe in its place
-   (`accentlessProbe`: `pò` → `po'`), which `accent_fold` does not hold. It
+   vowel has an accent, the key that writes an apostrophe in its place, and
+   for a key with one accent on the vowels it ends in, the key without it
+   (`accentlessProbe`: `pò` → `po'` and `po`, `dài` → `dai`), which
+   `accent_fold` does not hold. It
    keeps those some record heads (`lookup_form.origin = 'headword'`), each
    with the first gloss of every sense of its record but a hidden one
    (#857). It is sent in the call that reads the page-only entries, as soon
@@ -358,10 +362,13 @@ and [tie-break](https://github.com/povlabs/lexema/issues/846#issuecomment-624067
    (`marksOpen`). A final accent opens for the vowel typed plain, with the
    wrong mark or with an apostrophe after it: `perché` for `perche`, for
    `perchè` and for `perchê`; `città` for `citta'`. A final apostrophe opens
-   only for an accent typed in its place: `po'` for `pò`, never for `po`. A
-   headword with neither never counts, so `dò` does not open `do`, and an
+   only for an accent typed in its place: `po'` for `pò`, never for `po`. An
    accent inside the word must match as typed.
-4. One headword counts, and the step opens it. When several count, it opens
+4. Only when no headword counts by step 3 does a headword with neither mark
+   count: the key with the one accent on the vowels it ends in taken off
+   (`endingAccentOff`): `do` for `dò`, `dai` for `dài`. So `é` opens `è` and
+   `sè` opens `sé`, never `e` or `se`, and `pò` opens `po'`, never `po`.
+5. One headword counts, and the step opens it. When several count, it opens
    the main word: the one that is no variant of another, where every other
    one has a sense whose first gloss opens with "variante" and names it after
    "di" (`variantNamed`). On release it-0c432803 `piu` opens `più`, since
@@ -376,7 +383,9 @@ the conjunction, `se` stays `se`, `po'` stays `po'`, and `citta` stays the
 form in `citto`'s table. On release it-0c432803 `perchè` opens `perché`
 (lines 33262 to 33264), `caffé` opens `caffè` (2886), `sè` opens `sé` (120512
 and 120513), `citta'` opens `città` (31998) and `pò` opens `po'` (31245 and
-31246), while `se` (21877 and 21878) keeps its own page. `exists()` and
+31246), `dò` opens `do` (10367 and 10368, the note and the verb form of
+`dare` alike) and `dài` opens `dai` (37983 to 37985), while `se` (21877 and
+21878), `do` and `dai` keep their own pages. `exists()` and
 `lookupBatch` answer the same way, the batch reading every word's headword in
 one statement more. The word page shows the headword's own page, with no line
 about the accent ([`searchAttempt.ts`](../web/lib/dictionary/searchAttempt.ts)).
@@ -810,7 +819,8 @@ and 3):
    Since #846 a word typed without the final accent of a headword opens
    that headword instead, and since #900 so does one typed with the wrong
    mark on it or with an apostrophe and an accent swapped (`perchè` opens
-   `perché`, `citta'` opens `città`, `pò` opens `po'`,
+   `perché`, `citta'` opens `città`, `pò` opens `po'`; since #902 `dò`
+   opens `do`,
    [above](#a-word-typed-without-its-final-accent)), so this offer remains
    for the cases those rules leave out: an accent inside the word that
    differs (`cìtta` → `città`), a missing final apostrophe (`dall` →

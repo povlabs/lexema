@@ -729,7 +729,7 @@ const unfilled = (kept: readonly Match[], spelled: Iterable<Match>): Match[] => 
  * `it-pronominal-pair/v2` (`answeringPairs`), then the lemma links of the
  * records they answer with (`candidatesByKey`). Then, for a word none of these
  * answers, the headword it lacks or mis-marks a final accent of
- * (`openedHeadwords`, #846, #900),
+ * (`openedHeadwords`, #846, #900, #902),
  * and those headwords answered the same way. Last, for a word none of that
  * answers, the cardinal rule `it-cardinal/v1` reads it as (ADR 0034, #804).
  */
@@ -754,7 +754,7 @@ export async function lookupBatch({
 
   // A word nothing answers may be typed without the final accent of a
   // headword, or with the wrong mark on it, and is answered as that headword
-  // is (#846, #900), in one statement
+  // is (#846, #900, #902), in one statement
   // more and the headwords' own reads; a batch with no such word sends
   // nothing for it.
   const opened = await openedHeadwords(db, releaseId, tables, keys.filter((key) => (answered.get(key) ?? []).length === 0));

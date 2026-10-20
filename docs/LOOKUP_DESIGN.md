@@ -179,20 +179,25 @@ U+2018, U+02BC, all to U+0027), but keeps accents:
 entries.
 
 Normalization still keeps accents, and so do the stored keys. One step reads a
-missing or wrong final mark, and only on the query side, after every other
+missing, wrong or extra final mark, and only on the query side, after every other
 route has missed: a one-word query nothing else answers opens the one
 headword that differs from it only in the mark on its final vowel, where the
 headword writes that vowel with an accent, or with an apostrophe after it in
 place of the accent the query typed. `perche` opens `perché`, and so does
 `perchè`; `caffé` opens `caffè`, `sè` opens `sé`, `é` opens `è`, `citta'`
-opens `città`, `liberta'` opens `libertà` and `pò` opens `po'`. The step
+opens `città`, `liberta'` opens `libertà` and `pò` opens `po'`. Where no
+headword with a final mark matches, a query with one accent on the vowels it
+ends in opens the plain headword that lacks it: `dò` opens `do`, with the
+note and the verb form of `dare` alike, and `dài` opens `dai`, with its
+interjection, preposition and verb form. A headword with a final mark comes
+first, so `é` opens `è` and `sè` opens `sé`, never `e` or `se`. The step
 never runs for a query that is a word of its own, so `papa` stays `papa` and
-never `papà`, `e` stays the conjunction and never `è`, `se` stays `se`, and
-`po'`, `be'` and `de'` stay themselves. An accent inside the word must match
-as typed. A final apostrophe left off (`po` for `po'`, `dall` for `dall'`)
-opens nothing, and an accent on a word that has none (`dò` for `do`) is the
-work of #902 and opens nothing yet, so those cases keep the not-found answer
-and its offer. When
+never `papà`, `e` stays the conjunction and never `è`, `se` stays `se`, `do`
+and `dai` stay themselves, and `è`, `dà`, `là`, `sì` and `né` are never read
+as `e`, `da`, `la`, `si` or `ne`; `po'`, `be'` and `de'` stay themselves.
+An accent inside the word must match as typed. A final apostrophe left off
+(`po` for `po'`, `dall` for `dall'`) opens nothing, so that case keeps the
+not-found answer and its offer. When
 several headwords match, the source settles it or nothing does: if the others
 are recorded in the source as variants of one of them, the step opens that
 main word, so `piu` opens `più`, since `piú` reads "variante ricercata di
@@ -204,6 +209,10 @@ and the
 widened to a wrong final mark and to an apostrophe and an accent swapped by
 Huey's ruling of 2026-10-20
 ([#900](https://github.com/povlabs/lexema/issues/900#issuecomment-6286828410)),
+which also covers `é` for `è`
+([#902](https://github.com/povlabs/lexema/issues/902#issuecomment-6286829439)),
+and to an accent its headword lacks by Huey's ruling of that day on #902
+([#902](https://github.com/povlabs/lexema/issues/902#issuecomment-6286868165)),
 under the same guards and tie-break; the rule is in [LOOKUP.md](LOOKUP.md#a-word-typed-without-its-final-accent).
 
 The 128-character bound is well past the longest headword in this release: the

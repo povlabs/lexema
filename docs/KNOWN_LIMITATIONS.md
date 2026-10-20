@@ -32,7 +32,8 @@ measured on release `it-0c432803`.
   `piú` is a variant of `più`. A wrong mark on the final vowel opens the word
   the same way: `perchè` opens `perché`. So do an apostrophe written for an
   accent (`citta'` opens `città`) and an accent written for an apostrophe
-  (`pò` opens `po'`). An accent inside the word that differs (`cìtta`), or a
+  (`pò` opens `po'`), and an accent the word lacks (`dò` opens `do`, `dài`
+  opens `dai`). An accent inside the word that differs (`cìtta`), or a
   spelling several words match with no such link, finds nothing and offers
   the accented words instead.
 - **Every word links to its source.** The *Fonte* link at the end of a page

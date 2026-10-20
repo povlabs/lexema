@@ -1,8 +1,9 @@
-// The last step of a lookup (#846, #900): a one-word query nothing else
+// The last step of a lookup (#846, #900, #902): a one-word query nothing else
 // answers, typed without the final accent of a served headword, with the
-// wrong mark on it, or with an apostrophe and an accent swapped, opens that
-// headword (`openedHeadword` in src/italian/finalAccent.ts). `perche` and
-// `perchè` open `perché`, `citta'` opens `città` and `pò` opens `po'`;
+// wrong mark on it, with an apostrophe and an accent swapped, or with an
+// accent the headword lacks, opens that headword (`openedHeadword` in
+// src/italian/finalAccent.ts). `perche` and `perchè` open `perché`, `citta'`
+// opens `città`, `pò` opens `po'` and `dò` opens `do`;
 // `piu` opens `più`, since the other headword it lacks a final accent of,
 // `piú`, is recorded as a variant of `più`. `papa` and `e` are words of their
 // own, so the step never runs for them. `lookup()`, `exists()` and
@@ -21,8 +22,8 @@ export interface OpenedHeadword {
 /**
  * The served headwords each probe names (`accentlessProbe`): those whose
  * letters are a fold of the JSON array `?2` once their accents are taken off,
- * which `accent_fold` names, and those spelled as an elided key of the JSON
- * array `?3`, which no fold names since they carry no accent. Only a key some
+ * which `accent_fold` names, and those spelled as a key of the JSON array
+ * `?3` (`spelled`), which no fold names since they carry no accent. Only a key some
  * record heads in `lookup_form` counts, and each row names the probe that
  * found it. Each row carries the first gloss of every sense of that record,
  * but a sense a curated correction hides (#857) where the master has
@@ -53,8 +54,8 @@ export const HIDING_ACCENTED_HEADWORD_SQL: DictionaryRead = accentedHeadwordRead
 
 /**
  * The headword each of `keys` opens, for the keys that open one, in one
- * statement. Nothing is sent when no key may lack or mis-mark a final accent
- * (`accentlessProbe`): `zzzz`, `vado via`, `bar`.
+ * statement. Nothing is sent when no key may lack, mis-mark or add a final
+ * accent (`accentlessProbe`): `zzzz`, `vado via`, `bar`.
  */
 export async function openedHeadwords(
   db: LookupDatabase,
@@ -70,10 +71,10 @@ export async function openedHeadwords(
   const opened = new Map<string, OpenedHeadword>();
   if (probes.size === 0) return opened;
   const folds = new Set([...probes.values()].map((probe) => probe.fold));
-  const elided = new Set([...probes.values()].flatMap((probe) => probe.elided ?? []));
+  const spelled = new Set([...probes.values()].flatMap((probe) => probe.spelled));
   const rows = await db.all<{ probe: string; surface_key: string; surface: string; glosses: string }>(
     tables.senseHides ? HIDING_ACCENTED_HEADWORD_SQL : ACCENTED_HEADWORD_SQL,
-    [releaseId, JSON.stringify([...folds]), JSON.stringify([...elided])],
+    [releaseId, JSON.stringify([...folds]), JSON.stringify([...spelled])],
   );
   const surfaces = new Map<string, string>();
   const byProbe = new Map<string, AccentedHeadword[]>();
@@ -84,7 +85,7 @@ export async function openedHeadwords(
     byProbe.set(row.probe, [...(byProbe.get(row.probe) ?? []), { key: row.surface_key, variantOf }]);
   }
   for (const [key, probe] of probes) {
-    const read = [probe.fold, ...(probe.elided === undefined ? [] : [probe.elided])].flatMap((at) => byProbe.get(at) ?? []);
+    const read = [probe.fold, ...probe.spelled].flatMap((at) => byProbe.get(at) ?? []);
     const headword = openedHeadword(key, read);
     if (headword !== undefined) opened.set(key, { key: headword, surface: surfaces.get(headword) ?? headword });
   }
