@@ -1630,7 +1630,7 @@ test("/v1/lookup leaves out Wikizionario's missing-field placeholders, as the pa
   }
 });
 
-test("/v1/lookup, /v1/lookup/batch and /v1/exists answer perche, piu and perchè with the readings of perché and più, via headword as any search of them (#846, #900)", async () => {
+test("/v1/lookup, /v1/lookup/batch and /v1/exists answer perche, piu, perchè, citta' and pò with the readings of perché, più, città and po', via headword as any search of them (#846, #900)", async () => {
   // The real archive lines in fixtures/bare-spellings.jsonl
   // (test/bareSpelling.test.ts names each), seeded apart as above.
   const bareDir = await mkdtemp(join(tmpdir(), "lexema-api-bare-spellings-"));
@@ -1658,9 +1658,17 @@ test("/v1/lookup, /v1/lookup/batch and /v1/exists answer perche, piu and perchè
       assert.equal(response.status, status, path);
       return response.json();
     };
-    // perchè and caffé, a wrong mark on the final vowel, open perché and
-    // caffè the same way (#900, https://github.com/povlabs/lexema/issues/900#issuecomment-6286828410).
-    for (const [typed, headword] of [["perche", "perché"], ["piu", "più"], ["perchè", "perché"], ["caffé", "caffè"]] as const) {
+    // perchè and caffé, a wrong mark on the final vowel, and citta' and pò, an
+    // apostrophe and an accent swapped, open perché, caffè, città and po' the
+    // same way (#900, https://github.com/povlabs/lexema/issues/900#issuecomment-6286828410).
+    for (const [typed, headword] of [
+      ["perche", "perché"],
+      ["piu", "più"],
+      ["perchè", "perché"],
+      ["caffé", "caffè"],
+      ["citta'", "città"],
+      ["pò", "po'"],
+    ] as const) {
       const opened = await body(`lookup?q=${encodeURIComponent(typed)}`);
       const own = await body(`lookup?q=${encodeURIComponent(headword)}`);
       assert.equal(opened.query, typed);
@@ -1669,7 +1677,7 @@ test("/v1/lookup, /v1/lookup/batch and /v1/exists answer perche, piu and perchè
       assert.ok(opened.results.every((result: Json) => result.word === headword && result.match.via === "headword"), typed);
       assert.equal((await body(`exists?q=${encodeURIComponent(typed)}`)).exists, true, typed);
     }
-    const batch = await body("lookup/batch", 200, JSON.stringify({ q: ["perche", "perché", "piu", "più", "papa", "perchè", "caffé", "caffè", "e", "pò"] }));
+    const batch = await body("lookup/batch", 200, JSON.stringify({ q: ["perche", "perché", "piu", "più", "papa", "perchè", "caffé", "caffè", "e", "pò", "po'", "citta'", "città"] }));
     const answered = (query: string) => batch.results.filter((result: Json) => result.query === query).map(({ found, lemma, pos }: Json) => [found, lemma ?? null, pos ?? null]);
     assert.deepEqual(answered("perche"), answered("perché"));
     assert.deepEqual(answered("piu"), answered("più"));
@@ -1678,8 +1686,9 @@ test("/v1/lookup, /v1/lookup/batch and /v1/exists answer perche, piu and perchè
     assert.deepEqual(answered("perchè"), answered("perché"), "a wrong final mark opens perché");
     assert.deepEqual(answered("caffé"), answered("caffè"));
     assert.ok(answered("e").every(([, lemma]: Json[]) => lemma === "e"), "e stays e");
-    assert.deepEqual(answered("pò"), [[false, null, null]], "an accent for an apostrophe opens nothing yet (#901)");
-    await body("lookup?q=p%C3%B2", 404);
+    assert.deepEqual(answered("pò"), answered("po'"), "an accent for an apostrophe opens po'");
+    assert.deepEqual(answered("citta'"), answered("città"), "an apostrophe for an accent opens città");
+    assert.ok(answered("pò").length > 0 && answered("citta'").length > 0);
   } finally {
     bareSqlite.close();
     await rm(bareDir, { recursive: true, force: true });

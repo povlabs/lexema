@@ -179,18 +179,20 @@ U+2018, U+02BC, all to U+0027), but keeps accents:
 entries.
 
 Normalization still keeps accents, and so do the stored keys. One step reads a
-missing or wrong final accent, and only on the query side, after every other
+missing or wrong final mark, and only on the query side, after every other
 route has missed: a one-word query nothing else answers opens the one
-headword that writes its final vowel with an accent and differs from the
-query only in the mark on that vowel. `perche` opens `perché`, and so do
-`perchè`, `caffé` opens `caffè`, `sè` opens `sé` and `é` opens `è`. The step
+headword that differs from it only in the mark on its final vowel, where the
+headword writes that vowel with an accent, or with an apostrophe after it in
+place of the accent the query typed. `perche` opens `perché`, and so does
+`perchè`; `caffé` opens `caffè`, `sè` opens `sé`, `é` opens `è`, `citta'`
+opens `città`, `liberta'` opens `libertà` and `pò` opens `po'`. The step
 never runs for a query that is a word of its own, so `papa` stays `papa` and
-never `papà`, `e` stays the conjunction and never `è`, and `se` stays `se`.
-An accent inside the word must match as typed. An apostrophe written for an
-accent (`citta'`), an accent written for an apostrophe (`pò` for `po'`) and
-an accent on a word that has none (`dò` for `do`) are the work of #901 and
-#902 and open nothing yet, so those
-cases keep the not-found answer and its offer. When
+never `papà`, `e` stays the conjunction and never `è`, `se` stays `se`, and
+`po'`, `be'` and `de'` stay themselves. An accent inside the word must match
+as typed. A final apostrophe left off (`po` for `po'`, `dall` for `dall'`)
+opens nothing, and an accent on a word that has none (`dò` for `do`) is the
+work of #902 and opens nothing yet, so those cases keep the not-found answer
+and its offer. When
 several headwords match, the source settles it or nothing does: if the others
 are recorded in the source as variants of one of them, the step opens that
 main word, so `piu` opens `più`, since `piú` reads "variante ricercata di
@@ -199,7 +201,8 @@ are Huey's rulings of 2026-10-17
 ([#846](https://github.com/povlabs/lexema/issues/846#issuecomment-6233340944),
 and the
 [tie-break](https://github.com/povlabs/lexema/issues/846#issuecomment-6240679313)),
-widened to a wrong final mark by Huey's ruling of 2026-10-20
+widened to a wrong final mark and to an apostrophe and an accent swapped by
+Huey's ruling of 2026-10-20
 ([#900](https://github.com/povlabs/lexema/issues/900#issuecomment-6286828410)),
 under the same guards and tie-break; the rule is in [LOOKUP.md](LOOKUP.md#a-word-typed-without-its-final-accent).
 
