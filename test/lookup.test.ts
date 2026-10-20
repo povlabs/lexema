@@ -287,12 +287,15 @@ test("normalizes case, whitespace and apostrophes while keeping accents", async 
   await withFixture(async (db) => {
     // Accents are meaning, not decoration: stripping them would merge distinct
     // words. `citta` keeps its own key, and opens città only because nothing
-    // spells it (#846); a wrong accent opens nothing.
+    // spells it (#846); so does `cittá`, its final vowel typed with the wrong
+    // mark (#900), and both keep their own keys.
     assert.equal(found(await ask(db, "città")).length, 1);
     const citta = searched(await ask(db, "citta"));
     assert.equal(citta.query.key, "citta");
     assert.ok(citta.outcome === "found" && citta.route.kind === "accentless");
-    assert.equal((await ask(db, "cittá")).outcome, "not-found");
+    const wrongMark = searched(await ask(db, "cittá"));
+    assert.equal(wrongMark.query.key, "cittá");
+    assert.ok(wrongMark.outcome === "found" && wrongMark.route.kind === "accentless" && wrongMark.route.headword === "città");
 
     // Case and surrounding whitespace do not change which word was asked for.
     for (const variant of ["CITTÀ", "  Città  ", "cIttÀ"]) {

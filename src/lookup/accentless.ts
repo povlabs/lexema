@@ -1,6 +1,7 @@
-// The last step of a lookup (#846): a one-word query nothing else answers,
-// typed without the final accent of a served headword, opens that headword
-// (`openedHeadword` in src/italian/finalAccent.ts). `perche` opens `perché`;
+// The last step of a lookup (#846, #900): a one-word query nothing else
+// answers, typed without the final accent of a served headword or with the
+// wrong mark on it, opens that headword (`openedHeadword` in
+// src/italian/finalAccent.ts). `perche` and `perchè` open `perché`;
 // `piu` opens `più`, since the other headword it lacks a final accent of,
 // `piú`, is recorded as a variant of `più`. `papa` and `e` are words of their
 // own, so the step never runs for them. `lookup()`, `exists()` and
@@ -46,8 +47,8 @@ export const HIDING_ACCENTED_HEADWORD_SQL: DictionaryRead = accentedHeadwordRead
 
 /**
  * The headword each of `keys` opens, for the keys that open one, in one
- * statement. Nothing is sent when no key may lack a final accent
- * (`accentlessProbe`): `zzzz`, `vado via`.
+ * statement. Nothing is sent when no key may lack or mis-mark a final accent
+ * (`accentlessProbe`): `zzzz`, `vado via`, `citta'`.
  */
 export async function openedHeadwords(
   db: LookupDatabase,

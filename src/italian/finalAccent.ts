@@ -7,10 +7,31 @@
 // (https://github.com/povlabs/lexema/issues/846#issuecomment-6240679313):
 // where one is recorded in the source as a variant of another (`piú`,
 // "variante ricercata di più"), the query opens the main word; otherwise it
-// opens nothing. What the lookup does with it is src/lookup/accentless.ts.
+// opens nothing. Huey's ruling of 2026-10-20 widens it to a final vowel typed
+// with the wrong mark (#900,
+// https://github.com/povlabs/lexema/issues/900#issuecomment-6286828410):
+// `perchè` for `perché`, `caffé` for `caffè`, `sè` for `sé`, under the same
+// guards and tie-break. What the lookup does with it is
+// src/lookup/accentless.ts.
 
 import { glossBase } from "./formOfGlossEdge.js";
 import { normalizeItalianExact } from "./normalize.js";
+
+/**
+ * A key with any mark taken off its final vowel, or none when it is more than
+ * one word or ends in no vowel: `perché` → `perche`, `perchè` → `perche`,
+ * `perche` → `perche`, `è` → `e`; `be'`, `casa` and `caffè latte` → none.
+ * Only the final letter changes, so `ùltimà` → `ùltima`. It is the spelling a
+ * query and a headword share when they differ only in the mark on that vowel.
+ */
+export function plainFinalVowel(key: string): string | undefined {
+  if (/\s/u.test(key)) return undefined;
+  const letters = [...key];
+  const last = letters.at(-1);
+  if (last === undefined) return undefined;
+  const plain = last.normalize("NFD").replace(/\p{M}/gu, "");
+  return /^[aeiou]$/u.test(plain) ? letters.slice(0, -1).join("") + plain : undefined;
+}
 
 /**
  * A key with its final accent taken off, or none when it is more than one
@@ -19,23 +40,19 @@ import { normalizeItalianExact } from "./normalize.js";
  * changes, so `ùltimà` → `ùltima`.
  */
 export function accentlessSpelling(key: string): string | undefined {
-  if (/\s/u.test(key)) return undefined;
-  const letters = [...key];
-  const last = letters.at(-1);
-  if (last === undefined) return undefined;
-  const plain = last.normalize("NFD").replace(/\p{M}/gu, "");
-  return plain !== last && /^[aeiou]$/u.test(plain) ? letters.slice(0, -1).join("") + plain : undefined;
+  const plain = plainFinalVowel(key);
+  return plain !== key ? plain : undefined;
 }
 
 /**
- * The letters a query lacking a final accent is probed under, when it may lack
- * one: its accents taken off, as `accent_fold` keys a headword
- * (src/import/seedSql.ts), since a headword and its accentless spelling differ
- * by an accent alone. None for a query that is more than one word or ends in
- * no plain vowel, which is no key's `accentlessSpelling`.
+ * The letters a query is probed under when it may lack its final accent or
+ * carry the wrong one: its accents taken off, as `accent_fold` keys a
+ * headword (src/import/seedSql.ts), since such a query and its headword
+ * differ by accents alone. None for a query that is more than one word or
+ * ends in no vowel (`plainFinalVowel`), which opens no headword.
  */
 export function accentlessProbe(key: string): string | undefined {
-  if (/\s/u.test(key) || !/[aeiou]$/u.test(key)) return undefined;
+  if (plainFinalVowel(key) === undefined) return undefined;
   return key.normalize("NFD").replace(/\p{M}/gu, "").normalize("NFC");
 }
 
@@ -60,20 +77,24 @@ export interface AccentedHeadword {
 
 /**
  * The headword a one-word query opens, among `headwords`, served headwords
- * that have its letters: the one whose `accentlessSpelling` is the query.
- * `perche` opens `perché`. When several are, it opens the main word: the one
- * no variant of another, each other one being recorded as its variant. `piu`
- * opens `più`, since `piú` is "variante ricercata di più". None when no
- * headword is, or when several are and no such variant link settles which,
- * so the not-found answer offers them instead. A query that differs from a
- * headword by a wrong accent (`perchè` of `perché`) or by an apostrophe
- * (`citta'` of `città`) is no headword's accentless spelling, so it opens
- * none.
+ * that have its letters: one other than the query that writes its final vowel
+ * with an accent and differs from it only in the mark on that vowel
+ * (`plainFinalVowel`). `perche` opens `perché` (#846), and so do `perchè`
+ * and `perchê` (#900); `caffé` opens `caffè`, `sè` opens `sé`. When several
+ * are, it opens the main word: the one no variant of another, each other one
+ * being recorded as its variant. `piu` opens `più`, since `piú` is "variante
+ * ricercata di più". None when no headword is, or when several are and no
+ * such variant link settles which, so the not-found answer offers them
+ * instead. A query that differs from a headword by an apostrophe (`citta'`
+ * of `città`, `pò` of `po'`), by an accent the headword lacks (`dò` of `do`)
+ * or by an accent inside the word opens none.
  */
 export function openedHeadword(key: string, headwords: Iterable<AccentedHeadword>): string | undefined {
+  const typed = plainFinalVowel(key);
+  if (typed === undefined) return undefined;
   const matches = new Map<string, Set<string>>();
   for (const headword of headwords) {
-    if (accentlessSpelling(headword.key) !== key) continue;
+    if (headword.key === key || accentlessSpelling(headword.key) !== typed) continue;
     const variantOf = matches.get(headword.key) ?? new Set<string>();
     for (const word of headword.variantOf) variantOf.add(word);
     matches.set(headword.key, variantOf);

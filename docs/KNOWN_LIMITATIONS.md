@@ -29,7 +29,9 @@ measured on release `it-0c432803`.
   only a final accent opens the accented word when nothing else answers it:
   `perche` opens `perché`. When several words match, it opens the main word
   if the source records the others as its variants: `piu` opens `più`, since
-  `piú` is a variant of `più`. A wrong accent (`perchè`), or a spelling
+  `piú` is a variant of `più`. A wrong mark on the final vowel opens the word
+  the same way: `perchè` opens `perché`. An accent written for an apostrophe
+  (`pò`), an apostrophe written for an accent (`citta'`), or a spelling
   several words match with no such link, finds nothing and offers the
   accented words instead.
 - **Every word links to its source.** The *Fonte* link at the end of a page

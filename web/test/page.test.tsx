@@ -2666,9 +2666,10 @@ test("a search that finds nothing offers, in order: an accent, one edit, words t
     const link = (word: string) => new RegExp(`<a class="${esc(NOT_FOUND_LINK)}" href="/\\?q=${encodeURIComponent(word)}" lang="it">${esc(word)}</a>`);
 
     // B: the same letters with an accent, before any other step. Not `citta`,
-    // which opens città since #846: `cittá` has a wrong accent.
-    const citta = await render(db, "cittá");
-    assert.match(citta, heading("cittá"));
+    // which opens città since #846, nor `cittá`, which opens it since #900:
+    // `cìtta` has an accent inside the word.
+    const citta = await render(db, "cìtta");
+    assert.match(citta, heading("cìtta"));
     assert.match(citta, /Forse cercavi /);
     assert.match(citta, link("città"));
 
@@ -2748,7 +2749,7 @@ test("every not-found page ends with one Segnala una parola mancante, below the 
   await withDevSeed(async ({ db }) => {
     for (const [query, kind] of [
       ["stud", "prefix"],
-      ["cittá", "accent"],
+      ["cìtta", "accent"],
       ["mangare", "typo"],
       ["vadoo via", "phrase"],
       ["xqzt", "none"],

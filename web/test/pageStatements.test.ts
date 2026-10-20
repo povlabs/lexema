@@ -373,12 +373,13 @@ test("a verb's recovered definitions reach its block: fiaccando's fiaccare carri
  * prefix read and keeps f6731dd's 8 calls. An accent offer may make 7 calls,
  * one more than at e380d77, so that a typo page reads no prefix list (Huey's
  * ruling, https://github.com/povlabs/lexema/issues/665#issuecomment-6012462663).
- * That page was `citta`'s, which opens città since #846; `cittá`, with a wrong
- * accent, is now the accent offer, and reads what `citta` read.
+ * That page was `citta`'s, which opens città since #846, then `cittá`'s, which
+ * opens città since #900; `cìtta`, with an accent inside the word, is now the
+ * accent offer, and reads what `citta` read.
  */
 const NOT_FOUND: Record<string, { kind: string; statements: number; calls: number }> = {
   zzzz: { kind: "none", statements: 16, calls: 7 },
-  cittá: { kind: "accent", statements: 15, calls: 7 },
+  cìtta: { kind: "accent", statements: 15, calls: 7 },
   xqzt: { kind: "none", statements: 16, calls: 7 },
   qwrtz: { kind: "none", statements: 16, calls: 7 },
   mangare: { kind: "typo", statements: 14, calls: 8 },
