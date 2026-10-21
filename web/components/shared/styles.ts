@@ -321,9 +321,18 @@ export const GRID_CELL = "min-w-0 pb-[0.6875rem] sm:pb-[0.9375rem] [[role=row]:l
 /** One spelling of a cell and its article line; a second spelling sits under the first. */
 export const GRID_SPELLING = "[&+&]:mt-2";
 export const GRID_FORM = "m-0 font-mono text-[1.05rem] text-text-strong wrap-anywhere";
-export const GRID_ARTICLES = "m-0 font-mono text-[0.75rem] leading-4 text-text-muted sm:mt-[0.1875rem]";
-export const GRID_ARTICLE = "max-sm:block";
+/**
+ * The article line under a form: `il bello · un bello` on one line when it
+ * fits the cell, else broken after the dot (#913). Each article is one box, so
+ * the line breaks between articles, never inside one while it fits the cell; a
+ * token wider than the cell breaks inside it, as the form does. On a phone the
+ * articles stand on two lines with no dot.
+ */
+export const GRID_ARTICLES = "m-0 font-mono text-[0.75rem] leading-4 text-text-muted sm:mt-[0.1875rem] wrap-anywhere";
+export const GRID_ARTICLE = "max-sm:block sm:inline-block max-w-full";
 export const GRID_ARTICLE_DOT = "px-2 max-sm:hidden";
+/** The line's break after the dot; gone on a phone, where it would add an empty line. */
+export const GRID_ARTICLE_BREAK = "max-sm:hidden";
 /** A form the source does not give: a dash, with no note. */
 export const DASH = "font-mono text-text-muted";
 export const GRID_LABEL = "m-0 mt-4 mb-3 sm:mt-6 font-sans text-[0.75rem] font-semibold text-text-muted";

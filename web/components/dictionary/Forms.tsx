@@ -36,6 +36,7 @@ import {
   FORM_LINK_SEARCHED,
   GRID,
   GRID_ARTICLE,
+  GRID_ARTICLE_BREAK,
   GRID_ARTICLE_DOT,
   GRID_ARTICLES,
   GRID_CELL,
@@ -110,9 +111,14 @@ function GridCellView({ cell }: { cell: GridCell }) {
               {spelling.articles.map((article, i) => (
                 <span key={article}>
                   {i > 0 && (
-                    <span className={GRID_ARTICLE_DOT} aria-hidden="true">
-                      ·
-                    </span>
+                    <>
+                      <span className={GRID_ARTICLE_DOT} aria-hidden="true">
+                        ·
+                      </span>
+                      <span className={GRID_ARTICLE_BREAK}>
+                        <wbr />
+                      </span>
+                    </>
                   )}
                   <span className={GRID_ARTICLE}>{article}</span>
                 </span>
