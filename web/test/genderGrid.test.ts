@@ -1,6 +1,7 @@
 // The grid's article lines take the record's own IPA for the headword's
 // spelling and for no other (#341), and a headword whose record states no
-// gender fills the singolare cells its forms leave open (#909).
+// gender fills the singolare cells its forms leave open (#909), and the line
+// may break between its two articles (#913).
 
 import assert from "node:assert/strict";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
@@ -10,9 +11,12 @@ import { DatabaseSync } from "node:sqlite";
 import test, { after, before } from "node:test";
 import { fileURLToPath } from "node:url";
 import { gzipSync } from "node:zlib";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { seedSql } from "../../src/import/seedSql.js";
 import { lookup } from "../../src/lookup/lookup.js";
 import { readOnlyDictionary } from "../../test/databases.js";
+import { GridView } from "@/components/dictionary/Forms";
 import { agreementOf } from "@/lib/dictionary/genderGrid.ts";
 import type { CorrectedClaim, GrammarClaim, InflectionOf, Reading, SourceForm, SourceRef, StatedClaim } from "@lexema/lookup/types.ts";
 
@@ -327,4 +331,22 @@ test("a form reading gains no headword cell: caratteristica, a form of caratteri
     "feminine singular": [],
     "feminine plural": [["caratteristiche", "le caratteristiche", "delle caratteristiche"]],
   });
+});
+
+// On a wide screen `l'indispensabile · un'indispensabile` is wider than its
+// cell, and neither article has a space to break at (#913). The rendered line
+// offers its break after the dot, between the two articles, so it wraps inside
+// its cell instead of running into the plurale cell.
+test("each article line of indispensabile's grid may break between its two articles", async () => {
+  const reading = await adjective("indispensabile");
+  const grid = agreementOf(reading).grid;
+  assert.ok(grid !== undefined);
+  // The page's text, with `|` where the markup lets the line break.
+  const text = renderToStaticMarkup(createElement(GridView, { grid, label: "Forme" }))
+    .replace(/<wbr\/?>/g, "|")
+    .replace(/<[^>]*>/g, "")
+    .replace(/&#x27;/g, "'");
+  const lines = grid.rows.flatMap((row) => row.cells.flatMap((cell) => cell.spellings.map((spelling) => spelling.articles)));
+  assert.deepEqual(lines[2], ["l'indispensabile", "un'indispensabile"]);
+  for (const [first, second] of lines) assert.ok(text.includes(`${first}·|${second}`), `${first} · ${second} has no break between its articles`);
 });

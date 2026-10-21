@@ -139,13 +139,14 @@ exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
 <p class="m-0 font-mono text-[1.05rem] text-text-strong wrap-anywhere" lang="it">
 <span data-headword="">bello</span>
 </p>
-<p class="m-0 font-mono text-[0.75rem] leading-4 text-text-muted sm:mt-[0.1875rem]" lang="it">
+<p class="m-0 font-mono text-[0.75rem] leading-4 text-text-muted sm:mt-[0.1875rem] wrap-anywhere" lang="it">
 <span>
-<span class="max-sm:block">il bello</span>
+<span class="max-sm:block sm:inline-block max-w-full">il bello</span>
 </span>
 <span>
 <span class="px-2 max-sm:hidden" aria-hidden="true">·</span>
-<span class="max-sm:block">un bello</span>
+<wbr/>
+<span class="max-sm:block sm:inline-block max-w-full">un bello</span>
 </span>
 </p>
 </div>
@@ -155,13 +156,14 @@ exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
 <p class="m-0 font-mono text-[1.05rem] text-text-strong wrap-anywhere" lang="it">
 <span data-form="0">belli</span>
 </p>
-<p class="m-0 font-mono text-[0.75rem] leading-4 text-text-muted sm:mt-[0.1875rem]" lang="it">
+<p class="m-0 font-mono text-[0.75rem] leading-4 text-text-muted sm:mt-[0.1875rem] wrap-anywhere" lang="it">
 <span>
-<span class="max-sm:block">i belli</span>
+<span class="max-sm:block sm:inline-block max-w-full">i belli</span>
 </span>
 <span>
 <span class="px-2 max-sm:hidden" aria-hidden="true">·</span>
-<span class="max-sm:block">dei belli</span>
+<wbr/>
+<span class="max-sm:block sm:inline-block max-w-full">dei belli</span>
 </span>
 </p>
 </div>
@@ -174,13 +176,14 @@ exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
 <p class="m-0 font-mono text-[1.05rem] text-text-strong wrap-anywhere" lang="it">
 <span data-form="1">bella</span>
 </p>
-<p class="m-0 font-mono text-[0.75rem] leading-4 text-text-muted sm:mt-[0.1875rem]" lang="it">
+<p class="m-0 font-mono text-[0.75rem] leading-4 text-text-muted sm:mt-[0.1875rem] wrap-anywhere" lang="it">
 <span>
-<span class="max-sm:block">la bella</span>
+<span class="max-sm:block sm:inline-block max-w-full">la bella</span>
 </span>
 <span>
 <span class="px-2 max-sm:hidden" aria-hidden="true">·</span>
-<span class="max-sm:block">una bella</span>
+<wbr/>
+<span class="max-sm:block sm:inline-block max-w-full">una bella</span>
 </span>
 </p>
 </div>
@@ -190,13 +193,14 @@ exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
 <p class="m-0 font-mono text-[1.05rem] text-text-strong wrap-anywhere" lang="it">
 <span data-form="2">belle</span>
 </p>
-<p class="m-0 font-mono text-[0.75rem] leading-4 text-text-muted sm:mt-[0.1875rem]" lang="it">
+<p class="m-0 font-mono text-[0.75rem] leading-4 text-text-muted sm:mt-[0.1875rem] wrap-anywhere" lang="it">
 <span>
-<span class="max-sm:block">le belle</span>
+<span class="max-sm:block sm:inline-block max-w-full">le belle</span>
 </span>
 <span>
 <span class="px-2 max-sm:hidden" aria-hidden="true">·</span>
-<span class="max-sm:block">delle belle</span>
+<wbr/>
+<span class="max-sm:block sm:inline-block max-w-full">delle belle</span>
 </span>
 </p>
 </div>
@@ -259,13 +263,14 @@ exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
 <p class="m-0 font-mono text-[1.05rem] text-text-strong wrap-anywhere" lang="it">
 <span data-headword="">bello</span>
 </p>
-<p class="m-0 font-mono text-[0.75rem] leading-4 text-text-muted sm:mt-[0.1875rem]" lang="it">
+<p class="m-0 font-mono text-[0.75rem] leading-4 text-text-muted sm:mt-[0.1875rem] wrap-anywhere" lang="it">
 <span>
-<span class="max-sm:block">il bello</span>
+<span class="max-sm:block sm:inline-block max-w-full">il bello</span>
 </span>
 <span>
 <span class="px-2 max-sm:hidden" aria-hidden="true">·</span>
-<span class="max-sm:block">un bello</span>
+<wbr/>
+<span class="max-sm:block sm:inline-block max-w-full">un bello</span>
 </span>
 </p>
 </div>
@@ -316,13 +321,14 @@ exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
 <p class="m-0 font-mono text-[1.05rem] text-text-strong wrap-anywhere" lang="it">
 <span data-headword="">bello</span>
 </p>
-<p class="m-0 font-mono text-[0.75rem] leading-4 text-text-muted sm:mt-[0.1875rem]" lang="it">
+<p class="m-0 font-mono text-[0.75rem] leading-4 text-text-muted sm:mt-[0.1875rem] wrap-anywhere" lang="it">
 <span>
-<span class="max-sm:block">il bello</span>
+<span class="max-sm:block sm:inline-block max-w-full">il bello</span>
 </span>
 <span>
 <span class="px-2 max-sm:hidden" aria-hidden="true">·</span>
-<span class="max-sm:block">un bello</span>
+<wbr/>
+<span class="max-sm:block sm:inline-block max-w-full">un bello</span>
 </span>
 </p>
 </div>
@@ -332,13 +338,14 @@ exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
 <p class="m-0 font-mono text-[1.05rem] text-text-strong wrap-anywhere" lang="it">
 <span data-form="0">belli</span>
 </p>
-<p class="m-0 font-mono text-[0.75rem] leading-4 text-text-muted sm:mt-[0.1875rem]" lang="it">
+<p class="m-0 font-mono text-[0.75rem] leading-4 text-text-muted sm:mt-[0.1875rem] wrap-anywhere" lang="it">
 <span>
-<span class="max-sm:block">i belli</span>
+<span class="max-sm:block sm:inline-block max-w-full">i belli</span>
 </span>
 <span>
 <span class="px-2 max-sm:hidden" aria-hidden="true">·</span>
-<span class="max-sm:block">dei belli</span>
+<wbr/>
+<span class="max-sm:block sm:inline-block max-w-full">dei belli</span>
 </span>
 </p>
 </div>

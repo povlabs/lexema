@@ -110,9 +110,12 @@ function GridCellView({ cell }: { cell: GridCell }) {
               {spelling.articles.map((article, i) => (
                 <span key={article}>
                   {i > 0 && (
-                    <span className={GRID_ARTICLE_DOT} aria-hidden="true">
-                      ·
-                    </span>
+                    <>
+                      <span className={GRID_ARTICLE_DOT} aria-hidden="true">
+                        ·
+                      </span>
+                      <wbr />
+                    </>
                   )}
                   <span className={GRID_ARTICLE}>{article}</span>
                 </span>
