@@ -163,7 +163,7 @@ import { agreementOf, placesOf, type Agreement, type GridPlace, type Spelling } 
 import { GRID_FORM_LINE_RULE, gridFormLine } from "./gridFormLine.ts";
 import { unlinkedLemmas } from "./lemmaLines.ts";
 import { labelParts, readingsNamed, splitLabel } from "./readingLabels.ts";
-import { relatedItems, type RelatedItem } from "./relatedList.ts";
+import { listedWords, relatedItems, withEntries, type ListedItem, type RelatedItem } from "./relatedList.ts";
 import type {
   DeclaredVerbForm,
   EntryIdentity,
@@ -181,6 +181,7 @@ import type {
   WordFacts,
   WordText,
 } from "@lexema/lookup/types.ts";
+import { EntryKeys } from "@lexema/lookup/entryKeys.ts";
 
 /**
  * A lemma's table, as its own page draws it, under a form's reading as *Forms
@@ -1071,6 +1072,36 @@ export interface WordLists {
   derived: RelatedItem[];
 }
 
+/** A page's word lists before any word is known to have an entry: those no reading took, and each reading's synonym group. */
+interface ListedLists {
+  rest: { synonyms: ListedItem[]; antonyms: ListedItem[]; derived: ListedItem[] };
+  byReading: Map<Reading, ListedItem[]>;
+}
+
+/** The lists `placed` shows, as the source lists them. */
+function listedListsOf(placed: ReturnType<typeof placeWordFacts>): ListedLists {
+  const byReading = new Map<Reading, ListedItem[]>();
+  for (const [reading, words] of placed.synonyms) byReading.set(reading, relatedItems(words));
+  return {
+    rest: { synonyms: relatedItems(placed.rest.synonyms), antonyms: relatedItems(placed.rest.antonyms), derived: relatedItems(placed.rest.derived) },
+    byReading,
+  };
+}
+
+/**
+ * Every word a page for `readings` lists as a synonym, antonym or derived
+ * word, after the readings or in one (#635): what `searchAttempt` asks
+ * `readEntryKeys` about, in the same wait as the page's other reads. None on
+ * a word shape's page, which shows no word facts, or a phrase's, which has no
+ * lists, so neither reads anything.
+ */
+export function relatedWordsOf(readings: readonly Reading[], route: FoundRoute): string[] {
+  if (route.kind === "shape" || route.kind === "phrase") return [];
+  const listed = listedListsOf(placedFactsOf(pageOrder(keptReadingsOf(readings)).filter((reading) => reading.isAboutQuery)));
+  const lists = [listed.rest.synonyms, listed.rest.antonyms, listed.rest.derived, ...listed.byReading.values()];
+  return [...new Set(lists.flatMap(listedWords))];
+}
+
 /**
  * The word's *Expressions* section (#213): the expressions its own records
  * list. A form's page shows none of its base word's (Huey's rule 3 of
@@ -1447,7 +1478,10 @@ function drawsHere(table: LemmaTable, drawn: Drawn): boolean {
  * are the records of the words `pronominalBaseWords(readings)` names, which a
  * pronominal verb's table is built from (#837). `verbs` are the records of the
  * verbs `builtTableVerbWords(readings)` names, whose built tables a form of
- * them draws (#852).
+ * them draws (#852). `entryKeys` are the words of `relatedWordsOf(readings,
+ * route)` that have an entry: only those are searches in the page's word
+ * lists, and every other word is text (#635). None by default, so a page
+ * built without the read links no word.
  */
 export function wordPage(
   query: string,
@@ -1457,12 +1491,11 @@ export function wordPage(
   declared: readonly DeclaredVerbForm[] = [],
   bases: readonly Reading[] = [],
   verbs: readonly VerbRecords[] = [],
+  entryKeys: EntryKeys = EntryKeys.none,
 ): WordPage {
   const gender: SpelledGender = route.kind === "feminine" ? "feminine" : "as-listed";
   const taken = takenConjugationOf(readings, declared, bases);
-  const forms = formsOfQueryReadings(readings);
-  const siblings = otherFormsOfQueryLemmas(readings);
-  const kept = readings.filter((reading) => !forms.has(reading) && !siblings.has(reading));
+  const kept = keptReadingsOf(readings);
   // A form rule `it-word-shape/v1` read (#809) is no record's word: the
   // records it reached are its base word's, and each shows as that word's
   // form block (`shapeBasesOf`, #802). Its form records and the lemmas they
@@ -1471,17 +1504,22 @@ export function wordPage(
     route.kind === "shape" ? { key: normalizeItalianExact(query), spellings: route.spellings, bases: shapeBasesOf(kept) } : undefined;
   const ordered = pageOrder(kept.filter((reading) => !shape?.bases.includes(reading)));
   const about = ordered.filter((reading) => reading.isAboutQuery);
-  // The word's own facts are its own records': what a form record says of its
-  // word, its etymology (`vedi bello`, `da andare`) and its word lists
-  // (`si · muova` on vada), is its base word's (Huey's rule 3 of 2026-10-06 on
-  // #695, "No base-word extras on any form page"; P5, P6). Its pronunciation is
-  // the searched word's own, and so are the expressions its records list
-  // (#668, ruling 3: `andate` keeps its own).
-  const ownRecords = about.filter((reading) => !isFormOfReading(reading));
-  const merged = mergeWordFacts(about, ownRecords);
-  const placed = placeWordFacts(about, ownRecords, merged);
+  const placed = placedFactsOf(about);
+  const listed = listedListsOf(placed);
+  const synonyms = new Map<Reading, RelatedItem[]>();
+  for (const [reading, items] of listed.byReading) synonyms.set(reading, withEntries(items, entryKeys));
   const built = builtTablesOf(about, verbs);
-  const page: PageParts = { ordered, about, own: ownKeysOf(readings), lemmas, placed, gender, taken, built, shape };
+  const page: PageParts = {
+    ordered,
+    about,
+    own: ownKeysOf(readings),
+    lemmas,
+    placed: { etymologies: placed.etymologies, synonyms },
+    gender,
+    taken,
+    built,
+    shape,
+  };
 
   // Only records about the searched word are readings (rule 2 of Huey's ruling
   // of 2026-10-06, #695): a record that only lists the query in its table is
@@ -1530,13 +1568,34 @@ export function wordPage(
     readings: shown,
     wordFacts: { ...placed.rest, etymologies },
     wordLists: {
-      synonyms: relatedItems(placed.rest.synonyms),
-      antonyms: relatedItems(placed.rest.antonyms),
-      derived: relatedItems(placed.rest.derived),
+      synonyms: withEntries(listed.rest.synonyms, entryKeys),
+      antonyms: withEntries(listed.rest.antonyms, entryKeys),
+      derived: withEntries(listed.rest.derived, entryKeys),
     },
     expressions: expressions === undefined ? undefined : { expressions },
     source: footerSourceOf(readings, shown, about[0] ?? correctedFormSourceReading(readings) ?? headword),
   };
+}
+
+/** The records of `readings` that may be readings: neither forms of the query's readings nor other forms of its lemmas. */
+function keptReadingsOf(readings: readonly Reading[]): Reading[] {
+  const forms = formsOfQueryReadings(readings);
+  const siblings = otherFormsOfQueryLemmas(readings);
+  return readings.filter((reading) => !forms.has(reading) && !siblings.has(reading));
+}
+
+/**
+ * The word facts of the records `about` the query, each placed in a reading
+ * or after them (`placeWordFacts`). The word's own facts are its own
+ * records': what a form record says of its word, its etymology (`vedi bello`,
+ * `da andare`) and its word lists (`si · muova` on vada), is its base word's
+ * (Huey's rule 3 of 2026-10-06 on #695, "No base-word extras on any form
+ * page"; P5, P6). Its pronunciation is the searched word's own, and so are the
+ * expressions its records list (#668, ruling 3: `andate` keeps its own).
+ */
+function placedFactsOf(about: readonly Reading[]): ReturnType<typeof placeWordFacts> {
+  const ownRecords = about.filter((reading) => !isFormOfReading(reading));
+  return placeWordFacts(about, ownRecords, mergeWordFacts(about, ownRecords));
 }
 
 /**
@@ -2069,8 +2128,11 @@ function bareReadings(drafts: readonly Unnumbered<BareReading>[]): [LoneBareRead
   return [{ ...first, number: 1 }, { ...second, number: 2 }, ...rest.map((draft, i) => ({ ...draft, number: i + 3 }))];
 }
 
-/** The etymologies and synonym groups `placeWordFacts` moved into readings. */
-type PlacedFacts = Pick<ReturnType<typeof placeWordFacts>, "etymologies" | "synonyms">;
+/** The etymologies and synonym groups `placeWordFacts` moved into readings, each group's words as they show. */
+interface PlacedFacts {
+  etymologies: Map<Reading, WordText[]>;
+  synonyms: Map<Reading, RelatedItem[]>;
+}
 
 /**
  * A source reading as the page shows it, or none when it has nothing to show
@@ -2117,7 +2179,7 @@ function shownReading(
   if (!isFormOfReading(reading)) {
     const forms = ownFormsOf(reading, taken);
     const etymologies = nonEmpty(placed.etymologies.get(reading) ?? []);
-    const synonyms = nonEmpty(relatedItems(placed.synonyms.get(reading) ?? []));
+    const synonyms = nonEmpty(placed.synonyms.get(reading) ?? []);
     const parts: LemmaPart[] = [];
     if (text !== undefined) parts.push({ kind: "definitions", text });
     parts.push(...lines);
