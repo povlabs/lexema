@@ -4,7 +4,7 @@
 // proper name `Cosetta`. `dr.` keeps the `Dr.` record it opens today. Inputs
 // are verbatim (fixtures/hand-kept-readings/PROVENANCE.md): line 36245
 // `Cosetta` of it-0c432803 and line 801536 `Dr.` of it-78385b62, seeded with
-// the committed list `HAND_KEPT_READINGS`. #915 adds the forty common words of
+// the committed list `HAND_KEPT_READINGS`. #915 adds the thirty-nine common words of
 // the 2026-10-20 recount, the plurals barrette and scartoffie that reach two of
 // them, and lines 1654 `società` and 47726 `attività` of it-0c432803, which
 // `societa'` and `attivita'` open.
@@ -122,7 +122,7 @@ const RECOUNT_WORDS = [
   "studentesco", "cordone", "bigliettino", "camicetta", "orsetto", "barretta", "prematrimoniale", "quantomeno", "caposquadra",
   "minorile", "paranormale", "piacimento", "avvistamento", "domattina", "oddio", "paralimpico",
   "ehi", "evviva", "mah",
-  "scartoffia", "portabagagli", "rilevatore", "cesareo",
+  "scartoffia", "rilevatore", "cesareo",
 ];
 
 const keptReadingOf = (word: string): HandKeptReading => {

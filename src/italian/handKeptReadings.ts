@@ -987,21 +987,8 @@ export const HAND_KEPT_READINGS: readonly HandKeptReading[] = handKeptList([
     evidence: [{ wiki: "en.wiktionary.org", title: "scartoffia", revisionId: 84000656, timestamp: "2025-02-22T00:42:22Z", shows: "{{it-noun|f}}" }],
     ruling: RULING_915,
   }),
-  // Its second noun, the luggage rack; its first, a porter, and its adjective are not kept.
-  handKeptReading({
-    word: "portabagagli",
-    partOfSpeech: statedPartOfSpeech("Sostantivo"),
-    source: { kind: "none" },
-    section: { line: 15, wikitext: "===Noun===" },
-    definitions: [
-      {
-        text: "struttura dentro o sopra un veicolo su cui si trasportano i bagagli",
-        paraphrases: { line: 18, wikitext: "# any [[structure]] in or on a [[vehicle]] for carrying [[baggage]] or [[luggage]]" },
-      },
-    ],
-    evidence: [{ wiki: "en.wiktionary.org", title: "portabagagli", revisionId: 92211703, timestamp: "2026-08-24T08:21:28Z", shows: "{{it-noun|m|#}}" }],
-    ruling: RULING_915,
-  }),
+  // portabagagli and uh have no reading here: the update feed it-78385b62
+  // gives each a record, which the live dictionary already shows.
   handKeptReading({
     word: "rilevatore",
     partOfSpeech: statedPartOfSpeech("Sostantivo"),

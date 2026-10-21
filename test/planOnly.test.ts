@@ -221,9 +221,9 @@ test("correct:records --plan-only counts what the list writes and leaves the loc
     assert.equal(answer.planOnly, true);
     assert.deepEqual(answer.counts, { records: { added: 0, changed: 25, removed: 0 }, written: { corrected_claim: 29, correction_version: 1 }, deleted: {} });
     assert.equal(answer.dictionaryRecords, lines.length);
-    // The 25 corrections, then the fifty hand-kept readings the seed already
-    // wrote (#745, #819, #830, #803, #915): the first ten named, #915's forty after them.
-    assert.equal(answer.entries.length, 75);
+    // The 25 corrections, then the forty-nine hand-kept readings the seed already
+    // wrote (#745, #819, #830, #803, #915): the first ten named, #915's thirty-nine after them.
+    assert.equal(answer.entries.length, 74);
     assert.deepEqual(answer.entries.slice(35), HAND_KEPT_READINGS.slice(10).map((reading) => `kept:${handKeptId(reading)}: already written`));
     assert.deepEqual(answer.entries.slice(25, 35), [
       "kept:si:pron: already written",

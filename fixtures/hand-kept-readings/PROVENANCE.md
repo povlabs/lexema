@@ -61,7 +61,7 @@ The inputs of [test/handKeptReadings.test.ts](../../test/handKeptReadings.test.t
   and `c59d8eddbad2afbdb8524c15dcac826736e3175e0c3dd81b7f94a26a4f26d4f0`, the
   only Italian records of the two words, which `societa'` and `attivita'`
   open.
-- The forty pages #915's readings cite, the common words of the 2026-10-20
+- The thirty-nine pages #915's readings cite, the common words of the 2026-10-20
   recount ([report](../../reports/2026-10-20-missing-common-words.md)), read
   on 2026-10-21. `scartoffia` stands for `scartoffie`, which en.wiktionary
   gives only as its plural.
@@ -105,7 +105,6 @@ The inputs of [test/handKeptReadings.test.ts](../../test/handKeptReadings.test.t
 | `evviva.wikitext` | [85200244](https://en.wiktionary.org/w/index.php?title=evviva&oldid=85200244) | 2025-06-20T22:11:54Z | `d249e5152ff369705507a67c952ea65784a8986e` |
 | `mah.wikitext` | [93762112](https://en.wiktionary.org/w/index.php?title=mah&oldid=93762112) | 2026-10-21T08:39:01Z | `b51e2a2efb8ce01d9217246b38c6e9bd1e3d2aed` |
 | `scartoffia.wikitext` | [84000656](https://en.wiktionary.org/w/index.php?title=scartoffia&oldid=84000656) | 2025-02-22T00:42:22Z | `bd5543ccf89504cb8ad0ba04a8b80d9c5959b6f8` |
-| `portabagagli.wikitext` | [92211703](https://en.wiktionary.org/w/index.php?title=portabagagli&oldid=92211703) | 2026-08-24T08:21:28Z | `d0a214f254bd37b43305b2adeb7d742ddbef892c` |
 | `rilevatore.wikitext` | [71380839](https://en.wiktionary.org/w/index.php?title=rilevatore&oldid=71380839) | 2023-02-23T02:04:42Z | `2e1bb553b1b6059cfd8478ee06b4dc25159e51ee` |
 | `cesareo.wikitext` | [91473030](https://en.wiktionary.org/w/index.php?title=cesareo&oldid=91473030) | 2026-07-04T08:08:26Z | `5aa08097a2757a6c4d302560c03353e04b3b3e3c` |
 

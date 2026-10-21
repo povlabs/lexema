@@ -15,7 +15,7 @@
   ],
   "expected": {
     "records": { "added": 0, "changed": 0, "removed": 0 },
-    "written": { "hand_kept_definition": 57, "correction_version": 1 },
+    "written": { "hand_kept_definition": 56, "correction_version": 1 },
     "deleted": {}
   }
 }

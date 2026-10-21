@@ -6,7 +6,7 @@
 // 963 `si`, 55329 `uguaglianza`, 113594 and 113595 `come` of it-0c432803, and
 // revisions 93469502 `si`, 93379611 `come`, 89865273 `Sig.`, 63388291 `cosetta`
 // and 71378670 `eguaglianza` of
-// en.wiktionary, and the revision each of #915's forty readings cites
+// en.wiktionary, and the revision each of #915's thirty-nine readings cites
 // (fixtures/hand-kept-readings/).
 
 import assert from "node:assert/strict";
@@ -69,7 +69,7 @@ const RULING_OF: Record<string, string> = {
   "Giulia:name": "https://github.com/povlabs/lexema/issues/803#issuecomment-6254975552",
 };
 
-/** The forty readings #915 adds, in list order: the common words of the 2026-10-20 recount. */
+/** The thirty-nine readings #915 adds, in list order: the common words of the 2026-10-20 recount. */
 const RECOUNT_IDS = [
   "glielo:pron", "gliel':pron", "gliela:pron", "glieli:pron", "gliele:pron", "gliene:pron",
   "stanotte:adv", "stavolta:adv", "city:noun", "sottofondo:noun", "eccome:adv", "quaggiù:adv", "quassù:adv", "piccolino:adj", "granché:pron",
@@ -77,25 +77,26 @@ const RECOUNT_IDS = [
   "prematrimoniale:adj", "quantomeno:adv", "caposquadra:noun", "minorile:adj", "paranormale:adj", "piacimento:noun", "avvistamento:noun",
   "domattina:adv", "oddio:intj", "paralimpico:adj",
   "ehi:intj", "evviva:intj", "mah:intj",
-  "scartoffia:noun", "portabagagli:noun", "rilevatore:noun", "cesareo:noun",
+  "scartoffia:noun", "rilevatore:noun", "cesareo:noun",
 ];
 for (const id of RECOUNT_IDS) RULING_OF[id] = "https://github.com/povlabs/lexema/issues/915#issuecomment-6314615880";
 
 /**
  * Words of the groups #915's ruling skips, as its issue names them, the words
- * it drops for want of an Italian sense line, and the plurals that reach their
- * noun's reading: none has a reading of its own.
+ * it drops (superman and uh for want of an Italian sense line, uh and
+ * portabagagli because the update feed's records answer them), and the
+ * plurals that reach their noun's reading: none has a reading of its own.
  */
 const SKIPPED = [
   "pochino", "sorellina", "vecchietto", "rivoglio", "risiamo", "rivuole", "rivuoi", "email", "kit", "house", "dj", "handbike",
-  "ve", "vent'", "'fanculo", "mezzora", "d.c.", "altronde", "superman", "uh", "barrette", "scartoffie",
+  "ve", "vent'", "'fanculo", "mezzora", "d.c.", "altronde", "superman", "uh", "portabagagli", "barrette", "scartoffie",
 ];
 
 /** The words a cited sense line links, `[[as soon as]]` or `[[oh God]]`: the English a definition paraphrases and never writes. */
 const linkedWords = (wikitext: string): string[] => [...wikitext.matchAll(/\[\[([^\]|#]+)(?:[|#][^\]]*)?\]\]/g)].map(([, target]) => target.trim());
 const writesWord = (text: string, word: string): boolean => new RegExp(`(?<!\\p{L})${word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?!\\p{L})`, "iu").test(text);
 
-test("the list keeps exactly si's pronoun, come's conjunction, Sig., cosetta, eguaglianza's noun, the five readings #803 fills and #915's forty, each as its cited revision shows it", async () => {
+test("the list keeps exactly si's pronoun, come's conjunction, Sig., cosetta, eguaglianza's noun, the five readings #803 fills and #915's thirty-nine, each as its cited revision shows it", async () => {
   assert.deepEqual(HAND_KEPT_READINGS.map((reading) => [handKeptId(reading), reading.partOfSpeech.posTitle, reading.evidence.map(evidenceUrl)]), [
     ["si:pron", "Pronome", ["https://en.wiktionary.org/w/index.php?title=si&oldid=93469502"]],
     ["come:conj", "Congiunzione", ["https://en.wiktionary.org/w/index.php?title=come&oldid=93379611"]],
@@ -367,8 +368,8 @@ test("correct:records writes the readings into a master seeded before them, once
       "  kept:Giulia:name: written, 1 definition(s)",
       ...HAND_KEPT_READINGS.slice(10).map((reading) => `  kept:${handKeptId(reading)}: written, ${reading.definitions.length} definition(s)`),
     ]);
-    // A reading keys to no record; its rows are what the counts name: thirteen, and #915's fifty-seven.
-    assert.deepEqual(plan.counts.toJSON(), { records: { added: 0, changed: 0, removed: 0 }, written: { hand_kept_definition: 70, correction_version: 1 }, deleted: {} });
+    // A reading keys to no record; its rows are what the counts name: thirteen, and #915's fifty-six.
+    assert.deepEqual(plan.counts.toJSON(), { records: { added: 0, changed: 0, removed: 0 }, written: { hand_kept_definition: 69, correction_version: 1 }, deleted: {} });
     // eguaglianza's page shows uguaglianza's definitions and table, so a Preview's slice serves that word too (#830).
     assert.deepEqual(wordsOfCorrections(plan), touchedWords(["come", "si", "Sig.", "cosetta", "eguaglianza", "uguaglianza", "in ritardo", "scorso", "quindici", "Giulia", ...RECOUNT_IDS.map((id) => id.slice(0, id.lastIndexOf(":")))]));
     // The SQL creates nothing (#509): the upgrade gives the master the table, and the plan is the same after it.
