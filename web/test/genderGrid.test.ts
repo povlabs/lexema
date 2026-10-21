@@ -1,8 +1,18 @@
 // The grid's article lines take the record's own IPA for the headword's
-// spelling and for no other (#341).
+// spelling and for no other (#341), and a headword whose record states no
+// gender fills the singolare cells its forms leave open (#909).
 
 import assert from "node:assert/strict";
-import test from "node:test";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
+import test, { after, before } from "node:test";
+import { fileURLToPath } from "node:url";
+import { gzipSync } from "node:zlib";
+import { seedSql } from "../../src/import/seedSql.js";
+import { lookup } from "../../src/lookup/lookup.js";
+import { readOnlyDictionary } from "../../test/databases.js";
 import { agreementOf } from "@/lib/dictionary/genderGrid.ts";
 import type { CorrectedClaim, GrammarClaim, InflectionOf, Reading, SourceForm, SourceRef, StatedClaim } from "@lexema/lookup/types.ts";
 
@@ -218,4 +228,103 @@ test("a correction of the noun's own gender places its headword by it", () => {
     agreementOf(fissazione).grid?.rows.map((row) => [row.gender, row.cells.map((cell) => cell.spellings.map((s) => s.surface))]),
     [["feminine", [["fissazione"], ["fissazioni"]]]],
   );
+});
+
+// A headword whose record states no gender (#909). The records are verbatim
+// archive lines of it-0c432803, in fixtures/headword-singular-cells.jsonl:
+// 106 `rosso`, 853 `indispensabile`, 8557 `altro`, 48158 `caratteristica`,
+// 49700 `fascista`, 102015 `altrettanto` and 139659 `caratteristico`, each
+// the word's adjective record.
+
+const REPO = fileURLToPath(new URL("../..", import.meta.url));
+const RELEASE = "it-headword-singular-cells";
+
+let dir: string;
+let db: DatabaseSync;
+
+before(async () => {
+  dir = await mkdtemp(join(tmpdir(), "lexema-headword-singular-cells-"));
+  const archive = join(dir, "fixture.jsonl.gz");
+  await writeFile(archive, gzipSync(await readFile(join(REPO, "fixtures/headword-singular-cells.jsonl"))));
+  const { parts } = await seedSql({
+    input: archive,
+    outputDir: join(dir, "sql"),
+    schema: join(REPO, "src/db/schema.sql"),
+    releaseId: RELEASE,
+    license: "CC-BY-SA-4.0",
+    onRejection: (rejection) => {
+      throw new Error(`fixture line rejected: ${JSON.stringify(rejection)}`);
+    },
+  });
+  db = new DatabaseSync(":memory:");
+  for (const part of parts) db.exec(await readFile(part, "utf8"));
+});
+
+after(async () => {
+  db.close();
+  await rm(dir, { recursive: true, force: true });
+});
+
+async function adjective(word: string): Promise<Reading> {
+  const result = await lookup({ db: readOnlyDictionary(db), releaseId: RELEASE, query: word });
+  assert.ok(result.outcome === "found", word);
+  const reading = result.readings.find((candidate) => candidate.word === word && candidate.pos === "adj");
+  assert.ok(reading !== undefined, word);
+  return reading;
+}
+
+/** Each cell of the plain grid as `gender number`, mapped to its spellings: `surface` and its article line, `*` marking the headword. */
+function cellsOf(reading: Reading): Record<string, string[][]> {
+  const cells: Record<string, string[][]> = {};
+  for (const row of agreementOf(reading).grid?.rows ?? []) {
+    for (const [i, number] of (["singular", "plural"] as const).entries()) {
+      cells[`${row.gender} ${number}`] = row.cells[i].spellings.map((s) => [`${s.surface}${s.headword ? "*" : ""}`, ...s.articles]);
+    }
+  }
+  return cells;
+}
+
+test("an -o adjective whose record states no gender is its own maschile singolare: altrettanto, altro", async () => {
+  assert.deepEqual(cellsOf(await adjective("altrettanto")), {
+    "masculine singular": [["altrettanto*", "l'altrettanto", "un altrettanto"]],
+    "masculine plural": [["altrettanti", "gli altrettanti", "degli altrettanti"]],
+    "feminine singular": [["altrettanta", "l'altrettanta", "un'altrettanta"]],
+    "feminine plural": [["altrettante", "le altrettante", "delle altrettante"]],
+  });
+  assert.deepEqual(cellsOf(await adjective("altro"))["masculine singular"], [["altro*", "l'altro", "un altro"]]);
+});
+
+test("an adjective whose forms are only plurals fills both singolare cells: indispensabile, fascista", async () => {
+  assert.deepEqual(cellsOf(await adjective("indispensabile")), {
+    "masculine singular": [["indispensabile*", "l'indispensabile", "un indispensabile"]],
+    "masculine plural": [["indispensabili", "gli indispensabili", "degli indispensabili"]],
+    "feminine singular": [["indispensabile*", "l'indispensabile", "un'indispensabile"]],
+    "feminine plural": [["indispensabili", "le indispensabili", "delle indispensabili"]],
+  });
+  assert.deepEqual(cellsOf(await adjective("fascista")), {
+    "masculine singular": [["fascista*", "il fascista", "un fascista"]],
+    "masculine plural": [["fascisti", "i fascisti", "dei fascisti"]],
+    "feminine singular": [["fascista*", "la fascista", "una fascista"]],
+    "feminine plural": [["fasciste", "le fasciste", "delle fasciste"]],
+  });
+});
+
+test("a record that states its gender keeps its grid: rosso", async () => {
+  assert.deepEqual(cellsOf(await adjective("rosso")), {
+    "masculine singular": [["rosso*", "il rosso", "un rosso"]],
+    "masculine plural": [["rossi", "i rossi", "dei rossi"]],
+    "feminine singular": [["rossa", "la rossa", "una rossa"]],
+    "feminine plural": [["rosse", "le rosse", "delle rosse"]],
+  });
+});
+
+test("a form reading gains no headword cell: caratteristica, a form of caratteristico", async () => {
+  const caratteristica = await adjective("caratteristica");
+  assert.ok(caratteristica.lemmaLinks.length > 0);
+  assert.deepEqual(cellsOf(caratteristica), {
+    "masculine singular": [["caratteristico", "il caratteristico", "un caratteristico"]],
+    "masculine plural": [["caratteristici", "i caratteristici", "dei caratteristici"]],
+    "feminine singular": [],
+    "feminine plural": [["caratteristiche", "le caratteristiche", "delle caratteristiche"]],
+  });
 });
