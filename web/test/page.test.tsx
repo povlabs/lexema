@@ -140,6 +140,7 @@ import {
   WORD_HEADING,
   WORD_LINK,
   WORD_NOTE,
+  WORD_TEXT,
   WRITTEN_OFFER_LEAD,
   WRITTEN_OFFER_LINK,
 } from "@/components/shared/styles.ts";
@@ -1698,19 +1699,84 @@ test("a form-of reading whose lemma shows no table on the page still draws its l
   });
 });
 
-test("etymology and synonyms come once after the readings: every synonym a search, then + altro and no count", async () => {
+test("etymology and synonyms come once after the readings: every synonym a search or its text, then + altro and no count", async () => {
   await withDevSeed(async ({ db }) => {
     const html = await render(db, "andare");
     const facts = html.slice(html.lastIndexOf("</article>"));
     assert.equal(patternsOf(html, />Etimologia</g), 1);
     const synonyms = facts.slice(facts.indexOf('id="synonyms"'), facts.indexOf("</section>", facts.indexOf('id="synonyms"')));
-    const words = [...synonyms.matchAll(new RegExp(`<a class="${esc(WORD_LINK)}" href="([^"]+)" lang="it">([^<]+)</a>`, "g"))];
-    assert.equal(words.length, wordPage("andare", await readingsFor(db, "andare"), [], SURFACE_ROUTE).wordFacts.synonyms.length, "every synonym is in the document");
-    for (const [, href, word] of words) assert.equal(href, `/?q=${encodeURIComponent(textOf(word))}`);
+    const links = [...synonyms.matchAll(new RegExp(`<a class="${esc(WORD_LINK)}" href="([^"]+)" lang="it">([^<]+)</a>`, "g"))];
+    const texts = [...synonyms.matchAll(new RegExp(`<span class="${esc(WORD_TEXT)}" lang="it">([^<]+)</span>`, "g"))];
+    assert.ok(links.length > 0, "andare's synonyms with an entry are searches");
+    assert.equal(links.length + texts.length, wordPage("andare", await readingsFor(db, "andare"), [], SURFACE_ROUTE).wordFacts.synonyms.length, "every synonym is in the document");
+    for (const [, href, word] of links) assert.equal(href, `/?q=${encodeURIComponent(textOf(word))}`);
     // The one control, last in the list so it ends what shows, open or closed.
     assert.match(synonyms, /<li[^>]*><div class="[^"]*"><button type="button"[^>]*aria-controls="synonyms-words" aria-expanded="false"[^>]*><span class="[^"]*">\+ altro<\/span><span class="[^"]*">meno<\/span><\/button><\/div><\/li><\/ul>$/);
     // No count anywhere: not beside a label, not on a control.
     assert.doesNotMatch(textOf(html), /showing \d|\d+ altro/);
+  });
+});
+
+/** The words of a page's synonym, antonym and derived-word lists, in page order: each a search, or its text with no link (#635). */
+function listedWordsOf(html: string): { word: string; href: string | undefined }[] {
+  const item = new RegExp(`<a class="${esc(WORD_LINK)}" href="([^"]+)" lang="it">([^<]+)</a>|<span class="${esc(WORD_TEXT)}" lang="it">([^<]+)</span>`, "g");
+  return [...html.matchAll(item)].map(([, href, linked, text]) => ({ word: textOf(linked ?? text), href }));
+}
+
+test("a related word is a search only when it has an entry: bello links calmo and grande, and shows belloccio, bellumore and ben fatto as text (#635)", async () => {
+  await withDevSeed(async ({ db }) => {
+    const html = await render(db, "bello");
+    const words = listedWordsOf(html);
+    const shown = (word: string) => {
+      const found = words.find((one) => one.word === word);
+      assert.ok(found !== undefined, `bello lists ${word}`);
+      return found;
+    };
+    for (const word of ["calmo", "grande"]) assert.equal(shown(word).href, `/?q=${encodeURIComponent(word)}`, `${word} has an entry, so it is a search`);
+    for (const word of ["belloccio", "bellumore", "ben fatto"]) {
+      assert.equal(shown(word).href, undefined, `${word} has no entry, so it is text`);
+      // No link of any kind names it, and nothing is said beside it.
+      assert.doesNotMatch(html, new RegExp(`href="/\\?q=${esc(encodeURIComponent(word))}"`));
+      assert.match(html, new RegExp(`<li[^>]*data-item=""><span class="${esc(WORD_TEXT)}" lang="it">${esc(word)}</span>(<span[^>]*aria-hidden="true">·</span>)?</li>`));
+    }
+  });
+});
+
+test("every related word bello's page links opens a found page (#635)", async () => {
+  await withDevSeed(async ({ db }) => {
+    const linked = listedWordsOf(await render(db, "bello")).flatMap(({ word, href }) => (href === undefined ? [] : [word]));
+    assert.ok(linked.length > 0, "bello links some of its related words");
+    for (const word of linked) assert.equal((await attempt(db, word)).outcome, "found", `${word}: bello links it, so its search finds it`);
+  });
+});
+
+test("a synonym group shown inside a reading follows the same rule: china's links strada and shows pendio as text (#635)", async () => {
+  await withDevSeed(async ({ db }) => {
+    const html = await render(db, "china");
+    // A group placed in a reading shows before the readings end.
+    const start = html.indexOf('id="synonyms-');
+    assert.ok(start >= 0 && start < html.lastIndexOf("</article>"), "china shows a synonym group inside a reading");
+    const group = listedWordsOf(html.slice(start, html.indexOf("</section>", start)));
+    const shown = (word: string) => {
+      const found = group.find((one) => one.word === word);
+      assert.ok(found !== undefined, `china's reading lists ${word}`);
+      return found;
+    };
+    assert.equal(shown("strada").href, `/?q=strada`);
+    assert.equal((await attempt(db, "strada")).outcome, "found", "strada has an entry");
+    assert.equal(shown("pendio").href, undefined);
+    assert.equal((await attempt(db, "pendio")).outcome, "not-found", "pendio has none");
+  });
+});
+
+test("the not-found page's nearby suggestions stay searches: each a word the dictionary has (#635)", async () => {
+  await withDevSeed(async ({ db }) => {
+    const nearby = listedWordsOf(await render(db, "stud"));
+    assert.deepEqual(
+      nearby.map(({ word }) => word),
+      ["studente", "studentessa", "studenti", "studiare"],
+    );
+    for (const { word, href } of nearby) assert.equal(href, `/?q=${encodeURIComponent(word)}`, `${word} is a search`);
   });
 });
 
@@ -2370,12 +2436,11 @@ function readingEtymology(reading: string): string | undefined {
   return textOf(section.replace(/<button[^>]*aria-expanded[\s\S]*?<\/button>/g, ""));
 }
 
-/** The words of a Synonyms run, from a reading or from the facts after the readings. */
+/** The words of the list `id`, in order, each a search or its text with no link (#635); notes left out. */
 const synonymWords = (html: string, id: string): string[] => {
   const at = html.indexOf(`id="${id}"`);
   if (at === -1) return [];
-  const section = html.slice(at, html.indexOf("</section>", at));
-  return [...section.matchAll(new RegExp(`<a class="${esc(WORD_LINK)}" href="[^"]+" lang="it">([^<]+)</a>`, "g"))].map((match) => textOf(match[1]));
+  return listedWordsOf(html.slice(at, html.indexOf("</section>", at))).map(({ word }) => word);
 };
 
 /** The page after the last reading: the facts no reading took. */
@@ -2530,7 +2595,7 @@ test("casa's note fragments are the note the source wrote, in place and read-onl
     const synonyms = section("synonyms");
     const links = synonymWords(html, "synonyms");
 
-    for (const fragment of fragments) assert.ok(!links.includes(fragment), `${fragment} is not a search`);
+    for (const fragment of fragments) assert.ok(!links.includes(fragment), `${fragment} is not a word of the list`);
     const notes = [...synonyms.matchAll(new RegExp(`<span class="${esc(WORD_NOTE)}" lang="it">([^<]+)</span>`, "g"))].map((m) => textOf(m[1]));
     assert.deepEqual(notes, ["(per es. palazzo d'abitazione", "(per es. rurale, civile, industriale)"]);
     // Each note sits where its first piece did: after the word before it.
@@ -2538,10 +2603,10 @@ test("casa's note fragments are the note the source wrote, in place and read-onl
     assert.ok(order.indexOf("edificio") < order.indexOf("(per es. palazzo") && order.indexOf("(per es. palazzo") < order.indexOf("scuola"));
     assert.ok(order.indexOf("fabbricato") < order.indexOf("(per es. rurale") && order.indexOf("(per es. rurale") < order.indexOf("dimora"));
 
-    // Every other synonym is still a search, in order; `civile` is the note's.
+    // Every other synonym is still a word of the list, in order; `civile` is the note's.
     const expected = readings[0].wordFacts.synonyms.map((word) => word.word).filter((word) => ![...fragments, "civile"].includes(word));
     assert.deepEqual(links, expected);
-    // An ordinary list does not change: every derived word is a search, and no note.
+    // An ordinary list does not change: every derived word is a word of the list, and no note.
     assert.deepEqual(synonymWords(html, "derived"), readings[0].wordFacts.derived.map((word) => word.word));
     assert.doesNotMatch(section("derived"), new RegExp(esc(WORD_NOTE)));
 

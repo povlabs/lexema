@@ -7,19 +7,21 @@
 // the verbs its verb forms name (#686), and, for a verb whose records draw no
 // conjugation, the verb forms its form records declare (#799) and, for a
 // pronominal one, its base verb's records (#837), and, for a verb form whose
-// verb's records draw no table, that verb's records (#852), all in one wait. Free of the Workers runtime, so the page test runs the
+// verb's records draw no table, that verb's records (#852), and which of the
+// words its lists name have an entry (#635), all in one wait. Free of the Workers runtime, so the page test runs the
 // same code over a local database.
 
 import { normalizeItalianExact } from "@lexema/italian/normalize.ts";
 import type { LookupDatabase } from "@lexema/lookup/database.ts";
 import type { Reading } from "@lexema/lookup/types.ts";
 import { declaredLemma, declaredVerbForms } from "@lexema/lookup/declaredLemma.ts";
+import { readEntryKeys } from "@lexema/lookup/entryKeys.ts";
 import { lookup, withVerbDefinitions } from "@lexema/lookup/lookup.ts";
 import { findNearby, writtenSpellings } from "@lexema/lookup/nearby.ts";
 import { dictionaryTables } from "@lexema/lookup/served.ts";
 import type { Attempt } from "./attempt.ts";
 import { declaredLemmaPage } from "./declaredLemmaPage.ts";
-import { builtTableVerbWords, gridLemmaWords, pronominalBaseWords, wantsDeclaredConjugation, type VerbRecords } from "./wordPage.ts";
+import { builtTableVerbWords, gridLemmaWords, pronominalBaseWords, relatedWordsOf, wantsDeclaredConjugation, type VerbRecords } from "./wordPage.ts";
 
 export async function searchAttempt(db: LookupDatabase, releaseId: string, query: string): Promise<Attempt> {
   // The tables are read beside the lookup, which reads them too: one statement in its first call.
@@ -30,13 +32,15 @@ export async function searchAttempt(db: LookupDatabase, releaseId: string, query
   const word = result.outcome === "found" && result.route.kind === "accentless" ? result.route.headword : result.query.raw;
   const written = () => writtenSpellings({ db, releaseId, query: word });
   if (result.outcome === "found") {
-    const [spellings, lemmas, readings, declared, bases, verbs, shapedLemma] = await Promise.all([
+    const [spellings, lemmas, readings, declared, bases, verbs, entries, shapedLemma] = await Promise.all([
       written(),
       lemmaRecords(db, releaseId, result.readings),
       withVerbDefinitions(db, result.readings, tables),
       wantsDeclaredConjugation(result.readings) ? declaredVerbForms(db, releaseId, normalizeItalianExact(word)) : undefined,
       baseRecords(db, releaseId, pronominalBaseWords(result.readings)),
       verbRecords(db, releaseId, builtTableVerbWords(result.readings)),
+      // Which of the words the page lists have an entry, so only those are links (#635).
+      readEntryKeys(db, releaseId, relatedWordsOf(result.readings, result.route)),
       // A word the page answers as a declared lemma keeps that page: rule
       // `it-word-shape/v1` answers only what nothing else does (#809), so
       // `aggrapparsi` stays itself, not a clitic form of `aggrappare`.
@@ -44,7 +48,7 @@ export async function searchAttempt(db: LookupDatabase, releaseId: string, query
     ]);
     const shapedPage = shapedLemma === undefined ? undefined : declaredLemmaPage(shapedLemma);
     if (shapedLemma !== undefined && shapedPage !== undefined) return { ...shapedLemma, page: shapedPage, written: spellings };
-    return { ...result, readings, written: spellings, lemmas, declared: declared ?? [], bases, verbs };
+    return { ...result, readings, written: spellings, lemmas, declared: declared ?? [], bases, verbs, entries };
   }
   if (result.outcome === "rejected") return result;
   // The lookup answers a declared lemma itself (#818); one whose forms take

@@ -1,7 +1,8 @@
 "use client";
 
 // A run of related words — synonyms, antonyms, derived words, suggestions —
-// separated by `·`, each a search. A note the source wrote inside the list
+// separated by `·`, each a search when it has an entry and otherwise the same
+// text with no link (#635), so no link opens "no entry". A note the source wrote inside the list
 // (relatedList.ts) sits in the run where it came, as text, read-only. Closed,
 // the items that fit on one line, then `+ altro` right after the last of them;
 // open, every item, then `meno`
@@ -29,6 +30,7 @@ import {
   WORD_LIST_ITEM_REST,
   WORD_LIST_MORE_UNNEEDED,
   WORD_NOTE,
+  WORD_TEXT,
 } from "@/components/shared/styles.ts";
 
 /** How many words show closed before the list is measured, or with no script. */
@@ -106,14 +108,18 @@ export function WordList({
       <Collapsible.Root className={WORD_LIST} id={`${id}-words`} render={<ul ref={list} />}>
         {items.map((item, i) => (
           <li
-            key={item.kind === "word" ? `word:${item.word}` : `note:${item.text}`}
+            key={item.kind === "note" ? `note:${item.text}` : `word:${item.word}`}
             className={i < shown ? WORD_LIST_ITEM : WORD_LIST_ITEM_REST}
             data-item=""
           >
-            {item.kind === "word" ? (
+            {item.kind === "entry" ? (
               <a className={WORD_LINK} href={searchHref(item.word)} lang="it">
                 {item.word}
               </a>
+            ) : item.kind === "no-entry" ? (
+              <span className={WORD_TEXT} lang="it">
+                {item.word}
+              </span>
             ) : (
               <span className={WORD_NOTE} lang="it">
                 {item.text}

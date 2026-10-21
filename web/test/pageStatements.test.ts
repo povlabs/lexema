@@ -10,6 +10,13 @@
 // andare 35, casa 25, sale 56, studente 59 statements; 6 calls each). A page
 // may cost less; it may not cost more. The answer read through `fromD1` is the
 // answer read straight off SQLite, so a cheaper read is never a different page.
+//
+// A page that lists related words also asks which of them have an entry
+// (`ENTRY_KEY_SQL`, #635): one statement at most, in a call the page already
+// makes, which Huey's ruling allows ("at most one extra statement per page",
+// https://github.com/povlabs/lexema/issues/635#issuecomment-6319781263). The
+// ceilings still bind every other read as before, and a page with that read
+// costs no more than it did before #393.
 // A page that finds nothing is held to its own counts the same way (#663).
 //
 // The last tests run one whole word-page request, `generateMetadata` and
@@ -31,6 +38,7 @@ import { seedSql } from "../../src/import/seedSql.js";
 import { rawPageSource, readSavedPage } from "../../src/source/rawPage.js";
 import { fromD1, fromNodeSqlite, type D1Like, type D1StatementLike, type SqlValue } from "../../src/lookup/database.js";
 import { shapeKeysOf } from "../../src/lookup/wordShape.js";
+import { ENTRY_KEY_SQL } from "../../src/lookup/entryKeys.js";
 import { accentlessProbe } from "../../src/italian/finalAccent.js";
 import { lookup, withVerbDefinitions } from "../../src/lookup/lookup.js";
 import { dictionaryTables, servedVersion } from "../../src/lookup/served.js";
@@ -98,6 +106,9 @@ interface Sent {
 
 const nothingSent = (): Sent => ({ statements: 0, calls: 0, sql: [] });
 
+/** How many statements asked which related words have an entry (#635). */
+const entryReads = (sent: Sent): number => sent.sql.filter((sql) => sql === ENTRY_KEY_SQL).length;
+
 /** A D1 over the local SQLite that counts what reaches it: a `batch()` is one call, a lone `all()` another. */
 function countingD1(db: DatabaseSync, sent: Sent): D1Like {
   const statement = (sql: string, params: SqlValue[]): D1StatementLike & { sql: string; run(): unknown[] } => ({
@@ -124,12 +135,16 @@ function countingD1(db: DatabaseSync, sent: Sent): D1Like {
 }
 
 for (const [word, ceiling] of Object.entries(BEFORE)) {
-  test(`the page for '${word}' sends fewer than ${ceiling} statements in at most ${CALLS_BEFORE} calls, and reads the page SQLite reads`, async () => {
+  test(`the page for '${word}' sends fewer than ${ceiling} statements besides one entry read, in at most ${CALLS_BEFORE} calls, and reads the page SQLite reads`, async () => {
     const sent = nothingSent();
     const db = fromD1(countingD1(sqlite, sent));
     const [attempt] = await Promise.all([searchAttempt(db, RELEASE, word), servedVersion(db, RELEASE)]);
     assert.equal(attempt.outcome, "found", `${word}: expected a found page`);
-    assert.ok(sent.statements < ceiling, `${word}: ${sent.statements} statements, not fewer than ${ceiling}`);
+    // Every one of these pages lists related words, so it asks about them once.
+    assert.equal(entryReads(sent), 1, `${word}: the related words' entry read`);
+    const others = sent.statements - entryReads(sent);
+    assert.ok(others < ceiling, `${word}: ${others} statements besides the entry read, not fewer than ${ceiling}`);
+    assert.ok(sent.statements <= ceiling, `${word}: ${sent.statements} statements, more than ${ceiling}`);
     assert.ok(sent.calls <= CALLS_BEFORE, `${word}: ${sent.calls} calls, more than ${CALLS_BEFORE}`);
     assert.deepEqual(attempt, await searchAttempt(fromNodeSqlite(sqlite), RELEASE, word));
   });
@@ -225,6 +240,14 @@ const ACCENTLESS_STATEMENTS = (word: string): number => (accentlessProbe(word) !
 const LEMMA_LINE_STATEMENTS = 1;
 const LEMMA_EXPRESSIONS_CUT: Record<string, { statements: number; calls: number }> = { andavano: { statements: 1, calls: 1 } };
 
+/**
+ * The statement a page that lists related words sends to ask which have an
+ * entry (`ENTRY_KEY_SQL`, #635), beside the page's other reads after the
+ * lookup, so it adds no call. A form's page lists none of its base word's
+ * (P5, P6) and sends nothing; `sfocato` and `fiaccare` list their own.
+ */
+const ENTRY_READ_STATEMENTS = (word: string): number => (["sfocato", "fiaccare"].includes(word) ? 1 : 0);
+
 /** The lookups a page runs: its own, and for `andati` and `bella` the lookup of the lemma whose grid the page draws (#626). */
 const LOOKUPS: Record<string, number> = { andati: 2, bella: 2 };
 
@@ -239,13 +262,19 @@ const EXTRA: Record<string, number> = {
 for (const [word, then] of Object.entries(VERB_FORMS_BEFORE)) {
   const cut = LEMMA_EXPRESSIONS_CUT[word] ?? { statements: 0, calls: 0 };
   const now = {
-    statements: then.statements + (EXTRA[word] ?? 0) + (LOOKUPS[word] ?? 1) * (CELL_SEARCH_STATEMENTS + HAND_KEPT_STATEMENTS - LEMMA_LINE_STATEMENTS) - cut.statements,
+    statements:
+      then.statements +
+      (EXTRA[word] ?? 0) +
+      (LOOKUPS[word] ?? 1) * (CELL_SEARCH_STATEMENTS + HAND_KEPT_STATEMENTS - LEMMA_LINE_STATEMENTS) +
+      ENTRY_READ_STATEMENTS(word) -
+      cut.statements,
     calls: then.calls - cut.calls,
   };
   test(`the page for '${word}' sends ${now.statements} statements in ${now.calls} calls, and reads the page SQLite reads`, async () => {
     const sent = nothingSent();
     const attempt = await searchAttempt(fromD1(countingD1(sqlite, sent)), RELEASE, word);
     assert.equal(attempt.outcome, "found", `${word}: expected a found page`);
+    assert.equal(entryReads(sent), ENTRY_READ_STATEMENTS(word), `${word}: the related words' entry read`);
     assert.equal(sent.statements, now.statements, `${word}: statements`);
     assert.equal(sent.calls, now.calls, `${word}: calls`);
     assert.deepEqual(attempt, await searchAttempt(fromNodeSqlite(sqlite), RELEASE, word));
@@ -292,13 +321,14 @@ const CUT: Record<string, { statements: number; calls: number }> = {
 
 for (const [word, then] of Object.entries(DEFINITIONS_PAGES_BEFORE)) {
   const now = {
-    statements: then.statements - CUT[word].statements + CELL_SEARCH_STATEMENTS + HAND_KEPT_STATEMENTS - LEMMA_LINE_STATEMENTS,
+    statements: then.statements - CUT[word].statements + CELL_SEARCH_STATEMENTS + HAND_KEPT_STATEMENTS - LEMMA_LINE_STATEMENTS + ENTRY_READ_STATEMENTS(word),
     calls: then.calls - CUT[word].calls,
   };
   test(`the page for '${word}' sends ${now.statements} statements in ${now.calls} calls, and reads the page SQLite reads`, async () => {
     const sent = nothingSent();
     const attempt = await searchAttempt(fromD1(countingD1(sqlite, sent)), RELEASE, word);
     assert.equal(attempt.outcome, "found", `${word}: expected a found page`);
+    assert.equal(entryReads(sent), ENTRY_READ_STATEMENTS(word), `${word}: the related words' entry read`);
     assert.equal(sent.statements, now.statements, `${word}: statements`);
     assert.equal(sent.calls, now.calls, `${word}: calls`);
     assert.deepEqual(attempt, await searchAttempt(fromNodeSqlite(sqlite), RELEASE, word));

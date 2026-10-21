@@ -721,7 +721,7 @@ const S5_WORD_FACTS: Rule = {
       for (const related of p.page.wordFacts[list]) if (!allowed.has(related.word)) problems.push(`${list}: ${related.word} is a form record's`);
     }
     const synonymItems = placed.flatMap((part) => (part.kind === "synonyms" ? part.items : []));
-    for (const item of synonymItems) if (item.kind === "word" && !ownWords("synonyms").has(item.word)) problems.push(`a reading's synonym ${item.word} is a form record's`);
+    for (const item of synonymItems) if (item.kind !== "note" && !ownWords("synonyms").has(item.word)) problems.push(`a reading's synonym ${item.word} is a form record's`);
     const ownPhrases = new Set(about.flatMap((reading) => reading.wordFacts.expressions.map((expression) => expression.phrase)));
     for (const expression of p.page.expressions?.expressions ?? []) if (!ownPhrases.has(expression.phrase)) problems.push(`the expression ${expression.phrase} is another word's`);
     return problems;

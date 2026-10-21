@@ -8,11 +8,30 @@
 // structure — its parentheses do not balance — never by what it says. The
 // source record is not touched: the pieces are read back in the order the
 // record lists them and shown as the one note they were, read-only.
+//
+// A word is a search only when it has an entry (#635; Huey's ruling of
+// 2026-10-21, https://github.com/povlabs/lexema/issues/635#issuecomment-6319781263):
+// one without stays in its place as text, so no link leads to "no entry".
 
+import type { EntryKeys } from "@lexema/lookup/entryKeys.ts";
 import { factRefKey, isSourceRef, type RelatedWord } from "@lexema/lookup/types.ts";
 
-/** One item of a list: a word, which is a search, or a note, which is text. */
-export type RelatedItem = { kind: "word"; word: string } | { kind: "note"; text: string };
+/** One item of a list as the source lists it: a word, or a note. */
+export type ListedItem = { kind: "word"; word: string } | { kind: "note"; text: string };
+
+/**
+ * One item of a list as the page shows it: a word with an entry, which is a
+ * search; a word with none, which is text; or a note, which is text.
+ */
+export type RelatedItem = { kind: "entry"; word: string } | { kind: "no-entry"; word: string } | { kind: "note"; text: string };
+
+/** The words among `items`, notes left out: what a page asks `readEntryKeys` about. */
+export const listedWords = (items: readonly ListedItem[]): string[] => items.flatMap((item) => (item.kind === "word" ? [item.word] : []));
+
+/** `items` as the page shows them: each word a search only when `entries` has it. */
+export function withEntries(items: readonly ListedItem[], entries: EntryKeys): RelatedItem[] {
+  return items.map((item) => (item.kind === "note" ? item : { kind: entries.has(item.word) ? "entry" : "no-entry", word: item.word }));
+}
 
 /** How many more brackets a piece opens than it closes; negative when it closes more. */
 const openBrackets = (text: string): number => [...text].reduce((n, c) => (c === "(" ? n + 1 : c === ")" ? n - 1 : n), 0);
@@ -59,7 +78,7 @@ const POINTER = /^\/([a-z]+)\/(\d+)\/word$/;
  * listed on its own elsewhere stays one. Each note shows once, where its first
  * piece would have, however many records repeat it.
  */
-export function relatedItems(words: readonly RelatedWord[]): RelatedItem[] {
+export function relatedItems(words: readonly RelatedWord[]): ListedItem[] {
   // Each record's list, uncollapsed, rebuilt from where each spelling sits.
   const lists = new Map<string, { index: number; word: string; key: string }[]>();
   for (const { word, refs } of words) {
@@ -88,7 +107,7 @@ export function relatedItems(words: readonly RelatedWord[]): RelatedItem[] {
     }
   }
 
-  const items: RelatedItem[] = [];
+  const items: ListedItem[] = [];
   const shownNotes = new Set<string>();
   for (const { word, refs } of words) {
     if (refs.some((ref) => !pieces.has(factRefKey(ref)))) items.push({ kind: "word", word });

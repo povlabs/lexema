@@ -6,6 +6,7 @@
 // `cloudflare:workers`, which exists only inside workerd; importing this
 // instead keeps the rendering half free of it.
 
+import type { EntryKeys } from "@lexema/lookup/entryKeys.ts";
 import type { Nearby } from "@lexema/lookup/nearby.ts";
 import type { DeclaredLemmaResult, DeclaredVerbForm, FoundResult, NotFoundResult, Reading, RejectedResult } from "@lexema/lookup/types.ts";
 import type { DeclaredLemmaPage } from "./declaredLemmaPage.ts";
@@ -44,12 +45,16 @@ import type { VerbRecords } from "./wordPage.ts";
  * (#852, `builtTableVerbWords` in wordPage.ts): `verifico` draws the table
  * built for `verificare`. Empty for any other word.
  *
+ * A word found also carries which of the words its page lists as synonyms,
+ * antonyms or derived words have an entry (#635, `relatedWordsOf` in
+ * wordPage.ts): only those are links. None for a page that lists no word.
+ *
  * The failure is a value rather than a thrown error so the page has to render
  * it. It carries no detail on purpose: the reason is a database message meant
  * for whoever runs the Worker, and it goes to the log, not to the reader.
  */
 export type Attempt =
-  | (FoundResult & { written: string[]; lemmas: Reading[]; declared: DeclaredVerbForm[]; bases: Reading[]; verbs: VerbRecords[] })
+  | (FoundResult & { written: string[]; lemmas: Reading[]; declared: DeclaredVerbForm[]; bases: Reading[]; verbs: VerbRecords[]; entries: EntryKeys })
   | (DeclaredLemmaResult & { page: DeclaredLemmaPage; written: string[] })
   | RejectedResult
   | (NotFoundResult & { nearby: Nearby })

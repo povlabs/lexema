@@ -458,7 +458,9 @@ export const WORD_LIST_ITEM = "flex items-baseline gap-3";
 export const WORD_LIST_ITEM_REST = "hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex";
 /** The `+ altro` item of a list whose words all fit: laid out only to be measured. */
 export const WORD_LIST_MORE_UNNEEDED = "hidden group-data-measuring/words:flex";
-export const WORD_LINK = `cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline ${FOCUS_RING}`;
+/** A word of a list that has no entry (#635): a linked word's text, and no link. */
+export const WORD_TEXT = "font-serif text-[1.1rem] text-text-strong";
+export const WORD_LINK = `cursor-pointer ${WORD_TEXT} no-underline ${FOCUS_RING}`;
 /** A note the source wrote inside a word list: its text, muted, and no link. */
 export const WORD_NOTE = "font-serif text-[1.1rem] italic text-text-muted";
 export const WORD_DOT = "font-sans text-[0.75rem] text-text-muted";

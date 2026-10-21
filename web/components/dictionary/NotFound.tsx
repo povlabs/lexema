@@ -26,7 +26,8 @@ import type { RelatedItem } from "@/lib/dictionary/relatedList.ts";
 import { NOT_FOUND_HEADING, NOT_FOUND_LEAD, NOT_FOUND_LINK, NOT_FOUND_TEXT, SOURCE_LINE } from "@/components/shared/styles.ts";
 import { DID_YOU_MEAN, NOT_FOUND } from "@/lib/dictionary/wordPageText.ts";
 
-const words = (list: readonly string[]): RelatedItem[] => list.map((word) => ({ kind: "word", word }));
+/** Nearby offers are words the dictionary has, read back as their search reads them, so each is a link. */
+const words = (list: readonly string[]): RelatedItem[] => list.map((word) => ({ kind: "entry", word }));
 const phrases = (offers: readonly PhraseOffer[]): string[] => offers.map((offer) => offer.phrase);
 
 function DidYouMean({ word }: { word: string }) {
