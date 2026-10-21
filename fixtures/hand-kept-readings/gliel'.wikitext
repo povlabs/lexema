@@ -1,0 +1,17 @@
+{{also|gliel}}
+==Italian==
+
+===Pronunciation===
+{{it-pr|**[ʎé̱]<rhyme:->|[ʎé̱]<r:DOP:lid#1030774><rhyme:->}}
+
+===Pronoun===
+{{it-pos|pronoun|apoc=1}}
+
+# {{lb|it|sometimes before a vowel}} {{apoc of|it|glielo,gliela}}
+#: {{uxi|it|'''Gliel''''ho detto.|I've told '''him that'''.}}
+
+===References===
+{{reflist}}
+
+===Anagrams===
+* {{anagrams|it|a=egill|Gelli}}

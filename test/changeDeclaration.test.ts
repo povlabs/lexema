@@ -264,6 +264,13 @@ test("every declaration already in dictionary-changes parses as before, with no 
       assert.deepEqual(parseDeclaration(path, text).lookups?.map((item) => item.word), ["sig.", "Sig.", "cosette", "cosetta", "dr."]);
       continue;
     }
+    // The common words of #915 name readings of each group, two plurals that reach their noun, and superman, dropped.
+    if (name === "2026-10-21-hand-kept-readings-common-words.json") {
+      assert.deepEqual(parseDeclaration(path, text).lookups?.map((item) => item.word), [
+        "glielo", "gliel'", "stanotte", "oddio", "barrette", "ehi", "mah", "scartoffie", "cesareo", "superman",
+      ]);
+      continue;
+    }
     // The readings #803 fills name each word whose record now shows a hand-kept definition.
     if (name === "2026-10-18-hand-kept-empty-readings.json") {
       assert.deepEqual(parseDeclaration(path, text).lookups?.map((item) => item.word), ["in ritardo", "scorso", "quindici", "Giulia"]);

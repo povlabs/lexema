@@ -1,0 +1,35 @@
+{{also|cesáreo}}
+==Italian==
+
+===Etymology 1===
+From {{uder|it|la|Caesareus||pertaining to Caesar}}. {{surf|it|Cesare|t1=Caesar|-eo|t2=-ean}}.
+
+====Pronunciation====
+{{it-pr|ce[s]àreo}}
+
+====Adjective====
+{{it-adj}}
+
+# {{lb|it|rare|relational}} of {{w|Julius Caesar}} or the {{w|Julia (gens)|gens Julia}}; [[Caesarean]]
+# {{lb|it|relational}} of an [[emperor]]; [[imperial]]
+# {{lb|it|medicine}} [[Caesarean]] {{q|of a section}}
+
+====Noun====
+{{it-noun|m}}
+
+# {{lb|it|medicine|ellipsis}} [[Caesarean section]]
+#: {{syn|it|taglio cesareo}}
+
+===Etymology 2===
+From {{uder|it|la|caesareum}}, substantivized neuter form of {{m|la|caesareus||pertaining to Caesar}}. {{surf|it|Cesare|t1=Caesar|-eo|t2=-ean}}.
+
+====Pronunciation====
+{{it-pr|ce[s]arèo}}
+
+====Noun====
+{{it-noun|m}}
+
+# {{lb|it|historical}} a [[temple]] dedicated to {{w|Augustus|Caesar Augustus}} or another emperor
+
+===Anagrams===
+* {{anagrams|it|a=aceeors|rosacee}}

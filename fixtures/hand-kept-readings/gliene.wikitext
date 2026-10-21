@@ -1,0 +1,29 @@
+==Italian==
+
+===Etymology===
+{{univerbation|it|glie|ne}}.
+
+===Pronunciation===
+{{it-pr|**[ʎé̱]<r:DiPI>,[ʎé̱]<r:DOP:lid#1030775>}}
+
+===Pronoun===
+{{head|it|pronoun}}
+
+# (some quantity) of it/them to [[him]]/[[her]]/[[it]]/[[them]]
+#: {{uxi|it|'''Gliene''' ho dat'''i''' tre|I've given '''him''' three '''(of them {{g|m-p}})'''}}
+# [[about]] it/them to him/her/it/them
+#: {{uxi|it|'''Gliene''' ho parlato|I've spoken to him '''about it'''}}
+
+====Related terms====
+{{col|it
+|gliela
+|gliele
+|glieli
+|glielo
+}}
+
+===References===
+{{reflist}}
+
+===Anagrams===
+* {{anagrams|it|a=eegiln|lignee}}

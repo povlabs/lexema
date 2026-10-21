@@ -1,0 +1,20 @@
+==Italian==
+
+===Etymology===
+{{univ|it|e<t:and>|come<t:how>}}.
+
+===Pronunciation===
+{{it-pr|eccóme<r:DiPI:eccome!><r:Olivetti><audio:LL-Q652 (ita)-LangPao-eccome.wav>}}
+
+===Adverb===
+{{it-adv}}
+
+# [[certainly]], [[very much]]
+
+===Interjection===
+{{head|it|interjection}}
+
+# [[you bet]]
+
+===References===
+{{reflist}}

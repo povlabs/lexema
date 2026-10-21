@@ -30,6 +30,7 @@ import { seedSql } from "../../src/import/seedSql.js";
 import { PageOnlyCandidates, readUnrecordedPageTitles, UNRECORDED_PAGE_TITLES_FILE } from "../../src/import/pageOnlyCandidates.js";
 import { FixtureLines } from "../../src/italian/correctionsAtLines.js";
 import { CURATED_CORRECTIONS, cellCorrections, definitionCorrections, type CuratedCorrection } from "../../src/italian/curatedCorrections.js";
+import { evidenceUrl } from "../../src/italian/evidence.js";
 import { HAND_KEPT_READINGS } from "../../src/italian/handKeptReadings.js";
 import { atFixtureLines, correctionFixtureLines } from "../../test/correctionFixture.js";
 import { DECLARED_CORRECTION_LINES, declaredCorrections } from "../../test/declaredCorrectionFixture.js";
@@ -1320,6 +1321,9 @@ test("a page a hand-kept reading heads opens the en.wiktionary revision it cites
       "Sig.": ["https://en.wiktionary.org/w/index.php?title=Sig.&oldid=89865273"],
       cosette: ["https://en.wiktionary.org/w/index.php?title=cosetta&oldid=63388291"],
       eguaglianza: ["https://en.wiktionary.org/w/index.php?title=eguaglianza&oldid=71378670"],
+      // No record spells any of #915's words: each page opens the revision its reading cites,
+      // the href's apostrophe written as HTML writes it (gliel').
+      ...Object.fromEntries(HAND_KEPT_READINGS.slice(10).map((reading) => [reading.word, [evidenceUrl(reading.evidence[0]).replaceAll("'", "&#x27;")]])),
     });
   });
 });

@@ -1,0 +1,25 @@
+==Italian==
+
+===Etymology===
+{{univ|it|glie|lo}}.
+
+===Pronunciation===
+{{it-pr|**[ʎé̱]<r:DiPI>,[ʎé̱]<r:DOP:lid#1030774>}}
+
+===Pronoun===
+{{head|it|pronoun}}
+
+# [[it]] to [[him]], [[her]] or [[them]]
+#: {{alti|it|gliel'<l:apocopic,sometimes,before a vowel>|gliel<l:apocopic,archaic,or,poetic>}}
+#: {{uxi|it|'''Glielo''' [[mostrare|mostri]].|Show '''it to him'''.|q={{lg|polite}}}}
+
+====Related terms====
+{{col|it
+|gliele
+|glieli
+|gliela
+|gliene
+}}
+
+===References===
+{{reflist}}

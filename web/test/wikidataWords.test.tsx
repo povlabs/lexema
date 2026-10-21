@@ -95,10 +95,12 @@ test("a Wikidata word with an Italian gloss shows it as its definition, and its 
 });
 
 test("a Wikidata word with no Italian gloss is not loaded, so its spellings get no Wikidata entry", async () => {
-  // paralimpico (L1247138) has no Italian gloss (ADR 0033's 2026-10-12 amendment).
-  for (const query of ["paralimpico", "paralimpiche"]) {
+  // paralimpico (L1247138) has no Italian gloss (ADR 0033's 2026-10-12
+  // amendment). Its page, and paralimpiche's as its plural, show only its
+  // hand-kept adjective (#915), credited to en.wiktionary.
+  for (const [query, heading] of [["paralimpico", "1·Aggettivo"], ["paralimpiche", "1·Aggettivo·paralimpico"]]) {
     const html = await render(query);
-    assert.deepEqual(headingsOf(html), []);
+    assert.deepEqual(headingsOf(html), [heading]);
     assert.doesNotMatch(html, /wikidata\.org/);
   }
 });

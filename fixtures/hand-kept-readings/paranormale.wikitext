@@ -1,0 +1,44 @@
+==Dutch==
+
+===Pronunciation===
+* {{IPA|nl|/ˌpaː.raː.nɔrˈmaː.lə/}}
+* {{audio|nl|Nl-paranormale.ogg}}
+* {{hyphenation|nl|pa|ra|nor|ma|le}}
+
+===Adjective===
+{{head|nl|adjective form}}
+
+# {{infl of|nl|paranormaal||infl}}
+
+==French==
+
+===Pronunciation===
+* {{fr-IPA}}
+* {{homophones|fr|paranormal|paranormales}}
+
+===Adjective===
+{{head|fr|adjective form}}
+
+# {{feminine singular of|fr|paranormal}}
+
+==German==
+
+===Pronunciation===
+* {{audio|de|De-paranormale.ogg|a=<<Germany>> (<<Berlin>>)}}
+* {{rhymes|de|aːlə|s=5}}
+
+===Adjective===
+{{head|de|adjective form}}
+
+# {{de-adj form of|paranormal}}
+
+==Italian==
+
+===Etymology===
+{{ety|it|:af|para-|normale}}
+From {{prefix|it|para|normale}}.
+
+===Adjective===
+{{it-adj}}
+
+# [[paranormal]], [[preternatural]]

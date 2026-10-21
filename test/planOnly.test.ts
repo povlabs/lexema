@@ -17,6 +17,7 @@ import test from "node:test";
 import { main as correctMain } from "../src/import/correctRecordsCli.js";
 import { main as normalizeMain } from "../src/import/normalizeSourceTextCli.js";
 import { seedSql } from "../src/import/seedSql.js";
+import { HAND_KEPT_READINGS, handKeptId } from "../src/italian/handKeptReadings.js";
 import { PLURAL_PLACEHOLDER_FORM } from "../src/italian/sourceTextNormalization.js";
 import { createStatement, PAGE_ENTRY_INDEXES, PAGE_ENTRY_TABLES } from "../src/update/masterUpgrade.js";
 import { main as updateMain } from "../src/update/updateCli.js";
@@ -220,9 +221,11 @@ test("correct:records --plan-only counts what the list writes and leaves the loc
     assert.equal(answer.planOnly, true);
     assert.deepEqual(answer.counts, { records: { added: 0, changed: 25, removed: 0 }, written: { corrected_claim: 29, correction_version: 1 }, deleted: {} });
     assert.equal(answer.dictionaryRecords, lines.length);
-    // The 25 corrections, then the ten hand-kept readings the seed already wrote (#745, #819, #830, #803).
-    assert.equal(answer.entries.length, 35);
-    assert.deepEqual(answer.entries.slice(25), [
+    // The 25 corrections, then the fifty hand-kept readings the seed already
+    // wrote (#745, #819, #830, #803, #915): the first ten named, #915's forty after them.
+    assert.equal(answer.entries.length, 75);
+    assert.deepEqual(answer.entries.slice(35), HAND_KEPT_READINGS.slice(10).map((reading) => `kept:${handKeptId(reading)}: already written`));
+    assert.deepEqual(answer.entries.slice(25, 35), [
       "kept:si:pron: already written",
       "kept:come:conj: already written",
       "kept:Sig.:abbrev: already written",

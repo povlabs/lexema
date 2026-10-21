@@ -1,0 +1,17 @@
+==Italian==
+
+===Pronunciation===
+{{it-pr}}
+
+===Adjective===
+{{it-adj}}
+
+# {{lb|it|relational}} [[surveying]]
+
+===Noun===
+{{it-noun|m}}
+
+# [[surveyor]]
+
+===Anagrams===
+* {{anagrams|it|a=aeeilorrtv|rivelatore}}

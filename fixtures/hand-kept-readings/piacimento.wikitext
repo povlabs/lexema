@@ -1,0 +1,22 @@
+==Italian==
+
+===Etymology===
+{{ety|it|:af|piacere|-mento}}
+From {{af|it|piacere|-mento}}.
+
+===Pronunciation===
+{{it-pr}}
+
+===Noun===
+{{it-noun|m}}
+
+# [[pleasure]], [[satisfaction]]
+
+====Usage notes====
+* Used almost exclusively in the phrases ''[[a piacimento]]'' and ''[[proprio piacimento]]''
+
+===Further reading===
+* {{R:it:Treccani}}
+
+===Anagrams===
+* {{anagrams|it|a=aceiimnopt|pentiamoci|pomiciante}}

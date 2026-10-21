@@ -4,7 +4,10 @@
 // proper name `Cosetta`. `dr.` keeps the `Dr.` record it opens today. Inputs
 // are verbatim (fixtures/hand-kept-readings/PROVENANCE.md): line 36245
 // `Cosetta` of it-0c432803 and line 801536 `Dr.` of it-78385b62, seeded with
-// the committed list `HAND_KEPT_READINGS`.
+// the committed list `HAND_KEPT_READINGS`. #915 adds the forty common words of
+// the 2026-10-20 recount, the plurals barrette and scartoffie that reach two of
+// them, and lines 1654 `società` and 47726 `attività` of it-0c432803, which
+// `societa'` and `attivita'` open.
 
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
@@ -14,6 +17,7 @@ import { join, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { gzipSync } from "node:zlib";
 import { seedSql } from "../src/import/seedSql.js";
+import { HAND_KEPT_READINGS, handKeptId, type HandKeptReading } from "../src/italian/handKeptReadings.js";
 import { lookupBatch, type CandidateRecord } from "../src/lookup/batch.js";
 import { fromNodeSqlite, type LookupDatabase } from "../src/lookup/database.js";
 import { exists, lookup } from "../src/lookup/lookup.js";
@@ -108,5 +112,64 @@ test("dr. keeps its answer, the Dr. record, and mr., p. and n. stay not found (#
   assert.deepEqual(dr.readings.map(shown), [["record", "Dr.", "Acronimo / Abbreviazione", ["variante di Dott."]]]);
   for (const query of ["mr.", "p.", "n."]) {
     assert.equal((await lookup({ db, releaseId: RELEASE, query })).outcome, "not-found", query);
+  }
+});
+
+/** The words #915 gives a reading, each the reading its own word opens. */
+const RECOUNT_WORDS = [
+  "glielo", "gliel'", "gliela", "glieli", "gliele", "gliene",
+  "stanotte", "stavolta", "city", "sottofondo", "eccome", "quaggiù", "quassù", "piccolino", "granché", "sottufficiale", "dopodiché",
+  "studentesco", "cordone", "bigliettino", "camicetta", "orsetto", "barretta", "prematrimoniale", "quantomeno", "caposquadra",
+  "minorile", "paranormale", "piacimento", "avvistamento", "domattina", "oddio", "paralimpico",
+  "ehi", "evviva", "mah",
+  "scartoffia", "portabagagli", "rilevatore", "cesareo",
+];
+
+const keptReadingOf = (word: string): HandKeptReading => {
+  const reading = HAND_KEPT_READINGS.find((one) => one.word === word);
+  assert.ok(reading, word);
+  return reading;
+};
+
+/** The one reading a page of `word` shows: its hand-kept reading, as the list keeps it. */
+const keptShown = (word: string) => {
+  const reading = keptReadingOf(word);
+  return [`kept-${handKeptId(reading)}`, reading.word, reading.partOfSpeech.posTitle, reading.definitions.map(({ text }) => text)];
+};
+
+test("each common word of the 2026-10-20 recount finds its hand-kept reading through lookup(), lookupBatch and exists() (#915)", async () => {
+  // A plural reaches its noun as cosette reaches cosetta: barrette, and
+  // scartoffie, which en.wiktionary gives only as scartoffia's plural.
+  const plurals: [string, string][] = [["barrette", "barretta"], ["scartoffie", "scartoffia"]];
+  const queries: [string, string][] = [...RECOUNT_WORDS.map((word): [string, string] => [word, word]), ...plurals, ["Ehi", "ehi"], ["gliel’", "gliel'"]];
+  for (const [query, word] of queries) {
+    const result = await found(query);
+    assert.deepEqual(result.readings.map(shown), [keptShown(word)], query);
+    assert.equal((await exists({ db, releaseId: RELEASE, query })).outcome, "present", query);
+  }
+  for (const [query, word] of plurals) {
+    const { route } = await found(query);
+    assert.deepEqual(route.kind === "shape" ? route.spellings.map(({ shape, key }) => `${shape}:${key}`) : route, [`inflected:${word}`], query);
+  }
+  const { answers } = await lookupBatch({ db, releaseId: RELEASE, queries: queries.map(([query]) => query) });
+  for (const [at, [query, word]] of queries.entries()) {
+    const answer = answers[at];
+    assert.ok(answer.outcome === "found", query);
+    assert.deepEqual(answer.candidates.map(candidateKey), [`kept-${handKeptId(keptReadingOf(word))}`], query);
+  }
+});
+
+test("uh and superman, which en.wiktionary gives no Italian sense line, stay not found (#915)", async () => {
+  for (const query of ["uh", "superman"]) {
+    assert.equal((await lookup({ db, releaseId: RELEASE, query })).outcome, "not-found", query);
+    assert.equal((await exists({ db, releaseId: RELEASE, query })).outcome, "absent", query);
+  }
+});
+
+test("societa' opens società and attivita' opens attività: an apostrophe written for the accent (#915, #900)", async () => {
+  for (const [query, headword] of [["societa'", "società"], ["attivita'", "attività"]]) {
+    const result = await found(query);
+    assert.deepEqual(result.route, { kind: "accentless", headword }, query);
+    assert.deepEqual(result.readings.map((reading) => [reading.word, reading.posTitle]), [[headword, "Sostantivo"]], query);
   }
 });

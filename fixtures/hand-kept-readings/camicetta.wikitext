@@ -1,0 +1,19 @@
+==Italian==
+
+===Etymology===
+{{ety|it|:af|camicia|-etta}}
+From {{af|it|camicia|-etta}}.
+
+===Pronunciation===
+{{it-pr}}
+
+===Noun===
+{{it-noun|f}}
+
+# [[blouse]]
+
+===Further reading===
+* {{R:it:Trec}}
+* {{R:it:Garzanti}}
+
+{{C|it|Clothing}}

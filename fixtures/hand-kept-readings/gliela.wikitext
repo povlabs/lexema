@@ -1,0 +1,27 @@
+==Italian==
+
+===Etymology===
+{{univ|it|glie|la}}.
+
+===Pronunciation===
+{{it-pr|**[ʎé̱]<r:DiPI>,[ʎé̱]<r:DOP:lid#1030770>}}
+
+===Pronoun===
+{{head|it|pronoun}}
+
+# [[it]] to [[him]], [[her]] or [[them]]
+#: {{alti|it|gliel'<l:apocopic,sometimes,before a vowel>}}
+
+====Related terms====
+{{col|it
+|gliele
+|glieli
+|glielo
+|gliene
+}}
+
+===References===
+{{reflist}}
+
+===Anagrams===
+* {{anagrams|it|a=aegill|gialle|gliale|legali}}

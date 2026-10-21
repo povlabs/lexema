@@ -1,0 +1,56 @@
+{{also|ehí|eĥi|ẹhi}}
+
+==Igbo==
+[[File:Koe_in_weiland_bij_Gorssel.JPG|thumb|'''ehi''']]
+
+===Etymology===
+From {{inh|ig|alv-igb-pro|*éfṹỹĩ}}. Cognate with {{cog|ekp|éyí}}, {{cog|ogc|éhĩ́}}, {{cog|eza|éʃwí}}, {{cog|izz|éswí}}, {{cog|ukw|éfí}}, {{cog|ikk|éfĩ́}}.<ref>{{cite-web|last=Blench|first=Roger|last2=Williamson|first2=Kay|last3=Ohiri-Aniche|first3=Chinyere|work=Comparative Igboid|url=https://www.rogerblench.info/Language/Niger-Congo/VN/Igboid/Comparative%20Igboid%20complete.pdf|year=2013}}</ref>
+
+===Pronunciation===
+* {{IPA|ig|/é.hí/}}
+
+===Noun===
+{{ig-noun|ehi}}
+
+# [[cow]] {{gloss|animal}}
+
+===References===
+{{reflist}}
+
+{{c|ig|Cattle}}
+
+==Italian==
+
+===Pronunciation===
+{{it-pr|éi,èi}}
+
+===Interjection===
+{{head|it|interjection}}
+
+# [[hey]]! {{gloss|used to attract someone's attention}}
+
+====Derived terms====
+* {{l|it|ehilà}}
+
+===Further reading===
+* {{R:it:Treccani}}
+
+==Pali==
+
+===Alternative forms===
+{{pi-alt}}
+
+===Verb===
+{{pi-verb form}}
+
+# {{inflection of|pi|eti||2|s|imp|act|t=to come}}
+
+===Adjective===
+{{head|pi|adjective form}}
+
+# {{inflection of|pi|ima||m//n|ins//abl|p|t=this}}
+
+===Pronoun===
+{{head|pi|pronoun form}}
+
+# {{inflection of|pi|ima||m//n|ins//abl|p|t=this}}

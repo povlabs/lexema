@@ -1,0 +1,18 @@
+==Italian==
+
+===Etymology===
+{{ety|it|:af|piccolo|-ino<pos:[[diminutive]] suffix>}}
+From {{affix|it|piccolo|-ino|pos2=[[diminutive]] suffix}}.
+
+===Pronunciation===
+{{it-pr|piccolìno}}
+
+===Adjective===
+{{it-adj}}
+
+# [[small]], [[tiny]]
+
+===Noun===
+{{it-noun|m|f=+}}
+
+# [[little one]] (young child)

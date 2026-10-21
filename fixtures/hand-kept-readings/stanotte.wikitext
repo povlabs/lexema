@@ -1,0 +1,29 @@
+==Italian==
+
+===Etymology===
+{{univ|it|'sta<t:this><pos:apheretic form of {{m|it|questa|g=f-s}}>|notte<t:night>}}.
+
+===Pronunciation===
+{{it-pr|^ò<r:Olivetti>}}
+
+===Adverb===
+{{it-adv}}
+
+# [[tonight]]
+#: {{ux|it|Partiremo '''stanotte''' alle 2.|We are leaving '''tonight''' at 2 am.}}
+# [[last night]]
+#: {{ux|it|'''Stanotte''' non ho chiuso occhio.|'''Last night''' I couldn't sleep at all.}}
+
+====Related terms====
+{{col|it
+|stasera
+|stamattina
+}}
+
+===References===
+{{reflist}}
+
+===Anagrams===
+* {{anagrams|it|a=aenosttt|stentato|tostante}}
+
+{{C|it|Time}}

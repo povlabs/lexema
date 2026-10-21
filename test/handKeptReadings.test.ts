@@ -6,7 +6,8 @@
 // 963 `si`, 55329 `uguaglianza`, 113594 and 113595 `come` of it-0c432803, and
 // revisions 93469502 `si`, 93379611 `come`, 89865273 `Sig.`, 63388291 `cosetta`
 // and 71378670 `eguaglianza` of
-// en.wiktionary (fixtures/hand-kept-readings/).
+// en.wiktionary, and the revision each of #915's forty readings cites
+// (fixtures/hand-kept-readings/).
 
 import assert from "node:assert/strict";
 import test from "node:test";
@@ -68,7 +69,33 @@ const RULING_OF: Record<string, string> = {
   "Giulia:name": "https://github.com/povlabs/lexema/issues/803#issuecomment-6254975552",
 };
 
-test("the list keeps exactly si's pronoun, come's conjunction, Sig., cosetta, eguaglianza's noun and the five readings #803 fills, each as its cited revision shows it", async () => {
+/** The forty readings #915 adds, in list order: the common words of the 2026-10-20 recount. */
+const RECOUNT_IDS = [
+  "glielo:pron", "gliel':pron", "gliela:pron", "glieli:pron", "gliele:pron", "gliene:pron",
+  "stanotte:adv", "stavolta:adv", "city:noun", "sottofondo:noun", "eccome:adv", "quaggiù:adv", "quassù:adv", "piccolino:adj", "granché:pron",
+  "sottufficiale:noun", "dopodiché:adv", "studentesco:adj", "cordone:noun", "bigliettino:noun", "camicetta:noun", "orsetto:noun", "barretta:noun",
+  "prematrimoniale:adj", "quantomeno:adv", "caposquadra:noun", "minorile:adj", "paranormale:adj", "piacimento:noun", "avvistamento:noun",
+  "domattina:adv", "oddio:intj", "paralimpico:adj",
+  "ehi:intj", "evviva:intj", "mah:intj",
+  "scartoffia:noun", "portabagagli:noun", "rilevatore:noun", "cesareo:noun",
+];
+for (const id of RECOUNT_IDS) RULING_OF[id] = "https://github.com/povlabs/lexema/issues/915#issuecomment-6314615880";
+
+/**
+ * Words of the groups #915's ruling skips, as its issue names them, the words
+ * it drops for want of an Italian sense line, and the plurals that reach their
+ * noun's reading: none has a reading of its own.
+ */
+const SKIPPED = [
+  "pochino", "sorellina", "vecchietto", "rivoglio", "risiamo", "rivuole", "rivuoi", "email", "kit", "house", "dj", "handbike",
+  "ve", "vent'", "'fanculo", "mezzora", "d.c.", "altronde", "superman", "uh", "barrette", "scartoffie",
+];
+
+/** The words a cited sense line links, `[[as soon as]]` or `[[oh God]]`: the English a definition paraphrases and never writes. */
+const linkedWords = (wikitext: string): string[] => [...wikitext.matchAll(/\[\[([^\]|#]+)(?:[|#][^\]]*)?\]\]/g)].map(([, target]) => target.trim());
+const writesWord = (text: string, word: string): boolean => new RegExp(`(?<!\\p{L})${word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?!\\p{L})`, "iu").test(text);
+
+test("the list keeps exactly si's pronoun, come's conjunction, Sig., cosetta, eguaglianza's noun, the five readings #803 fills and #915's forty, each as its cited revision shows it", async () => {
   assert.deepEqual(HAND_KEPT_READINGS.map((reading) => [handKeptId(reading), reading.partOfSpeech.posTitle, reading.evidence.map(evidenceUrl)]), [
     ["si:pron", "Pronome", ["https://en.wiktionary.org/w/index.php?title=si&oldid=93469502"]],
     ["come:conj", "Congiunzione", ["https://en.wiktionary.org/w/index.php?title=come&oldid=93379611"]],
@@ -80,9 +107,17 @@ test("the list keeps exactly si's pronoun, come's conjunction, Sig., cosetta, eg
     ["scorso:adj", "Aggettivo", ["https://en.wiktionary.org/w/index.php?title=scorso&oldid=90562962"]],
     ["quindici:noun", "Sostantivo", ["https://en.wiktionary.org/w/index.php?title=quindici&oldid=90558905"]],
     ["Giulia:name", "Nome proprio", ["https://en.wiktionary.org/w/index.php?title=Giulia&oldid=90576577"]],
+    // #915's, each citing its own word's page.
+    ...HAND_KEPT_READINGS.slice(10).map((reading) => [handKeptId(reading), reading.partOfSpeech.posTitle, [evidenceUrl({ ...reading.evidence[0], title: reading.word })]]),
   ]);
-  // The first five fill no section of the source; the other five fill an empty one (#803, test/emptyReadings.test.ts).
-  assert.deepEqual(HAND_KEPT_READINGS.map((reading) => reading.source.kind), ["none", "none", "none", "none", "none", "empty", "empty", "empty", "empty", "empty"]);
+  assert.deepEqual(HAND_KEPT_READINGS.slice(10).map(handKeptId), RECOUNT_IDS);
+  for (const word of SKIPPED) assert.ok(HAND_KEPT_READINGS.every((reading) => reading.word !== word), word);
+  // The first five fill no section of the source, the next five fill an empty
+  // one (#803, test/emptyReadings.test.ts), and #915's fill none.
+  assert.deepEqual(HAND_KEPT_READINGS.map((reading) => reading.source.kind), [
+    ...["none", "none", "none", "none", "none", "empty", "empty", "empty", "empty", "empty"],
+    ...RECOUNT_IDS.map(() => "none"),
+  ]);
   const etymologyOf = { si: "===Etymology 1===", come: undefined } as Record<string, string | undefined>;
   for (const reading of HAND_KEPT_READINGS) {
     const [evidence] = reading.evidence;
@@ -108,6 +143,8 @@ test("the list keeps exactly si's pronoun, come's conjunction, Sig., cosetta, eg
       assert.match(paraphrases.wikitext, /^# /);
       assert.ok(paraphrases.line > section.line && paraphrases.line < end, `${reading.word}: line ${paraphrases.line} is in its section`);
       assert.notEqual(text, "");
+      // The wording is Lexema's Italian: it writes none of the English words its line links.
+      for (const english of linkedWords(paraphrases.wikitext)) assert.ok(!writesWord(text, english), `${reading.word}: ${JSON.stringify(text)} writes ${english}`);
     }
     assert.equal(reading.ruling, RULING_OF[handKeptId(reading)]);
   }
@@ -248,7 +285,8 @@ test("a lookup reads each hand-kept reading beside the source's readings, as an 
         { reading_id: "quindici:noun", n: 1 },
         { reading_id: "scorso:adj", n: 1 },
         { reading_id: "si:pron", n: 4 },
-      ]);
+        ...RECOUNT_IDS.map((id) => ({ reading_id: id, n: readingOf(id.slice(0, id.lastIndexOf(":"))).definitions.length })),
+      ].sort((a, b) => (a.reading_id < b.reading_id ? -1 : 1)));
     });
     // Without the list, si is only its noun.
     await withSeed([], async ({ readingsOf }) => {
@@ -327,11 +365,12 @@ test("correct:records writes the readings into a master seeded before them, once
       "  kept:scorso:adj: written, 1 definition(s)",
       "  kept:quindici:noun: written, 1 definition(s)",
       "  kept:Giulia:name: written, 1 definition(s)",
+      ...HAND_KEPT_READINGS.slice(10).map((reading) => `  kept:${handKeptId(reading)}: written, ${reading.definitions.length} definition(s)`),
     ]);
-    // A reading keys to no record; its rows are what the counts name.
-    assert.deepEqual(plan.counts.toJSON(), { records: { added: 0, changed: 0, removed: 0 }, written: { hand_kept_definition: 13, correction_version: 1 }, deleted: {} });
+    // A reading keys to no record; its rows are what the counts name: thirteen, and #915's fifty-seven.
+    assert.deepEqual(plan.counts.toJSON(), { records: { added: 0, changed: 0, removed: 0 }, written: { hand_kept_definition: 70, correction_version: 1 }, deleted: {} });
     // eguaglianza's page shows uguaglianza's definitions and table, so a Preview's slice serves that word too (#830).
-    assert.deepEqual(wordsOfCorrections(plan), touchedWords(["come", "si", "Sig.", "cosetta", "eguaglianza", "uguaglianza", "in ritardo", "scorso", "quindici", "Giulia"]));
+    assert.deepEqual(wordsOfCorrections(plan), touchedWords(["come", "si", "Sig.", "cosetta", "eguaglianza", "uguaglianza", "in ritardo", "scorso", "quindici", "Giulia", ...RECOUNT_IDS.map((id) => id.slice(0, id.lastIndexOf(":")))]));
     // The SQL creates nothing (#509): the upgrade gives the master the table, and the plan is the same after it.
     assert.doesNotMatch(plan.sql, /\b(CREATE|DROP|ALTER)\b/);
     assert.deepEqual(missingForCorrections(reader), ["hand_kept_definition", "hand_kept_definition_by_key"]);
@@ -361,13 +400,14 @@ test("correct:records writes the readings into a master seeded before them, once
       "  kept:scorso:adj: already written",
       "  kept:quindici:noun: already written",
       "  kept:Giulia:name: already written",
+      ...RECOUNT_IDS.map((id) => `  kept:${id}: already written`),
     ]);
     assert.equal(again.counts, PlanCounts.NONE);
 
     // A held reading that differs is replaced whole: the counts name its rows deleted and written.
     before.exec("UPDATE hand_kept_definition SET text = 'altro' WHERE reading_id = 'si:pron' AND definition_index = 2");
     const rewrite = planCorrections(reader, [], HAND_KEPT_READINGS);
-    assert.deepEqual(rewrite.readings.map((entry) => entry.state), ["write", "already", "already", "already", "already", "already", "already", "already", "already", "already"]);
+    assert.deepEqual(rewrite.readings.map((entry) => entry.state), ["write", ...HAND_KEPT_READINGS.slice(1).map(() => "already")]);
     assert.deepEqual(rewrite.counts.toJSON(), {
       records: { added: 0, changed: 0, removed: 0 },
       written: { hand_kept_definition: 4, correction_version: 1 },

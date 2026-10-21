@@ -1,0 +1,15 @@
+{{also|Barretta}}
+==Italian==
+
+===Etymology===
+{{ety|it|:af|barra|-etta}}
+From {{suffix|it|barra|etta}}.
+
+===Noun===
+{{it-noun|f}}
+
+# {{diminutive of|it|barra}}
+# small [[bar]] {{qualifier|of chocolate, etc.}}
+
+===Anagrams===
+* {{anagrams|it|a=aaberrtt|brattare|bratterà}}

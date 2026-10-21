@@ -1,0 +1,23 @@
+==Italian==
+
+===Etymology===
+{{univ|it|'sta<t:this><pos:short for {{m|it|questa}}>|volta<t:time>}}.<ref>{{R:it:Garzanti}}</ref>
+
+===Pronunciation===
+{{it-pr|^ò<r:DiPI><r:DOP:lid#1086271><audio:LL-Q652 (ita)-LangPao-stavolta.wav>}}
+
+===Adverb===
+{{it-adv}}
+
+# {{lb|it|colloquial}} [[this time]]
+#: {{syn|it|[[questa]] [[volta]]}}
+
+===References===
+{{reflist}}
+
+===Further reading===
+* {{R:it:Trec}}
+* {{R:it:Olivetti}}
+
+===Anagrams===
+* {{anagrams|it|a=aalosttv|slattavo|svoltata}}
