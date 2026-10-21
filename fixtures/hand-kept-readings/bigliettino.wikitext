@@ -1,0 +1,12 @@
+==Italian==
+
+===Pronunciation===
+{{it-pr|bigliettìno}}
+
+===Noun===
+{{it-noun|m}}
+
+# [[card]] (birthday, Christmas etc.)
+
+===Anagrams===
+* {{anagrams|it|a=begiiilnott|bigliettoni}}

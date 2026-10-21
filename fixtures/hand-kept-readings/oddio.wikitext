@@ -1,0 +1,17 @@
+==Italian==
+{{rfquote|it}}
+
+===Etymology===
+From {{compound|it|o|Dio}}.
+
+===Pronunciation===
+{{it-pr|oddìo}}
+
+===Interjection===
+{{head|it|interjection}}
+
+# [[oh God]]; [[oh my God]]; [[God]]!
+# [[good grief]]
+
+===Anagrams===
+* {{anagrams|it|a=ddioo|diodo}}

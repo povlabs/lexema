@@ -1,0 +1,16 @@
+==Italian==
+
+===Etymology===
+{{ety|it|:af|studente|-esco}}
+From {{af|it|studente|-esco}}.
+
+===Pronunciation===
+{{it-pr}}
+
+===Adjective===
+{{it-adj}}
+
+# {{lb|it|relational}} [[student]]
+
+===Further reading===
+* {{R:it:Treccani}}

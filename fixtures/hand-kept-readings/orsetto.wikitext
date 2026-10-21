@@ -1,0 +1,24 @@
+==Italian==
+
+===Etymology===
+{{ety|it|:af|orso|-etto<pos:diminutive suffix>}}
+From {{af|it|orso|-etto|pos2=diminutive suffix}}.
+
+===Pronunciation===
+{{it-pr|orsétto}}
+
+===Noun===
+{{it-noun|m}}
+
+# [[bear cub]]
+
+====Derived terms====
+* {{l|it|orsetto lavatore}}
+
+===Further reading===
+* {{R:it:Treccani}}
+
+===Anagrams===
+* {{anagrams|it|a=eoorstt|estorto|tetroso|tosterò}}
+
+{{C|it|Baby animals|Ursids}}

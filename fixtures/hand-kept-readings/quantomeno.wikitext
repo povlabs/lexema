@@ -1,0 +1,22 @@
+{{also|quanto meno}}
+==Italian==
+
+===Alternative forms===
+* {{alt|it|quanto meno}}
+
+===Etymology===
+{{lit|as much as least}}.
+Compare {{cog|es|cuando menos}}.
+
+===Pronunciation===
+{{it-pr|quàntoméno<r:Olivetti>}}
+
+===Adverb===
+{{it-adv}}
+
+# [[at least]], [[to say the least]]
+#: {{syn|it|almeno|perlomeno}}
+# [[at any rate]]
+
+===References===
+{{reflist}}

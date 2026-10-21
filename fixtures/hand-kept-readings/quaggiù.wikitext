@@ -1,0 +1,16 @@
+==Italian==
+
+===Etymology===
+{{univerbation|it|qua|giù|gloss1=here|gloss2=down}}.
+
+===Pronunciation===
+{{it-pr|+|*+<pre:{{q|regional}}>}}
+
+===Adverb===
+{{it-adv}}
+
+# [[down]] [[here]]
+#: {{ant|it|quassù}}
+# in the [[South]]
+# {{lb|it|figurative}} in this [[world]] or [[life]]
+#: {{ant|it|lassù}}

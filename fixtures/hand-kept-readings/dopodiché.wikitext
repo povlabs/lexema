@@ -1,0 +1,21 @@
+{{also|dopodichè}}
+
+==Italian==
+
+===Alternative forms===
+* {{alt|it|dopodichè||misspelling}}
+
+===Etymology===
+From {{af|it|dopo-|che}}.
+Compare {{cog|fr|après quoi}} for a similar construction.
+
+===Pronunciation===
+{{it-pr|dopodiché*,dòpodiché*<r:DiPI>}}
+
+===Adverb===
+{{it-adv}}
+
+# [[after]] [[which]], [[afterwards]], [[thereafter]], [[whereafter]], [[whereupon]]
+
+===References===
+{{reflist}}

@@ -1,0 +1,20 @@
+==Italian==
+
+===Etymology===
+{{ety|it|:af|capo-|squadra}}
+From {{prefix|it|capo|squadra}}.
+
+===Pronunciation===
+{{it-pr|càposquàdra<r:Olivetti>}}
+
+===Noun===
+{{it-noun|mfbysense|cap*}}
+
+# [[foreman]]/[[forewoman]], [[supervisor]], [[team]] [[leader]]
+# {{lb|it|military}} [[squad]] [[leader]]
+
+====Related terms====
+* {{l|it|squadra}}
+
+===References===
+{{reflist}}

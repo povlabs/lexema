@@ -1,0 +1,20 @@
+==Italian==
+
+===Etymology===
+{{ety|it|:af|sotto-|fondo}}
+From {{prefix|it|sotto|fondo}}.
+
+===Pronunciation===
+{{it-pr|sottofóndo}}
+
+===Noun===
+{{it-noun|m}}
+
+# [[background]]
+# {{lb|it|figurative}} [[substratum]], [[underlying]] [[layer]]
+# {{lb|it|architecture}} [[foundation]], [[floor rough]]
+# {{lb|it|cosmetics}} [[foundation]]
+#: {{syn|it|fondotinta}}
+
+====Derived terms====
+* {{l|it|sottofondo musicale}}

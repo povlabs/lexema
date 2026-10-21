@@ -1,0 +1,21 @@
+{
+  "command": "correct:records",
+  "inputs": {},
+  "lookups": [
+    { "word": "glielo", "gloss": "forma composta dei pronomi gli e lo" },
+    { "word": "gliel'", "gloss": "forma tronca di glielo o gliela" },
+    { "word": "stanotte", "gloss": "la notte scorsa" },
+    { "word": "oddio", "gloss": "esclamazione di spavento" },
+    { "word": "barrette", "gloss": "piccola barra" },
+    { "word": "ehi", "gloss": "richiamare l'attenzione" },
+    { "word": "mah", "gloss": "esprime dubbio o incertezza" },
+    { "word": "scartoffie", "gloss": "carta d'ufficio" },
+    { "word": "cesareo", "gloss": "taglio cesareo" },
+    { "word": "superman", "found": false }
+  ],
+  "expected": {
+    "records": { "added": 0, "changed": 0, "removed": 0 },
+    "written": { "hand_kept_definition": 56, "correction_version": 1 },
+    "deleted": {}
+  }
+}

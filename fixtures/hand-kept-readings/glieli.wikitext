@@ -1,0 +1,23 @@
+==Italian==
+
+===Etymology===
+{{univ|it|glie|li}}.
+
+===Pronunciation===
+{{it-pr|**[ʎé̱]<r:DiPI>,[ʎé̱]<r:DOP:lid#1030774,lemma#glielo>}}
+
+===Pronoun===
+{{head|it|pronoun}}
+
+# [[them]] to [[him]], [[her]] or [[them]]
+
+====Related terms====
+{{col|it
+|gliela
+|gliele
+|glielo
+|gliene
+}}
+
+===References===
+{{reflist}}

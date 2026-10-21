@@ -202,6 +202,8 @@ const RULING_745 = "https://github.com/povlabs/lexema/issues/745#issuecomment-60
 const RULING_809 = "https://github.com/povlabs/lexema/issues/809#issuecomment-6110591219";
 /** Huey's ruling of 2026-10-18 that a reading the source leaves empty may get hand-kept definitions (#803, A). */
 const RULING_803 = "https://github.com/povlabs/lexema/issues/803#issuecomment-6254975552";
+/** Huey's ruling of 2026-10-21 that the common words of the 2026-10-20 recount get hand-kept readings (#915). */
+const RULING_915 = "https://github.com/povlabs/lexema/issues/915#issuecomment-6314615880";
 
 /**
  * The committed list. Add a reading only with its evidence, and only on a
@@ -387,5 +389,633 @@ export const HAND_KEPT_READINGS: readonly HandKeptReading[] = handKeptList([
     ],
     evidence: [{ wiki: "en.wiktionary.org", title: "Giulia", revisionId: 90576577, timestamp: "2026-05-09T15:43:32Z", shows: "{{it-proper noun|f}}" }],
     ruling: RULING_803,
+  }),
+  // The common words of the 2026-10-20 recount that no source answers (#915):
+  // it.wiktionary has no record of any of the words below, and Wikidata's
+  // lexemes of group 2 carry no Italian gloss, so none is loaded (ADR 0033's
+  // 2026-10-12 amendment). First the glie- clusters, gli joined to a pronoun.
+  handKeptReading({
+    word: "glielo",
+    partOfSpeech: statedPartOfSpeech("Pronome"),
+    source: { kind: "none" },
+    section: { line: 9, wikitext: "===Pronoun===" },
+    definitions: [
+      {
+        text: "forma composta dei pronomi gli e lo: lo a lui, a lei o a loro",
+        paraphrases: { line: 12, wikitext: "# [[it]] to [[him]], [[her]] or [[them]]" },
+      },
+    ],
+    evidence: [{ wiki: "en.wiktionary.org", title: "glielo", revisionId: 88460023, timestamp: "2025-12-10T07:50:02Z", shows: "{{head|it|pronoun}}" }],
+    ruling: RULING_915,
+  }),
+  handKeptReading({
+    word: "gliel'",
+    partOfSpeech: statedPartOfSpeech("Pronome"),
+    source: { kind: "none" },
+    section: { line: 7, wikitext: "===Pronoun===" },
+    definitions: [
+      {
+        text: "forma tronca di glielo o gliela, usata talvolta davanti a vocale",
+        paraphrases: { line: 10, wikitext: "# {{lb|it|sometimes before a vowel}} {{apoc of|it|glielo,gliela}}" },
+      },
+    ],
+    evidence: [{ wiki: "en.wiktionary.org", title: "gliel'", revisionId: 88460011, timestamp: "2025-12-10T07:48:02Z", shows: "{{it-pos|pronoun|apoc=1}}" }],
+    ruling: RULING_915,
+  }),
+  handKeptReading({
+    word: "gliela",
+    partOfSpeech: statedPartOfSpeech("Pronome"),
+    source: { kind: "none" },
+    section: { line: 9, wikitext: "===Pronoun===" },
+    definitions: [
+      {
+        text: "forma composta dei pronomi gli e la: la a lui, a lei o a loro",
+        paraphrases: { line: 12, wikitext: "# [[it]] to [[him]], [[her]] or [[them]]" },
+      },
+    ],
+    evidence: [{ wiki: "en.wiktionary.org", title: "gliela", revisionId: 88458055, timestamp: "2025-12-10T06:22:17Z", shows: "{{head|it|pronoun}}" }],
+    ruling: RULING_915,
+  }),
+  handKeptReading({
+    word: "glieli",
+    partOfSpeech: statedPartOfSpeech("Pronome"),
+    source: { kind: "none" },
+    section: { line: 9, wikitext: "===Pronoun===" },
+    definitions: [
+      {
+        text: "forma composta dei pronomi gli e li: li a lui, a lei o a loro",
+        paraphrases: { line: 12, wikitext: "# [[them]] to [[him]], [[her]] or [[them]]" },
+      },
+    ],
+    evidence: [{ wiki: "en.wiktionary.org", title: "glieli", revisionId: 88458060, timestamp: "2025-12-10T06:22:33Z", shows: "{{head|it|pronoun}}" }],
+    ruling: RULING_915,
+  }),
+  // Its second sense, Old Italian gliele for any of the four, is not kept.
+  handKeptReading({
+    word: "gliele",
+    partOfSpeech: statedPartOfSpeech("Pronome"),
+    source: { kind: "none" },
+    section: { line: 9, wikitext: "===Pronoun===" },
+    definitions: [
+      {
+        text: "forma composta dei pronomi gli e le: le a lui, a lei o a loro",
+        paraphrases: { line: 12, wikitext: "# [[them]] {{q|feminine}} to [[him]], [[her]] or [[them]]" },
+      },
+    ],
+    evidence: [{ wiki: "en.wiktionary.org", title: "gliele", revisionId: 92702628, timestamp: "2026-09-16T13:57:22Z", shows: "{{head|it|pronoun}}" }],
+    ruling: RULING_915,
+  }),
+  handKeptReading({
+    word: "gliene",
+    partOfSpeech: statedPartOfSpeech("Pronome"),
+    source: { kind: "none" },
+    section: { line: 9, wikitext: "===Pronoun===" },
+    definitions: [
+      {
+        text: "forma composta dei pronomi gli e ne: a lui, a lei o a loro una parte di ciò di cui si parla",
+        paraphrases: { line: 12, wikitext: "# (some quantity) of it/them to [[him]]/[[her]]/[[it]]/[[them]]" },
+      },
+      {
+        text: "a lui, a lei o a loro, a proposito di ciò di cui si parla",
+        paraphrases: { line: 14, wikitext: "# [[about]] it/them to him/her/it/them" },
+      },
+    ],
+    evidence: [{ wiki: "en.wiktionary.org", title: "gliene", revisionId: 88458065, timestamp: "2025-12-10T06:23:00Z", shows: "{{head|it|pronoun}}" }],
+    ruling: RULING_915,
+  }),
+  // The Wikidata words with no Italian gloss.
+  handKeptReading({
+    word: "stanotte",
+    partOfSpeech: statedPartOfSpeech("Avverbio"),
+    source: { kind: "none" },
+    section: { line: 9, wikitext: "===Adverb===" },
+    definitions: [
+      {
+        text: "nella notte che sta per venire, questa notte",
+        paraphrases: { line: 12, wikitext: "# [[tonight]]" },
+      },
+      {
+        text: "nella notte appena passata, la notte scorsa",
+        paraphrases: { line: 14, wikitext: "# [[last night]]" },
+      },
+    ],
+    evidence: [{ wiki: "en.wiktionary.org", title: "stanotte", revisionId: 89891525, timestamp: "2026-03-18T23:19:44Z", shows: "{{it-adv}}" }],
+    ruling: RULING_915,
+  }),
+  handKeptReading({
+    word: "stavolta",
+    partOfSpeech: statedPartOfSpeech("Avverbio"),
+    source: { kind: "none" },
+    section: { line: 9, wikitext: "===Adverb===" },
+    definitions: [
+      {
+        text: "questa volta",
+        paraphrases: { line: 12, wikitext: "# {{lb|it|colloquial}} [[this time]]" },
+      },
+    ],
+    evidence: [{ wiki: "en.wiktionary.org", title: "stavolta", revisionId: 84722050, timestamp: "2025-05-04T09:50:02Z", shows: "{{it-adv}}" }],
+    ruling: RULING_915,
+  }),
+  handKeptReading({
+    word: "city",
+    partOfSpeech: statedPartOfSpeech("Sostantivo"),
+    source: { kind: "none" },
+    section: { line: 961, wikitext: "===Noun===" },
+    definitions: [
+      {
+        text: "il quartiere degli affari e della finanza di una grande città",
+        paraphrases: { line: 964, wikitext: "# {{l|en|city}} (financial district of a city)" },
+      },
+    ],
+    evidence: [{ wiki: "en.wiktionary.org", title: "city", revisionId: 93757027, timestamp: "2026-10-20T18:31:56Z", shows: "{{it-noun|f|#}}" }],
+    ruling: RULING_915,
+  }),
+  handKeptReading({
+    word: "sottofondo",
+    partOfSpeech: statedPartOfSpeech("Sostantivo"),
+    source: { kind: "none" },
+    section: { line: 10, wikitext: "===Noun===" },
+    definitions: [
+      {
+        text: "ciò che sta sullo sfondo, in secondo piano, come una musica o un rumore",
+        paraphrases: { line: 13, wikitext: "# [[background]]" },
+      },
+      {
+        text: "in senso figurato, ciò che sta sotto e alla base di qualcosa",
+        paraphrases: { line: 14, wikitext: "# {{lb|it|figurative}} [[substratum]], [[underlying]] [[layer]]" },
+      },
+      {
+        text: "in edilizia, lo strato di base su cui si posa il pavimento",
+        paraphrases: { line: 15, wikitext: "# {{lb|it|architecture}} [[foundation]], [[floor rough]]" },
+      },
+      {
+        text: "in cosmetica, il fondotinta",
+        paraphrases: { line: 16, wikitext: "# {{lb|it|cosmetics}} [[foundation]]" },
+      },
+    ],
+    evidence: [{ wiki: "en.wiktionary.org", title: "sottofondo", revisionId: 90570723, timestamp: "2026-05-09T13:54:42Z", shows: "{{it-noun|m}}" }],
+    ruling: RULING_915,
+  }),
+  handKeptReading({
+    word: "eccome",
+    partOfSpeech: statedPartOfSpeech("Avverbio"),
+    source: { kind: "none" },
+    section: { line: 9, wikitext: "===Adverb===" },
+    definitions: [
+      {
+        text: "certamente, e molto",
+        paraphrases: { line: 12, wikitext: "# [[certainly]], [[very much]]" },
+      },
+    ],
+    evidence: [{ wiki: "en.wiktionary.org", title: "eccome", revisionId: 84429569, timestamp: "2025-03-31T11:50:56Z", shows: "{{it-adv}}" }],
+    ruling: RULING_915,
+  }),
+  handKeptReading({
+    word: "quaggiù",
+    partOfSpeech: statedPartOfSpeech("Avverbio"),
+    source: { kind: "none" },
+    section: { line: 9, wikitext: "===Adverb===" },
+    definitions: [
+      {
+        text: "qui in basso",
+        paraphrases: { line: 12, wikitext: "# [[down]] [[here]]" },
+      },
+      {
+        text: "qui al Sud",
+        paraphrases: { line: 14, wikitext: "# in the [[South]]" },
+      },
+      {
+        text: "in senso figurato, su questa terra, in questa vita",
+        paraphrases: { line: 15, wikitext: "# {{lb|it|figurative}} in this [[world]] or [[life]]" },
+      },
+    ],
+    evidence: [{ wiki: "en.wiktionary.org", title: "quaggiù", revisionId: 69191594, timestamp: "2022-09-10T08:32:33Z", shows: "{{it-adv}}" }],
+    ruling: RULING_915,
+  }),
+  handKeptReading({
+    word: "quassù",
+    partOfSpeech: statedPartOfSpeech("Avverbio"),
+    source: { kind: "none" },
+    section: { line: 10, wikitext: "===Adverb===" },
+    definitions: [
+      {
+        text: "qui in alto",
+        paraphrases: { line: 13, wikitext: "# [[up]] [[here]]" },
+      },
+    ],
+    evidence: [{ wiki: "en.wiktionary.org", title: "quassù", revisionId: 69191613, timestamp: "2022-09-10T08:33:40Z", shows: "{{it-adv}}" }],
+    ruling: RULING_915,
+  }),
+  handKeptReading({
+    word: "piccolino",
+    partOfSpeech: statedPartOfSpeech("Aggettivo"),
+    source: { kind: "none" },
+    section: { line: 10, wikitext: "===Adjective===" },
+    definitions: [
+      {
+        text: "piuttosto piccolo, molto piccolo",
+        paraphrases: { line: 13, wikitext: "# [[small]], [[tiny]]" },
+      },
+    ],
+    evidence: [{ wiki: "en.wiktionary.org", title: "piccolino", revisionId: 90571699, timestamp: "2026-05-09T14:13:07Z", shows: "{{it-adj}}" }],
+    ruling: RULING_915,
+  }),
+  handKeptReading({
+    word: "granché",
+    partOfSpeech: statedPartOfSpeech("Pronome"),
+    source: { kind: "none" },
+    section: { line: 15, wikitext: "===Pronoun===" },
+    definitions: [
+      {
+        text: "nelle frasi negative, niente di notevole o di particolarmente interessante; non molto",
+        paraphrases: { line: 18, wikitext: "# {{lb|it|only used in|_|negative|_|sentences}} nothing [[notable]], or particularly [[interesting]]; not [[much]]" },
+      },
+    ],
+    evidence: [{ wiki: "en.wiktionary.org", title: "granché", revisionId: 90404548, timestamp: "2026-05-02T01:13:58Z", shows: "{{head|it|pronoun|g=m-s}}" }],
+    ruling: RULING_915,
+  }),
+  handKeptReading({
+    word: "sottufficiale",
+    partOfSpeech: statedPartOfSpeech("Sostantivo"),
+    source: { kind: "none" },
+    section: { line: 10, wikitext: "===Noun===" },
+    definitions: [
+      {
+        text: "militare di grado intermedio tra la truppa e gli ufficiali",
+        paraphrases: { line: 13, wikitext: "# [[non-commissioned officer]]" },
+      },
+      {
+        text: "nella marina, militare di grado intermedio tra i marinai e gli ufficiali",
+        paraphrases: { line: 14, wikitext: "# {{lb|it|nautical}} [[petty officer]]" },
+      },
+    ],
+    evidence: [{ wiki: "en.wiktionary.org", title: "sottufficiale", revisionId: 90578532, timestamp: "2026-05-09T16:16:00Z", shows: "{{it-noun|m}}" }],
+    ruling: RULING_915,
+  }),
+  handKeptReading({
+    word: "dopodiché",
+    partOfSpeech: statedPartOfSpeech("Avverbio"),
+    source: { kind: "none" },
+    section: { line: 15, wikitext: "===Adverb===" },
+    definitions: [
+      {
+        text: "dopo di che, dopo questo, in seguito",
+        paraphrases: { line: 18, wikitext: "# [[after]] [[which]], [[afterwards]], [[thereafter]], [[whereafter]], [[whereupon]]" },
+      },
+    ],
+    evidence: [{ wiki: "en.wiktionary.org", title: "dopodiché", revisionId: 92187355, timestamp: "2026-08-24T03:32:49Z", shows: "{{it-adv}}" }],
+    ruling: RULING_915,
+  }),
+  handKeptReading({
+    word: "studentesco",
+    partOfSpeech: statedPartOfSpeech("Aggettivo"),
+    source: { kind: "none" },
+    section: { line: 10, wikitext: "===Adjective===" },
+    definitions: [
+      {
+        text: "degli studenti, che riguarda gli studenti",
+        paraphrases: { line: 13, wikitext: "# {{lb|it|relational}} [[student]]" },
+      },
+    ],
+    evidence: [{ wiki: "en.wiktionary.org", title: "studentesco", revisionId: 90579958, timestamp: "2026-05-09T16:38:02Z", shows: "{{it-adj}}" }],
+    ruling: RULING_915,
+  }),
+  handKeptReading({
+    word: "cordone",
+    partOfSpeech: statedPartOfSpeech("Sostantivo"),
+    source: { kind: "none" },
+    section: { line: 10, wikitext: "===Noun===" },
+    definitions: [
+      {
+        text: "grossa corda",
+        paraphrases: { line: 13, wikitext: "# [[cord]]" },
+      },
+      {
+        text: "cavo elettrico flessibile",
+        paraphrases: { line: 14, wikitext: "# [[flex]]" },
+      },
+      {
+        text: "cordoncino che chiude o regge una borsa e simili",
+        paraphrases: { line: 15, wikitext: "# [[string]] (of a bag etc.)" },
+      },
+      {
+        text: "fila di persone o di mezzi disposta a sbarramento",
+        paraphrases: { line: 16, wikitext: "# [[cordon]]" },
+      },
+    ],
+    evidence: [{ wiki: "en.wiktionary.org", title: "cordone", revisionId: 93472718, timestamp: "2026-10-09T19:42:01Z", shows: "{{it-noun|m}}" }],
+    ruling: RULING_915,
+  }),
+  handKeptReading({
+    word: "bigliettino",
+    partOfSpeech: statedPartOfSpeech("Sostantivo"),
+    source: { kind: "none" },
+    section: { line: 6, wikitext: "===Noun===" },
+    definitions: [
+      {
+        text: "biglietto di auguri, per un compleanno, per Natale e simili",
+        paraphrases: { line: 9, wikitext: "# [[card]] (birthday, Christmas etc.)" },
+      },
+    ],
+    evidence: [{ wiki: "en.wiktionary.org", title: "bigliettino", revisionId: 71106004, timestamp: "2023-01-31T05:37:38Z", shows: "{{it-noun|m}}" }],
+    ruling: RULING_915,
+  }),
+  handKeptReading({
+    word: "camicetta",
+    partOfSpeech: statedPartOfSpeech("Sostantivo"),
+    source: { kind: "none" },
+    section: { line: 10, wikitext: "===Noun===" },
+    definitions: [
+      {
+        text: "camicia leggera da donna",
+        paraphrases: { line: 13, wikitext: "# [[blouse]]" },
+      },
+    ],
+    evidence: [{ wiki: "en.wiktionary.org", title: "camicetta", revisionId: 90572356, timestamp: "2026-05-09T14:25:40Z", shows: "{{it-noun|f}}" }],
+    ruling: RULING_915,
+  }),
+  handKeptReading({
+    word: "orsetto",
+    partOfSpeech: statedPartOfSpeech("Sostantivo"),
+    source: { kind: "none" },
+    section: { line: 10, wikitext: "===Noun===" },
+    definitions: [
+      {
+        text: "cucciolo di orso",
+        paraphrases: { line: 13, wikitext: "# [[bear cub]]" },
+      },
+    ],
+    evidence: [{ wiki: "en.wiktionary.org", title: "orsetto", revisionId: 90571651, timestamp: "2026-05-09T14:12:10Z", shows: "{{it-noun|m}}" }],
+    ruling: RULING_915,
+  }),
+  // barrette reaches it as its regular plural (rule `it-word-shape/v1`, `inflected`).
+  handKeptReading({
+    word: "barretta",
+    partOfSpeech: statedPartOfSpeech("Sostantivo"),
+    source: { kind: "none" },
+    section: { line: 8, wikitext: "===Noun===" },
+    definitions: [
+      {
+        text: "piccola barra, soprattutto di cioccolato o di altro alimento",
+        paraphrases: { line: 12, wikitext: "# small [[bar]] {{qualifier|of chocolate, etc.}}" },
+      },
+    ],
+    evidence: [{ wiki: "en.wiktionary.org", title: "barretta", revisionId: 90571281, timestamp: "2026-05-09T14:05:07Z", shows: "{{it-noun|f}}" }],
+    ruling: RULING_915,
+  }),
+  handKeptReading({
+    word: "prematrimoniale",
+    partOfSpeech: statedPartOfSpeech("Aggettivo"),
+    source: { kind: "none" },
+    section: { line: 7, wikitext: "===Adjective===" },
+    definitions: [
+      {
+        text: "che avviene o si fa prima del matrimonio",
+        paraphrases: { line: 10, wikitext: "# [[premarital]], [[prenuptial]]" },
+      },
+    ],
+    evidence: [{ wiki: "en.wiktionary.org", title: "prematrimoniale", revisionId: 90583322, timestamp: "2026-05-09T17:31:19Z", shows: "{{it-adj}}" }],
+    ruling: RULING_915,
+  }),
+  handKeptReading({
+    word: "quantomeno",
+    partOfSpeech: statedPartOfSpeech("Avverbio"),
+    source: { kind: "none" },
+    section: { line: 14, wikitext: "===Adverb===" },
+    definitions: [
+      {
+        text: "almeno, per lo meno",
+        paraphrases: { line: 17, wikitext: "# [[at least]], [[to say the least]]" },
+      },
+      {
+        text: "in ogni caso, comunque",
+        paraphrases: { line: 19, wikitext: "# [[at any rate]]" },
+      },
+    ],
+    evidence: [{ wiki: "en.wiktionary.org", title: "quantomeno", revisionId: 92188743, timestamp: "2026-08-24T03:44:20Z", shows: "{{it-adv}}" }],
+    ruling: RULING_915,
+  }),
+  handKeptReading({
+    word: "caposquadra",
+    partOfSpeech: statedPartOfSpeech("Sostantivo"),
+    source: { kind: "none" },
+    section: { line: 10, wikitext: "===Noun===" },
+    definitions: [
+      {
+        text: "chi dirige e coordina una squadra di lavoro",
+        paraphrases: { line: 13, wikitext: "# [[foreman]]/[[forewoman]], [[supervisor]], [[team]] [[leader]]" },
+      },
+      {
+        text: "nell'esercito, chi comanda una squadra di soldati",
+        paraphrases: { line: 14, wikitext: "# {{lb|it|military}} [[squad]] [[leader]]" },
+      },
+    ],
+    evidence: [{ wiki: "en.wiktionary.org", title: "caposquadra", revisionId: 92176403, timestamp: "2026-08-24T01:34:25Z", shows: "{{it-noun|mfbysense|cap*}}" }],
+    ruling: RULING_915,
+  }),
+  handKeptReading({
+    word: "minorile",
+    partOfSpeech: statedPartOfSpeech("Aggettivo"),
+    source: { kind: "none" },
+    section: { line: 10, wikitext: "===Adjective===" },
+    definitions: [
+      {
+        text: "dei minorenni, che riguarda i minorenni",
+        paraphrases: { line: 13, wikitext: "# [[juvenile]]" },
+      },
+    ],
+    evidence: [{ wiki: "en.wiktionary.org", title: "minorile", revisionId: 90572737, timestamp: "2026-05-09T14:32:55Z", shows: "{{it-adj}}" }],
+    ruling: RULING_915,
+  }),
+  handKeptReading({
+    word: "paranormale",
+    partOfSpeech: statedPartOfSpeech("Aggettivo"),
+    source: { kind: "none" },
+    section: { line: 41, wikitext: "===Adjective===" },
+    definitions: [
+      {
+        text: "che va oltre ciò che le leggi naturali conosciute spiegano",
+        paraphrases: { line: 44, wikitext: "# [[paranormal]], [[preternatural]]" },
+      },
+    ],
+    evidence: [{ wiki: "en.wiktionary.org", title: "paranormale", revisionId: 90579559, timestamp: "2026-05-09T16:31:58Z", shows: "{{it-adj}}" }],
+    ruling: RULING_915,
+  }),
+  handKeptReading({
+    word: "piacimento",
+    partOfSpeech: statedPartOfSpeech("Sostantivo"),
+    source: { kind: "none" },
+    section: { line: 10, wikitext: "===Noun===" },
+    definitions: [
+      {
+        text: "piacere, gradimento, soddisfazione",
+        paraphrases: { line: 13, wikitext: "# [[pleasure]], [[satisfaction]]" },
+      },
+    ],
+    evidence: [{ wiki: "en.wiktionary.org", title: "piacimento", revisionId: 90569810, timestamp: "2026-05-09T13:38:50Z", shows: "{{it-noun|m}}" }],
+    ruling: RULING_915,
+  }),
+  handKeptReading({
+    word: "avvistamento",
+    partOfSpeech: statedPartOfSpeech("Sostantivo"),
+    source: { kind: "none" },
+    section: { line: 10, wikitext: "===Noun===" },
+    definitions: [
+      {
+        text: "l'atto di avvistare, di scorgere qualcosa o qualcuno da lontano",
+        paraphrases: { line: 13, wikitext: "# [[sighting]]" },
+      },
+    ],
+    evidence: [{ wiki: "en.wiktionary.org", title: "avvistamento", revisionId: 90570833, timestamp: "2026-05-09T13:56:48Z", shows: "{{it-noun|m}}" }],
+    ruling: RULING_915,
+  }),
+  handKeptReading({
+    word: "domattina",
+    partOfSpeech: statedPartOfSpeech("Avverbio"),
+    source: { kind: "none" },
+    section: { line: 13, wikitext: "===Adverb===" },
+    definitions: [
+      {
+        text: "domani mattina",
+        paraphrases: { line: 16, wikitext: "# [[tomorrow]] [[morning]]" },
+      },
+    ],
+    evidence: [{ wiki: "en.wiktionary.org", title: "domattina", revisionId: 89115027, timestamp: "2026-01-07T22:43:14Z", shows: "{{it-adv}}" }],
+    ruling: RULING_915,
+  }),
+  handKeptReading({
+    word: "oddio",
+    partOfSpeech: statedPartOfSpeech("Interiezione"),
+    source: { kind: "none" },
+    section: { line: 10, wikitext: "===Interjection===" },
+    definitions: [
+      {
+        text: "esclamazione di spavento, stupore o dolore: oh Dio!",
+        paraphrases: { line: 13, wikitext: "# [[oh God]]; [[oh my God]]; [[God]]!" },
+      },
+      {
+        text: "esclamazione di fastidio o di impazienza",
+        paraphrases: { line: 14, wikitext: "# [[good grief]]" },
+      },
+    ],
+    evidence: [{ wiki: "en.wiktionary.org", title: "oddio", revisionId: 90752324, timestamp: "2026-05-12T14:59:57Z", shows: "{{head|it|interjection}}" }],
+    ruling: RULING_915,
+  }),
+  handKeptReading({
+    word: "paralimpico",
+    partOfSpeech: statedPartOfSpeech("Aggettivo"),
+    source: { kind: "none" },
+    section: { line: 7, wikitext: "===Adjective===" },
+    definitions: [
+      {
+        text: "delle Paralimpiadi, i giochi olimpici per atleti con disabilità",
+        paraphrases: { line: 10, wikitext: "# [[Paralympic]]" },
+      },
+    ],
+    evidence: [{ wiki: "en.wiktionary.org", title: "paralimpico", revisionId: 70745701, timestamp: "2023-01-08T09:28:09Z", shows: "{{it-adj}}" }],
+    ruling: RULING_915,
+  }),
+  // The interjections.
+  handKeptReading({
+    word: "ehi",
+    partOfSpeech: statedPartOfSpeech("Interiezione"),
+    source: { kind: "none" },
+    section: { line: 27, wikitext: "===Interjection===" },
+    definitions: [
+      {
+        text: "esclamazione per richiamare l'attenzione di qualcuno",
+        paraphrases: { line: 30, wikitext: "# [[hey]]! {{gloss|used to attract someone's attention}}" },
+      },
+    ],
+    evidence: [{ wiki: "en.wiktionary.org", title: "ehi", revisionId: 92140898, timestamp: "2026-08-23T19:58:05Z", shows: "{{head|it|interjection}}" }],
+    ruling: RULING_915,
+  }),
+  handKeptReading({
+    word: "evviva",
+    partOfSpeech: statedPartOfSpeech("Interiezione"),
+    source: { kind: "none" },
+    section: { line: 9, wikitext: "===Interjection===" },
+    definitions: [
+      {
+        text: "esclamazione di gioia o di entusiasmo",
+        paraphrases: { line: 12, wikitext: "# [[hurray]]!, [[hurrah]]!" },
+      },
+      {
+        text: "esclamazione di augurio o di lode verso qualcuno o qualcosa: viva!",
+        paraphrases: { line: 13, wikitext: "# [[long live]]!" },
+      },
+    ],
+    evidence: [{ wiki: "en.wiktionary.org", title: "evviva", revisionId: 85200244, timestamp: "2025-06-20T22:11:54Z", shows: "{{head|it|interjection}}" }],
+    ruling: RULING_915,
+  }),
+  handKeptReading({
+    word: "mah",
+    partOfSpeech: statedPartOfSpeech("Interiezione"),
+    source: { kind: "none" },
+    section: { line: 125, wikitext: "===Interjection===" },
+    definitions: [
+      {
+        text: "esprime dubbio o incertezza",
+        paraphrases: { line: 128, wikitext: "# {{n-g|an expression of [[doubt]] or [[uncertainty]]}}" },
+      },
+      {
+        text: "esprime disapprovazione o rassegnazione",
+        paraphrases: { line: 129, wikitext: "# {{n-g|an expression of [[disapproval]] or resignation}}" },
+      },
+    ],
+    evidence: [{ wiki: "en.wiktionary.org", title: "mah", revisionId: 93762112, timestamp: "2026-10-21T08:39:01Z", shows: "{{head|it|interjection}}" }],
+    ruling: RULING_915,
+  }),
+  // The everyday words. en.wiktionary's scartoffie is only the plural of
+  // scartoffia, which the source lacks too; scartoffie reaches this noun as its
+  // regular plural.
+  handKeptReading({
+    word: "scartoffia",
+    partOfSpeech: statedPartOfSpeech("Sostantivo"),
+    source: { kind: "none" },
+    section: { line: 9, wikitext: "===Noun===" },
+    definitions: [
+      {
+        text: "carta d'ufficio, pratica; per lo più al plurale, con tono spregiativo o scherzoso",
+        paraphrases: { line: 12, wikitext: "# {{lb|it|pejorative|or|jocular|usually|in the plural}} [[paperwork]], [[papers]]" },
+      },
+      {
+        text: "documento, dispensa e simili di una scuola; per lo più al plurale, con tono spregiativo o scherzoso",
+        paraphrases: { line: 13, wikitext: "# {{lb|it|pejorative|or|jocular|usually|in the plural}} [[document]]s, [[handout]]s, etc. from a [[school]] or [[educational]] [[institution]]" },
+      },
+    ],
+    evidence: [{ wiki: "en.wiktionary.org", title: "scartoffia", revisionId: 84000656, timestamp: "2025-02-22T00:42:22Z", shows: "{{it-noun|f}}" }],
+    ruling: RULING_915,
+  }),
+  // portabagagli and uh have no reading here: the update feed it-78385b62
+  // gives each a record, which the live dictionary already shows.
+  handKeptReading({
+    word: "rilevatore",
+    partOfSpeech: statedPartOfSpeech("Sostantivo"),
+    source: { kind: "none" },
+    section: { line: 11, wikitext: "===Noun===" },
+    definitions: [
+      {
+        text: "chi esegue rilevamenti, soprattutto topografici",
+        paraphrases: { line: 14, wikitext: "# [[surveyor]]" },
+      },
+    ],
+    evidence: [{ wiki: "en.wiktionary.org", title: "rilevatore", revisionId: 71380839, timestamp: "2023-02-23T02:04:42Z", shows: "{{it-noun|m}}" }],
+    ruling: RULING_915,
+  }),
+  // Its Etymology 1 noun, the operation.
+  handKeptReading({
+    word: "cesareo",
+    partOfSpeech: statedPartOfSpeech("Sostantivo"),
+    source: { kind: "none" },
+    section: { line: 17, wikitext: "====Noun====" },
+    definitions: [
+      {
+        text: "in medicina, il taglio cesareo: l'intervento con cui si fa nascere un bambino incidendo l'addome e l'utero della madre",
+        paraphrases: { line: 20, wikitext: "# {{lb|it|medicine|ellipsis}} [[Caesarean section]]" },
+      },
+    ],
+    evidence: [{ wiki: "en.wiktionary.org", title: "cesareo", revisionId: 91473030, timestamp: "2026-07-04T08:08:26Z", shows: "{{it-noun|m}}" }],
+    ruling: RULING_915,
   }),
 ]);

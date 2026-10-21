@@ -1,0 +1,14 @@
+{{also|quassu}}
+==Italian==
+
+===Etymology===
+{{univerbation|it|qua|su|gloss1=here|gloss2=up}}.
+
+===Pronunciation===
+{{it-pr|+|*+<pre:{{q|regional}}>}}
+
+===Adverb===
+{{it-adv}}
+
+# [[up]] [[here]]
+#: {{ant|it|quaggiù}}

@@ -1,0 +1,19 @@
+==Italian==
+
+===Etymology===
+From {{m|it|carta||paper}}, using [[Milanese]] [[dialectal]] [[affixation]].
+
+===Pronunciation===
+{{it-pr|^ò<r:DiPI>}}
+
+===Noun===
+{{it-noun|f}}
+
+# {{lb|it|pejorative|or|jocular|usually|in the plural}} [[paperwork]], [[papers]]
+# {{lb|it|pejorative|or|jocular|usually|in the plural}} [[document]]s, [[handout]]s, etc. from a [[school]] or [[educational]] [[institution]]
+
+===References===
+{{reflist}}
+
+===Anagrams===
+* {{anagrams|it|a=aacffiorst|afforcasti}}

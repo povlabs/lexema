@@ -1,0 +1,14 @@
+==Italian==
+
+===Etymology===
+{{ety|it|:af|sotto-<alt:sott->|ufficiale}}
+From {{prefix|it|sotto|alt1=sott|ufficiale}}.
+
+===Pronunciation===
+{{it-pr}}
+
+===Noun===
+{{it-noun|m}}
+
+# [[non-commissioned officer]]
+# {{lb|it|nautical}} [[petty officer]]

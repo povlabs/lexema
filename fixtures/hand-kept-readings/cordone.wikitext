@@ -1,0 +1,35 @@
+==Italian==
+
+===Etymology===
+{{ety|it|:af|corda|-one}}
+From {{af|it|corda|-one}}.
+
+===Pronunciation===
+{{it-pr}}
+
+===Noun===
+{{it-noun|m}}
+
+# [[cord]]
+# [[flex]]
+# [[string]] (of a bag etc.)
+# [[cordon]]
+
+====Derived terms====
+{{col4|it
+|cordonale
+|cordonare
+|cordoncino
+|cordone controspalliera
+|cordone di saldatura
+|cordone legnoso
+|cordone ombelicale
+|cordone sanitario
+|cordone spermatico
+|cordone speronato
+|cordoneria
+|cordoniforme
+}}
+
+===Anagrams===
+* {{anagrams|it|a=cdenoor|credono}}

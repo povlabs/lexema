@@ -1,0 +1,32 @@
+==Italian==
+
+===Etymology===
+{{univ|it|e|viva<pos:third-person singular imperative of {{m|it|vivere}}>|lit=and may it live}}.<ref>{{R:it:etimo}}</ref>
+
+===Pronunciation===
+{{it-pr|^ì<r:DOP:lid#1024059><audio:LL-Q652 (ita)-Happypheasant-evviva.wav>}}
+
+===Interjection===
+{{head|it|interjection}}
+
+# [[hurray]]!, [[hurrah]]!
+# [[long live]]!
+#: {{uxi|it|'''Evviva''' la regina!|'''Long live''' the queen!}}
+
+====Descendants====
+* {{desc|el|εβίβα|bor=1}}
+
+===Noun===
+{{it-noun|m|#}}
+
+# [[cheer]], [[hurray]]
+
+===References===
+{{reflist}}
+
+===Further reading===
+* {{R:it:Trec}}
+* {{R:it:Garzanti}}
+
+===Anagrams===
+* {{anagrams|it|a=aeivvv|viveva}}

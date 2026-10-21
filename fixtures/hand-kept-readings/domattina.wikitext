@@ -1,0 +1,17 @@
+==Italian==
+
+===Alternative forms===
+* {{alt|it|dimattina||Tuscany|archaic}}
+* {{alt|it|domatina||Rome}}
+
+===Etymology===
+{{blend|it|domani|t1=tomorrow|mattina|t2=morning}}.
+
+===Pronunciation===
+{{it-pr|domattìna<audio:LL-Q652 (ita)-LangPao-domattina.wav>}}
+
+===Adverb===
+{{it-adv}}
+
+# [[tomorrow]] [[morning]]
+#: {{syn|it|[[domani]] [[mattina]]}}

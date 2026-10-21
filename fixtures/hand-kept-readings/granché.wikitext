@@ -1,0 +1,39 @@
+{{also|granche|granchè}}
+
+==Italian==
+
+===Alternative forms===
+* {{alt|it|gran che}}
+* {{alt|it|granchè||misspelling}}
+
+===Etymology===
+{{univerbation|it|gran|t1=great|che|t2=thing, something}}.
+
+===Pronunciation===
+{{it-pr}}
+
+===Pronoun===
+{{head|it|pronoun|g=m-s}}
+
+# {{lb|it|only used in|_|negative|_|sentences}} nothing [[notable]], or particularly [[interesting]]; not [[much]]
+#: {{syn|it|molto}}
+#: {{ux|it|Non penso che abbia da dirmi '''granché'''.|I don't think she's going to tell me '''anything special'''.}}
+#: {{ux|it|In tutto ciò, non ci ho capito '''granché'''.|I didn't understand '''much''' of all this.}}
+
+====See also====
+{{col|it
+|fr:grand-chose<lit:great thing>
+}}
+
+===Noun===
+{{it-noun|m|-}}
+
+# {{lb|it|only used in|_|negative|_|sentences}} nothing [[notable]], or particularly [[interesting]]
+#: {{ux|it|Lo spettacolo non è stato un '''granché'''.|The play wasn't '''that great'''.}}
+
+===Adverb===
+{{it-adv}}
+
+# {{lb|it|only used in|_|negative|_|sentences}} not [[that]] [[much]], not [[very much]]; [[not really]]
+#: {{syn|it|molto|tanto}}
+#: {{ux|it|Mi ha detto di non essersi trovato '''granché''' bene.|He told me he didn't feel '''really''' at ease.}}

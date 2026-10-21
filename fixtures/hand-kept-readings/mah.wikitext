@@ -1,0 +1,451 @@
+{{also|Appendix:Variations of "mah"}}
+==Translingual==
+
+===Etymology===
+{{abbrev|mul|en:'''Ma'''rs'''h'''allese}}.
+
+===Symbol===
+{{mul-symbol}}
+
+# {{ISO 639|2&3|mh|Marshallese}}
+
+===See also===
+* {{langcat|mh}}
+
+==English==
+
+===Etymology 1===
+{{etymid|en|my}}
+
+====Determiner====
+{{head|en|determiner|cat2=possessive determiners}}
+
+# {{lb|en|AAVE|Southern US}} {{pronunciation spelling of|en|my}}.
+#* {{quote-video game|en|date=June 26, 2014|developer=w:Yacht Club Games|title=[[w:Shovel Knight: Shovel of Hope|Shovel Knight: Shovel of Hope]]|system=w:Nintendo 3DS|level=Streetpass Arena|text=''Adventurer'': 'AFTER YEARS OF ADVENTURING... I HAVE FINALLY ARRIVED AT THE STREETPASS ARENA. ONCE I REST '''MAH''' HOOFS<!--For clarity, the character is a horse-->, I'M GOING TO RECORD MY SECRET BATTLE TECHNIQUE.'}}
+
+===Etymology 2===
+{{etymid|en|particle}}
+From {{bor|en|yue|嘛|tr=maa<sup>3</sup>}} or [[w:Singaporean Hokkien|Singaporean]] {{bor|en|nan-hbl|嘛|tr=--ma}}.
+
+====Alternative forms====
+* {{l|en|ma#Etymology 5|ma}}
+
+====Pronunciation====
+* {{IPA|en|/mɑː˧/|a=[[w:Singapore English|Singapore]],[[w:Malaysian English|Malaysia]]}}
+
+====Particle====
+{{en-head|pcl}}
+
+# {{lb|en|Manglish|Singlish}} {{n-g|Asserts that there is a [[straightforward]] or [[self-evident]] [[reason]] for something.}}
+#: {{syn|en|[[what#Particle|what]]|q1=Singlish|qq1=sense 2}}
+#: {{ux|en|— The plants are all dying {{l|en|already|id=singlish-inchoative}}.<br/>— No one here to water them '''mah'''...|inline=1}}
+#* {{quote-newsgroup|en|author=ANGELL|title=SIA PILOT ISSUE|newsgroup=soc.culture.singapore|url=https://soc.culture.singapore.narkive.com/FnisoVa1/sia-pilot-issue|year=2003|passage={{...}} Alternatively train SBS bus drivers to become pilots also since they are already bus captains. Anyone can become a pilot '''mah'''. Its so easy. Everybody should give it try-but not with me on board.}}
+#* {{quote-book|en|year=2014|author=Cheryl Lu-Lien Tan|title=Singapore Noir|publisher=Akashic Books|isbn=9781617752353|page=89|passage=Especially today—we holiday, '''''mah''''', so don’t bring them to town until tomorrow.}}
+#* {{quote-web|en|author=Shaun Tan|work=ricemedia.co|date=13 July 2018|title=Does Someone Like Kurt Tay Deserve To Be A Father?|archiveurl=https://web.archive.org/web/20240809213708/https://www.ricemedia.co/culture-people-does-someone-like-kurt-tay-deserve-to-be-a-father/|archivedate=9 August 2024|quotee=Kurt Tay|text=In response, I ask if he thinks that his future child would be embarrassed about the online reputation that he has built for himself after all these years. “Why? All of this is just acting '''mah''', I got nothing to be ashamed about.”}}
+#* {{quote-web|en|author=Benjamin Tan|work=ricemedia.co|date=28 March 2024|title=In Their Own Skin: Portraits of Eczema in Singapore|archiveurl=https://web.archive.org/web/20241126094015/https://www.ricemedia.co/portraits-of-eczema-in-singapore/|archivedate=26 November 2024|quotee=Ursula Soh|text=If I’m running around for errands, I want to look cute also '''mah'''. I used to wear shorts, but now I’d rather not. It’ll look like I’ve got thousands of cat scratches.}}
+
+====See also====
+{{en-sg-dp}}
+
+====References====
+* {{cite-book|year=2005|first=Ee Ling|last=Low|first2=Adam|last2=Brown|title=''English in Singapore: An Introduction''|isbn=0071239758}}
+* {{cite-book|year=2004|first=Lisa|last=Lim|title=''Singapore English: A grammatical description''|coauthors=Wee, Lionel|chapter=Reduplication and discourse particles|page=125|isbn=9789027248930}}
+
+===Etymology 3===
+From {{bor|en|cmn|-}} {{zh-l|嗎|tr=ma}} or {{bor|en|yue|-}} {{zh-l|嗎|tr=maa<sup>5</sup>}}.
+
+====Alternative forms====
+* {{l|en|ma#Etymology 6|ma}}
+
+====Pronunciation====
+* {{IPA|en|/mɑː˦/|a=SG,[[w:Malaysian English|Malaysia]]}}
+
+====Particle====
+{{en-head|pcl}}
+
+# {{lb|en|colloquial|[[w:Malaysian Chinese|Chinese Malaysian]] and [[w:Chinese Singaporeans|Singaporean]]}} {{n-g|Used at the end of an [[affirmative]] [[declarative]] sentence to change it into a yes–no [[question]].}}
+#* {{quote-web|en|date=8 December 2024|author=endlssorrow|site=HardwareZone Forums|title=U guys bring smart watch oversea '''mah'''|url=https://forums.hardwarezone.com.sg/threads/u-guys-bring-smart-watch-oversea-mah.7086430/|passage=Coz must charge daily [[leh|lei]]|archiveurl=https://web.archive.org/web/20261021070609/https://forums.hardwarezone.com.sg/threads/u-guys-bring-smart-watch-oversea-mah.7086430/|archivedate=21 October 2026}}
+
+===Anagrams===
+* {{anagrams|en|a=ahm|HAM|HMA|Ham|MHA|ham}}
+
+[[Category:Singapore English]]
+[[Category:Malaysian English]]
+
+==Bavarian==
+
+===Etymology===
+Possibly from the possessive pronoun {{m|bar|mei}}.
+
+===Pronunciation===
+* {{IPA|bar|/mɑ/}}
+
+===Interjection===
+{{head|bar|interjection}}
+
+# {{lb|bar|chiefly|East Central Bavarian}} Used to express [[surprise]], [[shock]] or [[amazement]].
+#: {{uxi|bar|Mah, der håd me gschreckt!|Damn, he gave me a fright!}}
+#: {{uxi|bar|Mah, schmeckt des guad!|Blimey, this is delicious!}}
+
+==Besisi==
+
+===Etymology===
+From {{inh|mhe|mkh-asl-pro|*səmaaʔ|t=human}}.
+
+===Noun===
+{{head|mhe|noun}}
+
+# [[human]]
+# [[people]]
+
+====Derived terms====
+* {{l|mhe|Mah Meri}}
+
+==Indonesian==
+
+===Etymology===
+Borrowed from {{der|id|nl|maag}}.
+
+===Noun===
+{{id-noun}}
+
+# [[stomach]]
+
+==Italian==
+
+===Alternative forms===
+* {{alt|it|ma}}<ref name=trec/>
+
+===Etymology===
+From {{from|it|ma||but}}.<ref name=trec>{{R:it:Trec|ma|sense=2}}</ref>
+
+===Pronunciation===
+{{it-pr|^à°<r:DiPI>}}
+
+===Interjection===
+{{head|it|interjection}}
+
+# {{n-g|an expression of [[doubt]] or [[uncertainty]]}}
+# {{n-g|an expression of [[disapproval]] or resignation}}
+
+===References===
+{{reflist}}
+
+===Anagrams===
+* {{anagrams|it|a=ahm|ahm}}
+
+==Old English==
+
+===Pronunciation===
+* {{ang-IPA|māh}}
+* {{rhymes|ang|ɑːx|s=1}}
+
+===Etymology 1===
+{{inh+|ang|gem-pro|*maigaz|t=wicked, shameless}}. Related to {{l|ang|mǣgþ|id=strong wish|t=importunate desire, greed}}.
+
+====Adjective====
+{{ang-adj|māh}}
+
+# [[wicked]], [[wanton]], [[shameless]]
+
+=====Declension=====
+{{ang-adecl|māh}}
+
+=====Derived terms=====
+* {{l|ang|ġemāh}}
+
+====References====
+* {{R:ang:BT|máh|ref=22289}}
+
+===Etymology 2===
+
+====Verb====
+{{head|ang|verb form|head=māh}}
+
+# {{infl of|ang|mīgan||1//3|s|pret|indc}}
+
+==Pohnpeian==
+
+===Etymology===
+{{ety|pon|id=aged|:inh|poz-mic-pro:*mʷau<unc>|tree=1}}
+{{rfe|pon|From {{cog|poz-mic-pro|*mʷau|t=to come to an end, to be finished}}?}}
+
+===Adjective===
+{{head|pon|adj}}
+
+# [[old|Old]], [[aged]].
+# {{q|of fruit}} [[ripe|Ripe]].
+
+====Derived terms====
+{{col|pon
+|marungurung
+|mahki
+|mahla}}
+
+===Noun===
+{{head|pon|noun}}
+
+# {{lb|pon|biblical}} An [[elder]], the [[old]].
+
+===References===
+* {{R:pon:NPEOD|+|url=pnp-m.htm#1817}}
+
+{{C|pon|Time}}
+
+==Serbo-Croatian==
+
+===Etymology===
+{{dercat|sh|ine-bsl-pro|ine-pro}}
+{{inh+|sh|sla-pro|*maxъ}}, from {{der|sh|sla-pro|*maxati}}.
+
+===Pronunciation===
+* {{sh-IPA|mȃh}}
+
+===Noun===
+{{sh-noun|mȃh|m-in}}
+
+# [[swing]], [[wave]], [[sweep]] {{gloss|motion}}
+# [[moment]], [[instant]]
+#: {{syn|sh|čȁs|trȅn}}
+#: {{uxi|sh|U taj '''mah'''.|At that instant.}}
+
+====Declension====
+{{sh-decl-noun
+|mȃh|máhovi
+|mȃha|máhōvā
+|mȃhu|máhovima
+|mȃh|máhove
+|mȃše|máhovi
+|mȃhu|máhovima
+|mȃhom|máhovima
+}}
+
+===References===
+* {{R:sh:HJP|e11hXBA}}
+
+==Slovene==
+{{wp|sl:}}
+
+===Etymology 1===
+From {{inh|sl|sla-pro|*mъxъ}}.
+
+====Pronunciation====
+* {{sl-IPA|mȃh}}
+* {{rhymes|sl|aːx}}
+* {{hyphenation|sl|mah}}
+* {{homophones|sl|mach}}
+
+====Noun====
+{{sl-noun|mȃh|m-in}}
+
+# [[moss]] {{gloss|plants of the division Bryophyta}}
+#: {{syn|sl|mahovina|mahovje|meh}}
+# {{lb|sl|geography}} [[raised bog]]
+# {{lb|sl|regional}} [[bog]], [[marsh]]{{sl-ref|SSKJ}}
+#: {{syn|sl|barje|morost}}
+# {{lb|sl|hunting}} [[velvet]] {{gloss|fine fur on a deer's antlers}}{{sl-ref|SSKJ}}
+# {{lb|sl|rare}} [[down]], [[fluff]]{{sl-ref|SSKJ}}
+#: {{syn|sl|puh|puhec|puhek}}
+
+=====Declension=====
+{{sl-infl-noun
+|title=no
+|máh|māh|mȃh|mah|stemtone=c
+|gender=m
+|declension type=1
+|subtype?=h
+|accent=4b
+|animate?=in
+|irregtitle=m1gensg
+|infix=ov
+|gensg=mahȗ
+}}
+
+{{sl-infl-noun
+|title=no
+|||mȃh|mah|stemtone=c
+|gender=m
+|declension type=1
+|subtype?=h
+|accent=1
+|animate?=in
+|above=*in singular also
+|nomdu=–|datdu=–|accdu=–|insdu=–|vocdu=–
+|nompl=–|genpl=–|datpl=–|accpl=–|locpl=–|inspl=–|vocpl=–}}
+
+=====Derived terms=====
+{{col4|sl
+|planinski mah
+|šotni mah
+|mahovína
+|mahȏvje
+|mahovȋt
+}}
+
+===Etymology 2===
+{{inh+|sl|sla-pro|*maxъ}}.
+
+====Pronunciation====
+* {{sl-IPA|mȁh|mȃh}}
+* {{rhymes|sl|ax|aːx}}
+* {{hyphenation|sl|mah}}
+* {{homophones|sl|mach}}
+
+====Noun====
+{{sl-noun|mȁh|head2=mȃh|m-in}}
+
+# {{infl of|sl|máhniti||ger}}
+# {{lb|sl|obsolete}} [[growth]], [[development]]{{sl-ref|SSKJ}}
+#: {{syn|sl|razmah|razmahnitev|omah|polet|procvit|razcvet|razvetje|razcvit|razrast|vzmah|zamah}}
+# {{lb|sl|archaic}} [[time]] {{gloss|an instance or occurrence}}
+# {{lb|sl|obsolete}} [[moment]], [[instant]]
+#: {{syn|sl|trenutek|hip|moment|tren|trenutje}}
+
+=====Declension=====
+{{sl-infl-noun
+|title=no
+|máh|māh|mȃh|mah|stemtone=a
+|gender=m
+|declension type=1
+|subtype?=h
+|accent=1
+|animate?=in
+|nomsg=mȁh
+}}
+{{sl-infl-noun
+|title=no
+|||mȃh||stemtone=c
+|gender=m
+|declension type=1
+|subtype?=h
+|accent=1
+|animate?=in
+}}
+
+=====Derived terms=====
+{{col4|sl
+|namȁh
+|na mȁh
+|zamȁh
+|premȁh
+|omȁh
+|razmȁh
+|vzmȁh
+|na en mah
+|ubiti dve muhi na en mah
+|na ves mah
+|v en mah
+|v isti mah
+|z enim mahom
+|mah na mah
+|mah na pah
+|uboj na mah
+}}
+
+===Etymology 3===
+Borrowed from {{bor|sl|en|Mach}}.
+
+====Pronunciation====
+* {{sl-IPA|mȃh}}
+* {{rhymes|sl|aːx}}
+* {{hyphenation|sl|mah}}
+* {{homophones|sl|mach}}
+
+====Noun====
+{{sl-noun|mȃh|m-in}}
+
+# {{lb|sl|physics}} [[Mach]] {{gloss|ratio of the speed}}
+#: {{syn|sl|mach}}
+
+=====Declension=====
+{{sl-infl-noun
+|title=no
+|||mȃh||stemtone=c
+|gender=m
+|declension type=1
+|subtype?=h
+|accent=1
+|animate?=in
+}}
+
+===Etymology 4===
+Might be from {{bor|sl|de|gemach|gloss=slowly, easy}}, from {{der|sl|goh|gimah|t=calm, comfortable}}. Compare with more common version {{l|sl|gmȃh}}.
+
+====Pronunciation====
+* {{sl-IPA|mȃh}}
+* {{rhymes|sl|aːx}}
+* {{hyphenation|sl|mah}}
+* {{homophones|sl|mach}}
+
+====Noun====
+{{sl-noun|mȃh|m-in}}
+
+# {{lb|sl|obsolete|rare}} [[peace]], [[quietness]]{{sl-ref|Pleteršnik, 2014}}
+#: {{syn|sl|mir|tišina|gmah|pokoj|spokoj|blaženi mir|idilični mir|mirnst|molk|nebeški mir|nemota|pokojnost|spokojnost|sveti mir}}
+#: {{ant|sl|hrup|hrum|hrušč|hrumot|hrupot|rumel|šunder|tumult}}
+
+=====Declension=====
+{{sl-infl-noun
+|title=no
+|||mȃh||stemtone=c
+|gender=m
+|declension type=1
+|subtype?=h
+|accent=1
+|animate?=in
+|n=sg
+}}
+
+====Interjection====
+{{sl-head|intj|mȃh}}
+
+# {{lb|sl|obsolete|rare}} [[quiet]], [[shut up]]
+#: {{syn|sl|tiho|tišina|mir|gmah}}
+
+===See also===
+* {{l|sl|šota}}
+* {{l|sl|močvirje}}
+* {{l|sl|mahanje}}
+* {{l|sl|mahati}}
+
+===Further reading===
+{{R:sl:FR}}
+
+{{C|sl|Spore plants|Hair|Aviation|Wetlands|Units of measure}}
+
+==Sumerian==
+
+===Romanization===
+{{sux-rom}}
+
+# {{romanization of|sux|𒈤|tr=maḫ}}
+
+==Sundanese==
+
+===Etymology===
+Inherited from {{inh|su|osn|ma|t=marker of emphasis}}<ref>{{cite-journal|en|author1=Aditia Gunawan|author2=Evi Fuji Fauziyah|title=The particle ''ma'' in Old Sundanese|work=Wacana Journal of the Humanities of Indonesia|volume=22|issue=1|page=207-223|year=2021|pageurl=https://scholarhub.ui.ac.id/wacana/vol22/iss1/10/?lang=en}}</ref>
+
+===Particle===
+{{su-head|pcl}}
+
+# {{non-gloss|unique marker of [[emphasis]], often untranslatable}}
+#: {{ux|su|Abdi '''mah''' asalna ti Ciamis.|I ['''the topic, which we are talking about'''] am from Ciamis.}}
+#: {{ux|su|Kamari '''mah''' abdi ka Singapur.|Yesterday, I went to Singapore.}}
+#: {{ux|su|Poé ieu '''mah''' jigana bakal hujan.|It looks like it will rain today. (literally, "'''As for today''', it looks like it will rain".)}}
+
+====Usage notes====
+* Note that ''mah'' has no direct counterpart in both English and Indonesian. ''Mah'' is used as a focus marker to introduce a new information within a conversation or compare existing information.<ref>{{cite-journal|id|author=Deanty Rumandang Bulan|title=Sundanese emphasis particles téh, téa, and mah|work=Metamorfosis|volume=11|issue=1|page=10–14|year=2018|pageurl=https://doi.org/10.55222/metamorfosis.v11i1.24}}</ref> 
+
+===References===
+{{reflist}}
+
+==Unami==
+
+===Particle===
+{{head|unm|particle}}
+
+# [[past tense]] marker
+#: {{usex|unm|Lòkëwe '''mah''' utènink nta.|Yesterday, I went to town.}}
+
+===References===
+* {{R:unm:LTD|mah}}

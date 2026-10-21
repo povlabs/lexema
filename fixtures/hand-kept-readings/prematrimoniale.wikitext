@@ -1,0 +1,10 @@
+==Italian==
+
+===Etymology===
+{{ety|it|:af|pre-<t:pre->|matrimoniale<t:matrimonial, nuptial>}}
+From {{prefix|it|pre|gloss1=pre-|matrimoniale|gloss2=matrimonial, nuptial}}.
+
+===Adjective===
+{{it-adj}}
+
+# [[premarital]], [[prenuptial]]

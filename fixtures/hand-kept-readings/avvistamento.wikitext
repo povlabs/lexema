@@ -1,0 +1,13 @@
+==Italian==
+
+===Etymology===
+{{ety|it|:af|avvistare|-mento}}
+From {{suffix|it|avvistare|mento}}.
+
+===Pronunciation===
+{{it-pr}}
+
+===Noun===
+{{it-noun|m}}
+
+# [[sighting]]

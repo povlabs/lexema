@@ -1,0 +1,18 @@
+==Italian==
+
+===Etymology===
+{{ety|it|:af|minore|-ile}}
+From {{af|it|minore|-ile}}.
+
+===Pronunciation===
+{{it-pr|minorìle}}
+
+===Adjective===
+{{it-adj}}
+
+# [[juvenile]]
+#: {{ant|it|maggiorenne}}
+
+====Derived terms====
+* {{l|it|delinquenza minorile}}
+* {{l|it|lavoro minorile}}

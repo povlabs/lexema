@@ -311,9 +311,11 @@ test("Wiktionary wins: a word both have shows only the Wiktionary entry, and a s
     assert.deepEqual(await readingsOf(db, "papà"), ["papà noun"]);
     // paparino is one of that lexeme's forms and spells nothing of Wiktionary's: the lexeme answers it.
     assert.deepEqual(await readingsOf(db, "paparino"), ["L1144362 papà Sostantivo: termine affettuoso per riferirsi al genitore di sesso maschile"]);
-    // A lexeme with no Italian gloss is not loaded, so it answers nothing.
-    assert.deepEqual(await readingsOf(db, "paralimpico"), ["not-found"]);
-    assert.deepEqual(await readingsOf(db, "Paralimpiche"), ["not-found"]);
+    // A lexeme with no Italian gloss is not loaded, so it answers nothing:
+    // paralimpico, and its form Paralimpiche as its regular plural, show only
+    // its hand-kept reading (#915), never lexeme L1247138.
+    assert.deepEqual(await readingsOf(db, "paralimpico"), ["paralimpico adj"]);
+    assert.deepEqual(await readingsOf(db, "Paralimpiche"), ["paralimpico adj"]);
 
     const result = await lookup({ db: fromNodeSqlite(db), releaseId: RELEASE, query: "Paparino" });
     assert.ok(result.outcome === "found");
@@ -334,7 +336,10 @@ test("Wiktionary wins: a word both have shows only the Wiktionary entry, and a s
     const present = await exists({ db: fromNodeSqlite(db), releaseId: RELEASE, query: "paparino" });
     assert.ok(present.outcome === "present");
     assert.deepEqual([present.word, present.lexeme], ["papà", "L1144362"]);
-    assert.equal((await exists({ db: fromNodeSqlite(db), releaseId: RELEASE, query: "paralimpico" })).outcome, "absent");
+    // paralimpico is present for its hand-kept reading (#915), credited to no lexeme.
+    const kept = await exists({ db: fromNodeSqlite(db), releaseId: RELEASE, query: "paralimpico" });
+    assert.ok(kept.outcome === "present");
+    assert.deepEqual([kept.word, kept.lexeme], ["paralimpico", undefined]);
     const record = await exists({ db: fromNodeSqlite(db), releaseId: RELEASE, query: "papà" });
     assert.ok(record.outcome === "present");
     assert.deepEqual([record.word, record.lexeme], ["papà", undefined]);
@@ -344,7 +349,8 @@ test("Wiktionary wins: a word both have shows only the Wiktionary entry, and a s
     const ids = answers.map((answer) => (answer.outcome === "found" ? answer.candidates.map((candidate) => `${publicEntryId(candidate)} ${candidate.word} ${candidate.pos} ${candidate.posTitle}`) : answer.outcome));
     assert.deepEqual(ids.slice(1), [
       [`${RELEASE}:wikidata:L1144362 papà noun Sostantivo`],
-      "not-found",
+      // The hand-kept reading's id: the revision it cites and its section line (#915).
+      [`${RELEASE}:page:70745701:7 paralimpico adj Aggettivo`],
       [`${RELEASE}:wikidata:L1422655 pentirsi verb Verbo`],
       "not-found",
     ]);
