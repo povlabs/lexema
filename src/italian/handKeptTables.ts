@@ -34,7 +34,7 @@
 // row for it, and the page reads it from this list when it is built. It never
 // edits `source_record_json` or any imported row.
 
-import { evidenceUrl } from "./curatedCorrections.js";
+import { evidenceUrl } from "./evidence.js";
 import { PERMANENT_LINK, RULING, type EnWiktionaryEvidence } from "./handKeptReadings.js";
 import { pronominalVerb } from "./pronominalConjugation.js";
 import { classParadigm, infinitiveOf, paradigmCells, type ConjugationClass, type Paradigm, type ParadigmCell } from "./regularConjugation.js";

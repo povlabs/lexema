@@ -12,7 +12,7 @@
 // `filledDefinitions`), and the hand-kept reading is no reading beside them
 // (`withoutFillingReadings`).
 
-import { evidenceUrl } from "../italian/curatedCorrections.js";
+import { evidenceUrl } from "../italian/evidence.js";
 import { alternativeOf } from "../italian/handKeptReadings.js";
 import { normalizeItalianExact } from "../italian/normalize.js";
 import { keyedRead, readKeys, type DictionaryRead, type KeyedRead, type LookupDatabase } from "./database.js";
