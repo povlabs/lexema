@@ -181,6 +181,7 @@
 // (web/lib/dictionary/genderGrid.ts). `lookup_form` stays as imported, so a
 // search still reaches the record by a removed form's spelling.
 
+import { evidenceUrl, type Evidence } from "./evidence.js";
 import { FORM_OF_GLOSS_EDGE_EVIDENCE } from "./formOfGlossEdgeEvidence.js";
 import { formOfGlossEdgeCorrections } from "./formOfGlossEdge.js";
 import { FORM_OF_MEANING_EDGE_EVIDENCE } from "./formOfMeaningEdgeEvidence.js";
@@ -214,14 +215,8 @@ export type CorrectedFacts =
   | { gender: FactOverride<"gender">; number?: FactOverride<"number"> }
   | { gender?: FactOverride<"gender">; number: FactOverride<"number"> };
 
-/** One Wiktionary page revision, and what it shows that settles the fact. */
-export interface Evidence {
-  wiki: "it.wiktionary.org" | "en.wiktionary.org";
-  title: string;
-  revisionId: number;
-  /** What the revision shows, as written there. */
-  shows: string;
-}
+/** One Wiktionary page revision, and what it shows that settles the fact (src/italian/evidence.ts). */
+export type { Evidence };
 
 /** The record a correction is keyed to: a release's archive line, pinned by its digest. */
 export interface CorrectedRecord {
@@ -748,9 +743,8 @@ export function correctionId(correction: CuratedCorrection): string {
   return `${line}${isCellCorrection(correction) ? ":cells" : ""}`;
 }
 
-/** A permanent link to the revision, which stays as it was whatever the page says later. */
-export const evidenceUrl = (evidence: Omit<Evidence, "shows">): string =>
-  `https://${evidence.wiki}/w/index.php?title=${encodeURIComponent(evidence.title)}&oldid=${evidence.revisionId}`;
+/** A permanent link to the revision (src/italian/evidence.ts). */
+export { evidenceUrl };
 
 /** One fact a correction sets, flattened: what a `corrected_claim` row stores. */
 export interface CorrectedFact {

@@ -34,7 +34,7 @@
 // beside the source's readings of its word (src/lookup/handKept.ts). The page
 // shows it as an ordinary reading, with no mark (ADR 0016).
 
-import { evidenceUrl } from "./curatedCorrections.js";
+import { evidenceUrl } from "./evidence.js";
 import { POS_BY_TITLE, statedPartOfSpeech, type StatedPartOfSpeech } from "./partOfSpeech.js";
 
 /** One en.wiktionary revision a hand-kept reading cites, and what it shows that settles the reading. */
