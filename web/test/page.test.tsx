@@ -2436,7 +2436,6 @@ function readingEtymology(reading: string): string | undefined {
   return textOf(section.replace(/<button[^>]*aria-expanded[\s\S]*?<\/button>/g, ""));
 }
 
-/** The words of a Synonyms run, from a reading or from the facts after the readings. */
 /** The words of the list `id`, in order, each a search or its text with no link (#635); notes left out. */
 const synonymWords = (html: string, id: string): string[] => {
   const at = html.indexOf(`id="${id}"`);
