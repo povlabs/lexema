@@ -231,7 +231,13 @@ export function SearchField({ raw, version }: { raw: string; version: string }) 
       </form>
       <Autocomplete.Status className="sr-only">{statusOf(shown)}</Autocomplete.Status>
       <Autocomplete.Portal>
-        <Autocomplete.Positioner anchor={field} side="bottom" align="start" sideOffset={6}>
+        <Autocomplete.Positioner
+          anchor={field}
+          side="bottom"
+          align="start"
+          sideOffset={6}
+          collisionAvoidance={{ side: "none" }}
+        >
           <Autocomplete.Popup className={SUGGEST_POPUP}>
             <Autocomplete.Empty>
               {shown !== null && (
