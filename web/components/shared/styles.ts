@@ -331,6 +331,8 @@ export const GRID_FORM = "m-0 font-mono text-[1.05rem] text-text-strong wrap-any
 export const GRID_ARTICLES = "m-0 font-mono text-[0.75rem] leading-4 text-text-muted sm:mt-[0.1875rem] wrap-anywhere";
 export const GRID_ARTICLE = "max-sm:block sm:inline-block max-w-full";
 export const GRID_ARTICLE_DOT = "px-2 max-sm:hidden";
+/** The line's break after the dot; gone on a phone, where it would add an empty line. */
+export const GRID_ARTICLE_BREAK = "max-sm:hidden";
 /** A form the source does not give: a dash, with no note. */
 export const DASH = "font-mono text-text-muted";
 export const GRID_LABEL = "m-0 mt-4 mb-3 sm:mt-6 font-sans text-[0.75rem] font-semibold text-text-muted";

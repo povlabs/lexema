@@ -145,7 +145,9 @@ exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
 </span>
 <span>
 <span class="px-2 max-sm:hidden" aria-hidden="true">·</span>
+<span class="max-sm:hidden">
 <wbr/>
+</span>
 <span class="max-sm:block sm:inline-block max-w-full">un bello</span>
 </span>
 </p>
@@ -162,7 +164,9 @@ exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
 </span>
 <span>
 <span class="px-2 max-sm:hidden" aria-hidden="true">·</span>
+<span class="max-sm:hidden">
 <wbr/>
+</span>
 <span class="max-sm:block sm:inline-block max-w-full">dei belli</span>
 </span>
 </p>
@@ -182,7 +186,9 @@ exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
 </span>
 <span>
 <span class="px-2 max-sm:hidden" aria-hidden="true">·</span>
+<span class="max-sm:hidden">
 <wbr/>
+</span>
 <span class="max-sm:block sm:inline-block max-w-full">una bella</span>
 </span>
 </p>
@@ -199,7 +205,9 @@ exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
 </span>
 <span>
 <span class="px-2 max-sm:hidden" aria-hidden="true">·</span>
+<span class="max-sm:hidden">
 <wbr/>
+</span>
 <span class="max-sm:block sm:inline-block max-w-full">delle belle</span>
 </span>
 </p>
@@ -269,7 +277,9 @@ exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
 </span>
 <span>
 <span class="px-2 max-sm:hidden" aria-hidden="true">·</span>
+<span class="max-sm:hidden">
 <wbr/>
+</span>
 <span class="max-sm:block sm:inline-block max-w-full">un bello</span>
 </span>
 </p>
@@ -327,7 +337,9 @@ exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
 </span>
 <span>
 <span class="px-2 max-sm:hidden" aria-hidden="true">·</span>
+<span class="max-sm:hidden">
 <wbr/>
+</span>
 <span class="max-sm:block sm:inline-block max-w-full">un bello</span>
 </span>
 </p>
@@ -344,7 +356,9 @@ exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
 </span>
 <span>
 <span class="px-2 max-sm:hidden" aria-hidden="true">·</span>
+<span class="max-sm:hidden">
 <wbr/>
+</span>
 <span class="max-sm:block sm:inline-block max-w-full">dei belli</span>
 </span>
 </p>
