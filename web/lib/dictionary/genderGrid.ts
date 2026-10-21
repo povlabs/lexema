@@ -17,6 +17,13 @@
 //   singular and plural, so it fills both), and, as the citation form, in the
 //   singolare column when its record states no usable number (`andare` the
 //   noun, `bello` invariable).
+// - A headword whose record states no gender takes its rows from its own
+//   forms (#909): in each gender row they open, it fills the singolare cell no
+//   form fills, when it is a lemma (no `lemmaLinks`) and its record does not
+//   state it plural only. `altrettanto` lists `altrettanti`, `altrettanta` and
+//   `altrettante`, so it is the maschile singolare; `indispensabile` lists only
+//   plurals, so it is both singolari. Only tags decide this, never a spelling,
+//   and a record that states a gender places its headword by that alone.
 // - A form with a degree other than positive is a comparison, not an agreement
 //   cell: a superlative goes to the superlativo grid, anything else takes no
 //   cell.
@@ -183,6 +190,15 @@ class GridBuilder {
     this.cells.set(key, spellings);
   }
 
+  has(gender: Gender, number: GrammaticalNumber): boolean {
+    return this.cells.has(`${gender} ${number}`);
+  }
+
+  /** The genders with a row: those any cell has been put in. */
+  rows(): Gender[] {
+    return GENDERS.filter((gender) => NUMBERS.some((number) => this.has(gender, number)));
+  }
+
   get size(): number {
     return this.cells.size;
   }
@@ -278,6 +294,9 @@ export function agreementOf(reading: Reading): Agreement {
     for (const gender of genders) target.put(gender, number, { kind: "form", form }, form.surface);
   }
   for (const form of reading.formCorrection?.added ?? []) plain.put(form.gender, form.number, { kind: "added", form }, form.surface);
+  if (recordGenders.length === 0 && reading.lemmaLinks.length === 0 && headwordNumbers.includes("singular")) {
+    for (const gender of plain.rows()) if (!plain.has(gender, "singular")) plain.put(gender, "singular", HEADWORD, reading.word);
+  }
 
   if (isNounReading(reading) && !givesPlural(reading)) {
     for (const record of reading.inflections) {
