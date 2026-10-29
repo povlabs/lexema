@@ -98,7 +98,7 @@ export function definitionsOf(
 }
 
 /**
- * Whether the reading has a definition to show. The share card takes its
+ * Whether the reading has a definition to show. A link preview takes its
  * meaning from the first reading that has one (card.ts).
  */
 export function hasDefinitions(reading: Reading): boolean {

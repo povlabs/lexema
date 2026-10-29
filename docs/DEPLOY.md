@@ -41,9 +41,9 @@ development, with the placeholder D1 that `pnpm run seed:dev` fills.
 `www` to the apex and HTTP to HTTPS are dashboard settings (a redirect rule and
 Always Use HTTPS), not Worker settings, so they are not in the repository.
 
-## Card and suggestion cache identity
+## Page and suggestion cache identity
 
-Cards and suggestion requests carry the master release, its last applied change,
+Kept pages and suggestion requests carry the master release, its last applied change,
 its committed live-hide and curated-correction revisions, and `LEXEMA_VERSION.id`. That last value is
 Cloudflare's [Worker version metadata binding](https://developers.cloudflare.com/workers/runtime-apis/bindings/version-metadata/):
 each uploaded Worker version has its own id, so a serving-code deploy moves cache
@@ -67,10 +67,10 @@ reads as zero. `update:upgrade` creates it, with `corrected_claim`, before the
 command writes. Deploy this reader before running it live, too. The procedure is
 [Write the curated corrections](RUN_AN_IMPORT.md#write-the-curated-corrections-into-a-seeded-database).
 
-Old card requests reaching the Worker still redirect to the current address with
-`no-store`, before reading the card cache. Already downloaded immutable images can
-remain in a crawler's cache at their old URL; newly rendered pages name the new
-URL. Suggestion keys move too; a page left open keeps its old key until reloaded.
+A shared link's picture is one static file for every page and carries no
+identity ([#919](https://github.com/povlabs/lexema/issues/919)); an old `/card/`
+address is sent to it by `web/public/_redirects` before the Worker runs.
+Suggestion keys move; a page left open keeps its old key until reloaded.
 A reader may see a word page up to one hour old after a dictionary apply: the
 Worker lets the reader's browser keep the home page and each word page for an
 hour (`private, max-age=3600`, [pageCache.ts](../web/worker/dictionary/pageCache.ts)).
@@ -79,11 +79,10 @@ in a reader's browser.
 Each data center's Cloudflare cache also keeps those pages, under the served
 version, so a deploy or a dictionary apply starts it fresh and no reader gets a
 page from an older version from there.
-If the data identity cannot be read, the card route returns an uncached home card.
 Reading the identity probes the newest applied change and table existence, plus
 one singleton row for each revision table that exists; it scans no lexical rows.
 
-Reproduce the hide, rollback, provenance, apply, cache-key and old-URL checks using
+Reproduce the hide, rollback, provenance, apply and cache-key checks using
 fixtures and disposable local SQLite databases only:
 
 ```sh

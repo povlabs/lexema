@@ -1,6 +1,6 @@
 // What the shared page cache works with inside the Worker: the served version
 // and Cloudflare's cache. worker/dictionary/pageCache.ts decides what to
-// answer; this file only supplies it, as card/desk.ts does for a card.
+// answer; this file only supplies it.
 
 import { servedVersionOnce } from "@/lib/dictionary/db.ts";
 import type { PageDesk } from "./pageCache.ts";

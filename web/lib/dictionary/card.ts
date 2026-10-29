@@ -1,10 +1,10 @@
-// What a shared link's card says (#304): the 1200×630 picture WhatsApp, X,
-// Slack or iMessage shows for a link to a result page. Board S1 in
-// lexema-design.pen draws two cards.
+// What a shared link's preview says (#304): the title, the line of text and
+// the picture WhatsApp, X, Slack or iMessage shows for a link to a result page.
 //
-// - A word card: the headword, a meta line `/ˈbɛllo/ · maschile · Aggettivo`,
-//   and the first meaning. Each part of the meta line shows only when the page
-//   has it, and in the page's own words: the first pronunciation under the
+// - A word card: the headword, its pronunciation, gender, part of speech and
+//   first meaning. The preview's line is the first meaning, else a meta line
+//   `/ˈbɛllo/ · maschile · Aggettivo`. Each part shows only when the page has
+//   it, and in the page's own words: the first pronunciation under the
 //   headword, the gender the first numbered reading's heading shows
 //   (genderGrid.ts), and that reading's part of speech. A form's block names
 //   it as its heading does, every part of speech of its records when they
@@ -12,9 +12,9 @@
 // - The home card, for everything else: the home page, a word Lexema does not
 //   have, a search over the visitor's limit, and a lookup that failed.
 //
-// Everything here is decided from the page's own lookup, so a card never
-// reads the database more than the page does. How it is drawn is
-// web/worker/dictionary/card/draw.tsx; where it is served is web/worker/dictionary/card.ts.
+// Everything here is decided from the page's own lookup, so a preview never
+// reads the database more than the page does. The picture is one static file
+// for every page (#919), so nothing here names the served version.
 
 import type { Attempt } from "./attempt.ts";
 import { definitionsOf, hasDefinitions, type DefinitionItem } from "./definitions.ts";
@@ -37,7 +37,7 @@ export type Card = WordCard | { kind: "home" };
 
 export const HOME_CARD: Card = { kind: "home" };
 
-/** A card's size: the 1.91:1 picture link previews show. */
+/** The picture's size: the 1.91:1 link previews show (web/public/share-card.png). */
 export const CARD_WIDTH = 1200;
 export const CARD_HEIGHT = 630;
 
@@ -143,53 +143,11 @@ export function cardOf(attempt: Attempt): Card {
 }
 
 /**
- * Bumped when the drawing changes, so a card cached under the old drawing is
- * never served for the new one. The served version in the address does the
- * same for the data.
+ * The one picture every page's preview shows (#919): the home card, drawn once
+ * and kept as a static file in web/public/, so no request draws it. An old
+ * `/card/…` address is sent here by web/public/_redirects, before the Worker runs.
  */
-export const CARD_DRAWING = "2";
-
-const CARD_PREFIX = "/card/";
-const CARD_SUFFIX = ".png";
-const WORD_PARAM = "word";
-
-/** A card's address, as one served version draws it: the home card, or a word's. */
-export interface CardAddress {
-  /**
-   * The served version's token (`versionToken` in src/lookup/served.ts): the
-   * release, last applied change, live-hide revision and Worker version id,
-   * so data updates and serving-code deploys move every card's address.
-   */
-  version: string;
-  /** The search as typed, trimmed; absent for the home card. */
-  word: string | undefined;
-}
-
-/** `/card/1/it-0c432803.0.png?word=casa`: the drawing, the served version, and the word. */
-export function cardPath({ version, word }: CardAddress): string {
-  const path = `${CARD_PREFIX}${CARD_DRAWING}/${encodeURIComponent(version)}${CARD_SUFFIX}`;
-  return word === undefined ? path : `${path}?${new URLSearchParams({ [WORD_PARAM]: word })}`;
-}
-
-/**
- * The card a URL asks for, or none when it is not a card's address. A card
- * of another drawing or version is still a card, and so is an address from
- * before the version was in it, which named the release alone: the Worker
- * sends each on to the current one.
- */
-export function cardAddressOf(url: URL): (CardAddress & { drawing: string }) | undefined {
-  if (!url.pathname.startsWith(CARD_PREFIX) || !url.pathname.endsWith(CARD_SUFFIX)) return undefined;
-  const parts = url.pathname.slice(CARD_PREFIX.length, -CARD_SUFFIX.length).split("/");
-  if (parts.length !== 2 || parts.some((part) => part === "")) return undefined;
-  let version: string;
-  try {
-    version = decodeURIComponent(parts[1]);
-  } catch {
-    return undefined;
-  }
-  const word = (url.searchParams.get(WORD_PARAM) ?? "").trim();
-  return { drawing: parts[0], version, word: word === "" ? undefined : word };
-}
+export const SHARE_IMAGE_PATH = "/share-card.png";
 
 /** A link preview's line of text: the first meaning, else the meta line, else what Lexema is. */
 export function cardDescription(card: Card): string {
@@ -201,20 +159,12 @@ export function cardDescription(card: Card): string {
 /**
  * The tags a result page carries for a shared link's preview: `og:title`,
  * `og:description`, `og:image` with its size, and a large-image Twitter card.
+ * The words are the page's own; the picture is the same for every page.
  * `origin` is the host the page was asked on, so a Preview's page names a
- * Preview's card.
+ * Preview's picture.
  */
-export function linkPreview({ title, card, word, version, origin }: {
-  title: string;
-  card: Card;
-  /** The search as typed; a word card's address carries it. */
-  word: string;
-  /** The served version's token, as `CardAddress` names it. */
-  version: string;
-  origin: string;
-}) {
+export function linkPreview({ title, card, origin }: { title: string; card: Card; origin: string }) {
   const description = cardDescription(card);
-  const path = cardPath({ version, word: card.kind === "word" ? word.trim() : undefined });
   return {
     description,
     openGraph: {
@@ -222,7 +172,7 @@ export function linkPreview({ title, card, word, version, origin }: {
       description,
       siteName: SITE_NAME,
       type: "website",
-      images: [{ url: new URL(path, origin).href, width: CARD_WIDTH, height: CARD_HEIGHT, type: "image/png" }],
+      images: [{ url: new URL(SHARE_IMAGE_PATH, origin).href, width: CARD_WIDTH, height: CARD_HEIGHT, type: "image/png" }],
     },
     twitter: { card: "summary_large_image" },
   } as const;

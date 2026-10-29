@@ -1,0 +1,9 @@
+# Redirects Cloudflare answers from static assets, before the Worker runs
+# (web/wrangler.jsonc, `assets`), so none of these reaches a lookup or a
+# drawing. Vite copies this file into dist/client; vinext writes none of its own
+# (web/test/assetHeaders.test.ts).
+
+# A shared link's picture used to be drawn per word at /card/<drawing>/<version>.png.
+# Every page now names one static picture (#919, lib/dictionary/card.ts), and
+# an old address that crawlers still hold is sent on to it for good.
+/card/* /share-card.png 301

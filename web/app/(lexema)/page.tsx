@@ -43,14 +43,12 @@ function titleOutcome(attempt: Attempt): TitleOutcome {
 
 /**
  * The tab's title, and the tags a shared link's preview reads (#304): a word
- * found is previewed with its own card, and everything else with the home card.
+ * found is previewed with its own title and meaning, and everything else with
+ * the site's. Every page names the same static picture (#919).
  */
 export async function generateMetadata({ searchParams }: PageProps) {
   const raw = firstQuery(searchParams.q);
   const requestHeaders = await headers();
-  // The card's address names the served version (#368), read beside the
-  // lookup rather than after it, and memoised with it.
-  const version = servedVersion();
   // A search over the visitor's limit is not run for its title either. The
   // same search the result renders from, memoised for the request (db.ts).
   const attempt = raw.trim() === "" || requestHeaders.has(SEARCH_LIMITED_HEADER) ? undefined : await search(raw);
@@ -60,8 +58,6 @@ export async function generateMetadata({ searchParams }: PageProps) {
     ...linkPreview({
       title,
       card: attempt === undefined ? HOME_CARD : cardOf(attempt),
-      word: raw,
-      version: await version,
       origin: requestOrigin(requestHeaders),
     }),
   };

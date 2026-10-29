@@ -366,9 +366,9 @@ const WORKER_ENV: Record<string, unknown> = { LEXEMA_STAGE: "production", DEVELO
 
 /**
  * Import `path` outside workerd: `cloudflare:workers` and vinext's App Router
- * entry exist only in a build, and the card desk loads WebAssembly, so each is
- * stood in for. The App Router answers every request it is handed with a page,
- * so a route the Worker hands on is seen to be served.
+ * entry exist only in a build, so each is stood in for. The App Router answers
+ * every request it is handed with a page, so a route the Worker hands on is
+ * seen to be served.
  */
 async function outsideWorkerd<T>(path: string): Promise<T> {
   const STUBS: Record<string, string> = {
@@ -377,12 +377,7 @@ async function outsideWorkerd<T>(path: string): Promise<T> {
   };
   const stub = (source: string) => ({ url: `data:text/javascript,${encodeURIComponent(source)}`, shortCircuit: true });
   const hooks = registerHooks({
-    resolve: (specifier, context, nextResolve) => {
-      if (specifier in STUBS) return stub(STUBS[specifier]);
-      const resolved = nextResolve(specifier, context);
-      // A desk with nothing on it: only a card's address reaches into one, and no test here asks for a card.
-      return resolved.url.endsWith("/worker/dictionary/card/desk.ts") ? stub(`export function workerDesk() { return {}; }`) : resolved;
-    },
+    resolve: (specifier, context, nextResolve) => (specifier in STUBS ? stub(STUBS[specifier]) : nextResolve(specifier, context)),
   });
   try {
     return (await import(path)) as T;

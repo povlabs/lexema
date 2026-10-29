@@ -6,7 +6,7 @@
   // Lexema's own entry: it checks the rate limits below, then hands the request
   // to vinext's App Router entry (worker/index.ts).
   "main": "worker/index.ts",
-  // Each uploaded Worker version gets a new id, used by cards and suggestions.
+  // Each uploaded Worker version gets a new id, used by suggestions and the page cache.
   // This binding is non-inheritable, so production and previews repeat it.
   "version_metadata": { "binding": "LEXEMA_VERSION" },
   "assets": {

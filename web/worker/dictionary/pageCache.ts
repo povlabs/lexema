@@ -53,8 +53,7 @@
 // not mark, and it stores a page only when its lookup did not fail, read again
 // once the whole page has been read. A kept page holds the nonce of the
 // request that rendered it, so a hit swaps in this request's nonce, in every
-// script and in the policy. `x-lexema-page` says where a page came from, as
-// `x-lexema-card` does for a card (worker/dictionary/card.ts).
+// script and in the policy. `x-lexema-page` says where a page came from.
 //
 // The page renders under the version the cache step read for its key, so a
 // miss reads it from D1 once, not twice (#673). The read is handed on in an
