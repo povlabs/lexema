@@ -228,5 +228,5 @@ suggestion cache keys move with the Worker version instead
 ([cache identity](DEPLOY.md#page-and-suggestion-cache-identity)). Step 2 uploads
 a new version, so pages rendered after it ask for new addresses, and a cached
 "not found" for `raccontare` is not used again. Between steps 1 and 2, the old
-Worker keeps its old addresses, so a card it cached before the load can still
-be served until step 2.
+Worker keeps its old keys, so a page or suggestion answer it cached before the
+load can still be served until step 2.
