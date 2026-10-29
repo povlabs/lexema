@@ -369,7 +369,7 @@ export function headingGrammar(reading: Reading): string | undefined {
 
 /**
  * The gender half of that heading, alone: `maschile`, `maschile e femminile`,
- * or nothing when the heading shows none. A shared link's card shows it
+ * or nothing when the heading shows none. A shared link's preview says it
  * (web/lib/dictionary/card.ts), so the two never disagree.
  */
 export function headingGender(reading: Reading): string | undefined {

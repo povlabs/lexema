@@ -31,9 +31,10 @@
 // per-visitor limits, so a hit counts as a render did, the same page is also
 // kept in Cloudflare's cache for the served version, and the next reader in
 // that data center gets the kept copy with a fresh nonce instead of a render
-// (worker/dictionary/pageCache.ts, worker/dictionary/pageDesk.ts). A shared link's card (worker/dictionary/card.ts) is answered in front of the
-// per-visitor limits: one served from Cloudflare's cache reaches no database,
-// and one it draws counts as a search itself. It also exports the account
+// (worker/dictionary/pageCache.ts, worker/dictionary/pageDesk.ts). A shared
+// link's picture is a static file, answered before the Worker runs, and so is
+// the redirect from an old `/card/` address to it (web/public/_redirects, #919);
+// no path here draws an image. It also exports the account
 // meter's Durable Object class (worker/api/accountMeterObject.ts), which
 // wrangler.jsonc binds as ACCOUNT_METER. Beside `fetch`, `scheduled` answers
 // wrangler.jsonc's cron trigger: it erases reports' visitor codes once their
@@ -52,8 +53,6 @@ import { withSignIn } from "./developers/signIn.ts";
 import { parseSignUp, withSignUp } from "./developers/signUp.ts";
 import { withStripeWebhook } from "./developers/stripeWebhook.ts";
 import { withTestSignIn } from "./developers/testSignIn.ts";
-import { withCards } from "./dictionary/card.ts";
-import { workerDesk } from "./dictionary/card/desk.ts";
 import { dictionaryLimitOf } from "./dictionary/limits.ts";
 import { withPageCache, withSharedPageCache } from "./dictionary/pageCache.ts";
 import { workerPageDesk } from "./dictionary/pageDesk.ts";
@@ -80,16 +79,13 @@ export default {
           withStripeWebhook<Env>(
             withPageCache<Env>(
               byHost<Env>({
-                app: withCards<Env>(
-                  workerDesk,
-                  withRateLimits<Env>(
-                    { developers: developerLimitOf, dictionary: dictionaryLimitOf },
-                    withSharedPageCache<Env>(
-                      workerPageDesk,
-                      withTestSignIn<Env>(
-                        stage,
-                        withSignUp<Env>(signUp, withSignIn<Env>(withBilling<Env>(withDashboard<Env>((request, env, ctx) => app.fetch(request, env, ctx))))),
-                      ),
+                app: withRateLimits<Env>(
+                  { developers: developerLimitOf, dictionary: dictionaryLimitOf },
+                  withSharedPageCache<Env>(
+                    workerPageDesk,
+                    withTestSignIn<Env>(
+                      stage,
+                      withSignUp<Env>(signUp, withSignIn<Env>(withBilling<Env>(withDashboard<Env>((request, env, ctx) => app.fetch(request, env, ctx))))),
                     ),
                   ),
                 ),

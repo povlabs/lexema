@@ -1,7 +1,7 @@
 // What one word page costs D1 (#393): the statements a page sends and the
 // calls they go in, counted through `fromD1` over the development fixture.
 // One page is the search the page runs (`searchAttempt`) and the served
-// version it names its card and suggestions by (`servedVersion`), through one
+// version it names its suggestions by (`servedVersion`), through one
 // adapter, as the baseline on #393 was measured. web/lib/dictionary/db.ts
 // reaches them through an adapter each, so a deployed page makes two more
 // calls than counted here: the served version's own two waits.
@@ -21,7 +21,7 @@
 //
 // The last tests run one whole word-page request, `generateMetadata` and
 // `Page` both, in a vinext request scope as the Worker does (#644): each half
-// asks for the lookup and the served version, and D1 must see each once.
+// asks for the lookup, the page for the served version too, and D1 must see each once.
 // The same holds for a request through the shared page cache (#673): the
 // version the cache step reads for its key is the one the page renders with.
 

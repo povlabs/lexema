@@ -1,8 +1,10 @@
-// The `_headers` file a build leaves in dist/client (#265). Static assets are
-// answered before the Worker runs (web/wrangler.jsonc, `assets`), so the
-// headers on them are this file's alone: noindex on every Preview host (ADR
-// 0018), vinext's year-long cache on content-hashed assets, and the browser
-// security headers the Worker sets on its own responses (#620).
+// The `_headers` and `_redirects` files a build leaves in dist/client (#265,
+// #919). Static assets are answered before the Worker runs (web/wrangler.jsonc,
+// `assets`), so the headers on them are this file's alone: noindex on every
+// Preview host (ADR 0018), vinext's year-long cache on content-hashed assets,
+// and the browser security headers the Worker sets on its own responses
+// (#620). The same holds for the redirect from an old `/card/` address to the
+// one share picture: no lookup and no drawing can run for it.
 //
 // vinext writes its own `_headers` only when the build has none, so
 // web/public/_headers repeats its cache rule. Each test here runs a real
@@ -11,10 +13,11 @@
 
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
+import { SHARE_IMAGE_PATH } from "@/lib/dictionary/card.ts";
 import { PREVIEW_DOMAIN } from "@/worker/shared/hosts.ts";
 import { SECURITY_HEADERS } from "@/worker/shared/securityHeaders.ts";
 import { robotsTagOf } from "@/worker/shared/stage.ts";
@@ -26,12 +29,15 @@ const VINEXT = join(WEB, "node_modules", ".bin", "vinext");
 const HASHED_ASSETS = "/_next/static/*";
 const IMMUTABLE = "public, max-age=31536000, immutable";
 
+/** What this test reads of a build's dist/client; `redirects` is absent when the build wrote none. */
+type Built = { headers: string; redirects: string | undefined; shareImage: boolean };
+
 /**
- * The `_headers` a `vinext build` writes, with `publicDir` as the public
- * directory (`false` for none). The app lives under web/node_modules so it
- * resolves web's own vinext, Vite and React.
+ * What a `vinext build` writes, with `publicDir` as the public directory
+ * (`false` for none). The app lives under web/node_modules so it resolves
+ * web's own vinext, Vite and React.
  */
-function builtHeaders(publicDir: string | false): string {
+function builtClient(publicDir: string | false): Built {
   const cache = join(WEB, "node_modules", ".cache");
   mkdirSync(cache, { recursive: true });
   const root = mkdtempSync(join(cache, "lexema-asset-headers-"));
@@ -67,7 +73,12 @@ function builtHeaders(publicDir: string | false): string {
       ].join("\n"),
     );
     execFileSync(VINEXT, ["build"], { cwd: root, stdio: "pipe" });
-    return readFileSync(join(root, "dist", "client", "_headers"), "utf8");
+    const client = join(root, "dist", "client");
+    return {
+      headers: readFileSync(join(client, "_headers"), "utf8"),
+      redirects: existsSync(join(client, "_redirects")) ? readFileSync(join(client, "_redirects"), "utf8") : undefined,
+      shareImage: existsSync(join(client, SHARE_IMAGE_PATH.slice(1))),
+    };
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -125,8 +136,9 @@ function headersFor(rules: readonly Rule[], url: string): Map<string, string> {
 }
 
 /** The build with web/public, which the tests below share. */
-let ours: Rule[] | undefined;
-const built = () => (ours ??= rulesOf(builtHeaders(join(WEB, "public"))));
+let ours: Built | undefined;
+const ourBuild = () => (ours ??= builtClient(join(WEB, "public")));
+const built = () => rulesOf(ourBuild().headers);
 
 const ASSET = "/_next/static/chunks/main-0a1b2c3d.js";
 const OTHER_ASSET = "/fonts/lexend.woff2";
@@ -166,13 +178,61 @@ test("every static asset on every host carries the Worker's security headers, X-
   }
 });
 
-test("the built _headers keeps every rule vinext would have written itself", () => {
-  const vinexts = rulesOf(builtHeaders(false));
+test("the built _headers keeps every rule vinext would have written itself, and vinext writes no _redirects", () => {
+  const vinext = builtClient(false);
+  assert.equal(vinext.redirects, undefined);
+  const vinexts = rulesOf(vinext.headers);
   assert.deepEqual(
     vinexts.map((rule) => [rule.pattern, [...rule.headers]]),
     [[HASHED_ASSETS, [["cache-control", IMMUTABLE]]]],
   );
   for (const rule of vinexts) {
     assert.deepEqual(built().find((candidate) => candidate.pattern === rule.pattern)?.headers, rule.headers, rule.pattern);
+  }
+});
+
+/** One `_redirects` rule: a path pattern, where it sends a match, and the status. */
+type Redirect = { from: string; to: string; status: number };
+
+/** The rules of a `_redirects` file: `from to [status]` per line, 302 when no status is given. */
+function redirectsOf(file: string): Redirect[] {
+  return file
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line !== "" && !line.startsWith("#"))
+    .map((line) => {
+      const [from, to, status, ...rest] = line.split(/\s+/);
+      assert.ok(from && to && rest.length === 0, `a _redirects line is \`from to [status]\`: ${JSON.stringify(line)}`);
+      return { from, to, status: status === undefined ? 302 : Number(status) };
+    });
+}
+
+/**
+ * Where a request for `url` is sent, as Cloudflare matches a `_redirects`
+ * file: the first rule whose path pattern matches, a `*` matching anything,
+ * and the query never part of the match
+ * (https://developers.cloudflare.com/workers/static-assets/redirects/).
+ */
+function redirectFor(rules: readonly Redirect[], url: string): Redirect | undefined {
+  const { pathname } = new URL(url, "https://lexema.fyi");
+  return rules.find((rule) => new RegExp(`^${rule.from.split("*").map(escape).join(".*")}$`).test(pathname));
+}
+
+test("an old /card/ address, with or without a word, is sent for good to the one share picture before the Worker runs (#919)", () => {
+  const build = ourBuild();
+  assert.ok(build.redirects !== undefined, "the build keeps web/public/_redirects");
+  assert.ok(build.shareImage, "the build keeps the share picture the redirect names");
+  const rules = redirectsOf(build.redirects);
+  for (const old of [
+    "/card/2/it-0c432803.chg-0123456789ab.code-abc.png?word=casa",
+    "/card/2/it-0c432803.0.png",
+    "/card/1/it-0c432803.png?word=vado%20via",
+    "/card/0/anything.png?word=",
+  ]) {
+    assert.deepEqual(redirectFor(rules, old), { from: "/card/*", to: SHARE_IMAGE_PATH, status: 301 }, old);
+  }
+  // Nothing else is sent anywhere: not the picture itself, nor a page.
+  for (const other of [SHARE_IMAGE_PATH, "/", "/?q=casa", "/cards/2/x.png", "/suggest?q=ca"]) {
+    assert.equal(redirectFor(rules, other), undefined, other);
   }
 });

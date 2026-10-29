@@ -266,7 +266,7 @@ sits under the Italian heading
 the word among its forms ([#389](https://github.com/povlabs/lexema/issues/389)).
 A database seeded before either gets the same records hidden by a one-off
 update, with no reseed. Before a live hide, deploy the reader described in
-[Card and suggestion cache identity](DEPLOY.md#card-and-suggestion-cache-identity),
+[Page and suggestion cache identity](DEPLOY.md#page-and-suggestion-cache-identity),
 which also explains compatibility with older masters and cache verification:
 
 ```sh
@@ -376,8 +376,8 @@ pnpm run correct:records
 It picks its database the way the seed does: the local D1 under `SEED_STATE`
 (default `.data/seed-state`), or the remote D1 `SEED_REMOTE` names. It writes
 one SQL file under `.data/updates/` and runs it as one transaction: it writes
-each entry's rows, and increments the correction revision, so card and
-suggestion addresses move ([cache identity](DEPLOY.md#card-and-suggestion-cache-identity)).
+each entry's rows, and increments the correction revision, so page and
+suggestion cache keys move ([cache identity](DEPLOY.md#page-and-suggestion-cache-identity)).
 `source_record_json`, `grammar_claim`, `lookup_form`, `form_of_edge`, the
 `sense*` rows and the `recovered_*` rows are not touched. The file holds no
 DDL: on a master without `corrected_claim`, `corrected_form`,

@@ -316,7 +316,7 @@ pnpm --dir web exec wrangler d1 time-travel restore lexema-dictionary --bookmark
 It asks to confirm, overwrites the database in place and cancels queries in
 flight, so a few lookups fail while it runs. It prints the bookmark to undo the
 restore itself; keep it. Then search a word the apply changed: it shows the
-older release's senses again, and its share card moves back with it.
+older release's senses again, and so does its link preview's text.
 
 Time Travel is always on and costs nothing extra: no charge for the history or
 for a restore. It reaches back 30 days on Workers Paid, 7 on Workers Free
@@ -341,7 +341,7 @@ check; *Huey* marks the ones only Huey can run.
 | Ambiguous | <https://lexema.fyi/?q=sale> | several entries; the link to `sala` searches it and shows both the noun and the verb, without picking one |
 | Missing data | <https://lexema.fyi/?q=casa> | one entry; what the source does not give, such as its forms, is missing, not filled in |
 | Disputed | <https://lexema.fyi/?q=studente> | every reading as the source states it, and no note about a dispute ([WEB.md](WEB.md#why-a-disputed-claim-is-a-row-and-not-a-code-path)) |
-| Share card | the `og:image` of `?q=casa`, below | 200, `image/png`, the word's card |
+| Share preview | the `og:title` and `og:image` of `?q=casa`, below | the title `Casa — Lexema`; the image is `https://lexema.fyi/share-card.png`, 200, `image/png`, the same picture as the home page; an old `/card/` address answers 301 to it |
 | Sign-in (Huey) | <https://developers.lexema.fyi/sign-in>, with Google and with GitHub | back on the dashboard, signed in; while `DEVELOPER_SIGN_UP` is `closed` ([DEPLOY.md](DEPLOY.md#turn-on-sign-in)), the page says *Sign-up opens soon*, and this row, API key and Checkout wait |
 | API key (Huey) | on the dashboard, create a key named `smoke` | the key is shown once; copy it |
 | API lookup | `/v1/lookup`, below | 200 with `casa`'s entry |
@@ -351,11 +351,13 @@ check; *Huey* marks the ones only Huey can run.
 
 Then revoke the `smoke` key on the dashboard.
 
-The share card's address is in the page:
+The preview's tags are in the page. The picture is one static file for every
+page, and an old `/card/` address is sent to it:
 
 ```sh
-curl -s "https://lexema.fyi/?q=casa" | grep -o 'og:image" content="[^"]*'
-curl -sI "<that address>" | grep -iE '^HTTP|content-type'
+curl -s "https://lexema.fyi/?q=casa" | grep -oE '(og:title|og:image)" content="[^"]*'
+curl -sI "https://lexema.fyi/share-card.png" | grep -iE '^HTTP|content-type'
+curl -sI "https://lexema.fyi/card/2/old.png?word=casa" | grep -iE '^HTTP|location'
 ```
 
 The API, with the key from the dashboard:

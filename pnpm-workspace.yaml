@@ -33,8 +33,6 @@ catalog:
   typescript: 5.9.3
   # web/: the Worker.
   '@base-ui/react': 1.8.0
-  '@cf-wasm/resvg': 0.4.0
-  '@cf-wasm/satori': 0.4.2
   '@cloudflare/vite-plugin': 1.56.0
   '@tailwindcss/vite': 4.3.3
   '@types/node': 26.6.1

@@ -295,12 +295,14 @@ statement after the records are written and checks every row is back.
 ## Caches move with an apply
 
 `LEXEMA_RELEASE` stays the same through an apply, so nothing a reader's browser
-or Cloudflare keeps may be keyed on it alone. A shared link's card and the
+or Cloudflare keeps may be keyed on it alone. The pages Cloudflare keeps and the
 search field's suggestions are keyed on the **served version** instead: the
 release and the last change applied to it
 ([`servedVersion`](../src/lookup/served.ts), one row read). An apply moves it,
-and so every card's address and every suggestion request's address
-([#368](https://github.com/povlabs/lexema/issues/368)).
+and so every kept page's key and every suggestion request's address
+([#368](https://github.com/povlabs/lexema/issues/368)). A shared link's picture
+is one static file and keyed on nothing
+([#919](https://github.com/povlabs/lexema/issues/919)).
 
 ## An older master
 

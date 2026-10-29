@@ -130,17 +130,17 @@ test("the site check reads every kind of import it guards", () => {
 });
 
 test("the site check catches a Worker file that crosses sites or sits in none", () => {
-  assert.deepEqual(offencesOf("worker/developers/billing.ts", 'import { card } from "../dictionary/card.ts";'), [
-    "worker/developers/billing.ts (developers) imports ../dictionary/card.ts (dictionary)",
+  assert.deepEqual(offencesOf("worker/developers/billing.ts", 'import { withPageCache } from "../dictionary/pageCache.ts";'), [
+    "worker/developers/billing.ts (developers) imports ../dictionary/pageCache.ts (dictionary)",
   ]);
-  assert.deepEqual(offencesOf("worker/dictionary/card.ts", 'import { DASHBOARD } from "@/worker/developers/dashboard.ts";'), [
-    "worker/dictionary/card.ts (dictionary) imports @/worker/developers/dashboard.ts (developers)",
+  assert.deepEqual(offencesOf("worker/dictionary/pageCache.ts", 'import { DASHBOARD } from "@/worker/developers/dashboard.ts";'), [
+    "worker/dictionary/pageCache.ts (dictionary) imports @/worker/developers/dashboard.ts (developers)",
   ]);
   assert.deepEqual(offencesOf("worker/api/handler.ts", 'import { signedInAccount } from "../developers/signIn.ts";'), [
     "worker/api/handler.ts (api) imports ../developers/signIn.ts (developers)",
   ]);
-  assert.deepEqual(offencesOf("worker/shared/hosts.ts", 'import { withCards } from "../dictionary/card.ts";'), [
-    "worker/shared/hosts.ts (shared) imports ../dictionary/card.ts (dictionary)",
+  assert.deepEqual(offencesOf("worker/shared/hosts.ts", 'import { withPageCache } from "../dictionary/pageCache.ts";'), [
+    "worker/shared/hosts.ts (shared) imports ../dictionary/pageCache.ts (dictionary)",
   ]);
   assert.deepEqual(offencesOf("worker/rateLimit.ts", ""), [
     "worker/rateLimit.ts is in no site's folder: put it under dictionary/, developers/, api/, shared/",
@@ -148,7 +148,7 @@ test("the site check catches a Worker file that crosses sites or sits in none", 
   // What the rule allows: the API reading the dictionary, and the entry reading every site.
   assert.deepEqual(offencesOf("worker/api/lookupAnswer.ts", 'import { conjugationOf } from "@/lib/dictionary/conjugation.ts";'), []);
   assert.deepEqual(
-    offencesOf(ENTRY, ['import { withCards } from "./dictionary/card.ts";', 'import { withBilling } from "./developers/billing.ts";'].join("\n")),
+    offencesOf(ENTRY, ['import { withPageCache } from "./dictionary/pageCache.ts";', 'import { withBilling } from "./developers/billing.ts";'].join("\n")),
     [],
   );
 });

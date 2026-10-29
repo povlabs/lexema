@@ -30,7 +30,7 @@ web/lib/dictionary/      the query, the lookup attempt, the page's grammar, repo
 web/lib/developers/      the API reference, the docs pages, the dashboard's view and actions
 web/lib/shared/          what both sites call: the two D1 bindings and the search shortcut
 web/worker/index.ts      the Worker's entry, the one file that imports every site
-web/worker/dictionary/   a shared link's card, and which dictionary requests the limits count
+web/worker/dictionary/   the page cache, the report sweep, and which dictionary requests the limits count
 web/worker/developers/   sign-in, whether sign-up is open, billing, the dashboard's actions, Stripe's webhook, and their limits
 web/worker/api/          the JSON API at api.lexema.fyi
 web/worker/shared/       the hosts, the stage, the request log, the health check and the rate-limit counter

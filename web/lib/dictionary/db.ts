@@ -25,7 +25,7 @@ import { reportKeys, turnstileConfig, VisitorCodeKey, type ReportKeys, type Turn
  * On a Preview with a dictionary slice, a word the pull request changes is
  * read from the slice (#447, src/lookup/slice.ts).
  *
- * Unmemoised, as a shared link's card runs it outside any page (worker/dictionary/card.ts).
+ * Unmemoised; `search` below memoises it for a request.
  */
 export async function searchOnce(query: string): Promise<Attempt> {
   try {
@@ -108,9 +108,9 @@ export const servedRelease = (): string => env.LEXEMA_RELEASE;
 /**
  * The served version's token (src/lookup/served.ts), or undefined when it
  * could not be read. Includes the Worker's version metadata id, so serving
- * code changes invalidate cards and suggestions without a data write.
- * Unmemoised, for the card route
- * (worker/dictionary/card.ts), which must tell an unread version from a read one.
+ * code changes move kept pages and suggestions without a data write.
+ * Unmemoised, for the shared page cache
+ * (worker/dictionary/pageDesk.ts), which must tell an unread version from a read one.
  */
 export async function servedVersionOnce(): Promise<string | undefined> {
   try {
@@ -122,13 +122,12 @@ export async function servedVersionOnce(): Promise<string | undefined> {
 }
 
 /**
- * The token a page names its card and its suggestions by, memoised for the
- * request as `search` is, so metadata and page read it once. A page the shared
+ * The token a page names its suggestions by, memoised for the
+ * request as `search` is. A page the shared
  * page cache rendered uses the version it read for its key, so a miss reads
  * it once in all (#673, worker/dictionary/pageCache.ts). When the version cannot be read the page still renders, naming the
- * release and Worker version: no read data version ever matches that token, so the card route
- * sends its card on to the current address, and a suggestion answer kept
- * under it is newer than anything kept before.
+ * release and Worker version: no read data version ever matches that token, so a
+ * suggestion answer kept under it is newer than anything kept before.
  */
 export const servedVersion = cacheForRequest(async (): Promise<string> => (await servedVersionOfRequest()) ?? `${env.LEXEMA_RELEASE}.unread.code-${encodeURIComponent(env.LEXEMA_VERSION.id)}`);
 
