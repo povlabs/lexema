@@ -1,0 +1,98 @@
+diff --git a/autocomplete/root/AutocompleteRoot.js b/autocomplete/root/AutocompleteRoot.js
+index 8c3fda235dcc6d595ebbadb499360e023aa0e7e1..caa3bde25416dfca71b01a773ff5a31c3167d452 100644
+--- a/autocomplete/root/AutocompleteRoot.js
++++ b/autocomplete/root/AutocompleteRoot.js
+@@ -54,11 +54,13 @@ function AutocompleteRoot(props) {
+   } else {
+     resolvedInputValue = internalValue;
+   }
+-  const collator = (0, _useFilter.useCoreFilter)({
+-    locale: other.locale
+-  });
+   const resolvedQuery = String((isControlled ? value : internalValue) ?? '').trim();
+-  const resolvedFilter = staticItems || other.filter === null ? null : other.filter ?? collator.contains;
++  // Lexema patch (povlabs/lexema#924): build the `Intl.Collator` only when the
++  // default filter is the one used, so `filter={null}` never pays for one.
++  // `useCoreFilter` is a cached plain function, not a hook.
++  const resolvedFilter = staticItems || other.filter === null ? null : other.filter ?? (0, _useFilter.useCoreFilter)({
++    locale: other.locale
++  }).contains;
+   function handleValueChange(nextValue, eventDetails) {
+     setInlineInputValue('');
+     if (!isControlled) {
+diff --git a/autocomplete/root/AutocompleteRoot.mjs b/autocomplete/root/AutocompleteRoot.mjs
+index 4db1480d4213128592db76205c729a9e564afd4c..ffddf96e41239e7cf165f3a2f71a22ec90f64059 100644
+--- a/autocomplete/root/AutocompleteRoot.mjs
++++ b/autocomplete/root/AutocompleteRoot.mjs
+@@ -48,11 +48,13 @@ export function AutocompleteRoot(props) {
+   } else {
+     resolvedInputValue = internalValue;
+   }
+-  const collator = useCoreFilter({
+-    locale: other.locale
+-  });
+   const resolvedQuery = String((isControlled ? value : internalValue) ?? '').trim();
+-  const resolvedFilter = staticItems || other.filter === null ? null : other.filter ?? collator.contains;
++  // Lexema patch (povlabs/lexema#924): build the `Intl.Collator` only when the
++  // default filter is the one used, so `filter={null}` never pays for one.
++  // `useCoreFilter` is a cached plain function, not a hook.
++  const resolvedFilter = staticItems || other.filter === null ? null : other.filter ?? useCoreFilter({
++    locale: other.locale
++  }).contains;
+   function handleValueChange(nextValue, eventDetails) {
+     setInlineInputValue('');
+     if (!isControlled) {
+diff --git a/combobox/root/AriaCombobox.js b/combobox/root/AriaCombobox.js
+index 2f0ee379465662af08f37972f569f4e705453b6a..4a6dc538e7ee602966a9b915bc21c216758e5a28 100644
+--- a/combobox/root/AriaCombobox.js
++++ b/combobox/root/AriaCombobox.js
+@@ -111,9 +111,19 @@ function AriaCombobox(props) {
+   const id = (0, _useLabelableId.useLabelableId)({
+     id: idProp
+   });
+-  const collatorFilter = (0, _useFilter.useCoreFilter)({
+-    locale
+-  });
++  // Lexema patch (povlabs/lexema#924): build the `Intl.Collator` on first use,
++  // not on every render, so `filter={null}` never pays for one.
++  const collatorFilter = React.useMemo(() => {
++    let core;
++    const resolve = () => core ??= (0, _useFilter.useCoreFilter)({
++      locale
++    });
++    return {
++      contains: (...args) => resolve().contains(...args),
++      startsWith: (...args) => resolve().startsWith(...args),
++      endsWith: (...args) => resolve().endsWith(...args)
++    };
++  }, [locale]);
+ 
+   // Plain items are arrays; normalized `createItems()` collections are objects.
+   const collection = Array.isArray(itemsProp) ? null : itemsProp;
+diff --git a/combobox/root/AriaCombobox.mjs b/combobox/root/AriaCombobox.mjs
+index 8c328b3ef1ad7bebe608c3d9f983c9902a54b00b..b15ab910e83c324790ad3cac7e46396bd5270026 100644
+--- a/combobox/root/AriaCombobox.mjs
++++ b/combobox/root/AriaCombobox.mjs
+@@ -104,9 +104,19 @@ export function AriaCombobox(props) {
+   const id = useLabelableId({
+     id: idProp
+   });
+-  const collatorFilter = useCoreFilter({
+-    locale
+-  });
++  // Lexema patch (povlabs/lexema#924): build the `Intl.Collator` on first use,
++  // not on every render, so `filter={null}` never pays for one.
++  const collatorFilter = React.useMemo(() => {
++    let core;
++    const resolve = () => core ??= useCoreFilter({
++      locale
++    });
++    return {
++      contains: (...args) => resolve().contains(...args),
++      startsWith: (...args) => resolve().startsWith(...args),
++      endsWith: (...args) => resolve().endsWith(...args)
++    };
++  }, [locale]);
+ 
+   // Plain items are arrays; normalized `createItems()` collections are objects.
+   const collection = Array.isArray(itemsProp) ? null : itemsProp;
