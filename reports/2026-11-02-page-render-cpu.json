@@ -1,0 +1,332 @@
+{
+  "issue": 921,
+  "date": "2026-11-02",
+  "commit": "1525c0726cd68b78fa5ba8b467e14916e7f4945f",
+  "machine": "Apple M1 Pro, 16 GB, macOS (Darwin 27.0.0), Node 26.2.0, wrangler 4.135.0",
+  "sampleIntervalUs": 100,
+  "note": "busyMs is the sum of non-idle CPU profile samples of the Worker isolate from Profiler.start before the request to Profiler.stop 300 ms after its body was read. cookie: true sends a Cookie header, which the shared page cache skips, so the page is rendered and not kept. Each sequence starts on a freshly started wrangler dev.",
+  "sequences": {
+    "run2": [
+      {
+        "label": "casa-first",
+        "path": "/?q=casa",
+        "cookie": false,
+        "status": 200,
+        "page": "miss",
+        "bytes": 98179,
+        "wallMs": 183.1,
+        "busyMs": 156.9
+      },
+      {
+        "label": "rosa-miss",
+        "path": "/?q=rosa",
+        "cookie": false,
+        "status": 200,
+        "page": "miss",
+        "bytes": 239542,
+        "wallMs": 102.5,
+        "busyMs": 93.8
+      },
+      {
+        "label": "essere-miss",
+        "path": "/?q=essere",
+        "cookie": false,
+        "status": 200,
+        "page": "miss",
+        "bytes": 278646,
+        "wallMs": 85.5,
+        "busyMs": 71.9
+      },
+      {
+        "label": "sale-miss",
+        "path": "/?q=sale",
+        "cookie": false,
+        "status": 200,
+        "page": "miss",
+        "bytes": 293341,
+        "wallMs": 82.4,
+        "busyMs": 75.8
+      },
+      {
+        "label": "parlare-miss",
+        "path": "/?q=parlare",
+        "cookie": false,
+        "status": 200,
+        "page": "miss",
+        "bytes": 241069,
+        "wallMs": 74.6,
+        "busyMs": 68.3
+      },
+      {
+        "label": "dovere-miss",
+        "path": "/?q=dovere",
+        "cookie": false,
+        "status": 200,
+        "page": "miss",
+        "bytes": 261245,
+        "wallMs": 76.1,
+        "busyMs": 68.7
+      },
+      {
+        "label": "avere-miss",
+        "path": "/?q=avere",
+        "cookie": false,
+        "status": 200,
+        "page": "miss",
+        "bytes": 237975,
+        "wallMs": 67.1,
+        "busyMs": 59.9
+      },
+      {
+        "label": "fatto-miss",
+        "path": "/?q=fatto",
+        "cookie": false,
+        "status": 200,
+        "page": "miss",
+        "bytes": 258462,
+        "wallMs": 66.2,
+        "busyMs": 58.5
+      },
+      {
+        "label": "casa-hit",
+        "path": "/?q=casa",
+        "cookie": false,
+        "status": 200,
+        "page": "hit",
+        "bytes": 98179,
+        "wallMs": 14.6,
+        "busyMs": 11.6
+      },
+      {
+        "label": "casa-r1",
+        "path": "/?q=casa",
+        "cookie": true,
+        "status": 200,
+        "page": null,
+        "bytes": 98179,
+        "wallMs": 51.3,
+        "busyMs": 47.3
+      },
+      {
+        "label": "casa-r2",
+        "path": "/?q=casa",
+        "cookie": true,
+        "status": 200,
+        "page": null,
+        "bytes": 98179,
+        "wallMs": 47.6,
+        "busyMs": 39.8
+      },
+      {
+        "label": "casa-r3",
+        "path": "/?q=casa",
+        "cookie": true,
+        "status": 200,
+        "page": null,
+        "bytes": 98179,
+        "wallMs": 39.8,
+        "busyMs": 37.7
+      },
+      {
+        "label": "casa-r4",
+        "path": "/?q=casa",
+        "cookie": true,
+        "status": 200,
+        "page": null,
+        "bytes": 98179,
+        "wallMs": 43.5,
+        "busyMs": 42.2
+      },
+      {
+        "label": "casa-r5",
+        "path": "/?q=casa",
+        "cookie": true,
+        "status": 200,
+        "page": null,
+        "bytes": 98179,
+        "wallMs": 40.2,
+        "busyMs": 37.8
+      },
+      {
+        "label": "home-miss",
+        "path": "/",
+        "cookie": false,
+        "status": 200,
+        "page": "miss",
+        "bytes": 21432,
+        "wallMs": 22.1,
+        "busyMs": 19.1
+      },
+      {
+        "label": "home-hit",
+        "path": "/",
+        "cookie": false,
+        "status": 200,
+        "page": "hit",
+        "bytes": 21432,
+        "wallMs": 11.2,
+        "busyMs": 9.6
+      },
+      {
+        "label": "home-r1",
+        "path": "/",
+        "cookie": true,
+        "status": 200,
+        "page": null,
+        "bytes": 21432,
+        "wallMs": 18.1,
+        "busyMs": 18.2
+      },
+      {
+        "label": "home-r2",
+        "path": "/",
+        "cookie": true,
+        "status": 200,
+        "page": null,
+        "bytes": 21432,
+        "wallMs": 18.9,
+        "busyMs": 17.8
+      },
+      {
+        "label": "home-r3",
+        "path": "/",
+        "cookie": true,
+        "status": 200,
+        "page": null,
+        "bytes": 21432,
+        "wallMs": 19.2,
+        "busyMs": 18.2
+      },
+      {
+        "label": "home-r4",
+        "path": "/",
+        "cookie": true,
+        "status": 200,
+        "page": null,
+        "bytes": 21432,
+        "wallMs": 22.2,
+        "busyMs": 17.2
+      },
+      {
+        "label": "home-r5",
+        "path": "/",
+        "cookie": true,
+        "status": 200,
+        "page": null,
+        "bytes": 21432,
+        "wallMs": 22.4,
+        "busyMs": 20.7
+      },
+      {
+        "label": "cron1",
+        "path": "/cdn-cgi/local/scheduled",
+        "cookie": false,
+        "status": 200,
+        "page": null,
+        "bytes": 2,
+        "wallMs": 15.5,
+        "busyMs": 14.7
+      },
+      {
+        "label": "cron2",
+        "path": "/cdn-cgi/local/scheduled",
+        "cookie": false,
+        "status": 200,
+        "page": null,
+        "bytes": 2,
+        "wallMs": 7,
+        "busyMs": 6.1
+      },
+      {
+        "label": "cron3",
+        "path": "/cdn-cgi/local/scheduled",
+        "cookie": false,
+        "status": 200,
+        "page": null,
+        "bytes": 2,
+        "wallMs": 6.6,
+        "busyMs": 4.2
+      },
+      {
+        "label": "health",
+        "path": "/health",
+        "cookie": false,
+        "status": 200,
+        "page": null,
+        "bytes": 55,
+        "wallMs": 9.3,
+        "busyMs": 8.8
+      }
+    ],
+    "cold-a": [
+      {
+        "label": "vivere-first",
+        "path": "/?q=vivere",
+        "cookie": false,
+        "status": 200,
+        "page": "miss",
+        "bytes": 276884,
+        "wallMs": 172.6,
+        "busyMs": 164.9
+      },
+      {
+        "label": "home-after",
+        "path": "/",
+        "cookie": true,
+        "status": 200,
+        "page": null,
+        "bytes": 21432,
+        "wallMs": 24.8,
+        "busyMs": 24.2
+      }
+    ],
+    "cold-b": [
+      {
+        "label": "home-first",
+        "path": "/",
+        "cookie": true,
+        "status": 200,
+        "page": null,
+        "bytes": 21432,
+        "wallMs": 86.1,
+        "busyMs": 83.2
+      },
+      {
+        "label": "greco-after-home",
+        "path": "/?q=greco",
+        "cookie": false,
+        "status": 200,
+        "page": "miss",
+        "bytes": 63980,
+        "wallMs": 77.8,
+        "busyMs": 74.2
+      }
+    ],
+    "cold-c": [
+      {
+        "label": "casa-first",
+        "path": "/?q=casa",
+        "cookie": true,
+        "status": 200,
+        "page": null,
+        "bytes": 98179,
+        "wallMs": 126.4,
+        "busyMs": 107.7
+      },
+      {
+        "label": "casa-second",
+        "path": "/?q=casa",
+        "cookie": true,
+        "status": 200,
+        "page": null,
+        "bytes": 98179,
+        "wallMs": 46.2,
+        "busyMs": 42.3
+      }
+    ]
+  },
+  "startupActiveMs": [
+    37.6,
+    36.2
+  ]
+}
