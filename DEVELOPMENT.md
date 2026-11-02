@@ -60,6 +60,26 @@ catalog first; its `package.json` entry is then `"catalog:"`, never a version.
 `fabrika guard catalog-guard check` reds a manifest that pins one. The one named catalog, `node22`, keeps the root's `@types/node` on Node
 22 while the Worker uses 26.
 
+### Patched dependencies
+
+A few packages carry a small local fix made with `pnpm patch`. Each patch is a
+file under [patches/](./patches/), recorded in `patchedDependencies` in
+[pnpm-workspace.yaml](./pnpm-workspace.yaml). pnpm fails the install when a
+patch no longer applies, so upgrading a patched package means redoing its patch
+on the new version, or dropping the patch once upstream ships the fix.
+
+| Package | Patch | Why |
+|---|---|---|
+| `@base-ui/react` 1.8.0 | [patches/@base-ui__react@1.8.0.patch](./patches/@base-ui__react@1.8.0.patch) | `AriaCombobox` and `AutocompleteRoot` build their `Intl.Collator` only when a filter uses it, so the search field's `filter={null}` never builds one ([#924](https://github.com/povlabs/lexema/issues/924)). |
+
+To redo a patch on a new version, run `pnpm patch @base-ui/react@<version>`,
+apply the same change to the `.mjs` and `.js` builds of
+`combobox/root/AriaCombobox` and `autocomplete/root/AutocompleteRoot`, run
+`pnpm patch-commit <dir>`, and check that `pnpm-workspace.yaml` kept its
+comments. Remove the old patch file.
+[web/test/comboboxCollator.test.tsx](./web/test/comboboxCollator.test.tsx)
+fails when the change is missing.
+
 ### Checks that need the dataset
 
 ```sh

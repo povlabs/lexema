@@ -54,3 +54,12 @@ catalog:
 catalogs:
   node22:
     '@types/node': ^22.0.0
+
+# Local fixes to installed packages, made with `pnpm patch` and kept under
+# `patches/`. pnpm fails the install when a patch no longer applies, so every
+# upgrade of a patched package must redo its patch (`pnpm patch <pkg>@<new>`),
+# or drop it once upstream ships the fix. See DEVELOPMENT.md.
+patchedDependencies:
+  # The combobox and autocomplete build their `Intl.Collator` only when a
+  # filter uses it, so the search field's `filter={null}` skips it (#924).
+  '@base-ui/react@1.8.0': patches/@base-ui__react@1.8.0.patch
