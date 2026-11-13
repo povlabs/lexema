@@ -1,9 +1,3 @@
-# Crawlers may read the plain pages, never a search. Every word page is a
-# search (`/?q=…`), and each one costs a render and about 27 dictionary
-# reads. The firewall blocks a bot on these same URLs; this file tells polite
-# crawlers not to ask, so they stop collecting blocked URLs as errors.
-# Cloudflare adds its managed AI-crawler lines above this file when it serves it.
-
 User-agent: *
 Disallow: /*?
 Disallow: /index.rsc
