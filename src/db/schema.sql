@@ -1260,3 +1260,32 @@ CREATE TABLE wikidata_word_key (
   PRIMARY KEY (word_key, lexeme, snapshot),
   FOREIGN KEY (lexeme, snapshot) REFERENCES wikidata_word (lexeme, snapshot)
 ) STRICT;
+
+-- An English meaning (ADR 0035, #933): English a model picked or wrote for one
+-- Italian sense, one row per headword and definition text. Source English
+-- placed on the record (src/lookup/translationPlacement.ts) is never stored
+-- here; it wins, so no row is made for its sense. A row is never read into
+-- `translations` and touches no imported row. It is keyed on the SHA-256 of
+-- the definition text it explains, so a definition a newer source rewrites
+-- (ADR 0025) has no row until the job makes one again, and the row of the old
+-- text is never shown beside the new one. The label that a model made it is
+-- here only, as provenance, never on the page. `pnpm run meanings:batch`
+-- writes it, offline, from a Message Batches run (src/englishMeaning/); a seed
+-- writes none (ADR 0012). Absent on a master seeded before it until
+-- `update:upgrade` creates it.
+CREATE TABLE english_meaning (
+  headword          TEXT NOT NULL CHECK (headword <> ''),
+  -- SHA-256 of the definition text's UTF-8 bytes, lower-case hex
+  -- (`DefinitionText` in src/englishMeaning/englishMeaning.ts).
+  definition_sha256 TEXT NOT NULL CHECK (length(definition_sha256) = 64 AND definition_sha256 NOT GLOB '*[^0-9a-f]*'),
+  english           TEXT NOT NULL CHECK (english <> '' AND trim(english) = english),
+  -- 'picked': one of the page's unplaced English translations, byte for byte,
+  -- so its text is the source's (CC BY-SA, ADR 0009). 'written': the model's own.
+  origin            TEXT NOT NULL CHECK (origin IN ('picked', 'written')),
+  model             TEXT NOT NULL CHECK (model <> ''),
+  prompt_version    TEXT NOT NULL CHECK (prompt_version <> ''),
+  generated_at      TEXT NOT NULL CHECK (generated_at GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T*Z'),
+  -- The Message Batches batch whose result this is.
+  batch_id          TEXT NOT NULL CHECK (batch_id <> ''),
+  PRIMARY KEY (headword, definition_sha256)
+) STRICT;
