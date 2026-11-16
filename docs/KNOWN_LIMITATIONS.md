@@ -10,8 +10,13 @@ measured on release `it-0c432803`.
 
 - **Where the words come from.** Every entry comes from the Italian Wiktionary
   (Wikizionario), as [kaikki.org](https://kaikki.org/dictionary/Italian/)
-  extracts it. Lexema writes no definition of its own and adds no translation.
-  Definitions are in the Italian the source wrote them in.
+  extracts it. Lexema writes no definition of its own. Definitions are in the
+  Italian the source wrote them in.
+- **English meanings may be Lexema's own.** Lexema may add its own short
+  English meaning to each sense. Where Wiktionary gives English for that sense,
+  Lexema uses it. Otherwise the English is generated offline, ahead of time,
+  never while you search. It is kept apart from the translations Wiktionary
+  gives, and you can report a wrong one.
 - **It can be behind Wiktionary.** Lexema takes in a newer extract from time to
   time, not every edit as it happens.
 - **Some words are missing.** Wiktionary has no page for some words, and some
