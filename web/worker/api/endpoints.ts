@@ -16,12 +16,14 @@
 // handler admits them, and then answered, found (200) or not (404).
 
 import type { Endpoint } from "@lexema/api/calls.ts";
-import { lookupBatch, translationsOf, type CandidateRecord } from "@lexema/lookup/batch.ts";
+import { lookupBatch, type CandidateRecord } from "@lexema/lookup/batch.ts";
 import type { LookupDatabase } from "@lexema/lookup/database.ts";
 import { exists, lookup, MAX_QUERY_LENGTH, rejectionOf } from "@lexema/lookup/lookup.ts";
 import { findNearby } from "@lexema/lookup/nearby.ts";
 import { randomHeadword } from "@lexema/lookup/random.ts";
+import { dictionaryTables } from "@lexema/lookup/served.ts";
 import { prefixRejectionOf, suggest } from "@lexema/lookup/suggest.ts";
+import { readTranslationPages } from "@lexema/lookup/translationPages.ts";
 import { entryKey, isFormOfReading, publicEntryId, type LemmaTarget, type LookupResult, type RejectedQuery } from "@lexema/lookup/types.ts";
 import { error, read, refused, type Reading, type Route } from "./answer.ts";
 import {
@@ -35,11 +37,16 @@ import {
   inflectionsOf,
   lemmaJson,
   notFoundJson,
+  pageHeadwords,
+  placedOn,
   suggestionsOf,
   translationsJson,
+  unplacedTranslationsJson,
   type AttributionJson,
   type LemmaReader,
   type TranslationJson,
+  type TranslationPagesReader,
+  type UnplacedTranslationJson,
 } from "./lookupAnswer.ts";
 import { fits, readBatchSections, readGrammarNarrowing, readLookupFilters, readPartOfSpeech } from "./lookupFilters.ts";
 
@@ -84,6 +91,16 @@ class Lookups {
 }
 
 /**
+ * The source pages of a request's records, read so `/lookup` and
+ * `/lookup/batch` place their translations the one way (#928). No headword
+ * reads nothing.
+ */
+const translationPages =
+  (db: LookupDatabase, releaseId: string): TranslationPagesReader =>
+  async (headwords) =>
+    headwords.length === 0 ? new Map() : readTranslationPages(db, releaseId, await dictionaryTables(db), headwords);
+
+/**
  * `/lookup`: every candidate for `q`, narrowed by its filters
  * (./lookupFilters.ts). A word the release has is a 200 even when the filters
  * keep none of its candidates; only a word it does not have is a 404, offering
@@ -103,7 +120,7 @@ const lookupRoute: Route = async (_request, url) => {
       return { status: 404, body: notFoundJson(result, nearby) };
     }
     if (result.outcome === "declared-lemma") return { status: 200, body: declaredLemmaJson(result, filters.filters) };
-    return { status: 200, body: await foundJson(result, new Lookups(db, releaseId).lemma, filters.filters) };
+    return { status: 200, body: await foundJson(result, new Lookups(db, releaseId).lemma, filters.filters, translationPages(db, releaseId)) };
   });
 };
 
@@ -246,7 +263,8 @@ const randomRoute: Route = async (_request, url) => {
  * One word of a batch, light: a candidate's lemma and part of speech, or that
  * the word was not found. A word with several candidates has one entry per
  * candidate, in the lookup's order, so none is dropped. A candidate carries
- * its record's translations only when `fields=translations` asks (#739).
+ * the translations evidence places on its record only when
+ * `fields=translations` asks (#739, #928), placed as `/lookup` places them.
  */
 export type LightJson =
   | { query: string; found: true; id: string; lemma: string; pos: string; pos_title: string; translations?: TranslationJson[]; attribution: AttributionJson }
@@ -287,13 +305,16 @@ const batchRoute: Route = async (request, url, { batchWords: most }) => {
   return read({ endpoint: "lookup/batch", words: sent.words.length }, async ({ db, releaseId }) => {
     const { answers } = await lookupBatch({ db, releaseId, queries: sent.words });
     const asked = sections.value;
-    const translations = asked.translations
-      ? await translationsOf(db, answers.flatMap((answer) => (answer.outcome === "found" ? answer.candidates : [])))
-      : undefined;
+    const headwords = asked.translations
+      ? pageHeadwords(answers.flatMap((answer) => (answer.outcome === "found" ? answer.candidates : [])))
+      : [];
+    const pages = asked.translations ? await translationPages(db, releaseId)(headwords) : undefined;
     const translationsOn = (candidate: CandidateRecord): { translations?: TranslationJson[] } =>
-      translations === undefined || !asked.translations
+      pages === undefined || !asked.translations ? {} : { translations: translationsJson(placedOn(candidate, pages), asked.languages) };
+    const unplaced: { unplaced_translations?: UnplacedTranslationJson[] } =
+      pages === undefined || !asked.translations
         ? {}
-        : { translations: translationsJson(candidate.recordId === undefined ? [] : (translations.get(candidate.recordId) ?? []), asked.languages) };
+        : { unplaced_translations: unplacedTranslationsJson(headwords.flatMap((headword) => pages.get(headword) ?? []), asked.languages) };
     const results = answers.flatMap((answer, at): LightJson[] => {
       const word = sent.words[at];
       if (answer.outcome === "rejected") throw unreadable(`q[${at}]`, word);
@@ -309,7 +330,7 @@ const batchRoute: Route = async (request, url, { batchWords: most }) => {
         attribution: entryAttribution(candidate),
       }));
     });
-    return { status: 200, body: { release_id: releaseId, results } };
+    return { status: 200, body: { release_id: releaseId, results, ...unplaced } };
   });
 };
 

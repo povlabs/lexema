@@ -126,7 +126,7 @@ test("one cardinal gets the same answer from single lookup, batch lookup, exists
   const result = await lookup({ db: dictionary(), releaseId: RELEASE, query: "duemilauno" });
   assert.ok(result.outcome === "found");
   const [candidate] = await candidatesOf(result, async () => undefined);
-  const json = resultJson(candidate, UNFILTERED);
+  const json = resultJson(candidate, UNFILTERED, []);
   assert.deepEqual(
     [json.id, json.word, json.definitions, json.attribution],
     [`${RELEASE}:cardinal:2001`, "duemilauno", [{ definition: "numero cardinale corrispondente a 2001", labels: [], examples: [], items: [] }], lexema],

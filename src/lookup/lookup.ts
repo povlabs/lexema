@@ -67,6 +67,7 @@ import type {
   SourceRef,
   SourceText,
   StatedClaim,
+  Translation,
   UnlistedTable,
 } from "./types.js";
 
@@ -1174,11 +1175,31 @@ async function readDefinitions(
   ref: (pointer: string) => SourceRef,
   hides: Hides,
 ): Promise<LemmaDefinitions> {
+  const { senses, recovered } = await readDefinitionsAndTranslations(db, recordId, word, ref, hides);
+  return { senses, recovered };
+}
+
+/**
+ * A record's own definitions, as `readDefinitions` reads them, and the
+ * translations its archive line lists: what placing its page's translations
+ * reads of it (src/lookup/translationPages.ts, #928). Every read is keyed, so
+ * the records of one page asked about in one wait go out as one statement each
+ * on D1.
+ */
+export async function readDefinitionsAndTranslations(
+  db: LookupDatabase,
+  recordId: number,
+  word: string,
+  ref: (pointer: string) => SourceRef,
+  hides: Hides,
+): Promise<LemmaDefinitions & { translations: Translation[] }> {
   const record = handled(readRecord(db, recordId));
   const [senseRows, recovered, line] = await Promise.all([readSenseRows(db, recordId, hides), readRecovered(db, recordId, record, hides), record]);
+  const fields = readSourceRecord(line.rawJson, ref);
   return {
-    senses: sensesOf(senseRows, word, ref, readSourceRecord(line.rawJson, ref), recovered.underSense),
+    senses: sensesOf(senseRows, word, ref, fields, recovered.underSense),
     recovered: recovered.topLevel,
+    translations: fields.translations,
   };
 }
 

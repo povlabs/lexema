@@ -2,22 +2,11 @@
 // in order, each with its examples. The page renders them (Reading.tsx) and the
 // API returns them (web/worker/api/lookupAnswer.ts), so both read one list.
 
-import { splitSenses, type SenseShape } from "@lexema/italian/furniture.ts";
 import { italianSenseLabels } from "@lexema/italian/senseTagLabels.ts";
+import { splitReadingSenses } from "@lexema/lookup/senseSplit.ts";
 import { everyRecovered, isSourceRef } from "@lexema/lookup/types.ts";
 import type { FactRef, LexemeGloss, Reading, RecoveredDefinition, Sense } from "@lexema/lookup/types.ts";
 import { cardinalDefinition, type ItalianCardinal } from "@lexema/italian/cardinal.ts";
-
-/**
- * Two source glosses for `casa` are page furniture, not definitions (#28, #61).
- * A sense that opens a list of recovered items is a definition whatever its
- * gloss starts with. The rule is `splitSenses`, which the quality measurement
- * reads too.
- */
-const shapeOf = (sense: Sense): SenseShape => ({
-  glosses: sense.glosses.map(({ text }) => text),
-  opensRecoveredList: sense.recoveredItems.length > 0,
-});
 
 /**
  * One numbered definition: a sense of the record, one read back from the raw
@@ -74,7 +63,7 @@ export function definitionsOf(
   const heldAsDefinition = new Set(
     everyRecovered(reading).flatMap((definition) => definition.heldAsExample?.jsonPointer ?? []),
   );
-  const { numbered, setAside } = splitSenses(reading.senses, reading.word, reading.recovered.length, shapeOf);
+  const { numbered, setAside } = splitReadingSenses(reading);
   const examplesOf = (sense: Sense): string[] =>
     sense.examples.filter((example) => !heldAsDefinition.has(example.ref.jsonPointer)).map((example) => example.text);
   const items: DefinitionItem[] = [

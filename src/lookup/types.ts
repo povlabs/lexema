@@ -1006,7 +1006,9 @@ type ReadingFacts = EntryIdentity & {
   /**
    * This record's own `translations[]`, in source order (#739). Never a
    * lemma's: a form-of record that lists none has none. A page-only entry has
-   * no archive line, so none.
+   * no archive line, so none. The line lists its page's whole table; the API
+   * serves only what translation placement puts on the record
+   * (src/lookup/translationPlacement.ts, #928).
    */
   translations: Translation[];
 

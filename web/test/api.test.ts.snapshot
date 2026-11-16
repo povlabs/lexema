@@ -262,138 +262,7 @@ exports[`bello's whole /lookup answer is the one the snapshot holds (#385) 1`] =
           "has_entry": false
         }
       ],
-      "translations": [
-        {
-          "lang": "zh",
-          "word": "好看",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "zh",
-          "word": "漂亮",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "fr",
-          "word": "beau",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "fr",
-          "word": "bel",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "fr",
-          "word": "belle",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "en",
-          "word": "beautiful",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "la",
-          "word": "pulcher",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "la",
-          "word": "formōsus",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "la",
-          "word": "bellus",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "la",
-          "word": "nitĭdus",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "la",
-          "word": "venustus",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "nl",
-          "word": "mooi",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "nl",
-          "word": "knap",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "fa",
-          "word": "قشنگ",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "pl",
-          "word": "piękny",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "pt",
-          "word": "belo",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "ru",
-          "word": "красивый",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "scn",
-          "word": "bellu",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "scn",
-          "word": "beddu",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "es",
-          "word": "bello",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "sv",
-          "word": "snygg",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "sv",
-          "word": "vacker",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "de",
-          "word": "schön",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "tr",
-          "word": "güzel",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "hu",
-          "word": "szép",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "en",
-          "word": "beauty",
-          "sense": "(arte)"
-        }
-      ],
+      "translations": [],
       "attribution": {
         "licence": "CC BY-SA 4.0",
         "licence_url": "https://creativecommons.org/licenses/by-sa/4.0/",
@@ -614,138 +483,7 @@ exports[`bello's whole /lookup answer is the one the snapshot holds (#385) 1`] =
           "has_entry": false
         }
       ],
-      "translations": [
-        {
-          "lang": "zh",
-          "word": "好看",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "zh",
-          "word": "漂亮",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "fr",
-          "word": "beau",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "fr",
-          "word": "bel",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "fr",
-          "word": "belle",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "en",
-          "word": "beautiful",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "la",
-          "word": "pulcher",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "la",
-          "word": "formōsus",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "la",
-          "word": "bellus",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "la",
-          "word": "nitĭdus",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "la",
-          "word": "venustus",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "nl",
-          "word": "mooi",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "nl",
-          "word": "knap",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "fa",
-          "word": "قشنگ",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "pl",
-          "word": "piękny",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "pt",
-          "word": "belo",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "ru",
-          "word": "красивый",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "scn",
-          "word": "bellu",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "scn",
-          "word": "beddu",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "es",
-          "word": "bello",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "sv",
-          "word": "snygg",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "sv",
-          "word": "vacker",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "de",
-          "word": "schön",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "tr",
-          "word": "güzel",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "hu",
-          "word": "szép",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "en",
-          "word": "beauty",
-          "sense": "(arte)"
-        }
-      ],
+      "translations": [],
       "attribution": {
         "licence": "CC BY-SA 4.0",
         "licence_url": "https://creativecommons.org/licenses/by-sa/4.0/",
@@ -960,138 +698,7 @@ exports[`bello's whole /lookup answer is the one the snapshot holds (#385) 1`] =
           "has_entry": false
         }
       ],
-      "translations": [
-        {
-          "lang": "zh",
-          "word": "好看",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "zh",
-          "word": "漂亮",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "fr",
-          "word": "beau",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "fr",
-          "word": "bel",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "fr",
-          "word": "belle",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "en",
-          "word": "beautiful",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "la",
-          "word": "pulcher",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "la",
-          "word": "formōsus",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "la",
-          "word": "bellus",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "la",
-          "word": "nitĭdus",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "la",
-          "word": "venustus",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "nl",
-          "word": "mooi",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "nl",
-          "word": "knap",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "fa",
-          "word": "قشنگ",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "pl",
-          "word": "piękny",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "pt",
-          "word": "belo",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "ru",
-          "word": "красивый",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "scn",
-          "word": "bellu",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "scn",
-          "word": "beddu",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "es",
-          "word": "bello",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "sv",
-          "word": "snygg",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "sv",
-          "word": "vacker",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "de",
-          "word": "schön",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "tr",
-          "word": "güzel",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "hu",
-          "word": "szép",
-          "sense": "di aspetto gradevole"
-        },
-        {
-          "lang": "en",
-          "word": "beauty",
-          "sense": "(arte)"
-        }
-      ],
+      "translations": [],
       "attribution": {
         "licence": "CC BY-SA 4.0",
         "licence_url": "https://creativecommons.org/licenses/by-sa/4.0/",
@@ -1924,6 +1531,164 @@ exports[`bello's whole /lookup answer is the one the snapshot holds (#385) 1`] =
         "source": "Wikizionario",
         "source_url": "https://it.wiktionary.org/wiki/belle"
       }
+    }
+  ],
+  "unplaced_translations": [
+    {
+      "headword": "bello",
+      "lang": "zh",
+      "word": "好看",
+      "sense": "di aspetto gradevole"
+    },
+    {
+      "headword": "bello",
+      "lang": "zh",
+      "word": "漂亮",
+      "sense": "di aspetto gradevole"
+    },
+    {
+      "headword": "bello",
+      "lang": "fr",
+      "word": "beau",
+      "sense": "di aspetto gradevole"
+    },
+    {
+      "headword": "bello",
+      "lang": "fr",
+      "word": "bel",
+      "sense": "di aspetto gradevole"
+    },
+    {
+      "headword": "bello",
+      "lang": "fr",
+      "word": "belle",
+      "sense": "di aspetto gradevole"
+    },
+    {
+      "headword": "bello",
+      "lang": "en",
+      "word": "beautiful",
+      "sense": "di aspetto gradevole"
+    },
+    {
+      "headword": "bello",
+      "lang": "la",
+      "word": "pulcher",
+      "sense": "di aspetto gradevole"
+    },
+    {
+      "headword": "bello",
+      "lang": "la",
+      "word": "formōsus",
+      "sense": "di aspetto gradevole"
+    },
+    {
+      "headword": "bello",
+      "lang": "la",
+      "word": "bellus",
+      "sense": "di aspetto gradevole"
+    },
+    {
+      "headword": "bello",
+      "lang": "la",
+      "word": "nitĭdus",
+      "sense": "di aspetto gradevole"
+    },
+    {
+      "headword": "bello",
+      "lang": "la",
+      "word": "venustus",
+      "sense": "di aspetto gradevole"
+    },
+    {
+      "headword": "bello",
+      "lang": "nl",
+      "word": "mooi",
+      "sense": "di aspetto gradevole"
+    },
+    {
+      "headword": "bello",
+      "lang": "nl",
+      "word": "knap",
+      "sense": "di aspetto gradevole"
+    },
+    {
+      "headword": "bello",
+      "lang": "fa",
+      "word": "قشنگ",
+      "sense": "di aspetto gradevole"
+    },
+    {
+      "headword": "bello",
+      "lang": "pl",
+      "word": "piękny",
+      "sense": "di aspetto gradevole"
+    },
+    {
+      "headword": "bello",
+      "lang": "pt",
+      "word": "belo",
+      "sense": "di aspetto gradevole"
+    },
+    {
+      "headword": "bello",
+      "lang": "ru",
+      "word": "красивый",
+      "sense": "di aspetto gradevole"
+    },
+    {
+      "headword": "bello",
+      "lang": "scn",
+      "word": "bellu",
+      "sense": "di aspetto gradevole"
+    },
+    {
+      "headword": "bello",
+      "lang": "scn",
+      "word": "beddu",
+      "sense": "di aspetto gradevole"
+    },
+    {
+      "headword": "bello",
+      "lang": "es",
+      "word": "bello",
+      "sense": "di aspetto gradevole"
+    },
+    {
+      "headword": "bello",
+      "lang": "sv",
+      "word": "snygg",
+      "sense": "di aspetto gradevole"
+    },
+    {
+      "headword": "bello",
+      "lang": "sv",
+      "word": "vacker",
+      "sense": "di aspetto gradevole"
+    },
+    {
+      "headword": "bello",
+      "lang": "de",
+      "word": "schön",
+      "sense": "di aspetto gradevole"
+    },
+    {
+      "headword": "bello",
+      "lang": "tr",
+      "word": "güzel",
+      "sense": "di aspetto gradevole"
+    },
+    {
+      "headword": "bello",
+      "lang": "hu",
+      "word": "szép",
+      "sense": "di aspetto gradevole"
+    },
+    {
+      "headword": "bello",
+      "lang": "en",
+      "word": "beauty",
+      "sense": "(arte)"
     }
   ]
 }

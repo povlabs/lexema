@@ -656,25 +656,28 @@ test("every result carries its record's expressions as the page lists them, and 
 // `casa` is archive line 1 of it-0c432803: 110 translations, three English
 // and three Spanish among them, at /translations/30, 45, 74, 88, 106 and 109.
 const CASA_EN = [
-  { lang: "en", word: "house", sense: "edificio destinato all'abitazione" },
-  { lang: "en", word: "home", sense: "domicilio" },
-  { lang: "en", word: "house", sense: "(astrologia) ognuna delle dodici suddivisioni del cielo" },
+  { lang: "en", word: "house", sense: "edificio destinato all'abitazione", definition_index: null },
+  { lang: "en", word: "home", sense: "domicilio", definition_index: null },
+  { lang: "en", word: "house", sense: "(astrologia) ognuna delle dodici suddivisioni del cielo", definition_index: null },
 ];
 const CASA_EN_ES = [
-  { lang: "en", word: "house", sense: "edificio destinato all'abitazione" },
-  { lang: "es", word: "casa", sense: "edificio destinato all'abitazione" },
-  { lang: "en", word: "home", sense: "domicilio" },
-  { lang: "es", word: "hogar", sense: "domicilio" },
-  { lang: "en", word: "house", sense: "(astrologia) ognuna delle dodici suddivisioni del cielo" },
-  { lang: "es", word: "casa", sense: "(astrologia) ognuna delle dodici suddivisioni del cielo" },
+  { lang: "en", word: "house", sense: "edificio destinato all'abitazione", definition_index: null },
+  { lang: "es", word: "casa", sense: "edificio destinato all'abitazione", definition_index: null },
+  { lang: "en", word: "home", sense: "domicilio", definition_index: null },
+  { lang: "es", word: "hogar", sense: "domicilio", definition_index: null },
+  { lang: "en", word: "house", sense: "(astrologia) ognuna delle dodici suddivisioni del cielo", definition_index: null },
+  { lang: "es", word: "casa", sense: "(astrologia) ognuna delle dodici suddivisioni del cielo", definition_index: null },
 ];
 
-test("fields=translations returns each result's own translations as { lang, word, sense }, and an empty list for a record with none (#739)", async () => {
-  const [casa] = (await lookupBody("q=casa&fields=translations")).results;
+test("fields=translations returns each result's translations as { lang, word, sense, definition_index }, and an empty list for a record with none (#739, #928)", async () => {
+  const answer = await lookupBody("q=casa&fields=translations");
+  const [casa] = answer.results;
   assert.deepEqual(Object.keys(casa).sort(), ["attribution", "id", "match", "pos", "pos_title", "translations", "word"]);
+  // casa's page is one noun, so its whole table stays on it (rule 3) and none is unplaced.
   assert.equal(casa.translations.length, 110);
-  assert.deepEqual(casa.translations[0], { lang: "af", word: "huis", sense: "edificio destinato all'abitazione" });
-  for (const item of casa.translations) assert.deepEqual(Object.keys(item), ["lang", "word", "sense"]);
+  assert.deepEqual(answer.unplaced_translations, []);
+  assert.deepEqual(casa.translations[0], { lang: "af", word: "huis", sense: "edificio destinato all'abitazione", definition_index: null });
+  for (const item of casa.translations) assert.deepEqual(Object.keys(item), ["lang", "word", "sense", "definition_index"]);
   // Unfiltered, every result carries them too.
   const [full] = (await lookupBody("q=casa")).results;
   assert.deepEqual(full.translations, casa.translations);
@@ -721,6 +724,178 @@ test("POST /lookup/batch?fields=translations adds each candidate's translations,
   await assertBadRequest("lookup/batch?fields=definitions", "invalid_parameter", JSON.stringify({ q: ["casa"] }));
   await assertBadRequest("lookup/batch?lang=en", "invalid_parameter", JSON.stringify({ q: ["casa"] }));
   await assertBadRequest("lookup/batch?fields=translations&lang=e%20n", "invalid_parameter", JSON.stringify({ q: ["casa"] }));
+});
+
+// The source copies a page's one translation table onto every record of the
+// page, so each record below lists the same English in its line. The answer
+// gives each record only what evidence places on it (#928): a leading
+// part-of-speech marker (rule 1), a label equal to one of its definitions
+// (rule 2), or a page of one part of speech (rule 3). The rest of a page's
+// table is `unplaced_translations`.
+
+/** Each result of `headword`'s own records, as `pos` and its translations as `word | sense | definition_index`. */
+const placedEnglish = (body: Json, headword: string): [string, string[]][] =>
+  body.results
+    .filter((result: Json) => result.word === headword)
+    .map((result: Json) => [result.pos, result.translations.map((t: Json) => `${t.word} | ${t.sense} | ${t.definition_index}`)]);
+
+/** The unplaced translations of `headword`'s page, as `word | sense`. */
+const unplacedEnglish = (body: Json, headword: string): string[] =>
+  body.unplaced_translations.filter((t: Json) => t.headword === headword).map((t: Json) => `${t.word} | ${t.sense}`);
+
+/** Each page's English, record by record, and its English no record takes: dev-seed lines, verbatim. */
+const PLACED_ENGLISH: Record<string, { records: [string, string[]][]; unplaced: string[] }> = {
+  andare: {
+    records: [
+      ["noun", []],
+      [
+        "verb",
+        [
+          "go | (verbo) muoversi da un luogo verso un altro luogo | 0",
+          "depart | (verbo) partire | 1",
+          "part | (verbo) partire | 1",
+          "go | (verbo) partire | 1",
+          "leave | (verbo) partire | 1",
+        ],
+      ],
+    ],
+    unplaced: [],
+  },
+  // The page's adjective and verb are form-of records, which the lookup folds
+  // into the lemmas they name, so the noun is the one result; the other two
+  // still take part, and leave only the sport sense unplaced.
+  andata: {
+    records: [["noun", ["outward | atto dell'andare | 0", "journey | atto dell'andare | 0"]]],
+    unplaced: ["first | (sport) prima parte di un torneo", "leg | (sport) prima parte di un torneo"],
+  },
+  fa: {
+    records: [
+      ["adv", ["ago | (avverbio) | null"]],
+      ["noun", []],
+    ],
+    unplaced: ["F | (musica)"],
+  },
+  solo: {
+    records: [
+      ["adj", []],
+      ["adv", ["only | soltanto | 0", "just | soltanto | 0"]],
+      ["noun", []],
+    ],
+    unplaced: [
+      "alone | che è senza alcun vicino",
+      "lonely | che è in una condizione di solitudine",
+      "lone | null",
+      "oneself | null",
+      "unattended | null",
+      "unaccompanied | null",
+      "lone | null",
+      "lonesome | null",
+    ],
+  },
+  manifesto: {
+    records: [
+      ["adj", ["obvious | aggettivo, chiaro ed evidente | null"]],
+      ["adv", []],
+      [
+        "noun",
+        [
+          "poster | sostantivo, foglio di grandi dimensioni esposto in pubblico | null",
+          "bill | sostantivo, foglio di grandi dimensioni esposto in pubblico | null",
+          "manifesto | sostantivo, scritto programmatico | null",
+        ],
+      ],
+    ],
+    unplaced: ["evident | palese", "clear | palese", "apparent | palese", "plain | palese", "manifest | palese", "known | noto", "well-known | noto"],
+  },
+  scalare: {
+    records: [
+      [
+        "adj",
+        [
+          "graduated | aggettivo, che procede o sale in modo costante ma graduale | null",
+          "stepped | aggettivo, che procede o sale in modo costante ma graduale | null",
+          "graded | aggettivo, che procede o sale in modo costante ma graduale | null",
+          "scalar | aggettivo, di grandezza fisica descritta dal solo numero | null",
+        ],
+      ],
+      ["noun", ["scalar | sostantivo, grandezza fisica descritta dal solo numero | null"]],
+      ...(["verb", "verb"] as const).map((pos): [string, string[]] => [
+        pos,
+        [
+          "climb | verbo, salire al di sopra di qualcosa tramite tramite una scala | null",
+          "scale | verbo, salire al di sopra di qualcosa tramite tramite una scala | null",
+          "climb | verbo, salire al di sopra di una montagna o altro ostacolo verticale | null",
+          "layer | verbo, disporre secondo ordine decrescente | null",
+          "step down | verbo, fare diminuire in modo graduale ma costante | null",
+          "downshift | verbo, fare diminuire in modo graduale ma costante | null",
+          "deduct | verbo, detrarre una somma da un ammontare dovuto | null",
+          "stop | verbo, di navi e aerei, fare scalo | null",
+        ],
+      ]),
+    ],
+    unplaced: [],
+  },
+  parecchio: {
+    records: [
+      ["adj", []],
+      ["adv", ["rather | (avverbio) | null"]],
+      ["noun", []],
+      ["pron", []],
+    ],
+    unplaced: ["several | pronome indefinito", "(quite) a lot of | pronome indefinito"],
+  },
+};
+
+/** `placedEnglish`, each page's records put in part-of-speech order, which is how the table above lists them. */
+const byPos = (records: [string, string[]][]): [string, string[]][] => [...records].sort(([a], [b]) => a.localeCompare(b));
+
+test("each record of a multi-POS page carries exactly the English that evidence places on it, and the page lists the rest as unplaced (#928)", async () => {
+  for (const [headword, expected] of Object.entries(PLACED_ENGLISH)) {
+    const body = await lookupBody(`q=${encodeURIComponent(headword)}&lang=en&fields=translations`);
+    assert.deepEqual(byPos(placedEnglish(body, headword)), expected.records, headword);
+    assert.deepEqual(unplacedEnglish(body, headword), expected.unplaced, headword);
+  }
+  // The table spans every part of speech the rules name.
+  const spanned = new Set(Object.values(PLACED_ENGLISH).flatMap(({ records }) => records.filter(([, english]) => english.length > 0).map(([pos]) => pos)));
+  for (const pos of ["noun", "verb", "adj", "adv"]) assert.ok(spanned.has(pos), pos);
+});
+
+test("andare's noun carries none of the verb's go, depart or leave; the verb keeps them (#928)", async () => {
+  const body = await lookupBody("q=andare&lang=en&fields=translations");
+  const english = (pos: string) => body.results.find((result: Json) => result.word === "andare" && result.pos === pos).translations.map((t: Json) => t.word);
+  assert.deepEqual(english("noun"), []);
+  for (const word of ["go", "depart", "leave"]) assert.ok(english("verb").includes(word), word);
+});
+
+test("a pos filter keeps that part of speech's record with its own translations, and its page's unplaced ones still listed (#928)", async () => {
+  const body = await lookupBody("q=solo&lang=en&fields=translations&pos=adv");
+  assert.deepEqual(placedEnglish(body, "solo"), [["adv", ["only | soltanto | 0", "just | soltanto | 0"]]]);
+  assert.equal(unplacedEnglish(body, "solo").length, 8);
+  // A result without its translations carries no unplaced list either.
+  assert.equal("unplaced_translations" in (await lookupBody("q=solo&fields=definitions")), false);
+});
+
+test("/lookup/batch gives each record the same translations /lookup does, in source order, and the same unplaced ones (#928)", async () => {
+  const words = [...Object.keys(PLACED_ENGLISH), "casa", "andavano"];
+  const batch = await okBody("lookup/batch?fields=translations", JSON.stringify({ q: words }));
+  let compared = 0;
+  for (const word of words) {
+    const looked = await lookupBody(`q=${encodeURIComponent(word)}&fields=translations`);
+    const byId = new Map(looked.results.map((result: Json) => [result.id, result.translations]));
+    for (const entry of batch.results.filter((result: Json) => result.query === word)) {
+      if (!byId.has(entry.id)) continue;
+      assert.deepEqual(entry.translations, byId.get(entry.id), `${word} ${entry.id}`);
+      compared += 1;
+    }
+    for (const headword of new Set<string>(looked.unplaced_translations.map((t: Json) => t.headword))) {
+      assert.deepEqual(
+        batch.unplaced_translations.filter((t: Json) => t.headword === headword),
+        looked.unplaced_translations.filter((t: Json) => t.headword === headword),
+        headword,
+      );
+    }
+  }
+  assert.ok(compared >= 20, `${compared} records compared`);
 });
 
 // The lookup's reads may change order and grouping (#385); the answer they

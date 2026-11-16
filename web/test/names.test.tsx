@@ -133,7 +133,7 @@ test("the API returns a name entry like any entry, named and credited by its Wik
   const result = await lookup({ db: fromNodeSqlite(db), releaseId: RELEASE, query: "Hormuz" });
   assert.ok(result.outcome === "found");
   const [candidate] = await candidatesOf(result, async () => undefined);
-  const json = resultJson(candidate, UNFILTERED);
+  const json = resultJson(candidate, UNFILTERED, []);
   assert.deepEqual(
     [json.id, json.word, json.pos, json.pos_title, json.match.via, json.definitions, json.attribution],
     [

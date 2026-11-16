@@ -4921,7 +4921,7 @@ test("page-only readings present their page's fields without origin marks or inv
     const filters = readLookupFilters(new URLSearchParams());
     assert.ok(filters.ok);
     const candidates = await candidatesOf(answer, async () => undefined);
-    const json = resultJson(candidates[0], filters.filters);
+    const json = resultJson(candidates[0], filters.filters, []);
     assert.equal(json.id, `${RELEASE}:page:${reading.ref.revisionId}:${reading.ref.line}`);
     assert.equal(idOf(reading), json.id);
     assert.equal(json.forms, null);
@@ -4994,7 +4994,7 @@ test("a curated definition correction shows in place of the page's wrong words, 
       const { readLookupFilters } = await import("@/worker/api/lookupFilters.ts");
       const filters = readLookupFilters(new URLSearchParams());
       assert.ok(filters.ok);
-      html.api = JSON.stringify(resultJson((await candidatesOf(answer, async () => undefined))[0], filters.filters).definitions);
+      html.api = JSON.stringify(resultJson((await candidatesOf(answer, async () => undefined))[0], filters.filters, []).definitions);
     }, pages, undefined, corrections);
     return html;
   };
