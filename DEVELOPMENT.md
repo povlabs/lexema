@@ -429,6 +429,38 @@ reading, the option and whether a note is there, never the note
 ([#631](https://github.com/povlabs/lexema/issues/631),
 [docs/DEPLOY.md](./docs/DEPLOY.md#reader-report-issues)).
 
+### Make English meanings
+
+Each Italian sense may carry a short English meaning beside its definition
+([ADR 0035](./.decisions/0035-lexema-writes-english-meanings-per-sense.md),
+[#933](https://github.com/povlabs/lexema/issues/933),
+[src/englishMeaning/](./src/englishMeaning)). A model makes them offline,
+through the Message Batches API; no Worker or `web/` code calls a model.
+
+```sh
+pnpm run meanings:batch plan --spot-check
+pnpm run meanings:batch submit --spot-check
+pnpm run meanings:batch collect <batch-id>
+```
+
+`plan` reads the senses of the named words, or of the twelve spot-check
+queries with `--spot-check`, and prints what a run would send, sending nothing.
+A sense gets no request when its record already has English placed for it
+(translation placement, [#928](https://github.com/povlabs/lexema/issues/928)),
+when it is a form-of sense, or when `english_meaning` already holds a meaning
+for its definition text. `submit` sends one batch on `claude-sonnet-5-5` and
+keeps its manifest in `.data/english-meanings/` (`--out` names another
+directory). It needs `ANTHROPIC_API_KEY`, and refuses a run of more than 500
+requests: a run over every sense is a separate decision. `collect` waits for
+the batch to end, keeps its raw results beside the manifest, writes each
+meaning to `english_meaning` in one transaction, and prints a Markdown report
+of every sense with the tokens used and their cost at batch prices. A reply
+that picks English the page does not list is refused and stored as nothing.
+
+All three read the local D1 in `SEED_STATE` (default `.data/seed-state`); a
+remote D1 is refused. A dictionary seeded before the table needs
+`pnpm run update:upgrade` first, and a re-seed drops the stored meanings.
+
 ### Look at a pull request's Preview
 
 Each pull request's branch gets a Preview with all three sites, and one comment
@@ -615,6 +647,7 @@ src/
 ├── billing/        # plans, plan states and the Enterprise plan; `pnpm run plan`
 ├── cli.ts          # `pnpm run validate` — streams the file, writes the report
 ├── core/           # dataset-independent: record types, candidate resolver, report
+├── englishMeaning/ # English meanings per sense (ADR 0035), made offline in batch; `pnpm run meanings:batch`
 ├── db/             # the dictionary schema and lookup queries as SQL; app/ holds the Drizzle app tables
 ├── deploy/         # the dictionary deploy run CI makes after a merge to main, and its plan-only entry; `pnpm run deploy:dictionary`; a Preview's dictionary slice, `pnpm run preview:slice`
 ├── import/         # the streaming importer, the SQL export and the dev seed

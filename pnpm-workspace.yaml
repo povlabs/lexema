@@ -17,6 +17,8 @@ ignoredBuiltDependencies:
 # `catalog:`. Add a new dependency here first, then reference it.
 catalog:
   # Root: the importer, the lookup layer and their tests.
+  # The offline English meaning batch (src/englishMeaning/, #933); never the Worker.
+  '@anthropic-ai/sdk': 1.8.0
   '@better-auth/drizzle-adapter': 1.7.6
   '@better-auth/stripe': 1.7.6
   better-auth: 1.7.6
