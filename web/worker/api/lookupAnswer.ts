@@ -50,6 +50,7 @@ import type {
   SourceForm,
   Translation,
 } from "@lexema/lookup/types.ts";
+import type { PlacedTranslation, TranslationPage } from "@lexema/lookup/translationPlacement.ts";
 import { conjugationOf, slotOf, type Conjugation, type TableForm } from "@/lib/dictionary/conjugation.ts";
 import { declaredTableOf, type DeclaredTable } from "@/lib/dictionary/declaredLemmaPage.ts";
 import { definitionsOf, senseLabels, type DefinitionItem } from "@/lib/dictionary/definitions.ts";
@@ -412,22 +413,76 @@ export interface SectionsJson {
 }
 
 /**
- * One of the record's own `translations[]` (#739): `lang` is the source's
- * `lang_code`, `word` the translation, and `sense` the source's label for the
- * meaning, verbatim, or null when it gives none.
+ * One translation the record's page lists and evidence places on this record
+ * (#739, #928): `lang` is the source's `lang_code`, `word` the translation,
+ * `sense` the source's label for the meaning, verbatim, or null when it gives
+ * none, and `definition_index` the index in this record's `definitions` of
+ * the definition the label matched, or null when it matched none.
  */
 export interface TranslationJson {
   lang: string;
   word: string;
   sense: string | null;
+  definition_index: number | null;
 }
 
-/** A record's translations as JSON, in source order, kept to `languages` when it is given. */
-export function translationsJson(translations: readonly Translation[], languages: Languages | undefined): TranslationJson[] {
-  return translations
-    .filter((translation) => languages === undefined || languages.keeps(translation.langCode))
-    .map((translation) => ({ lang: translation.langCode, word: translation.word, sense: translation.sense }));
+/**
+ * A translation of a page that no record of it takes (#928), named by the
+ * page's headword: the page has several parts of speech, and nothing says
+ * which one it translates.
+ */
+export interface UnplacedTranslationJson {
+  headword: string;
+  lang: string;
+  word: string;
+  sense: string | null;
 }
+
+const kept = (languages: Languages | undefined) => (translation: Translation): boolean =>
+  languages === undefined || languages.keeps(translation.langCode);
+
+/** A record's placed translations as JSON, in source order, kept to `languages` when it is given. */
+export function translationsJson(placed: readonly PlacedTranslation[], languages: Languages | undefined): TranslationJson[] {
+  return placed
+    .filter(({ translation }) => kept(languages)(translation))
+    .map(({ translation, placement }) => ({
+      lang: translation.langCode,
+      word: translation.word,
+      sense: translation.sense,
+      definition_index: placement.definitionIndex,
+    }));
+}
+
+/** The translations each page leaves unplaced, page by page in the order given, kept to `languages` when it is given. */
+export function unplacedTranslationsJson(pages: readonly TranslationPage[], languages: Languages | undefined): UnplacedTranslationJson[] {
+  return pages.flatMap((page) =>
+    page
+      .unplaced()
+      .filter(kept(languages))
+      .map((translation) => ({ headword: page.headword, lang: translation.langCode, word: translation.word, sense: translation.sense })),
+  );
+}
+
+/** Reads the source pages of the headwords given, so their translations can be placed (src/lookup/translationPages.ts). */
+export type TranslationPagesReader = (headwords: readonly string[]) => Promise<ReadonlyMap<string, TranslationPage>>;
+
+/**
+ * The translations evidence places on an entry's record, read off the pages
+ * `pageHeadwords` named. An entry with no archive record (a page-only entry,
+ * a hand-kept reading, a name, a Wikidata word, a cardinal) lists none.
+ */
+export function placedOn(entry: { recordId?: number; word: string }, pages: ReadonlyMap<string, TranslationPage>): PlacedTranslation[] {
+  if (entry.recordId === undefined) return [];
+  const placed = pages.get(entry.word)?.placedOn(entry.recordId);
+  // Every served record heads its own spelling, so its page holds it; one that does not is a database no seed wrote.
+  if (placed === undefined) throw new Error(`record ${entry.recordId} is not on the page of "${entry.word}"`);
+  return placed;
+}
+
+/** The headwords of the entries that have an archive record, each once, in order. */
+export const pageHeadwords = (entries: readonly { recordId?: number; word: string }[]): string[] => [
+  ...new Set(entries.flatMap((entry) => (entry.recordId === undefined ? [] : [entry.word]))),
+];
 
 /**
  * One row of the record's *Expressions*, as the page lists it (#213): the
@@ -493,8 +548,8 @@ export function matchOf(candidate: Candidate): ResultCoreJson["match"] {
   return { surface: candidate.surface, via: candidate.via, grammar: grammarOf(candidate, hit, layoutOf(candidate.reading, hit)) };
 }
 
-/** One candidate as JSON, shaped by the filters that kept it. */
-export function resultJson(candidate: Candidate, filters: LookupFilters): ResultJson {
+/** One candidate as JSON, shaped by the filters that kept it, with the translations evidence places on its record (`placedOn`). */
+export function resultJson(candidate: Candidate, filters: LookupFilters, placed: readonly PlacedTranslation[]): ResultJson {
   const { reading } = candidate;
   const hit = candidate.hit ?? NOTHING_SEARCHED;
   const layout = layoutOf(reading, hit);
@@ -533,7 +588,7 @@ export function resultJson(candidate: Candidate, filters: LookupFilters): Result
       meaning: expressionMeaning(expression),
       has_entry: expression.hasEntry,
     })),
-    translations: translationsJson(reading.translations, filters.languages),
+    translations: translationsJson(placed, filters.languages),
     attribution: entryAttribution(reading),
   };
   return shaped(result, filters);
@@ -595,6 +650,11 @@ export interface FoundJson {
   query: string;
   release_id: string;
   results: ResultJson[];
+  /**
+   * The translations the results' pages list and no record of them takes
+   * (#928), whenever the results carry their translations.
+   */
+  unplaced_translations?: UnplacedTranslationJson[];
 }
 
 export interface NotFoundJson {
@@ -607,16 +667,30 @@ export interface NotFoundJson {
 /**
  * A found word's answer: the candidates `pos` and `match` keep, in the
  * lookup's order, each shaped by the other filters. Filters that keep no
- * candidate leave `results` empty; the word was still found.
+ * candidate leave `results` empty; the word was still found. When the results
+ * carry their translations, their pages are read so each record carries the
+ * ones evidence places on it, and the answer lists the ones no record takes
+ * (#928).
  */
-export async function foundJson(result: FoundResult, readLemma: LemmaReader, filters: LookupFilters): Promise<FoundJson> {
-  const candidates = await candidatesOf(result, readLemma);
+export async function foundJson(
+  result: FoundResult,
+  readLemma: LemmaReader,
+  filters: LookupFilters,
+  readPages: TranslationPagesReader,
+): Promise<FoundJson> {
+  const candidates = (await candidatesOf(result, readLemma)).filter((candidate) =>
+    admits(filters, { pos: candidate.reading.pos, via: candidate.via }),
+  );
+  const head = { query: result.query.raw, release_id: result.release.releaseId };
+  if (filters.fields !== undefined && !filters.fields.has("translations")) {
+    return { ...head, results: candidates.map((candidate) => resultJson(candidate, filters, [])) };
+  }
+  const headwords = pageHeadwords(candidates.map((candidate) => candidate.reading));
+  const pages = await readPages(headwords);
   return {
-    query: result.query.raw,
-    release_id: result.release.releaseId,
-    results: candidates
-      .filter((candidate) => admits(filters, { pos: candidate.reading.pos, via: candidate.via }))
-      .map((candidate) => resultJson(candidate, filters)),
+    ...head,
+    results: candidates.map((candidate) => resultJson(candidate, filters, placedOn(candidate.reading, pages))),
+    unplaced_translations: unplacedTranslationsJson(headwords.flatMap((headword) => pages.get(headword) ?? []), filters.languages),
   };
 }
 

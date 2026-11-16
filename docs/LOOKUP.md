@@ -568,6 +568,56 @@ The HTTP API's `/v1/lookup` returns each result's rows as `expressions`, each
 `{ phrase, meaning, has_entry }`, with the meanings joined by `"; "` and `meaning`
 `null` when there is none (`web/worker/api/lookupAnswer.ts`).
 
+### `translations`
+
+`Reading.translations` is the record's own `translations[]`, read off its line
+as written ([#739](https://github.com/povlabs/lexema/issues/739)). Wikizionario
+keeps one translation table per page, and the extraction copies it onto every
+record of the page, so the noun *andare* lists the verb's "go", "depart" and
+"leave". The HTTP API therefore does not serve that list as is. It places each
+translation on the records of its page that evidence names
+([#928](https://github.com/povlabs/lexema/issues/928),
+[`translationPlacement.ts`](../src/lookup/translationPlacement.ts)). This runs
+at read time over the stored lines; no source line and no import changes.
+
+A page is every served Italian record whose headword has the same exact
+spelling, read through its headword row in `lookup_form`
+([`translationPages.ts`](../src/lookup/translationPages.ts)). Only the records
+whose own line lists translations take part. The rules apply in order:
+
+1. A label that starts with a part of speech places the translation on the
+   records of that part of speech, and on no other. The marker is `verbo`,
+   `sostantivo`, `aggettivo` or `avverbio`, in round brackets
+   (`(verbo) partire`) or bare before a comma or alone (`aggettivo, chiaro ed
+   evidente`, `aggettivo`). The rest of the label names a definition when it
+   matches one, as in rule 2.
+2. Otherwise, a label that matches a gloss of one of the record's definitions
+   places it on that record, naming that definition. A label and a gloss match
+   when they are equal after Unicode NFC, collapsing runs of white space,
+   trimming, lower-casing and removing a closing `.`, `;`, `:` or `,`
+   (`matchForm`). There is no closer match and no score.
+3. Otherwise, on a page whose records are all one part of speech, it stays on
+   each of them, naming no definition.
+4. Otherwise it is on no record. It is listed as unplaced, never guessed.
+
+A definition is counted as the record's `definitions` count it: the numbered
+senses first, by the page's rule (`splitReadingSenses` in
+[`senseSplit.ts`](../src/lookup/senseSplit.ts)), so `definition_index` points
+into that same list.
+
+`/v1/lookup` and `/v1/lookup/batch` read the pages and place the translations
+through the same code, so the two give one record the same list. Each item is
+`{ lang, word, sense, definition_index }`, in source order. Whenever the
+results carry translations, the answer also has `unplaced_translations`: each
+page's translations that no record takes, each as
+`{ headword, lang, word, sense }`. `lang` keeps both lists to the languages it
+names. A client that knows the part of speech it wants selects the result with
+that `pos`, or asks `/v1/lookup` with `pos=`.
+
+`pnpm run measure:translation-placement` counts how the rules place one
+language's translations over a seeded dictionary (`SEED_STATE`, by default the
+dev seed `pnpm run seed:dev` leaves).
+
 ### The missing-field placeholder
 
 Where a page has no hyphenation, definition, etymology or references,

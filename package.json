@@ -49,6 +49,7 @@
     "bench:lookup": "tsx src/bench/lookupBenchCli.ts",
     "measure:bare-spellings": "tsx src/lookup/measureBareSpellings.ts",
     "measure:missing-words": "tsx src/lookup/measureMissingWords.ts",
+    "measure:translation-placement": "tsx src/lookup/measureTranslationPlacement.ts",
     "measure:plural-gloss": "tsx src/import/measurePluralGloss.ts",
     "measure:form-of-gloss-edge": "tsx src/import/measureFormOfGlossEdge.ts",
     "measure:form-of-meaning-edge": "tsx src/import/measureFormOfMeaningEdge.ts",

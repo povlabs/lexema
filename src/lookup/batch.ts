@@ -34,7 +34,7 @@
 // record once; and a word no Wiktionary reading answers with its Wikidata
 // words (ADR 0033, #812), read in the statement beside the search.
 
-import { keyedRead, readKeys, type DictionaryRead, type KeyedRead, type LookupDatabase } from "./database.js";
+import type { DictionaryRead, LookupDatabase } from "./database.js";
 import { queryInfoOf, rejectionOf, servableRelease } from "./lookup.js";
 import { answeringShapes, shapeKeysOf, readShapeRows, type ShapeRow } from "./wordShape.js";
 import { phraseMatchesOf } from "./phrase.js";
@@ -47,8 +47,7 @@ import { unansweredCardinal } from "./cardinal.js";
 import { CARDINAL_POS, type ItalianCardinal } from "../italian/cardinal.js";
 import { unlessDeclaredLemma } from "./wikidataWords.js";
 import { declaredLemmaHeads } from "./declaredLemma.js";
-import { readTranslations } from "./sourceRecord.js";
-import { lemmasOfPartOfSpeech, sourceTagsAt, type CitedRevision, type DeclaredLemmaHead, type QueryInfo, type RejectedResult, type ReleaseInfo, type Translation } from "./types.js";
+import { lemmasOfPartOfSpeech, sourceTagsAt, type CitedRevision, type DeclaredLemmaHead, type QueryInfo, type RejectedResult, type ReleaseInfo } from "./types.js";
 import { agreeingQuery, agreementProbes, namesCell, type AgreeingQuery } from "../italian/essereAgreement.js";
 import { personOfItalianVerbForm } from "../italian/moods.js";
 import { prefixUpperBound } from "./keyRange.js";
@@ -899,39 +898,4 @@ export async function keysAnsweredPastSpelling(db: LookupDatabase, releaseId: st
   const agreements = await agreementsOf(db, readsFor(tables), releaseId, keys.filter((key) => !answered.has(key)));
   for (const [key, candidates] of agreements) if (candidates.length > 0) answered.add(key);
   return answered;
-}
-
-/**
- * The lines of archive records, with the coordinates a translation's pointer
- * needs. Read only when a batch asks for translations (#739): one statement
- * for every candidate of every word.
- */
-export const BATCH_TRANSLATION_LINE_SQL: KeyedRead = keyedRead(`SELECT r.record_id AS set_key, r.release_id, r.line_no, r.line_sha256, j.raw_json
-       FROM source_record r
-       JOIN source_record_json j ON j.record_id = r.record_id
-      WHERE r.record_id IN (SELECT value FROM json_each(?1))`);
-
-/**
- * Each candidate's own `translations[]`, by record, read off its archive line
- * as a full lookup reads a reading's. A page-only entry has no line, so it has
- * none and is not asked about.
- */
-export async function translationsOf(db: LookupDatabase, candidates: readonly CandidateRecord[]): Promise<Map<number, Translation[]>> {
-  const recordIds = candidates.flatMap((candidate) => (candidate.recordId === undefined ? [] : [candidate.recordId]));
-  const rows = await readKeys<{ set_key: number; release_id: string; line_no: number; line_sha256: string; raw_json: string }>(
-    db,
-    BATCH_TRANSLATION_LINE_SQL,
-    recordIds,
-  );
-  return new Map(
-    rows.map((row) => [
-      row.set_key,
-      readTranslations(JSON.parse(row.raw_json), (jsonPointer) => ({
-        releaseId: row.release_id,
-        lineNo: row.line_no,
-        jsonPointer,
-        lineSha256: row.line_sha256,
-      })),
-    ]),
-  );
 }

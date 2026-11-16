@@ -130,7 +130,7 @@ test("the API returns a Wikidata word like any entry, named and credited by its 
   const result = await lookup({ db: fromNodeSqlite(db), releaseId: RELEASE, query: "pento" });
   assert.ok(result.outcome === "found");
   const [candidate] = await candidatesOf(result, async () => undefined);
-  const json = resultJson(candidate, UNFILTERED);
+  const json = resultJson(candidate, UNFILTERED, []);
   assert.deepEqual(
     [json.id, json.word, json.pos, json.pos_title, json.definitions, json.attribution],
     [
@@ -200,7 +200,7 @@ async function matchesOf(query: string): Promise<unknown[]> {
     const lemma = await lookup({ db: fromNodeSqlite(db), releaseId: RELEASE, query: target.word });
     return lemma.outcome === "found" ? lemma.readings.find((reading) => reading.recordId === target.recordId) : undefined;
   };
-  return (await candidatesOf(result, readLemma)).map((candidate) => resultJson(candidate, UNFILTERED).match);
+  return (await candidatesOf(result, readLemma)).map((candidate) => resultJson(candidate, UNFILTERED, []).match);
 }
 
 test("a form only a Wikidata word answers is marked in its Forme, under the line a record's form gets (#851)", async () => {
