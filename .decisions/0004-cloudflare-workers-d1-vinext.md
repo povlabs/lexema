@@ -1,7 +1,7 @@
 ---
 id: 0004
 title: Lexema runs on Cloudflare Workers, with D1 for lookup and vinext for rendering
-status: amended-in-part by [0013](0013-site-public-behind-rate-limits.md), [0015](0015-grammar-labels-are-italian.md)
+status: amended-in-part by [0013](0013-site-public-behind-rate-limits.md), [0015](0015-grammar-labels-are-italian.md), [0035](0035-lexema-writes-english-meanings-per-sense.md)
 date: 2026-09-18
 tags: [stack]
 ---
@@ -79,3 +79,7 @@ another React framework does not.
 ## Records
 
 No vocabulary impact.
+
+## Amendments
+
+- **#932 — An English meaning per sense is allowed beside the Italian definition (2026-11-16).** [ADR 0035](0035-lexema-writes-english-meanings-per-sense.md) records Huey's [ruling](https://github.com/povlabs/lexema/issues/932#issuecomment-6918507985) that Lexema may add its own English meaning to each sense, in its own field. The *Language* rule above still holds for source definitions: they are shown in the Italian the source wrote them in and are not translated. An English meaning sits beside a definition and never replaces it.
